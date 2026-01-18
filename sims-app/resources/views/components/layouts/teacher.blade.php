@@ -19,7 +19,16 @@
     <div x-data="{ sidebarOpen: window.innerWidth >= 768 }" class="flex h-screen overflow-hidden bg-gray-50">
         
         <!-- Sidebar -->
-        <aside x-show="sidebarOpen" class="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative flex flex-col h-screen">
+        <aside 
+            x-show="sidebarOpen" 
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="-translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="-translate-x-full"
+            class="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative md:translate-x-0 flex flex-col h-screen transform"
+        >
             <div class="flex items-center gap-3 p-6 border-b border-gray-100 flex-shrink-0">
                 <div class="flex items-center justify-center w-10 h-10 text-white shadow-lg rounded-xl bg-gradient-to-br from-green-500 to-emerald-600">
                     <!-- Graduation Cap Icon -->
@@ -192,7 +201,17 @@
             </div>
 
             <!-- Mobile Overlay -->
-            <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-40 bg-black/50 md:hidden" style="display: none;"></div>
+            <div 
+                x-show="sidebarOpen" 
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                @click="sidebarOpen = false" 
+                class="fixed inset-0 z-40 bg-black/50 md:hidden"
+            ></div>
         </main>
     </div>
     @stack('scripts')

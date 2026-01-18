@@ -8,22 +8,41 @@
             </div>
             
              <div class="flex gap-3 w-full md:w-auto items-center">
-                {{-- View Toggle --}}
-                <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-                    <button 
-                        wire:click="$set('viewMode', 'grid')" 
-                        class="p-1.5 rounded-md transition-all {{ $viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600' }}"
-                        title="Grid View"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-                    </button>
-                    <button 
-                        wire:click="$set('viewMode', 'list')" 
-                        class="p-1.5 rounded-md transition-all {{ $viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600' }}"
-                        title="List View"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-                    </button>
+                {{-- View Toggle & Sort --}}
+                <div class="flex items-center gap-2">
+                    <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                        <button 
+                            wire:click="$set('sortOrder', 'asc')" 
+                            class="p-1.5 rounded-md transition-all {{ $sortOrder === 'asc' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600' }}"
+                            title="Sort Ascending"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="M11 12h10"/><path d="M11 16h10"/><path d="M11 20h10"/></svg>
+                        </button>
+                        <button 
+                            wire:click="$set('sortOrder', 'desc')" 
+                            class="p-1.5 rounded-md transition-all {{ $sortOrder === 'desc' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600' }}"
+                            title="Sort Descending"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h10"/><path d="M11 12h10"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                        <button 
+                            wire:click="$set('viewMode', 'grid')" 
+                            class="p-1.5 rounded-md transition-all {{ $viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600' }}"
+                            title="Grid View"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                        </button>
+                        <button 
+                            wire:click="$set('viewMode', 'list')" 
+                            class="p-1.5 rounded-md transition-all {{ $viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600' }}"
+                            title="List View"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+                        </button>
+                    </div>
                 </div>
 
                 {{-- Search --}}

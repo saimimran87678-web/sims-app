@@ -67,57 +67,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
 });
 
 Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->group(function () {
-    Route::get('/dashboard', function () {
-        $user = \Illuminate\Support\Facades\Auth::user();
-
-        // 1. Count Allocated Subjects
-        $allocatedSubjectsCount = \Illuminate\Support\Facades\DB::table('subject_allocations')
-            ->where('user_id', $user->id)
-            ->count();
-        
-        // 2. Add Class Teacher Subject if exists
-        $totalSubjects = $allocatedSubjectsCount + (!empty($user->class_subject) ? 1 : 0);
-
-        // 3. Count Students (Students in classes where teacher teaches)
-        // Get all class IDs the teacher is associated with
-        $classIds = \Illuminate\Support\Facades\DB::table('subject_allocations')
-            ->where('user_id', $user->id)
-            ->pluck('class_id')
-            ->toArray();
-        
-        if ($user->class_id) {
-            $classIds[] = $user->class_id;
-        }
-        $classIds = array_unique($classIds);
-
-        $studentsCount = 0;
-        if (!empty($classIds)) {
-             $studentsCount = \Illuminate\Support\Facades\DB::table('students')
-                ->whereIn('class_id', $classIds)
-                ->count();
-        }
-
-        // 4. Fetch Today's Schedule
-        $day = now()->format('l');
-        $periods = \Illuminate\Support\Facades\DB::table('period_configs')->orderBy('period_no')->get();
-        $todaySchedule = \Illuminate\Support\Facades\DB::table('timetables')
-            ->join('classes', 'timetables.class_id', '=', 'classes.id')
-            ->join('subjects', 'timetables.subject_id', '=', 'subjects.id')
-            ->where('teacher_id', $user->id)
-            ->where('classes.academic_session_id', \Illuminate\Support\Facades\DB::table('academic_sessions')->where('is_active', true)->value('id'))
-            ->where('day', $day)
-            ->where('is_substitute', 0)
-            ->select('timetables.*', 'classes.name as class_name', 'subjects.name as subject_name')
-            ->get()
-            ->keyBy('period_no');
-
-         $stats = [
-            'students' => $studentsCount,
-            'subjects' => $totalSubjects,
-            'classes_today' => $todaySchedule->count(),
-        ];
-        return view('teacher.dashboard', compact('stats', 'periods', 'todaySchedule'));
-    })->name('dashboard');
+    Route::get('/dashboard', \App\Livewire\Teacher\Dashboard::class)->name('dashboard');
 
     Route::get('/attendance', \App\Livewire\Teacher\AttendanceManager::class)->name('attendance');
     Route::get('/grades', \App\Livewire\Teacher\GradeManager::class)->name('grades');
