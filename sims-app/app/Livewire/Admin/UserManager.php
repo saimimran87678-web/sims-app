@@ -174,7 +174,7 @@ class UserManager extends Component
                     'name' => $this->name,
                     'email' => $this->email,
                     'role' => $this->role,
-                    'class_id' => ($this->role === 'teacher') ? $this->class_id : null,
+                    'class_id' => ($this->role === 'teacher' && !empty($this->class_id)) ? $this->class_id : null,
                     'class_subject' => ($this->role === 'teacher' && $this->class_id) ? $this->class_subject : null,
                 ];
                 if (!empty($this->password)) {
@@ -203,7 +203,7 @@ class UserManager extends Component
                     'email' => $this->email,
                     'password' => Hash::make($this->password),
                     'role' => $this->role,
-                    'class_id' => ($this->role === 'teacher') ? $this->class_id : null,
+                    'class_id' => ($this->role === 'teacher' && !empty($this->class_id)) ? $this->class_id : null,
                     'class_subject' => ($this->role === 'teacher' && $this->class_id) ? $this->class_subject : null,
                 ]);
                 

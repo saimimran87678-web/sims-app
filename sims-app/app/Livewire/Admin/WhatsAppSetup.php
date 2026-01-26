@@ -38,6 +38,18 @@ class WhatsAppSetup extends Component
         }
     }
 
+    public function logout()
+    {
+        try {
+            $whatsapp = app(WhatsAppService::class);
+            $whatsapp->logout();
+            $this->errorMessage = "Logged out successfully. Waiting for new QR code...";
+            $this->refreshStatus();
+        } catch (\Exception $e) {
+            $this->errorMessage = 'Logout failed: ' . $e->getMessage();
+        }
+    }
+
     public function render()
     {
         return view('livewire.admin.whatsapp-setup')->layout('components.layouts.admin', ['title' => 'WhatsApp Setup']);

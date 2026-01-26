@@ -43,9 +43,12 @@
             <button wire:click="$set('viewType', 'summary')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {{ $viewType === 'summary' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200' }}">
                 Summary
             </button>
+            <button wire:click="$set('viewType', 'arrangements')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {{ $viewType === 'arrangements' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200' }}">
+                Arrangements
+            </button>
         </div>
 
-        @if($viewType !== 'summary')
+        @if($viewType !== 'summary' && $viewType !== 'arrangements')
         <div class="flex gap-2 items-center">
             <button
                 wire:click="$set('selectedDay', 'Everyday')"
@@ -101,19 +104,27 @@
                                         <span class="text-purple-600 text-xs">Assembly</span>
                                     </td>
                                 @else
-                                    @php $schedule = $this->getScheduleByClass($class->id, $period->period_no); @endphp
+                                    @php 
+                                        // Retrieve all schedules for this slot
+                                        $schedules = $timetables->where('class_id', $class->id)->where('period_no', $period->period_no);
+                                    @endphp
                                     <td 
                                         wire:click="viewDetail({{ $class->id }}, {{ $period->period_no }})"
-                                        class="px-2 py-2 border-l border-gray-100 text-center {{ $schedule ? 'cursor-pointer hover:bg-blue-50' : '' }}"
+                                        class="px-2 py-2 border-l border-gray-100 text-center {{ $schedules->isNotEmpty() ? 'cursor-pointer hover:bg-blue-50' : '' }}"
                                     >
-                                        @if($schedule)
-                                            @php
-                                                $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
-                                                $subject = \App\Models\Subject::find($schedule->subject_id);
-                                            @endphp
-                                            <div class="text-xs">
-                                                <div class="font-semibold text-blue-700">{{ $subject->name ?? '-' }}</div>
-                                                <div class="text-gray-500">{{ $teacher->name ?? '-' }}</div>
+                                        @if($schedules->isNotEmpty())
+                                            <div class="flex flex-col gap-1">
+                                                @foreach($schedules as $s)
+                                                    @php
+                                                        $subj = \App\Models\Subject::find($s->subject_id);
+                                                        $teach = collect($teachers)->firstWhere('id', $s->teacher_id);
+                                                    @endphp
+                                                    <div class="text-xs border-b border-gray-100 last:border-0 pb-0.5 last:pb-0">
+                                                        <span class="font-semibold text-blue-700">{{ $subj->name ?? '-' }}</span>
+                                                        <span class="text-gray-400">|</span>
+                                                        <span class="text-gray-500">{{ $teach->name ?? '-' }}</span>
+                                                    </div>
+                                                @endforeach
                                             </div>
                                         @else
                                             <span class="text-gray-300 text-xs">-</span>
@@ -178,7 +189,12 @@
                                             >
                                                 <span class="font-bold text-green-700 text-sm group-hover:text-blue-700">{{ $class->name ?? '-' }}</span>
                                                 <span class="text-gray-300">|</span>
-                                                <span class="text-xs text-gray-600 group-hover:text-blue-600 font-medium">{{ $subject->name ?? '-' }}</span>
+                                                <span class="text-xs text-gray-600 group-hover:text-blue-600 font-medium">
+                                                    {{ $subject->name ?? '-' }}
+                                                    @if($schedule->subject_id_2)
+                                                        + {{ \App\Models\Subject::find($schedule->subject_id_2)->name ?? '' }}
+                                                    @endif
+                                                </span>
                                             </div>
                                         @endforeach
                                         </div>
@@ -315,6 +331,117 @@
     </div>
 
     {{-- Print Layout for Summary View Removed (Handled by dedicated page) --}}
+    @endif
+
+    {{-- ARRANGEMENTS VIEW --}}
+    @if($viewType === 'arrangements')
+    <div class="space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:hidden">
+            <div class="flex justify-between items-start gap-6">
+                <div class="flex items-center gap-4">
+                    <label class="text-sm font-semibold text-gray-600">Select Date:</label>
+                    <input type="date" wire:model.live="arrangementDate" class="border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <a href="{{ route('admin.print-schedule', ['viewType' => 'arrangements', 'date' => $arrangementDate]) }}" target="_blank" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 flex items-center gap-2 text-sm shadow-md transition-transform active:scale-95">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    Print Arrangements
+                </a>
+            </div>
+
+            <!-- Custom Daily Note -->
+            <div class="mt-6 bg-yellow-50/50 p-4 rounded-xl border border-yellow-200">
+                 <label class="block text-sm font-bold text-gray-700 mb-2">Daily Note / Announcement (Optional)</label>
+                 <div class="flex gap-2 items-start">
+                     <textarea wire:model="dailyNote" class="w-full rounded-xl border-yellow-300 focus:border-yellow-500 focus:ring-yellow-500 bg-white text-sm" rows="2" placeholder="e.g. Today following classes are working 6A (8B Room)..."></textarea>
+                     <button wire:click="saveDailyNote" class="flex-shrink-0 px-4 py-2 bg-gray-800 text-white rounded-xl hover:bg-black font-medium text-sm shadow-sm transition-colors whitespace-nowrap">
+                        Save Note
+                     </button>
+                 </div>
+                 <p class="text-xs text-yellow-700 mt-2 italic">This note will appear at the bottom of the printed arrangement report.</p>
+                 
+                 @if(session()->has('message'))
+                    <span class="text-xs text-green-600 font-bold ml-2">{{ session('message') }}</span>
+                 @endif
+            </div>
+        </div>
+        
+        <div class="glass-card rounded-2xl overflow-hidden p-6">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Daily Arrangements</h2>
+                <p class="text-gray-500">{{ \Carbon\Carbon::parse($arrangementDate)->format('l, F j, Y') }}</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 border border-gray-100 rounded-lg">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-1/4">Teacher On Leave</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-20">Period</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-24">Class</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Teacher Arranged</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-32">Signature</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100 text-sm">
+                        @if($arrangements->isEmpty())
+                            <tr>
+                                <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                                    No arrangements found for this date.
+                                </td>
+                            </tr>
+                        @else
+                            @foreach($arrangements as $absentId => $subs)
+                                @php 
+                                    $absentTeacher = $absentId ? collect($teachers)->firstWhere('id', $absentId) : null;
+                                    $rowCount = $subs->count();
+                                @endphp
+                                @foreach($subs as $index => $sub)
+                                    @php
+                                        $period = $periods->firstWhere('period_no', $sub->period_no);
+                                        $class = collect($classes)->firstWhere('id', $sub->class_id);
+                                        $subTeacher = collect($teachers)->firstWhere('id', $sub->teacher_id);
+                                    @endphp
+                                    <tr class="hover:bg-gray-50/50">
+                                        @if($index === 0)
+                                            <td rowspan="{{ $rowCount }}" class="px-4 py-3 align-top border-r border-gray-100 bg-gray-50/30">
+                                                @if($absentTeacher)
+                                                    <span class="font-bold text-gray-800 text-base">{{ $absentTeacher->name }}</span>
+                                                @else
+                                                    <span class="text-gray-500 italic">No Regular Teacher</span>
+                                                @endif
+                                            </td>
+                                        @endif
+                                        <td class="px-4 py-3 font-medium text-gray-600">
+                                            {{ $period->label ?? $sub->period_no }}
+                                        </td>
+                                        <td class="px-4 py-3 font-bold text-gray-700">
+                                            {{ $class->name ?? '-' }}
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                                                {{ $subTeacher->name ?? 'Unknown' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 border-b border-gray-100">
+                                            <!-- Empty for signature -->
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @endforeach
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+
+            @if($dailyNote)
+                <div class="mt-8 pt-4 border-t-2 border-gray-200">
+                    <span class="font-bold text-gray-800 block mb-1">Note:</span>
+                    <p class="text-gray-600 text-sm whitespace-pre-line">{{ $dailyNote }}</p>
+                </div>
+            @endif
+        </div>
+    </div>
     @endif
 
     {{-- Detail Modal (like assignment modal but read-only) --}}

@@ -27,8 +27,13 @@ class ViewSchedule extends Component
     public $detailPeriodNo;
     public $detailData = null;
 
+    public $arrangementDate;
+    public $arrangements = [];
+    public $dailyNote = '';
+
     public function mount()
     {
+        $this->arrangementDate = now()->format('Y-m-d');
         $this->periods = PeriodConfig::orderBy('period_no')->get();
         $this->classes = Classes::orderBy('numeric_value')->get();
         $this->teachers = DB::table('users')->where('role', 'teacher')->orderBy('name')->get();
@@ -37,6 +42,43 @@ class ViewSchedule extends Component
 
     public function loadTimetables()
     {
+        if ($this->viewType === 'arrangements') {
+            // Load Daily Note
+            $noteRecord = DB::table('daily_notes')->where('date', $this->arrangementDate)->first();
+            $this->dailyNote = $noteRecord ? $noteRecord->note : '';
+
+            $rawArrangements = DB::table('timetables')
+                ->where('is_substitute', true)
+                ->where('substitute_date', $this->arrangementDate)
+                ->get();
+            
+            // Deduce Absent Teachers
+            $dayName = \Carbon\Carbon::parse($this->arrangementDate)->format('l');
+            $regular = DB::table('timetables')
+                ->where('day', $dayName)
+                ->where('is_substitute', false)
+                ->get();
+
+            $this->arrangements = $rawArrangements->map(function($sub) use ($regular) {
+                // Find regular teacher
+                $reg = $regular->where('class_id', $sub->class_id)
+                               ->where('period_no', $sub->period_no)
+                               ->first();
+                $sub->absent_teacher_id = $reg ? $reg->teacher_id : null;
+                return $sub;
+            })->groupBy('absent_teacher_id');
+
+            // Sort by Absent Teacher Name
+            $teachers = $this->teachers;
+            $this->arrangements = $this->arrangements->sortBy(function ($subs, $key) use ($teachers) {
+                if (!$key) return 'ZZZZ';
+                $t = $teachers->firstWhere('id', $key);
+                return $t ? $t->name : 'ZZZZ';
+            });
+            
+            return;
+        }
+
         // For "Everyday" mode, load Monday's schedule as the unified template
         $dayToLoad = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
         
@@ -48,6 +90,23 @@ class ViewSchedule extends Component
         if ($this->viewType === 'room') {
             $this->rooms = $this->timetables->pluck('room')->filter()->unique()->sort()->values();
         }
+    }
+
+    public function saveDailyNote()
+    {
+        $exists = DB::table('daily_notes')->where('date', $this->arrangementDate)->exists();
+        if ($exists) {
+            DB::table('daily_notes')->where('date', $this->arrangementDate)->update(['note' => $this->dailyNote, 'updated_at' => now()]);
+        } else {
+             DB::table('daily_notes')->insert(['date' => $this->arrangementDate, 'note' => $this->dailyNote, 'created_at' => now(), 'updated_at' => now()]);
+        }
+        
+        session()->flash('message', 'Note saved.');
+    }
+
+    public function updatedArrangementDate()
+    {
+        $this->loadTimetables();
     }
 
     public function updatedSelectedDay()
@@ -75,10 +134,13 @@ class ViewSchedule extends Component
         $this->detailClassId = $classId;
         $this->detailPeriodNo = $periodNo;
         
-        $schedule = $this->timetables->where('class_id', $classId)->where('period_no', $periodNo)->first();
-        if ($schedule) {
-            $teacher = collect($this->teachers)->firstWhere('id', $schedule->teacher_id);
-            $subject = Subject::find($schedule->subject_id);
+        $schedules = $this->timetables->where('class_id', $classId)->where('period_no', $periodNo);
+        $first = $schedules->first();
+        
+        if ($first) {
+            $teachers = $schedules->map(fn($s) => collect($this->teachers)->firstWhere('id', $s->teacher_id)->name ?? '-')->unique()->join(' | ');
+            $subjects = $schedules->map(fn($s) => Subject::find($s->subject_id)->name ?? '-')->unique()->join(' / ');
+            
             $class = collect($this->classes)->firstWhere('id', $classId);
             $period = $this->periods->firstWhere('period_no', $periodNo);
             
@@ -86,10 +148,10 @@ class ViewSchedule extends Component
                 'class_name' => $class->name ?? '-',
                 'period_label' => $period->label ?? "Period $periodNo",
                 'period_time' => $period ? \Carbon\Carbon::parse($period->start_time)->format('h:i A') . ' - ' . \Carbon\Carbon::parse($period->end_time)->format('h:i A') : '-',
-                'teacher_name' => $teacher->name ?? '-',
-                'subject_name' => $subject->name ?? '-',
-                'room' => $schedule->room ?? '-',
-                'is_divided' => $schedule->is_divided,
+                'teacher_name' => $teachers,
+                'subject_name' => $subjects,
+                'room' => $first->room ?? '-', 
+                'is_divided' => $schedules->count() > 1 || $first->is_divided,
             ];
             
             $this->showDetailModal = true;

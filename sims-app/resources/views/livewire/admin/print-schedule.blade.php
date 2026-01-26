@@ -106,7 +106,12 @@
                                             $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
                                             $subject = \App\Models\Subject::find($schedule->subject_id);
                                         @endphp
-                                        <div class="font-bold text-[10px] text-black">{{ $subject->name ?? '-' }}</div>
+                                        <div class="font-bold text-[10px] text-black">
+                                            {{ $subject->name ?? '-' }}
+                                            @if($schedule->subject_id_2)
+                                                + {{ \App\Models\Subject::find($schedule->subject_id_2)->name ?? '' }}
+                                            @endif
+                                        </div>
                                         <div class="text-[9px] text-gray-700">{{ $teacher->name ?? '-' }}</div>
                                     @else
                                         -
@@ -156,5 +161,83 @@
                 <div class="text-sm text-gray-600 font-semibold">Classes</div>
             </div>
         </div>
+    @elseif($viewType === 'arrangements')
+        <div class="mb-4 text-center">
+             <h1 class="text-2xl font-bold uppercase tracking-wide mb-1 text-black">IMCB G-6/2</h1>
+             <h2 class="text-xl font-bold mb-0 text-black">Daily Arrangements</h2>
+             <p class="text-sm text-gray-800">{{ \Carbon\Carbon::parse($date)->format('l d. F Y') }}</p>
+        </div>
+
+        <table class="w-full text-xs text-left border-collapse border-b border-gray-400">
+            <thead>
+                <tr class="bg-gray-100 border-b border-gray-400">
+                    <th class="px-2 py-1.5 font-bold text-black w-1/4">Teacher On Leave</th>
+                    <th class="px-2 py-1.5 font-bold text-black w-16 text-center">Period</th>
+                    <th class="px-2 py-1.5 font-bold text-black w-16 text-center">Class</th>
+                    <th class="px-2 py-1.5 font-bold text-black">Teacher Arranged</th>
+                    <th class="px-2 py-1.5 font-bold text-black w-24">Signature</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if($arrangements->isEmpty())
+                     <tr>
+                         <td colspan="5" class="px-4 py-8 text-center text-gray-500 italic">No arrangements found.</td>
+                     </tr>
+                @else
+                    @foreach($arrangements as $absentId => $subs)
+                        @php
+                            $absentTeacher = $absentId ? collect($teachers)->firstWhere('id', $absentId) : null;
+                            $rowCount = $subs->count();
+                        @endphp
+                        @foreach($subs as $index => $sub)
+                            @php
+                                $period = $periods->firstWhere('period_no', $sub->period_no);
+                                $class = collect($classes)->firstWhere('id', $sub->class_id);
+                                $subTeacher = collect($teachers)->firstWhere('id', $sub->teacher_id);
+                            @endphp
+                            <tr class="border-b border-gray-300">
+                                {{-- Teacher On Leave (Grouped) --}}
+                                @if($index === 0)
+                                    <td rowspan="{{ $rowCount }}" class="px-2 py-1.5 font-normal text-black align-top border-r border-gray-300 bg-gray-50/50">
+                                        {{ $absentTeacher->name ?? 'Additional Class' }}
+                                    </td>
+                                @endif
+
+                                <td class="px-2 py-1.5 text-center text-black border-r border-gray-300">
+                                    {{ $period->label ?? $sub->period_no }}
+                                </td>
+                                
+                                <td class="px-2 py-1.5 text-center font-bold text-black border-r border-gray-300">
+                                    {{ $class->name ?? '-' }}
+                                </td>
+                                
+                                <td class="px-2 py-1.5 text-black border-r border-gray-300">
+                                     {{ $subTeacher->name ?? 'Unknown' }}
+                                </td>
+                                
+                                <td class="px-2 py-1.5">
+                                    {{-- Signature Empty --}}
+                                </td>
+                            </tr>
+                        @endforeach
+                        {{-- Separator between groups --}}
+                        <tr><td colspan="5" class="border-b border-gray-800 h-px p-0"></td></tr>
+                    @endforeach
+                @endif
+            </tbody>
+        </table>
+        
+        @if($dailyNote)
+            <div class="mt-4 pt-2 border-t border-black">
+                <span class="font-bold text-black text-xs italic">Note:</span>
+                <p class="text-black text-xs italic inline pl-1 whitespace-pre-line">{{ $dailyNote }}</p>
+            </div>
+        @endif
     @endif
 </div>
+<script>
+    // Auto print when page loads
+    window.onload = function() {
+        window.print();
+    }
+</script>

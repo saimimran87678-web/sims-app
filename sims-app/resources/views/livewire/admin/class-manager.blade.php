@@ -132,6 +132,21 @@
                         </button>
                     </div>
 
+                    @if($classSubjects->count() > 0)
+                    <div class="mb-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex flex-col sm:flex-row justify-between items-center gap-2">
+                        <div class="text-xs text-indigo-700">
+                            <span class="font-bold">✨ Quick Action:</span> Copy these subjects to all other sections?
+                        </div>
+                        <button
+                            wire:click="copySubjectsToSections"
+                            wire:confirm="Are you sure? This will copy all subjects to other sections of the same class. Duplicates will be skipped."
+                            class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
+                        >
+                            Copy to All Sections
+                        </button>
+                    </div>
+                    @endif
+
                     <div class="space-y-4">
                         @can('subject.create')
                         <div class="flex flex-col gap-1">
@@ -157,18 +172,46 @@
                         <div class="max-h-64 overflow-y-auto space-y-2">
                             @forelse($classSubjects as $subject)
                                 <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div>
-                                        <span class="text-sm font-medium text-gray-700 block">{{ $subject->name }}</span>
-                                        <span class="text-xs text-gray-400">{{ $subject->code }}</span>
-                                    </div>
-                                    @can('subject.delete')
-                                    <button
-                                        wire:click="deleteSubject({{ $subject->id }})"
-                                        class="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg transition-colors"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                    </button>
-                                    @endcan
+                                    @if($editingSubjectId === $subject->id)
+                                        <div class="flex gap-2 w-full items-center">
+                                             <input 
+                                                type="text" 
+                                                wire:model="editingSubjectName" 
+                                                wire:keydown.enter="updateSubject" 
+                                                class="flex-1 px-3 py-1.5 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white" 
+                                                autofocus
+                                             />
+                                             <button wire:click="updateSubject" class="text-green-600 hover:text-green-700 p-1.5 bg-green-50 hover:bg-green-100 rounded-lg transition-colors" title="Save">
+                                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                             </button>
+                                             <button wire:click="cancelEditSubject" class="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-lg transition-colors" title="Cancel">
+                                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                             </button>
+                                        </div>
+                                    @else
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-gray-700 block">{{ $subject->name }}</span>
+                                            <span class="text-xs text-gray-400">{{ $subject->code }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <button 
+                                                wire:click="editSubject({{ $subject->id }})" 
+                                                class="text-blue-400 hover:text-blue-600 p-1 hover:bg-blue-50 rounded-lg transition-colors" 
+                                                title="Edit"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            </button>
+                                            @can('subject.delete')
+                                            <button
+                                                wire:click="deleteSubject({{ $subject->id }})"
+                                                class="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                            </button>
+                                            @endcan
+                                        </div>
+                                    @endif
                                 </div>
                             @empty
                                 <p class="text-center text-gray-500 text-sm py-4">No subjects added yet.</p>

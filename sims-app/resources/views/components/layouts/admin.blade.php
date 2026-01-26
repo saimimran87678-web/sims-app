@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ $title ?? 'Dashboard' }} | IMCB G-6/2</title>
+    <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +28,7 @@
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="-translate-x-full"
-            class="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative md:translate-x-0 flex flex-col h-screen transform"
+            class="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative md:translate-x-0 flex flex-col h-screen transform print:hidden"
         >
             <div class="flex items-center gap-3 p-6 border-b border-gray-100 flex-shrink-0">
                 <div class="flex items-center justify-center w-10 h-10 text-white shadow-lg rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600">
@@ -171,9 +172,9 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="relative flex flex-col flex-1 h-screen overflow-hidden">
+        <main class="relative flex flex-col flex-1 h-screen overflow-hidden print:h-auto print:overflow-visible">
             <!-- Header -->
-            <header class="flex items-center justify-between px-4 border-b border-gray-200 h-16 bg-white/50 backdrop-blur-sm md:px-8 z-10">
+            <header class="flex items-center justify-between px-4 border-b border-gray-200 h-16 bg-white/50 backdrop-blur-sm md:px-8 z-10 print:hidden">
                 <div class="flex items-center gap-4">
                     <button @click="sidebarOpen = !sidebarOpen" class="text-gray-600">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
@@ -204,7 +205,7 @@
             </header>
 
             <!-- Content Area -->
-            <div class="flex-1 p-4 overflow-y-auto md:p-8 scroll-smooth">
+            <div class="flex-1 p-4 overflow-y-auto md:p-8 scroll-smooth print:overflow-visible print:h-auto">
                 {{ $slot }}
             </div>
 

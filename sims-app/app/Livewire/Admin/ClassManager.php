@@ -134,6 +134,43 @@ class ClassManager extends Component
         $this->loadClasses(); // Update counts
     }
 
+    public $editingSubjectId = null;
+    public $editingSubjectName = '';
+
+    public function editSubject($subjectId)
+    {
+        $subject = \Illuminate\Support\Facades\DB::table('subjects')->where('id', $subjectId)->first();
+        if ($subject) {
+            $this->editingSubjectId = $subjectId;
+            $this->editingSubjectName = $subject->name;
+        }
+    }
+
+    public function updateSubject()
+    {
+        if (!$this->editingSubjectId) return;
+
+        $this->validate([
+            'editingSubjectName' => 'required|string|max:255',
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('subjects')->where('id', $this->editingSubjectId)->update([
+            'name' => $this->editingSubjectName,
+            'code' => strtoupper(substr($this->editingSubjectName, 0, 3)),
+            'updated_at' => now(),
+        ]);
+
+        $this->editingSubjectId = null;
+        $this->editingSubjectName = '';
+        $this->loadSubjects($this->manageClassId);
+    }
+
+    public function cancelEditSubject()
+    {
+        $this->editingSubjectId = null;
+        $this->editingSubjectName = '';
+    }
+
     public function deleteSubject($subjectId)
     {
         \Illuminate\Support\Facades\DB::table('subjects')->where('id', $subjectId)->delete();
@@ -146,6 +183,66 @@ class ClassManager extends Component
         $this->manageClassId = null;
         $this->manageClassName = '';
         $this->newSubjectName = '';
+    }
+
+    public function copySubjectsToSections()
+    {
+        if (!$this->manageClassId) return;
+
+        $currentClass = Classes::withoutGlobalScope('active_session')->find($this->manageClassId);
+        if (!$currentClass) return;
+
+        // Find sibling classes (same numeric value, same session, different section)
+        $siblings = Classes::withoutGlobalScope('active_session')
+            ->where('numeric_value', $currentClass->numeric_value)
+            ->where('academic_session_id', $currentClass->academic_session_id)
+            ->where('id', '!=', $currentClass->id)
+            ->get();
+
+        if ($siblings->isEmpty()) {
+            $this->dispatch('show-toast', type: 'error', message: 'No other sections found for Class ' . $currentClass->numeric_value);
+            return;
+        }
+
+        $subjectsToCopy = \Illuminate\Support\Facades\DB::table('subjects')->where('class_id', $currentClass->id)->get();
+
+        if ($subjectsToCopy->isEmpty()) {
+            $this->dispatch('show-toast', type: 'error', message: 'No subjects to copy.');
+            return;
+        }
+
+        $copyCount = 0;
+        $classCount = 0;
+
+        foreach ($siblings as $sibling) {
+            $classCount++;
+            foreach ($subjectsToCopy as $subject) {
+                // Check if subject exists (by code or name)
+                $exists = \Illuminate\Support\Facades\DB::table('subjects')
+                    ->where('class_id', $sibling->id)
+                    ->where(function($q) use ($subject) {
+                        $q->where('code', $subject->code)
+                          ->orWhere('name', $subject->name);
+                    })
+                    ->exists();
+
+                if (!$exists) {
+                    \Illuminate\Support\Facades\DB::table('subjects')->insert([
+                        'class_id' => $sibling->id,
+                        'name' => $subject->name,
+                        'code' => $subject->code, // Keep same code
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $copyCount++;
+                }
+            }
+        }
+
+        // Refresh if we are viewing the source class (no change needed visually, but good practice)
+        // Actually we might want to notify user
+        session()->flash('message', "Copied {$copyCount} subjects to {$classCount} other sections.");
+        // We can also close modal or stay open. Stay open is better to see result? No, result is in other classes.
     }
 
     public function render()

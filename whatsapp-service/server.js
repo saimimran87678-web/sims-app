@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -27,7 +29,9 @@ const client = new Client({
             '--no-first-run',
             '--no-zygote',
             '--disable-gpu'
-        ]
+        ],
+        ignoreDefaultArgs: ['--disable-extensions']
+
     }
 });
 
@@ -97,6 +101,60 @@ app.get('/qr', (req, res) => {
         message: 'QR code not yet available. Please wait...',
         connected: false
     });
+});
+
+// API: Logout and Reset Session
+app.post('/logout', async (req, res) => {
+    try {
+        console.log('🚪 Logout requested via API');
+        isReady = false;
+        qrCodeData = null;
+
+        // Try to logout nicely first
+        try {
+            await client.logout();
+        } catch (e) {
+            console.log('⚠️ Logout warning (non-fatal):', e.message);
+        }
+
+        // Destroy the client instance
+        try {
+            await client.destroy();
+        } catch (e) {
+            console.log('⚠️ Destroy warning (non-fatal):', e.message);
+        }
+
+        // Delete session and cache directories to ensure full reset
+        // Using rmSync with recursive: true for Node 14+
+        const pathsToDelete = [
+            path.join(__dirname, 'session'),
+            path.join(__dirname, '.wwebjs_cache'),
+            path.join(__dirname, '.wwebjs_auth')
+        ];
+
+        pathsToDelete.forEach(dir => {
+            if (fs.existsSync(dir)) {
+                try {
+                    fs.rmSync(dir, { recursive: true, force: true });
+                    console.log(`Deleted: ${dir}`);
+                } catch (err) {
+                    console.error(`Failed to delete ${dir}:`, err.message);
+                }
+            }
+        });
+
+        console.log('✅ Session cleared locally');
+
+        // Re-initialize client to generate new QR
+        console.log('🔄 Restarting client...');
+        client.initialize();
+
+        res.json({ success: true, message: 'Logged out and session cleared. Please wait for new QR code.' });
+
+    } catch (error) {
+        console.error('❌ Error during logout:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // API: Send message
@@ -208,8 +266,6 @@ app.post('/send-bulk', async (req, res) => {
 
 // Configure Multer for file uploads
 const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
 const { MessageMedia } = require('whatsapp-web.js');
 
 const upload = multer({ dest: 'uploads/' });
