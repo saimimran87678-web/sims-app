@@ -56,6 +56,12 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::middleware(['permission:schedule.view'])->get('/view-schedule', \App\Livewire\Admin\ViewSchedule::class)->name('view-schedule');
     
     Route::get('/print-schedule', \App\Livewire\Admin\PrintSchedule::class)->name('print-schedule');
+    
+    // Teacher Attendance PDF (Legacy)
+    Route::get('/teacher-attendance/pdf', [\App\Http\Controllers\TeacherAttendancePDFController::class, 'download'])->name('teacher-attendance.pdf');
+
+    // New Teacher Arrangement Report
+    Route::get('/reports/teacher-arrangement', \App\Livewire\Admin\Reports\TeacherArrangementReport::class)->name('reports.teacher-arrangement');
 
     // Access Control (RBAC & Sharing)
     Route::middleware(['permission:access-control.manage'])->group(function () {
@@ -64,6 +70,9 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
 
     // Subject Allocation Manager (Requires granular allocations.view)
     Route::get('/allocations', \App\Livewire\Admin\AccessControl\SubjectAllocationManager::class)->name('allocations');
+    
+    // Teacher Attendance
+    Route::get('/teacher-attendance', \App\Livewire\Admin\TeacherAttendanceManager::class)->name('teacher-attendance');
 });
 
 Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->group(function () {

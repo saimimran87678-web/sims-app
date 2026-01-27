@@ -65,4 +65,14 @@ class User extends Authenticatable
     {
         return $this->belongsTo(AcademicSession::class);
     }
+
+    public function teacherAttendances()
+    {
+        return $this->hasMany(TeacherAttendance::class);
+    }
+
+    public function substitutions()
+    {
+        return $this->hasMany(Substitution::class, 'substitute_teacher_id');
+    }
 }

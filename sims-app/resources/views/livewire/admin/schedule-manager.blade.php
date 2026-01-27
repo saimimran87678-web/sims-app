@@ -605,6 +605,7 @@
                                 <span class="text-xs text-blue-600 font-medium select-none">Show All</span>
                             </label>
                         </div>
+                        @error('selectedTeacherId') <span class="text-xs text-red-500 block mb-1">{{ $message }}</span> @enderror
 
                         @if($selectedTeacherId)
                             <div class="flex items-center gap-2 px-4 py-2 bg-white border border-blue-300 rounded-xl cursor-pointer" @click="open = !open">
@@ -668,6 +669,7 @@
                     {{-- Searchable Class Selector --}}
                     <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                        @error('modalClassId') <span class="text-xs text-red-500 block mb-1">{{ $message }}</span> @enderror
                         
                         @if($modalClassId)
                             {{-- Selected State --}}
@@ -738,6 +740,7 @@
                     @if($viewMode === 'room')
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Teacher</label>
+                        @error('selectedTeacherId') <span class="text-xs text-red-500 block mb-1">{{ $message }}</span> @enderror
                         <select wire:model.live="selectedTeacherId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="">Select Teacher</option>
                             @foreach($availableTeachers as $teacher)
@@ -752,6 +755,7 @@
                     <div>
                     <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                        @error('selectedSubjectId') <span class="text-xs text-red-500 block mb-1">{{ $message }}</span> @enderror
                         @if($selectedSubjectId)
                             <div class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl cursor-pointer" @click="open = !open">
                                  @php $s = collect($availableSubjects)->firstWhere('id', $selectedSubjectId); @endphp
@@ -894,6 +898,7 @@
                         <div class="bg-orange-50 p-4 rounded-xl space-y-3">
                             <div>
                                 <label class="block text-sm font-medium text-orange-700 mb-1">Date</label>
+                                @error('substituteDate') <span class="text-xs text-red-500 block mb-1">{{ $message }}</span> @enderror
                                 <input type="date" wire:model.live="substituteDate" class="w-full px-4 py-2 rounded-xl border border-orange-200 focus:ring-2 focus:ring-orange-500 outline-none bg-white">
                             </div>
 
@@ -901,6 +906,7 @@
                                 {{-- Teacher View: Select Absent Teacher --}}
                                 <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                                     <label class="block text-sm font-medium text-orange-700 mb-1">Select Absent Teacher</label>
+                                    @error('substituteTeacherId') <span class="text-xs text-red-500 block mb-1">{{ $message }}</span> @enderror
                                     
                                     @if($substituteTargetTeacherId)
                                         <div class="flex items-center gap-2 px-4 py-2 bg-white border border-orange-300 rounded-xl">
@@ -983,6 +989,7 @@
                                                 <span class="text-xs text-orange-600 font-medium select-none">Show All</span>
                                             </label>
                                         </div>
+                                        @error('substituteTeacherId') <span class="text-xs text-red-500 block mb-1">{{ $message }}</span> @enderror
 
                                         @if($substituteTeacherId)
                                             <div class="flex items-center gap-2 px-4 py-2 bg-white border border-orange-300 rounded-xl cursor-pointer shadow-sm" @click="open = !open">
