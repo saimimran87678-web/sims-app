@@ -79,8 +79,8 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Details</label>
                     <div class="flex gap-2">
-                         <select wire:model.live="filterSport" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Sport</option>@foreach(App\Models\Student::SPORTS_OPTIONS as $s)<option>{{$s}}</option>@endforeach</select>
-                         <select wire:model.live="filterActivity" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Activity</option>@foreach(App\Models\Student::ACTIVITY_OPTIONS as $a)<option>{{$a}}</option>@endforeach</select>
+                         <select wire:model.live="filterSport" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Sport</option>@foreach($sportsOptions as $s)<option>{{$s}}</option>@endforeach</select>
+                         <select wire:model.live="filterActivity" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Activity</option>@foreach($activityOptions as $a)<option>{{$a}}</option>@endforeach</select>
                     </div>
                 </div>
                 <div>
@@ -420,20 +420,25 @@
                              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Sports</label>
-                                    <div class="space-y-1 h-32 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50">
-                                        @foreach(App\Models\Student::SPORTS_OPTIONS as $sport)
+                                    <div class="space-y-1 h-32 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 mb-2">
+                                        @foreach($sportsOptions as $sport)
                                             <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
                                                 <input type="checkbox" wire:model="sports" value="{{ $sport }}" class="rounded text-blue-600 focus:ring-blue-500">
                                                 <span class="text-sm text-gray-700">{{ $sport }}</span>
                                             </label>
                                         @endforeach
                                     </div>
+                                    <div class="flex gap-2">
+                                        <input type="text" wire:model="newSportName" placeholder="Add new sport..." class="flex-1 text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 px-2 py-1">
+                                        <button type="button" wire:click="addSport" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition-colors">+</button>
+                                    </div>
+                                    @error('newSportName') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Extra-Curricular Activities</label>
                                     <div class="space-y-1 h-32 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50">
-                                        @foreach(App\Models\Student::ACTIVITY_OPTIONS as $activity)
+                                        @foreach($activityOptions as $activity)
                                             <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
                                                 <input type="checkbox" wire:model="extra_curriculars" value="{{ $activity }}" class="rounded text-blue-600 focus:ring-blue-500">
                                                 <span class="text-sm text-gray-700">{{ $activity }}</span>

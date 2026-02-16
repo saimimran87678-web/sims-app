@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -13,10 +15,15 @@ let isReady = false;
 let lastError = null;
 
 // Initialize WhatsApp Client with persistent session
+// Optimized: Skip syncing old chats for faster startup
 const client = new Client({
     authStrategy: new LocalAuth({
         dataPath: './session'
     }),
+    webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/AnasSowork/AnasSowork/main/AnasSowork.json',
+    },
     puppeteer: {
         headless: true,
         args: [
@@ -26,7 +33,8 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--single-process'
         ]
     }
 });
@@ -46,8 +54,24 @@ client.on('ready', () => {
 });
 
 // Event: Authenticated
+let authTimeout = null;
 client.on('authenticated', () => {
     console.log('🔐 Authenticated successfully!');
+
+    // Set a timeout - if ready doesn't fire in 30 seconds, force it
+    if (authTimeout) clearTimeout(authTimeout);
+    authTimeout = setTimeout(() => {
+        if (!isReady) {
+            console.log('⚠️ Ready event timeout - forcing ready state');
+            isReady = true;
+            qrCodeData = null;
+        }
+    }, 30000);
+});
+
+// Event: Loading screen progress
+client.on('loading_screen', (percent, message) => {
+    console.log(`📊 Loading: ${percent}% - ${message}`);
 });
 
 // Event: Auth failure
@@ -97,6 +121,60 @@ app.get('/qr', (req, res) => {
         message: 'QR code not yet available. Please wait...',
         connected: false
     });
+});
+
+// API: Logout and Reset Session
+app.post('/logout', async (req, res) => {
+    try {
+        console.log('🚪 Logout requested via API');
+        isReady = false;
+        qrCodeData = null;
+
+        // Try to logout nicely first
+        try {
+            await client.logout();
+        } catch (e) {
+            console.log('⚠️ Logout warning (non-fatal):', e.message);
+        }
+
+        // Destroy the client instance
+        try {
+            await client.destroy();
+        } catch (e) {
+            console.log('⚠️ Destroy warning (non-fatal):', e.message);
+        }
+
+        // Delete session and cache directories to ensure full reset
+        // Using rmSync with recursive: true for Node 14+
+        const pathsToDelete = [
+            path.join(__dirname, 'session'),
+            path.join(__dirname, '.wwebjs_cache'),
+            path.join(__dirname, '.wwebjs_auth')
+        ];
+
+        pathsToDelete.forEach(dir => {
+            if (fs.existsSync(dir)) {
+                try {
+                    fs.rmSync(dir, { recursive: true, force: true });
+                    console.log(`Deleted: ${dir}`);
+                } catch (err) {
+                    console.error(`Failed to delete ${dir}:`, err.message);
+                }
+            }
+        });
+
+        console.log('✅ Session cleared locally');
+
+        // Re-initialize client to generate new QR
+        console.log('🔄 Restarting client...');
+        client.initialize();
+
+        res.json({ success: true, message: 'Logged out and session cleared. Please wait for new QR code.' });
+
+    } catch (error) {
+        console.error('❌ Error during logout:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // API: Send message
@@ -208,8 +286,6 @@ app.post('/send-bulk', async (req, res) => {
 
 // Configure Multer for file uploads
 const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
 const { MessageMedia } = require('whatsapp-web.js');
 
 const upload = multer({ dest: 'uploads/' });

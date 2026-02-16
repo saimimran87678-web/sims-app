@@ -18,6 +18,17 @@
                 </div>
                 <p class="text-gray-600">WhatsApp is connected and ready to send messages.</p>
                 <p class="text-sm text-gray-400">Parent notifications will be sent automatically when you save attendance.</p>
+                
+                <div class="mt-4">
+                     <button 
+                        wire:click="logout"
+                        wire:confirm="Are you sure you want to disconnect WhatsApp? You will need to scan the QR code again."
+                        class="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
+                        Disconnect / Log Out
+                    </button>
+                </div>
             @elseif($qrData)
                 <div class="inline-flex items-center gap-3 px-6 py-3 bg-yellow-100 text-yellow-700 rounded-full">
                     <span class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></span>

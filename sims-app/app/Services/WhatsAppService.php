@@ -244,4 +244,19 @@ class WhatsAppService
             'alreadyNotified' => $alreadyNotified
         ];
     }
+    /**
+     * Logout and destroy session.
+     *
+     * @return array{success: bool, message?: string}
+     */
+    public function logout(): array
+    {
+        try {
+            $response = Http::timeout($this->timeout)->post("{$this->baseUrl}/logout");
+            return $response->json();
+        } catch (\Exception $e) {
+            Log::error('WhatsApp Logout Failed: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }
