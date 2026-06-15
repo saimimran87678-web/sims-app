@@ -26,6 +26,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    Route::post('/change-session', function (\Illuminate\Http\Request $request) {
+        $sessionId = $request->input('academic_session_id');
+        if (\App\Models\AcademicSession::where('id', $sessionId)->exists()) {
+            session(['selected_academic_session_id' => $sessionId]);
+        }
+        return redirect()->back();
+    })->name('change-session');
 });
 
 Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(function () {
@@ -105,5 +113,9 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
         Route::get('/shared/period-config', \App\Livewire\Admin\PeriodConfigManager::class)->name('shared.period-config');
     });
 });
+
+Route::get('/license-blocked', function () {
+    return view('pages.license-blocked');
+})->name('license.blocked');
 
 require __DIR__.'/auth.php';

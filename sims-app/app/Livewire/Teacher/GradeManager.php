@@ -55,8 +55,11 @@ class GradeManager extends Component
             ->unique()
             ->toArray();
 
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         // Show all exams (not just active), teacher can see completed exams too
         $this->exams = Exam::whereIn('id', $examIdsWithTeacherClasses)
+            ->where('academic_session_id', $activeSessionId)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -79,10 +82,13 @@ class GradeManager extends Component
             $classIds[] = $user->class_id;
         }
 
-        // Subject allocations
+        // Subject allocations (filtered by active session)
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $allocatedClassIds = DB::table('subject_allocations')
-            ->where('user_id', $user->id)
-            ->pluck('class_id')
+            ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
+            ->where('subject_allocations.user_id', $user->id)
+            ->where('classes.academic_session_id', $activeSessionId)
+            ->pluck('subject_allocations.class_id')
             ->toArray();
 
         return array_unique(array_merge($classIds, $allocatedClassIds));
@@ -254,7 +260,7 @@ class GradeManager extends Component
         // Fetch Students
         $this->students = DB::table('students')
             ->where('class_id', $this->selectedClassId)
-            ->orderBy('roll_no')
+            ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
             ->get();
 
         // Fetch Existing Marks

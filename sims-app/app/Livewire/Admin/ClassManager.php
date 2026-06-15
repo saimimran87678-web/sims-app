@@ -25,7 +25,7 @@ class ClassManager extends Component
         $this->authorize('classes.manage');
         $this->academicSessions = \Illuminate\Support\Facades\DB::table('academic_sessions')->orderBy('start_date', 'desc')->get();
         // Default to active session
-        $this->selectedSessionId = $this->academicSessions->where('is_active', true)->first()->id ?? $this->academicSessions->first()->id ?? null;
+        $this->selectedSessionId = \App\Models\AcademicSession::getActiveSessionId();
         
         $this->loadClasses();
     }
@@ -37,7 +37,7 @@ class ClassManager extends Component
         if ($this->selectedSessionId) {
             // Enforce Scope
             if (!auth()->user()->can('classes.view-sessions') && !auth()->user()->hasRole('Super Admin')) {
-                 $activeSessionId = \App\Models\AcademicSession::where('is_active', true)->value('id');
+                 $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
                  if ($this->selectedSessionId != $activeSessionId) {
                      $this->selectedSessionId = $activeSessionId;
                  }

@@ -47,12 +47,34 @@
                         </template>
                     </div>
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Sort By</label>
+                    <select wire:model.live="sortBy" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="roll_no">Roll Number</option>
+                        <option value="name">Name</option>
+                        <option value="admission_no">Admission No</option>
+                        <option value="id">Registration Date (ID)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Sort Order</label>
+                    <select wire:model.live="sortDir" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
             </div>
         </div>
 
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
             <h3 class="text-lg font-bold text-gray-800">Student Directory</h3>
-            <div class="flex gap-2 w-full md:w-auto items-center">
+            <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
+                <div class="relative w-full md:w-64">
+                    <input wire:model.live.debounce.300ms="search" type="text" placeholder="Search by name, roll, adm..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                        <svg class="h-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                </div>
                 {{-- View Toggle --}}
                 <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
                     <button 
@@ -89,9 +111,30 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50/50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adm No</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" wire:click="sortByField('admission_no')">
+                            <div class="flex items-center gap-1">
+                                Adm No
+                                @if($sortBy === 'admission_no')
+                                    <span>{{ $sortDir === 'asc' ? '▲' : '▼' }}</span>
+                                @endif
+                            </div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" wire:click="sortByField('roll_no')">
+                            <div class="flex items-center gap-1">
+                                Roll No
+                                @if($sortBy === 'roll_no')
+                                    <span>{{ $sortDir === 'asc' ? '▲' : '▼' }}</span>
+                                @endif
+                            </div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" wire:click="sortByField('name')">
+                            <div class="flex items-center gap-1">
+                                Name
+                                @if($sortBy === 'name')
+                                    <span>{{ $sortDir === 'asc' ? '▲' : '▼' }}</span>
+                                @endif
+                            </div>
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father's Name</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>

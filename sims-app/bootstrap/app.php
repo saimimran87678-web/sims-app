@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust all proxies (required for Cloudflare Tunnel)
         $middleware->trustProxies(at: '*');
         
+        // Register VerifyLicense globally for all web traffic
+        $middleware->appendToGroup('web', \App\Http\Middleware\VerifyLicense::class);
+        
         $middleware->alias([
             'isAdmin' => \App\Http\Middleware\IsAdmin::class,
             'isTeacher' => \App\Http\Middleware\IsTeacher::class,

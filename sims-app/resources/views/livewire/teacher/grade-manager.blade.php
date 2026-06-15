@@ -53,7 +53,7 @@
                         </option>
                     @endforeach
                 </select>
-                @if($availableClasses->isEmpty() && $selectedExamId)
+                @if(empty($availableClasses) && $selectedExamId)
                     <p class="text-xs text-red-500 mt-1">No classes assigned to you for this exam</p>
                 @endif
             </div>

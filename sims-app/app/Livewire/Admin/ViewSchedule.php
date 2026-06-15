@@ -30,7 +30,11 @@ class ViewSchedule extends Component
     public function mount()
     {
         $this->periods = PeriodConfig::orderBy('period_no')->get();
-        $this->classes = Classes::orderBy('numeric_value')->get();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->classes = Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $activeSessionId)
+            ->orderBy('numeric_value')
+            ->get();
         $this->teachers = DB::table('users')->where('role', 'teacher')->orderBy('name')->get();
         $this->loadTimetables();
     }
@@ -40,7 +44,10 @@ class ViewSchedule extends Component
         // For "Everyday" mode, load Monday's schedule as the unified template
         $dayToLoad = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
         
+        $classIds = $this->classes->pluck('id')->toArray();
+        
         $this->timetables = DB::table('timetables')
+            ->whereIn('class_id', $classIds)
             ->where('day', $dayToLoad)
             ->where('is_substitute', false)
             ->get();

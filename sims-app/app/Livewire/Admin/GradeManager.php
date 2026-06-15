@@ -40,7 +40,7 @@ class GradeManager extends Component
         $this->authorize('exams.manage');
         
         $this->academicSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
-        $activeSessionId = $this->academicSessions->where('is_active', true)->first()->id ?? $this->academicSessions->first()->id ?? null;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         // Enforce Data Scope
         // Note: GradeManager is heavily tied to Exams, so we check 'grades.view-sessions' OR 'exams.view-sessions' if grades doesn't exist, but we made grades.view-sessions
@@ -171,7 +171,7 @@ class GradeManager extends Component
         // Fetch Students
         $this->students = DB::table('students')
             ->where('class_id', $this->selectedClassId)
-            ->orderBy('roll_no')
+            ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
             ->get();
 
         // Fetch Existing Marks

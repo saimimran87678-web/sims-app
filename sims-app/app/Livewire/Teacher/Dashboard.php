@@ -13,16 +13,15 @@ class Dashboard extends Component
         $user = Auth::user();
 
         // 1. Get Active Session Correctly
-        $activeSessionId = DB::table('academic_sessions')->where('is_active', true)->value('id');
-        if (!$activeSessionId) {
-             // Fallback to latest if none active, or handle empty
-             $activeSessionId = DB::table('academic_sessions')->orderBy('start_date', 'desc')->value('id');
-        }
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         // 2. Count Allocated Subjects (Total teaching assignments)
         // Manual Allocations
         $manualAllocations = DB::table('subject_allocations')
-            ->where('user_id', $user->id)
+            ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
+            ->where('subject_allocations.user_id', $user->id)
+            ->where('classes.academic_session_id', $activeSessionId)
+            ->select('subject_allocations.*')
             ->get();
             
         $allocatedCount = $manualAllocations->count();

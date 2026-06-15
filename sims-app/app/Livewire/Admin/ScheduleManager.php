@@ -55,7 +55,7 @@ class ScheduleManager extends Component
         $this->authorize('schedule.manage');
         
         $this->academicSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
-        $activeSessionId = $this->academicSessions->where('is_active', true)->first()->id ?? $this->academicSessions->first()->id ?? null;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         // Enforce Data Scope
         if (!auth()->user()->can('schedule.view-sessions') && !auth()->user()->hasRole('Super Admin')) {
@@ -187,13 +187,15 @@ class ScheduleManager extends Component
 
     public function loadAvailableTeachers()
     {
-        // Get teachers already assigned in this period on this day
+        // Get teachers already assigned in this period on this day within the selected session
         $busyTeacherIds = DB::table('timetables')
-            ->where('day', $this->selectedDay)
-            ->where('period_no', $this->modalPeriodNo)
-            ->where('is_substitute', false)
-            ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
-            ->pluck('teacher_id')
+            ->join('classes', 'timetables.class_id', '=', 'classes.id')
+            ->where('classes.academic_session_id', $this->selectedSessionId)
+            ->where('timetables.day', $this->selectedDay)
+            ->where('timetables.period_no', $this->modalPeriodNo)
+            ->where('timetables.is_substitute', false)
+            ->when($this->editingId, fn($q) => $q->where('timetables.id', '!=', $this->editingId))
+            ->pluck('timetables.teacher_id')
             ->toArray();
 
         $this->availableTeachers = collect($this->teachers)
@@ -343,7 +345,11 @@ class ScheduleManager extends Component
 
     public function copyToAllDays()
     {
+        $classIds = $this->classes->pluck('id')->toArray();
+        if (empty($classIds)) return;
+
         $currentDayEntries = DB::table('timetables')
+            ->whereIn('class_id', $classIds)
             ->where('day', $this->selectedDay)
             ->where('is_substitute', false)
             ->get();
@@ -356,8 +362,9 @@ class ScheduleManager extends Component
         $targetDays = collect($this->days)->filter(fn($d) => $d !== $this->selectedDay);
 
         foreach ($targetDays as $day) {
-            // Delete existing entries for target day
+            // Delete existing entries for target day for current session's classes
             DB::table('timetables')
+                ->whereIn('class_id', $classIds)
                 ->where('day', $day)
                 ->where('is_substitute', false)
                 ->delete();
@@ -387,7 +394,11 @@ class ScheduleManager extends Component
 
     public function clearDay()
     {
+        $classIds = $this->classes->pluck('id')->toArray();
+        if (empty($classIds)) return;
+
         DB::table('timetables')
+            ->whereIn('class_id', $classIds)
             ->where('day', $this->selectedDay)
             ->where('is_substitute', false)
             ->delete();

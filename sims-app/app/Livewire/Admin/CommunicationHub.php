@@ -39,7 +39,8 @@ class CommunicationHub extends Component
 
     public function mount()
     {
-        $this->classes = Classes::get();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->classes = Classes::where('academic_session_id', $activeSessionId)->get();
     }
 
     // When classes are checked/unchecked
@@ -49,7 +50,7 @@ class CommunicationHub extends Component
         if (!empty($this->selectedClasses)) {
             $students = Student::whereIn('class_id', $this->selectedClasses)
                 ->orderBy('class_id')
-                ->orderBy('roll_no')
+                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
                 
             $this->availableStudents = $students->groupBy('class_id')->toArray();

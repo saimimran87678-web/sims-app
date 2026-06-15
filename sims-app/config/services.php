@@ -40,4 +40,17 @@ return [
         'timeout' => env('WHATSAPP_TIMEOUT', 30),
     ],
 
+    'license' => [
+        'key' => env('LICENSE_KEY'),
+        'school_id' => env('SCHOOL_ID'),
+        'integrity_key' => env('LICENSE_INTEGRITY_KEY'),
+        'rsa_public_key' => env('LICENSE_RSA_PUBLIC_KEY'),
+        'vendor_phone' => env('VENDOR_PHONE', '+92 300 0000000'),
+    ],
+
+    'firebase' => [
+        'api_key' => env('FIREBASE_API_KEY'),
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+    ],
+
 ];

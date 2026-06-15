@@ -93,7 +93,7 @@ class ResultReport extends Component
         }
 
         $this->sessions = AcademicSession::orderBy('start_date', 'desc')->get();
-        $this->selectedSession = AcademicSession::where('is_active', 1)->value('id');
+        $this->selectedSession = AcademicSession::getActiveSessionId();
 
         // Set Default Selection
         if ($this->classes->isNotEmpty()) {
@@ -151,7 +151,7 @@ class ResultReport extends Component
             // Fetch Students with all needed fields
             $students = DB::table('students')
                 ->where('class_id', $this->classId)
-                ->orderBy('roll_no')
+                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
 
             // Fetch All Marks for this Exam/Class

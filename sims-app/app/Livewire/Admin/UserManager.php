@@ -70,17 +70,23 @@ class UserManager extends Component
             ->orderBy('users.created_at', 'desc')
             ->paginate(10);
 
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         // Load subject allocations for each user
         $userIds = $users->pluck('id')->toArray();
         $allocations = DB::table('subject_allocations')
             ->join('subjects', 'subject_allocations.subject_id', '=', 'subjects.id')
             ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
             ->whereIn('subject_allocations.user_id', $userIds)
+            ->where('classes.academic_session_id', $activeSessionId)
             ->select('subject_allocations.user_id', 'subjects.name as subject', 'classes.name as class')
             ->get()
             ->groupBy('user_id');
 
-        $classes = DB::table('classes')->orderBy('numeric_value')->get();
+        $classes = DB::table('classes')
+            ->where('academic_session_id', $activeSessionId)
+            ->orderBy('numeric_value')
+            ->get();
         
         $classTeacherSubjects = [];
         if($this->class_id) {
@@ -113,9 +119,14 @@ class UserManager extends Component
         $this->class_subject = $user->class_subject;
         $this->password = ''; 
 
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         // Load Allocations
         $allocations = DB::table('subject_allocations')
-            ->where('user_id', $user->id)
+            ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
+            ->where('subject_allocations.user_id', $user->id)
+            ->where('classes.academic_session_id', $activeSessionId)
+            ->select('subject_allocations.*')
             ->get();
         
         $this->teachingAssignments = [];

@@ -19,7 +19,11 @@ class AttendanceReport extends Component
 
     public function mount()
     {
-        $this->classes = DB::table('classes')->orderBy('numeric_value')->get();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->classes = DB::table('classes')
+            ->where('academic_session_id', $activeSessionId)
+            ->orderBy('numeric_value')
+            ->get();
         $this->selectedMonth = Carbon::now()->format('Y-m');
     }
 
@@ -38,7 +42,7 @@ class AttendanceReport extends Component
             // 1. Fetch Students
             $students = DB::table('students')
                 ->where('class_id', $this->selectedClassId)
-                ->orderBy('roll_no')
+                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
 
             if ($students->isEmpty()) {

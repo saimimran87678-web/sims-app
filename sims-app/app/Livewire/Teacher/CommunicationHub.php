@@ -43,11 +43,15 @@ class CommunicationHub extends Component
     {
         $user = Auth::user();
         
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         $classTeacherIds = $user->class_id ? collect([$user->class_id]) : collect();
 
         $subjectClassIds = DB::table('subject_allocations')
-            ->where('user_id', $user->id)
-            ->pluck('class_id');
+            ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
+            ->where('subject_allocations.user_id', $user->id)
+            ->where('classes.academic_session_id', $activeSessionId)
+            ->pluck('subject_allocations.class_id');
             
         $allClassIds = $classTeacherIds->merge($subjectClassIds)->unique();
         
@@ -59,7 +63,7 @@ class CommunicationHub extends Component
         if (!empty($this->selectedClasses)) {
             $students = Student::whereIn('class_id', $this->selectedClasses)
                 ->orderBy('class_id')
-                ->orderBy('roll_no')
+                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
                 
             $this->availableStudents = $students->groupBy('class_id')->toArray();

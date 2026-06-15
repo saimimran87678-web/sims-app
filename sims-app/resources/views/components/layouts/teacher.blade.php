@@ -165,6 +165,7 @@
 
         <!-- Main Content -->
         <main class="relative flex flex-col flex-1 h-screen overflow-hidden">
+            <livewire:license-banner />
             <!-- Header -->
             <header class="flex items-center justify-between px-4 border-b border-gray-200 h-16 bg-white/50 backdrop-blur-sm md:px-8 z-10">
                 <div class="flex items-center gap-4">
@@ -174,6 +175,8 @@
                     <h2 class="text-xl font-bold text-gray-800">
                         @yield('header', 'Dashboard')
                     </h2>
+
+                    <!-- Session Selector Removed -->
                 </div>
 
                 <div class="flex items-center gap-4">

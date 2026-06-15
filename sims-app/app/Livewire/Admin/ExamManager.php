@@ -46,7 +46,7 @@ class ExamManager extends Component
         $this->academicSessions = AcademicSession::orderBy('start_date', 'desc')->get();
         
         // Enforce Data Scope: If no permission, lock to active session
-        $activeSessionId = $this->academicSessions->where('is_active', true)->first()->id ?? $this->academicSessions->first()->id ?? null;
+        $activeSessionId = AcademicSession::getActiveSessionId();
 
         if (!auth()->user()->can('exams.view-sessions') && !auth()->user()->hasRole('Super Admin')) {
             $this->selectedSessionId = $activeSessionId;
@@ -62,7 +62,7 @@ class ExamManager extends Component
     {
         // Double check permission on update
         if (!auth()->user()->can('exams.view-sessions') && !auth()->user()->hasRole('Super Admin')) {
-             $activeSessionId = AcademicSession::where('is_active', true)->value('id');
+             $activeSessionId = AcademicSession::getActiveSessionId();
              if ($this->selectedSessionId != $activeSessionId) {
                  $this->selectedSessionId = $activeSessionId;
                  abort(403, 'Unauthorized scope access');
@@ -99,13 +99,16 @@ class ExamManager extends Component
 
         $this->reset(['examId', 'name', 'type', 'description', 'academic_session_id', 'start_date', 'end_date', 'is_active']);
         $this->selectedClasses = [];  // Explicit initialization as empty array
-        $this->availableClasses = \App\Models\Classes::orderBy('numeric_value')->get();
         
         // Auto-select first session if available
-        $firstSession = AcademicSession::where('is_active', true)->first();
+        $firstSession = AcademicSession::find(AcademicSession::getActiveSessionId());
         if ($firstSession) {
             $this->academic_session_id = $firstSession->id;
         }
+
+        $this->availableClasses = \App\Models\Classes::where('academic_session_id', $this->academic_session_id)
+            ->orderBy('numeric_value')
+            ->get();
 
         $this->isEditMode = false;
         $this->isModalOpen = true;
@@ -125,7 +128,9 @@ class ExamManager extends Component
         $this->end_date = $exam->end_date;
         $this->is_active = $exam->is_active;
 
-        $this->availableClasses = \App\Models\Classes::orderBy('numeric_value')->get();
+        $this->availableClasses = \App\Models\Classes::where('academic_session_id', $exam->academic_session_id)
+            ->orderBy('numeric_value')
+            ->get();
         // Load selected classes from existing schedules
         $this->selectedClasses = \App\Models\ExamSchedule::where('exam_id', $exam->id)
             ->pluck('class_id')
@@ -265,7 +270,9 @@ class ExamManager extends Component
         $exam = Exam::findOrFail($id);
         $this->manageExamName = $exam->name;
         
-        $this->availableClasses = \App\Models\Classes::orderBy('numeric_value')->get();
+        $this->availableClasses = \App\Models\Classes::where('academic_session_id', $exam->academic_session_id)
+            ->orderBy('numeric_value')
+            ->get();
         // Load selected classes based on existing schedules or defaults
         $existingSchedules = \App\Models\ExamSchedule::where('exam_id', $id)->get();
         // Initialize Filter with ALL classes that have schedules, or all available if none?
@@ -423,7 +430,9 @@ class ExamManager extends Component
         $exam = Exam::findOrFail($examId);
         $this->configureExamName = $exam->name;
         
-        $this->availableClasses = \App\Models\Classes::orderBy('numeric_value')->get();
+        $this->availableClasses = \App\Models\Classes::where('academic_session_id', $exam->academic_session_id)
+            ->orderBy('numeric_value')
+            ->get();
         
         // Load existing marks configuration from marks_configs table
         $existingConfigs = \App\Models\MarksConfig::where('exam_id', $examId)->get();

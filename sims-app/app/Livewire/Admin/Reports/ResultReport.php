@@ -32,7 +32,7 @@ class ResultReport extends Component
     public function mount()
     {
         $this->academicSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
-        $activeSessionId = $this->academicSessions->where('is_active', true)->first()->id ?? $this->academicSessions->first()->id ?? null;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         // Enforce Data Scope
         if (!auth()->user()->can('reports.view-sessions') && !auth()->user()->hasRole('Super Admin')) {
@@ -120,7 +120,7 @@ class ResultReport extends Component
             // Fetch Students
             $students = DB::table('students')
                 ->where('class_id', $this->selectedClassId)
-                ->orderBy('roll_no')
+                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
 
             // Fetch Marks

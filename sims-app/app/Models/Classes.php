@@ -28,9 +28,7 @@ class Classes extends Model
             }
 
             // Filter by Active Session by default
-            $activeId = \Illuminate\Support\Facades\DB::table('academic_sessions')
-                ->where('is_active', true)
-                ->value('id');
+            $activeId = \App\Models\AcademicSession::getActiveSessionId();
                 
             if ($activeId) {
                 $builder->where('academic_session_id', $activeId);

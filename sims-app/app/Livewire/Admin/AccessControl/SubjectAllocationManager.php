@@ -30,7 +30,11 @@ class SubjectAllocationManager extends Component
 
         // Load users
         $this->users = User::orderBy('name')->get();
-        $this->classes = Classes::orderBy('numeric_value')->get();
+        
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->classes = Classes::where('academic_session_id', $activeSessionId)
+            ->orderBy('numeric_value')
+            ->get();
     }
 
     public function updatedSelectedUserId()
@@ -60,10 +64,13 @@ class SubjectAllocationManager extends Component
             return;
         }
 
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         $this->allocations = DB::table('subject_allocations')
             ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
             ->join('subjects', 'subject_allocations.subject_id', '=', 'subjects.id')
             ->where('subject_allocations.user_id', $this->selectedUserId)
+            ->where('classes.academic_session_id', $activeSessionId)
             ->select(
                 'subject_allocations.id',
                 'subject_allocations.class_id',

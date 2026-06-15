@@ -32,7 +32,11 @@ class FeatureSharingManager extends Component
         }
 
         $this->users = $query->get();
-        $this->allClasses = DB::table('classes')->orderBy('numeric_value')->get();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->allClasses = DB::table('classes')
+            ->where('academic_session_id', $activeSessionId)
+            ->orderBy('numeric_value')
+            ->get();
         $this->loadPermissions();
     }
 
@@ -118,8 +122,10 @@ class FeatureSharingManager extends Component
     public function loadClassAccess()
     {
         if ($this->selectedUserId) {
+            $allIds = $this->allClasses->pluck('id')->toArray();
             $this->userClassAccess = DB::table('user_class_access')
                 ->where('user_id', $this->selectedUserId)
+                ->whereIn('class_id', $allIds)
                 ->pluck('class_id')
                 ->toArray();
         } else {
@@ -155,15 +161,17 @@ class FeatureSharingManager extends Component
         $diff = array_diff($allIds, $this->userClassAccess);
 
         if (empty($diff)) {
-            // All are selected, so deselect all
+            // All are selected, so deselect all for active session classes
             DB::table('user_class_access')
                 ->where('user_id', $this->selectedUserId)
+                ->whereIn('class_id', $allIds)
                 ->delete();
         } else {
-            // Select all
+            // Select all for active session classes
             DB::table('user_class_access')
                 ->where('user_id', $this->selectedUserId)
-                ->delete(); // Clear first to avoid duplicates/conflicts logic
+                ->whereIn('class_id', $allIds)
+                ->delete(); // Clear active session classes first to avoid duplicates/conflicts logic
             
             $data = [];
             $now = now();

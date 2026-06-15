@@ -32,7 +32,11 @@ class AttendanceManager extends Component
     
     public function loadClasses()
     {
-        $this->classes = DB::table('classes')->orderBy('numeric_value')->get();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->classes = DB::table('classes')
+            ->where('academic_session_id', $activeSessionId)
+            ->orderBy('numeric_value')
+            ->get();
         if ($this->classes->isNotEmpty()) {
             $this->selectedClassId = $this->classes->first()->id;
             $this->loadStudentsAndAttendance();
@@ -70,7 +74,7 @@ class AttendanceManager extends Component
 
         $this->students = DB::table('students')
             ->where('class_id', $this->selectedClassId)
-            ->orderBy('roll_no')
+            ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
             ->get();
             
         $this->summary['total'] = $this->students->count();

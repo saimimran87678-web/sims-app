@@ -26,7 +26,11 @@ class ScheduleView extends Component
         $this->selectedDay = $dayNames[$dayOfWeek] ?? 'Monday';
         
         $this->periods = PeriodConfig::orderBy('period_no')->get();
-        $this->classes = Classes::orderBy('numeric_value')->get();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->classes = Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $activeSessionId)
+            ->orderBy('numeric_value')
+            ->get();
         $this->loadTimetables();
     }
 
@@ -34,7 +38,7 @@ class ScheduleView extends Component
     {
         $teacherId = Auth::id();
         
-        $activeSessionId = DB::table('academic_sessions')->where('is_active', true)->value('id');
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         $this->timetables = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')

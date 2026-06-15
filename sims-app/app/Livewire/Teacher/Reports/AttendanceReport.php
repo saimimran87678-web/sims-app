@@ -97,7 +97,7 @@ class AttendanceReport extends Component
             // 1. Fetch Students
             $students = DB::table('students')
                 ->where('class_id', $this->selectedClass)
-                ->orderBy('roll_no')
+                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
 
             if ($students->isEmpty()) {

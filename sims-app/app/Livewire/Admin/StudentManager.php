@@ -24,6 +24,8 @@ class StudentManager extends Component
     public $filterTransport = '';
     public $filterBus = '';
     public $viewMode = 'grid'; // 'grid' or 'list'
+    public $sortBy = 'roll_no';
+    public $sortDir = 'asc';
     
     // Modal State
     public $showModal = false;
@@ -43,7 +45,9 @@ class StudentManager extends Component
         'filterSport', 
         'filterActivity', 
         'filterTransport',
-        'filterBus'
+        'filterBus',
+        'sortBy',
+        'sortDir'
     ];
 
     // Form Data
@@ -115,7 +119,7 @@ class StudentManager extends Component
         $this->authorize('students.manage');
         $this->academicSessions = DB::table('academic_sessions')->orderBy('start_date', 'desc')->get();
         
-        $activeSessionId = $this->academicSessions->where('is_active', true)->first()->id ?? $this->academicSessions->first()->id ?? null;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         // Enforce Data Scope
         if (!auth()->user()->can('students.view-sessions') && !auth()->user()->hasRole('Super Admin')) {
@@ -157,6 +161,19 @@ class StudentManager extends Component
     public function updatedFilterActivity() { $this->resetPage(); }
     public function updatedFilterTransport() { $this->resetPage(); }
     public function updatedFilterBus() { $this->resetPage(); }
+    public function updatedSortBy() { $this->resetPage(); }
+    public function updatedSortDir() { $this->resetPage(); }
+
+    public function sortByField($field)
+    {
+        if ($this->sortBy === $field) {
+            $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy = $field;
+            $this->sortDir = 'asc';
+        }
+        $this->resetPage();
+    }
 
     public function openModal()
     {
@@ -308,7 +325,17 @@ class StudentManager extends Component
             $studentsQuery->where('students.class_id', $this->selectedClassId);
         }
 
-        $students = $studentsQuery->orderBy('id', 'desc')->paginate(10);
+        if ($this->sortBy === 'roll_no') {
+            $studentsQuery->orderByRaw('CAST(students.roll_no AS INTEGER) ' . ($this->sortDir === 'desc' ? 'DESC' : 'ASC'));
+        } elseif ($this->sortBy === 'name') {
+            $studentsQuery->orderBy('students.name', $this->sortDir === 'desc' ? 'desc' : 'asc');
+        } elseif ($this->sortBy === 'admission_no') {
+            $studentsQuery->orderBy('students.admission_no', $this->sortDir === 'desc' ? 'desc' : 'asc');
+        } else {
+            $studentsQuery->orderBy('students.id', $this->sortDir === 'desc' ? 'desc' : 'asc');
+        }
+
+        $students = $studentsQuery->paginate(10);
 
         $layout = request()->is('teacher/*') 
             ? 'components.layouts.teacher' 

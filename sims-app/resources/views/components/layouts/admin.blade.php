@@ -172,6 +172,7 @@
 
         <!-- Main Content -->
         <main class="relative flex flex-col flex-1 h-screen overflow-hidden">
+            <livewire:license-banner />
             <!-- Header -->
             <header class="flex items-center justify-between px-4 border-b border-gray-200 h-16 bg-white/50 backdrop-blur-sm md:px-8 z-10">
                 <div class="flex items-center gap-4">
@@ -182,6 +183,30 @@
                     <h2 class="text-xl font-bold text-gray-800">
                         @yield('header', 'Dashboard')
                     </h2>
+
+                    <!-- Session Selector -->
+                    @php
+                        $allSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
+                        $currentSessionId = \App\Models\AcademicSession::getActiveSessionId();
+                    @endphp
+                    <form action="{{ route('change-session') }}" method="POST" id="session-switch-form" class="inline-flex items-center">
+                        @csrf
+                        <div class="relative flex items-center bg-blue-50 text-blue-700 border border-blue-100 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                            <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                            <span class="mr-1">Session:</span>
+                            <select 
+                                name="academic_session_id" 
+                                onchange="this.form.submit()" 
+                                class="bg-transparent border-none p-0 pr-6 text-xs font-semibold focus:ring-0 focus:outline-none cursor-pointer text-blue-700"
+                            >
+                                @foreach($allSessions as $session)
+                                    <option value="{{ $session->id }}" @selected($session->id == $currentSessionId) class="text-gray-800">
+                                        {{ $session->name }} {{ $session->is_active ? '(Active)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </form>
                 </div>
 
                 <div class="flex items-center gap-4">
