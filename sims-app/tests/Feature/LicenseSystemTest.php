@@ -181,4 +181,24 @@ class LicenseSystemTest extends TestCase
         $this->assertTrue(LicenseStatus::canWrite());
         $this->assertTrue(\canWrite());
     }
+
+    /** @test */
+    public function it_exposes_the_activation_endpoint_and_validates_payload()
+    {
+        $response = $this->postJson(route('license.activate.post'), [
+            'license_key' => '',
+        ]);
+
+        $response->assertStatus(422); // Validation error
+    }
+
+    /** @test */
+    public function it_returns_error_for_invalid_license_key_format()
+    {
+        $response = $this->postJson(route('license.activate.post'), [
+            'license_key' => 'INVALID-KEY-123',
+        ]);
+
+        $response->assertStatus(404); // Because key doesn't exist, returns 404
+    }
 }

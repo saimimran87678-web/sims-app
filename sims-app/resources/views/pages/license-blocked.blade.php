@@ -47,6 +47,84 @@
             {{ $licenseStatus['message'] ?? 'Your SIMS software license is inactive, suspended, or expired. Please contact your vendor to activate features.' }}
         </div>
 
+        <!-- License Activation Form -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 text-left space-y-4">
+            <h3 class="text-sm font-semibold text-slate-300">🔑 Activate License Key</h3>
+            <form id="activation-form" class="space-y-3">
+                @csrf
+                <div class="relative">
+                    <input type="text" id="license_key" name="license_key" required 
+                        placeholder="SIMS-MAIN-TEST-123456789"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors">
+                </div>
+                
+                <div id="activation-error" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"></div>
+                <div id="activation-success" class="hidden text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2"></div>
+
+                <button type="submit" id="submit-btn"
+                    class="w-full py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-semibold rounded-xl text-sm transition-all duration-200 shadow-lg shadow-red-600/15 flex items-center justify-center gap-2">
+                    <span id="btn-text">Validate & Activate</span>
+                    <span id="btn-spinner" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                </button>
+            </form>
+        </div>
+
+        <script>
+            document.getElementById('activation-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const keyInput = document.getElementById('license_key');
+                const submitBtn = document.getElementById('submit-btn');
+                const btnText = document.getElementById('btn-text');
+                const btnSpinner = document.getElementById('btn-spinner');
+                const errorDiv = document.getElementById('activation-error');
+                const successDiv = document.getElementById('activation-success');
+
+                // Reset state
+                errorDiv.classList.add('hidden');
+                successDiv.classList.add('hidden');
+                submitBtn.disabled = true;
+                btnSpinner.classList.remove('hidden');
+                btnText.textContent = 'Verifying...';
+
+                try {
+                    const response = await fetch("{{ route('license.activate.post') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            license_key: keyInput.value
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        successDiv.textContent = '✓ ' + data.message + ' Redirecting...';
+                        successDiv.classList.remove('hidden');
+                        btnText.textContent = 'Success!';
+                        btnSpinner.classList.add('hidden');
+                        
+                        // Redirect to dashboard after a short delay
+                        setTimeout(() => {
+                            window.location.href = "{{ route('dashboard') }}";
+                        }, 1500);
+                    } else {
+                        throw new Error(data.message || 'Verification failed. Please try again.');
+                    }
+                } catch (err) {
+                    errorDiv.textContent = err.message;
+                    errorDiv.classList.remove('hidden');
+                    submitBtn.disabled = false;
+                    btnSpinner.classList.add('hidden');
+                    btnText.textContent = 'Validate & Activate';
+                }
+            });
+        </script>
+
         <!-- Primary Action buttons -->
         <div class="flex flex-col space-y-3 pt-2">
             <a href="tel:{{ config('services.license.vendor_phone') }}" 

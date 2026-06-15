@@ -122,4 +122,7 @@ Route::get('/license-blocked', function () {
         ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT');
 })->name('license.blocked');
 
+Route::post('/license-blocked/activate', [\App\Http\Controllers\LicenseController::class, 'activate'])
+    ->name('license.activate.post');
+
 require __DIR__.'/auth.php';
