@@ -45,7 +45,7 @@ return [
         'school_id' => env('SCHOOL_ID'),
         'integrity_key' => env('LICENSE_INTEGRITY_KEY'),
         'rsa_public_key' => env('LICENSE_RSA_PUBLIC_KEY'),
-        'vendor_phone' => env('VENDOR_PHONE', '+92 300 0000000'),
+        'vendor_phone' => env('VENDOR_PHONE', '+923220190291'),
     ],
 
     'firebase' => [

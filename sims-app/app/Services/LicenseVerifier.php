@@ -5,6 +5,37 @@ namespace App\Services;
 class LicenseVerifier
 {
     /**
+     * Normalize the expires_at date into the ISO-8601 UTC string format used for signature verification.
+     *
+     * @param string $licenseKey
+     * @param string|null $expiresAt
+     * @return string
+     */
+    public static function normalizeExpiresAt(string $licenseKey, ?string $expiresAt): string
+    {
+        if (empty($expiresAt)) {
+            return '';
+        }
+
+        // Parse date explicitly in UTC timezone to avoid timezone shift on local setups
+        $dt = \Carbon\Carbon::parse($expiresAt, 'UTC');
+        
+        $ms = $dt->format('v');
+        if ($ms === '000' || $ms === '0') {
+            // SQLite strips milliseconds on storage; retrieve them from the license key timestamp suffix
+            $parts = explode('-', $licenseKey);
+            $timestamp = end($parts);
+            if (is_numeric($timestamp) && strlen($timestamp) > 3) {
+                $ms = substr($timestamp, -3);
+            }
+        }
+        
+        $ms = str_pad($ms, 3, '0', STR_PAD_RIGHT);
+        
+        return $dt->format('Y-m-d\TH:i:s') . '.' . $ms . 'Z';
+    }
+
+    /**
      * Compute the local integrity hash for a license record.
      *
      * @param string $licenseKey
@@ -21,7 +52,7 @@ class LicenseVerifier
             $integrityKey = config('app.key');
         }
 
-        $normalizedExpires = $expiresAt ? \Carbon\Carbon::parse($expiresAt)->utc()->toDateTimeString() : '';
+        $normalizedExpires = self::normalizeExpiresAt($licenseKey, $expiresAt);
 
         $payload = implode('|', [
             $licenseKey,
@@ -84,7 +115,7 @@ class LicenseVerifier
             $publicKeyPem = "-----BEGIN PUBLIC KEY-----\n" . wordwrap($publicKeyPem, 64, "\n", true) . "\n-----END PUBLIC KEY-----";
         }
 
-        $normalizedExpires = $expiresAt ? \Carbon\Carbon::parse($expiresAt)->utc()->toDateTimeString() : '';
+        $normalizedExpires = self::normalizeExpiresAt($licenseKey, $expiresAt);
 
         $payload = implode('|', [
             $licenseKey,

@@ -58,7 +58,7 @@ class ActivateLicense extends Command
         if (empty($refreshToken)) {
             $this->info("🌐 No refresh token provided. Generating anonymous Firebase session...");
             try {
-                $response = Http::post("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}", [
+                $response = Http::withoutVerifying()->post("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}", [
                     'returnSecureToken' => true
                 ]);
 

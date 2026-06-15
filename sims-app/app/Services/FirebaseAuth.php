@@ -22,7 +22,7 @@ class FirebaseAuth
         }
 
         try {
-            $response = Http::asForm()->post("https://securetoken.googleapis.com/v1/token?key={$apiKey}", [
+            $response = Http::withoutVerifying()->asForm()->post("https://securetoken.googleapis.com/v1/token?key={$apiKey}", [
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $refreshToken,
             ]);
@@ -61,7 +61,7 @@ class FirebaseAuth
         try {
             $url = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/licenses/{$licenseKey}";
             
-            $response = Http::withToken($idToken)->get($url);
+            $response = Http::withoutVerifying()->withToken($idToken)->get($url);
 
             if ($response->successful()) {
                 $fields = $response->json('fields');

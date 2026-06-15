@@ -97,7 +97,8 @@ class LicenseSystemTest extends TestCase
             // Set config keys dynamically
             config(['services.license.rsa_public_key' => $publicKey]);
 
-            $payload = $licenseKey . '|' . ($expiresAtStr ?? '') . '|' . $statusStr;
+            $normalizedExpires = LicenseVerifier::normalizeExpiresAt($licenseKey, $expiresAtStr);
+            $payload = $licenseKey . '|' . $normalizedExpires . '|' . $statusStr;
             openssl_sign($payload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
             $base64Signature = base64_encode($signature);
 
