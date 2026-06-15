@@ -21,6 +21,11 @@ class VerifyLicense
         // 1. Compute/Fetch license status
         $status = LicenseStatus::getStatus();
 
+        // If the system is currently blocked, or the user is on the blocked page, force a fresh DB check
+        if (($status['stage'] ?? null) === LicenseStatus::STAGE_BLOCKED || $request->path() === 'license-blocked') {
+            $status = LicenseStatus::getStatus(true);
+        }
+
         // 2. Exclude checking on asset/livewire/auth routes to prevent infinite loops
         $path = $request->path();
         
