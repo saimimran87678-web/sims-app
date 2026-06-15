@@ -115,7 +115,11 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
 });
 
 Route::get('/license-blocked', function () {
-    return view('pages.license-blocked');
+    return response()
+        ->view('pages.license-blocked')
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        ->header('Pragma', 'no-cache')
+        ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT');
 })->name('license.blocked');
 
 require __DIR__.'/auth.php';

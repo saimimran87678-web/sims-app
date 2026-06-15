@@ -10,70 +10,79 @@ use Symfony\Component\HttpFoundation\Response;
 class VerifyLicense
 {
     /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @return \Symfony\Component\HttpFoundation\Response
+     * Paths that are fully exempt from license checking.
+     * These are checked FIRST before any DB access to maximise performance.
      */
+    private const EXEMPT_PATHS = [
+        'login',
+        'logout',
+        'register',
+        'license-blocked',
+        '_debugbar',
+        'up', // Laravel health check
+    ];
+
+    /**
+     * Path prefixes that are exempt (e.g. Livewire, API calls).
+     */
+    private const EXEMPT_PREFIXES = [
+        'livewire/',
+        'api/',
+        'sanctum/',
+        '_ignition/',
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
-        // 1. Compute/Fetch license status
+        $path = $request->path();
+
+        // ── 1. Check exempt paths BEFORE any DB/cache access ────────────────
+        if ($this->isExempt($path)) {
+            // If the user manually visits /license-blocked while the license
+            // is actually valid, send them to the dashboard.
+            if ($path === 'license-blocked') {
+                $status = LicenseStatus::getStatus();
+                if ($status['stage'] !== LicenseStatus::STAGE_BLOCKED) {
+                    return redirect()->route('dashboard');
+                }
+            }
+            return $next($request);
+        }
+
+        // ── 2. Get status from cache (fast, single read) ──────────────────
         $status = LicenseStatus::getStatus();
 
-        // If the system is currently blocked, or the user is on the blocked page, force a fresh DB check
-        if (($status['stage'] ?? null) === LicenseStatus::STAGE_BLOCKED || $request->path() === 'license-blocked') {
+        // ── 3. If currently blocked, do a fresh DB check on every request
+        //       so the system self-heals the moment a license is activated. ─
+        if ($status['stage'] === LicenseStatus::STAGE_BLOCKED) {
             $status = LicenseStatus::getStatus(true);
         }
 
-        // 2. Exclude checking on asset/livewire/auth routes to prevent infinite loops
-        $path = $request->path();
-        
-        $exemptPaths = [
-            'license-blocked',
-            'login',
-            'logout',
-            'register',
-            '_debugbar',
-        ];
-
-        // Exempt routes starting with these prefix patterns
-        $exemptPrefixes = [
-            'livewire/',
-            'api/',
-            'sanctum/',
-        ];
-
-        $isExempt = false;
-        foreach ($exemptPaths as $exempt) {
-            if ($path === $exempt || str_starts_with($path, $exempt . '/')) {
-                $isExempt = true;
-                break;
-            }
-        }
-
-        if (!$isExempt) {
-            foreach ($exemptPrefixes as $prefix) {
-                if (str_starts_with($path, $prefix)) {
-                    $isExempt = true;
-                    break;
-                }
-            }
-        }
-
-        // 3. Share status with all views globally
+        // ── 4. Share status with all Blade views ──────────────────────────
         view()->share('licenseStatus', $status);
 
-        // 4. Force redirect if status is BLOCKED
-        if ($status['stage'] === LicenseStatus::STAGE_BLOCKED && !$isExempt) {
+        // ── 5. Block access if license is invalid ─────────────────────────
+        if ($status['stage'] === LicenseStatus::STAGE_BLOCKED) {
             return redirect()->route('license.blocked');
         }
 
-        // 5. If they try to visit license-blocked page while not blocked, redirect them home
-        if ($path === 'license-blocked' && $status['stage'] !== LicenseStatus::STAGE_BLOCKED) {
-            return redirect()->route('dashboard');
+        return $next($request);
+    }
+
+    private function isExempt(string $path): bool
+    {
+        foreach (self::EXEMPT_PATHS as $exempt) {
+            if ($path === $exempt || str_starts_with($path, $exempt . '/')) {
+                return true;
+            }
         }
 
-        return $next($request);
+        foreach (self::EXEMPT_PREFIXES as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

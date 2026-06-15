@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Services\FirebaseAuth;
+use App\Services\LicenseStatus;
 use App\Services\LicenseVerifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -139,6 +140,11 @@ class ActivateLicense extends Command
             ]);
 
             $this->info("✓ SQLite database populated.");
+
+            // Immediately clear the app cache so the next web request
+            // picks up the new ACTIVE status without waiting for TTL expiry.
+            LicenseStatus::clearCache();
+            $this->info("✓ License cache cleared.");
         } catch (\Exception $e) {
             $this->error("❌ Local database insert failed: " . $e->getMessage());
             return 1;

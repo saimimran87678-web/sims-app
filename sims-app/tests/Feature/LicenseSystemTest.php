@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use App\Services\LicenseStatus;
 use App\Services\LicenseVerifier;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Carbon\Carbon;
 
@@ -18,18 +18,83 @@ class LicenseSystemTest extends TestCase
     {
         parent::setUp();
 
-        // Configure dummy keys for the test
+        // Configure dummy keys for tests
         config([
             'services.license.integrity_key' => 'test_integrity_key_123',
-            'services.license.vendor_phone' => '1234567890',
-            'services.license.school_id' => 'school_a',
+            'services.license.vendor_phone'   => '1234567890',
+            'services.license.school_id'      => 'school_a',
+        ]);
+
+        // Always start with a clean cache so tests don't bleed into each other
+        Cache::forget(LicenseStatus::CACHE_KEY);
+    }
+
+    protected function tearDown(): void
+    {
+        Cache::forget(LicenseStatus::CACHE_KEY);
+        parent::tearDown();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Generate a fresh RSA keypair, set the public key in config, and return
+     * a valid base64 signature for the given license parameters.
+     */
+    private function generateSignedRecord(
+        string  $licenseKey,
+        ?string $expiresAtStr,
+        string  $statusStr
+    ): array {
+        $keys = openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]);
+        openssl_pkey_export($keys, $privateKey);
+        $details   = openssl_pkey_get_details($keys);
+        $publicKey = $details['key'];
+
+        config(['services.license.rsa_public_key' => $publicKey]);
+
+        // Use LicenseVerifier::buildPayload so the test payload always matches the verifier
+        $payload = LicenseVerifier::buildPayload($licenseKey, $expiresAtStr, $statusStr);
+        openssl_sign($payload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+
+        return [
+            'signature' => base64_encode($signature),
+            'hash'      => LicenseVerifier::computeIntegrityHash($licenseKey, $expiresAtStr, $statusStr, 'school_a'),
+        ];
+    }
+
+    private function insertLicense(
+        string  $licenseKey,
+        ?Carbon $expiresAt,
+        string  $statusStr,
+        ?Carbon $lastVerified = null
+    ): void {
+        DB::table('software_licenses')->truncate();
+
+        $expiresAtStr = $expiresAt?->utc()->format('Y-m-d H:i:s');
+        ['signature' => $sig, 'hash' => $hash] = $this->generateSignedRecord($licenseKey, $expiresAtStr, $statusStr);
+
+        DB::table('software_licenses')->insert([
+            'license_key'             => encrypt($licenseKey),
+            'school_id'               => 'school_a',
+            'firebase_refresh_token'  => encrypt('dummy_token'),
+            'status'                  => encrypt($statusStr),
+            'plan'                    => encrypt('premium'),
+            'expires_at'              => $expiresAtStr,
+            'rsa_signature'           => $sig,
+            'integrity_hash'          => $hash,
+            'last_online_verified_at' => $lastVerified ?? Carbon::now(),
         ]);
     }
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
 
     /** @test */
     public function it_identifies_unlicensed_state_when_database_is_empty()
     {
-        // Make sure no records exist
         DB::table('software_licenses')->truncate();
 
         $status = LicenseStatus::computeStatus();
@@ -42,22 +107,20 @@ class LicenseSystemTest extends TestCase
     public function it_detects_database_integrity_tampering()
     {
         $licenseKey = 'test-lic-key';
-        $expiresAt = Carbon::now()->addDays(30)->toDateTimeString();
-        $statusStr = 'active';
+        $expiresAt  = Carbon::now()->addDays(30)->utc()->format('Y-m-d H:i:s');
+        $statusStr  = 'active';
 
-        // Compute valid hash
-        $validHash = LicenseVerifier::computeIntegrityHash($licenseKey, $expiresAt, $statusStr, 'school_a');
+        ['signature' => $sig] = $this->generateSignedRecord($licenseKey, $expiresAt, $statusStr);
 
-        // Insert tempered hash manually
         DB::table('software_licenses')->insert([
-            'license_key' => encrypt($licenseKey),
-            'school_id' => 'school_a',
-            'firebase_refresh_token' => encrypt('dummy_refresh'),
-            'status' => encrypt($statusStr),
-            'plan' => encrypt('premium'),
-            'expires_at' => $expiresAt,
-            'rsa_signature' => 'dummy_signature',
-            'integrity_hash' => 'tempered_hash_value', // Invalid hash!
+            'license_key'             => encrypt($licenseKey),
+            'school_id'               => 'school_a',
+            'firebase_refresh_token'  => encrypt('dummy_refresh'),
+            'status'                  => encrypt($statusStr),
+            'plan'                    => encrypt('premium'),
+            'expires_at'              => $expiresAt,
+            'rsa_signature'           => $sig,
+            'integrity_hash'          => 'tampered_hash_that_will_never_match',
             'last_online_verified_at' => Carbon::now(),
         ]);
 
@@ -70,101 +133,52 @@ class LicenseSystemTest extends TestCase
     /** @test */
     public function it_gathers_timeline_stages_correctly()
     {
-        // We will mock RSA and Integrity checks by inserting matching values
         $licenseKey = 'valid-key';
-        $statusStr = 'active';
-        $schoolId = 'school_a';
+        $statusStr  = 'active';
 
-        // Prepare helper to update records
-        $insertLicenseWithExpiry = function ($expiresAt, $lastVerified = null) use ($licenseKey, $statusStr, $schoolId) {
-            DB::table('software_licenses')->truncate();
-            
-            $expiresAtStr = $expiresAt ? $expiresAt->toDateTimeString() : null;
-            $hash = LicenseVerifier::computeIntegrityHash($licenseKey, $expiresAtStr, $statusStr, $schoolId);
+        // Case A: Expiry > 3 days → ACTIVE
+        $this->insertLicense($licenseKey, Carbon::now()->addDays(5), $statusStr);
+        $this->assertEquals(LicenseStatus::STAGE_ACTIVE, LicenseStatus::computeStatus()['stage']);
 
-            // Generate a valid mock RSA signature for tests since we verify RSA in tests
-            // In a real environment, we'd sign with private key and verify with public key.
-            // For testing, let's mock/disable RSA check or use key generation.
-            // Let's create an actual RSA signature that verifies against a temporary keypair.
-            $keys = openssl_pkey_new([
-                "private_key_bits" => 1024,
-                "private_key_type" => OPENSSL_KEYTYPE_RSA,
-            ]);
-            openssl_pkey_export($keys, $privateKey);
-            $details = openssl_pkey_get_details($keys);
-            $publicKey = $details['key'];
+        // Case B: Expiry ≤ 3 days → WARNING
+        $this->insertLicense($licenseKey, Carbon::now()->addDays(2), $statusStr);
+        $this->assertEquals(LicenseStatus::STAGE_WARNING, LicenseStatus::computeStatus()['stage']);
 
-            // Set config keys dynamically
-            config(['services.license.rsa_public_key' => $publicKey]);
+        // Case C: Expired by ≤ 3 days → GRACE
+        $this->insertLicense($licenseKey, Carbon::now()->subDays(1), $statusStr);
+        $this->assertEquals(LicenseStatus::STAGE_GRACE, LicenseStatus::computeStatus()['stage']);
 
-            $normalizedExpires = LicenseVerifier::normalizeExpiresAt($licenseKey, $expiresAtStr);
-            $payload = $licenseKey . '|' . $normalizedExpires . '|' . $statusStr;
-            openssl_sign($payload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
-            $base64Signature = base64_encode($signature);
+        // Case D: Expired by 4–10 days → LOCKED
+        $this->insertLicense($licenseKey, Carbon::now()->subDays(5), $statusStr);
+        $this->assertEquals(LicenseStatus::STAGE_LOCKED, LicenseStatus::computeStatus()['stage']);
 
-            DB::table('software_licenses')->insert([
-                'license_key' => encrypt($licenseKey),
-                'school_id' => $schoolId,
-                'firebase_refresh_token' => encrypt('token'),
-                'status' => encrypt($statusStr),
-                'plan' => encrypt('premium'),
-                'expires_at' => $expiresAtStr,
-                'rsa_signature' => $base64Signature,
-                'integrity_hash' => $hash,
-                'last_online_verified_at' => $lastVerified ?? Carbon::now(),
-            ]);
-        };
-
-        // Case A: Expiry > 3 days (ACTIVE)
-        $insertLicenseWithExpiry(Carbon::now()->addDays(5));
-        $status = LicenseStatus::computeStatus();
-        $this->assertEquals(LicenseStatus::STAGE_ACTIVE, $status['stage']);
-
-        // Case B: Expiry <= 3 days (WARNING)
-        $insertLicenseWithExpiry(Carbon::now()->addDays(2));
-        $status = LicenseStatus::computeStatus();
-        $this->assertEquals(LicenseStatus::STAGE_WARNING, $status['stage']);
-
-        // Case C: Expired by <= 3 days (GRACE)
-        $insertLicenseWithExpiry(Carbon::now()->subDays(1));
-        $status = LicenseStatus::computeStatus();
-        $this->assertEquals(LicenseStatus::STAGE_GRACE, $status['stage']);
-
-        // Case D: Expired by 4 to 10 days (LOCKED)
-        $insertLicenseWithExpiry(Carbon::now()->subDays(5));
-        $status = LicenseStatus::computeStatus();
-        $this->assertEquals(LicenseStatus::STAGE_LOCKED, $status['stage']);
-
-        // Case E: Expired by > 10 days (BLOCKED)
-        $insertLicenseWithExpiry(Carbon::now()->subDays(12));
-        $status = LicenseStatus::computeStatus();
-        $this->assertEquals(LicenseStatus::STAGE_BLOCKED, $status['stage']);
+        // Case E: Expired by > 10 days → BLOCKED
+        $this->insertLicense($licenseKey, Carbon::now()->subDays(12), $statusStr);
+        $this->assertEquals(LicenseStatus::STAGE_BLOCKED, LicenseStatus::computeStatus()['stage']);
     }
 
     /** @test */
     public function it_blocks_writes_in_locked_stage()
     {
-        // Force status to LOCKED in session
-        session(['sims_license_status' => [
-            'stage' => LicenseStatus::STAGE_LOCKED,
-            'reason' => 'expired_locked',
+        Cache::put(LicenseStatus::CACHE_KEY, [
+            'stage'   => LicenseStatus::STAGE_LOCKED,
+            'reason'  => 'expired_locked',
             'message' => 'System is in read-only mode.',
-        ]]);
+        ], LicenseStatus::CACHE_TTL);
 
         $this->assertFalse(LicenseStatus::canWrite());
-        $this->assertFalse(\canWrite()); // global helper
+        $this->assertFalse(\canWrite());
     }
 
     /** @test */
     public function it_allows_writes_in_active_stage()
     {
-        // Force status to ACTIVE in session
-        session(['sims_license_status' => [
-            'stage' => LicenseStatus::STAGE_ACTIVE,
+        Cache::put(LicenseStatus::CACHE_KEY, [
+            'stage'  => LicenseStatus::STAGE_ACTIVE,
             'reason' => 'active',
-        ]]);
+        ], LicenseStatus::CACHE_TTL);
 
         $this->assertTrue(LicenseStatus::canWrite());
-        $this->assertTrue(\canWrite()); // global helper
+        $this->assertTrue(\canWrite());
     }
 }

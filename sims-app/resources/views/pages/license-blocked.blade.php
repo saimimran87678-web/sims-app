@@ -60,10 +60,10 @@
                 💬 WhatsApp Message
             </a>
             
-            <button onclick="window.location.reload();" 
-                    class="w-full py-2.5 text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors duration-200">
+            <a href="{{ route('dashboard') }}" 
+               class="w-full py-2.5 block text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors duration-200 text-center">
                 🔄 Re-check license status
-            </button>
+            </a>
         </div>
 
         <!-- Footer -->

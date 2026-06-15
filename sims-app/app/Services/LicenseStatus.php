@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Artisan;
@@ -189,19 +190,41 @@ class LicenseStatus
     }
 
     /**
-     * Get the current cached status from the session (fast page loads).
+     * Cache key for the license status.
+     */
+    const CACHE_KEY = 'sims_license_status';
+
+    /**
+     * How long to cache the license status (seconds).
+     * Keep short so activation is reflected quickly.
+     */
+    const CACHE_TTL = 300; // 5 minutes
+
+    /**
+     * Get the current cached license status (fast page loads).
+     * Uses the application cache (shared across tabs/requests).
      *
-     * @param bool $forceRefresh
+     * @param bool $forceRefresh Force a fresh DB + cryptographic check.
      * @return array
      */
     public static function getStatus(bool $forceRefresh = false): array
     {
-        if ($forceRefresh || !session()->has('sims_license_status')) {
-            $status = self::computeStatus();
-            session(['sims_license_status' => $status]);
+        if ($forceRefresh) {
+            Cache::forget(self::CACHE_KEY);
         }
 
-        return session('sims_license_status');
+        return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+            return self::computeStatus();
+        });
+    }
+
+    /**
+     * Flush the cached license status so the next request re-checks the DB.
+     * Call this after license:activate or any admin action.
+     */
+    public static function clearCache(): void
+    {
+        Cache::forget(self::CACHE_KEY);
     }
 
     /**

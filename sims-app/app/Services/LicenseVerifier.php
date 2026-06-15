@@ -2,41 +2,50 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
+
 class LicenseVerifier
 {
     /**
-     * Normalize the expires_at date into the ISO-8601 UTC string format used for signature verification.
+     * Normalize expires_at to a simple UTC string: "YYYY-MM-DD HH:mm:ss"
      *
-     * @param string $licenseKey
+     * This format MUST match exactly what the admin panel JavaScript signs with
+     * (formatToUTCString in firebase_admin_panel.html).
+     *
      * @param string|null $expiresAt
      * @return string
      */
-    public static function normalizeExpiresAt(string $licenseKey, ?string $expiresAt): string
+    public static function normalizeExpiresAt(?string $expiresAt): string
     {
         if (empty($expiresAt)) {
             return '';
         }
 
-        // Parse date explicitly in UTC timezone to avoid timezone shift on local setups
-        $dt = \Carbon\Carbon::parse($expiresAt, 'UTC');
-        
-        $ms = $dt->format('v');
-        if ($ms === '000' || $ms === '0') {
-            // SQLite strips milliseconds on storage; retrieve them from the license key timestamp suffix
-            $parts = explode('-', $licenseKey);
-            $timestamp = end($parts);
-            if (is_numeric($timestamp) && strlen($timestamp) > 3) {
-                $ms = substr($timestamp, -3);
-            }
-        }
-        
-        $ms = str_pad($ms, 3, '0', STR_PAD_RIGHT);
-        
-        return $dt->format('Y-m-d\TH:i:s') . '.' . $ms . 'Z';
+        // Always parse and output in UTC, simple "YYYY-MM-DD HH:mm:ss" — no T, no ms, no Z
+        return Carbon::parse($expiresAt, 'UTC')->format('Y-m-d H:i:s');
     }
 
     /**
-     * Compute the local integrity hash for a license record.
+     * Build the canonical payload string for RSA signature verification.
+     * Format: "licenseKey|YYYY-MM-DD HH:mm:ss|status"
+     *
+     * @param string $licenseKey
+     * @param string|null $expiresAt
+     * @param string $status
+     * @return string
+     */
+    public static function buildPayload(string $licenseKey, ?string $expiresAt, string $status): string
+    {
+        return implode('|', [
+            $licenseKey,
+            self::normalizeExpiresAt($expiresAt),
+            $status,
+        ]);
+    }
+
+    /**
+     * Compute the local HMAC-SHA256 integrity hash for a license record.
+     * Used to detect local SQLite database tampering.
      *
      * @param string $licenseKey
      * @param string|null $expiresAt
@@ -46,26 +55,20 @@ class LicenseVerifier
      */
     public static function computeIntegrityHash(string $licenseKey, ?string $expiresAt, string $status, string $schoolId): string
     {
-        $integrityKey = config('services.license.integrity_key');
-        if (empty($integrityKey)) {
-            // Fallback to APP_KEY if integrity key is not configured
-            $integrityKey = config('app.key');
-        }
-
-        $normalizedExpires = self::normalizeExpiresAt($licenseKey, $expiresAt);
+        $integrityKey = config('services.license.integrity_key') ?: config('app.key');
 
         $payload = implode('|', [
             $licenseKey,
-            $normalizedExpires,
+            self::normalizeExpiresAt($expiresAt),
             $status,
-            $schoolId
+            $schoolId,
         ]);
 
         return hash_hmac('sha256', $payload, $integrityKey);
     }
 
     /**
-     * Verify the integrity hash of a stored license record.
+     * Verify the HMAC integrity hash of a stored license record.
      *
      * @param object $licenseRecord
      * @return bool
@@ -76,10 +79,9 @@ class LicenseVerifier
             return false;
         }
 
-        // Decrypt fields if they are stored encrypted in the database
         try {
             $licenseKey = decrypt($licenseRecord->license_key);
-            $status = decrypt($licenseRecord->status);
+            $status     = decrypt($licenseRecord->status);
         } catch (\Exception $e) {
             return false;
         }
@@ -95,7 +97,9 @@ class LicenseVerifier
     }
 
     /**
-     * Verify the cryptographic RSA signature of the license parameters.
+     * Verify the RSA-SHA256 cryptographic signature of a license.
+     * The payload format matches what the admin panel JS signs:
+     *   "licenseKey|YYYY-MM-DD HH:mm:ss|status"
      *
      * @param string $licenseKey
      * @param string|null $expiresAt
@@ -110,30 +114,22 @@ class LicenseVerifier
             return false;
         }
 
-        // Standardize PEM format lines
+        // Reconstruct PEM header/footer if stored as a flat string (env \n → actual newlines)
+        $publicKeyPem = str_replace('\\n', "\n", $publicKeyPem);
         if (strpos($publicKeyPem, '-----BEGIN PUBLIC KEY-----') === false) {
-            $publicKeyPem = "-----BEGIN PUBLIC KEY-----\n" . wordwrap($publicKeyPem, 64, "\n", true) . "\n-----END PUBLIC KEY-----";
+            $publicKeyPem = "-----BEGIN PUBLIC KEY-----\n"
+                . wordwrap(trim($publicKeyPem), 64, "\n", true)
+                . "\n-----END PUBLIC KEY-----";
         }
 
-        $normalizedExpires = self::normalizeExpiresAt($licenseKey, $expiresAt);
+        $payload   = self::buildPayload($licenseKey, $expiresAt, $status);
+        $signature = base64_decode($signatureBase64, true);
 
-        $payload = implode('|', [
-            $licenseKey,
-            $normalizedExpires,
-            $status
-        ]);
-
-        $signature = base64_decode($signatureBase64);
         if ($signature === false) {
             return false;
         }
 
-        $result = openssl_verify(
-            $payload,
-            $signature,
-            $publicKeyPem,
-            OPENSSL_ALGO_SHA256
-        );
+        $result = openssl_verify($payload, $signature, $publicKeyPem, OPENSSL_ALGO_SHA256);
 
         return $result === 1;
     }
