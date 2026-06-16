@@ -131,6 +131,14 @@ class LicenseStatus
             ];
         }
 
+        if ($status === 'expired') {
+            return [
+                'stage' => self::STAGE_BLOCKED,
+                'reason' => 'expired_blocked',
+                'message' => 'Your subscription has been marked as expired by the vendor. Access is blocked. Please renew.',
+            ];
+        }
+
         if (!$record->expires_at) {
             return [
                 'stage' => self::STAGE_BLOCKED,
@@ -149,43 +157,49 @@ class LicenseStatus
                     'stage' => self::STAGE_GRACE,
                     'reason' => 'expiry_grace',
                     'days_past' => $overdueDays,
-                    'message' => 'Your subscription has expired. Please renew to avoid system locking.',
+                    'message' => 'Your subscription has expired. You are in a 3-day grace period. Please renew.',
                 ];
             } elseif ($overdueDays <= 10) {
                 return [
                     'stage' => self::STAGE_LOCKED,
                     'reason' => 'expired_locked',
                     'days_past' => $overdueDays,
-                    'message' => 'Your subscription has expired. The system is now in READ-ONLY mode. Please renew.',
+                    'message' => 'Your account status is suspended. The system is now in READ-ONLY mode. Please renew.',
                 ];
             } else {
                 return [
                     'stage' => self::STAGE_BLOCKED,
                     'reason' => 'expired_blocked',
                     'days_past' => $overdueDays,
-                    'message' => 'Your subscription expired more than 10 days ago. Access is blocked. Please renew.',
+                    'message' => 'Your subscription has expired. Full access is blocked. Please renew.',
                 ];
             }
         }
 
         // Active checks (expires_at is in the future)
-        $daysRemaining = $now->diffInDays($expiry);
+        // Use precise signed difference: positive = days remaining
+        // diffInRealMinutes / 60 / 24 gives exact fractional days; floor for stage thresholds
+        $minutesRemaining = (int) $now->diffInMinutes($expiry, false); // negative if past
+        $daysRemaining    = (int) floor($minutesRemaining / 60 / 24);  // signed, floored
 
         if ($daysRemaining <= 3) {
+            $daysLabel = max(0, $daysRemaining);
             return [
-                'stage' => self::STAGE_WARNING,
-                'reason' => 'expiry_warning',
-                'days_left' => $daysRemaining,
-                'message' => "Your subscription will expire in {$daysRemaining} days. Please renew soon.",
+                'stage'     => self::STAGE_WARNING,
+                'reason'    => 'expiry_warning',
+                'days_left' => $daysLabel,
+                'message'   => $daysLabel === 0
+                    ? 'Your subscription expires TODAY. Please renew immediately to avoid interruption.'
+                    : "Your subscription will expire in {$daysLabel} " . ($daysLabel === 1 ? 'day' : 'days') . ". Please renew soon.",
             ];
         }
 
         return [
-            'stage' => self::STAGE_ACTIVE,
-            'reason' => 'active',
-            'days_left' => $daysRemaining,
-            'plan' => $plan,
-            'school_name' => $record->school_id,
+            'stage'      => self::STAGE_ACTIVE,
+            'reason'     => 'active',
+            'days_left'  => $daysRemaining,
+            'plan'       => $plan,
+            'school_name'=> $record->school_id,
         ];
     }
 

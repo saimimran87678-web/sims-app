@@ -125,4 +125,7 @@ Route::get('/license-blocked', function () {
 Route::post('/license-blocked/activate', [\App\Http\Controllers\LicenseController::class, 'activate'])
     ->name('license.activate.post');
 
+Route::post('/license/sync', [\App\Http\Controllers\LicenseController::class, 'sync'])
+    ->name('license.sync');
+
 require __DIR__.'/auth.php';

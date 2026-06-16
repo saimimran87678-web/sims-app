@@ -18,6 +18,7 @@ class VerifyLicense
         'logout',
         'register',
         'license-blocked',
+        'license/sync',
         '_debugbar',
         'up', // Laravel health check
     ];

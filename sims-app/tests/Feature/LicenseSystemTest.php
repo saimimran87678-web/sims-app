@@ -201,4 +201,55 @@ class LicenseSystemTest extends TestCase
 
         $response->assertStatus(404); // Because key doesn't exist, returns 404
     }
+
+    /** @test */
+    public function it_blocks_database_writes_via_query_listener_when_cannot_write()
+    {
+        // Set state to locked (canWrite() = false)
+        Cache::put(LicenseStatus::CACHE_KEY, [
+            'stage'   => LicenseStatus::STAGE_LOCKED,
+            'reason'  => 'expired_locked',
+            'message' => 'System is in read-only mode.',
+        ], LicenseStatus::CACHE_TTL);
+
+        $this->assertFalse(LicenseStatus::canWrite());
+
+        // Attempting to insert into a non-exempt table should throw an exception
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Database is in READ-ONLY mode. Please renew your subscription to resume editing.');
+
+        DB::table('users')->insert([
+            'name' => 'Test User',
+            'email' => 'test@test.com',
+            'password' => bcrypt('password'),
+        ]);
+    }
+
+    /** @test */
+    public function it_allows_database_writes_to_exempt_tables_when_cannot_write()
+    {
+        // Set state to locked (canWrite() = false)
+        Cache::put(LicenseStatus::CACHE_KEY, [
+            'stage'   => LicenseStatus::STAGE_LOCKED,
+            'reason'  => 'expired_locked',
+            'message' => 'System is in read-only mode.',
+        ], LicenseStatus::CACHE_TTL);
+
+        $this->assertFalse(LicenseStatus::canWrite());
+
+        // This should pass without throwing exception since software_licenses is exempt
+        DB::table('software_licenses')->insert([
+            'license_key'             => encrypt('test-key'),
+            'school_id'               => 'school_a',
+            'firebase_refresh_token'  => encrypt('dummy_token'),
+            'status'                  => encrypt('active'),
+            'plan'                    => encrypt('premium'),
+            'expires_at'              => now()->addYear()->format('Y-m-d H:i:s'),
+            'rsa_signature'           => 'dummy-sig',
+            'integrity_hash'          => 'dummy-hash',
+            'last_online_verified_at' => now(),
+        ]);
+
+        $this->assertTrue(true);
+    }
 }
