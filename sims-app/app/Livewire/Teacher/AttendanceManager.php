@@ -6,6 +6,7 @@ use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Holiday;
 
 class AttendanceManager extends Component
 {
@@ -21,6 +22,8 @@ class AttendanceManager extends Component
     // UI State
     public $attendance_status = 'not_submitted'; // 'submitted' | 'not_submitted'
     public $is_weekend = false;
+    public $is_holiday = false;
+    public $holiday_reason = '';
     public $summary = ['present' => 0, 'absent' => 0, 'leave' => 0, 'total' => 0];
 
     public function mount()
@@ -38,12 +41,12 @@ class AttendanceManager extends Component
 
         $this->fetchStudents();
         $this->loadAttendance();
-        $this->checkWeekend();
+        $this->checkDateStatus();
     }
 
     public function updatedDate()
     {
-        $this->checkWeekend();
+        $this->checkDateStatus();
         // Prevent future dates (optional strict check)
         if (Carbon::parse($this->date)->isFuture()) {
             // allowing today, but not tomorrow
@@ -51,10 +54,26 @@ class AttendanceManager extends Component
         $this->loadAttendance();
     }
 
-    public function checkWeekend()
+    public function checkDateStatus()
     {
         $d = Carbon::parse($this->date);
-        $this->is_weekend = $d->isWeekend();
+        $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
+
+        $this->is_weekend = $weekendMode === 'sun_only'
+            ? $d->isSunday()           // Only Sunday is a weekend
+            : $d->isWeekend();         // Saturday + Sunday are weekends
+
+        $holiday = Holiday::where('start_date', '<=', $this->date)
+            ->where('end_date', '>=', $this->date)
+            ->first();
+
+        if ($holiday) {
+            $this->is_holiday = true;
+            $this->holiday_reason = $holiday->reason;
+        } else {
+            $this->is_holiday = false;
+            $this->holiday_reason = '';
+        }
     }
 
     public function fetchStudents()
@@ -140,6 +159,11 @@ class AttendanceManager extends Component
     {
         if ($this->is_weekend) {
             session()->flash('error', 'Cannot mark attendance on weekends.');
+            return;
+        }
+
+        if ($this->is_holiday) {
+            session()->flash('error', 'Cannot mark attendance on holidays.');
             return;
         }
 

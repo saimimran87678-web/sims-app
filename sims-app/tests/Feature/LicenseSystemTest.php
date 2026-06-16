@@ -205,6 +205,8 @@ class LicenseSystemTest extends TestCase
     /** @test */
     public function it_blocks_database_writes_via_query_listener_when_cannot_write()
     {
+        config(['services.license.test_write_block' => true]);
+
         // Set state to locked (canWrite() = false)
         Cache::put(LicenseStatus::CACHE_KEY, [
             'stage'   => LicenseStatus::STAGE_LOCKED,
@@ -215,7 +217,7 @@ class LicenseSystemTest extends TestCase
         $this->assertFalse(LicenseStatus::canWrite());
 
         // Attempting to insert into a non-exempt table should throw an exception
-        $this->expectException(\Exception::class);
+        $this->expectException(\App\Exceptions\LicenseLockedException::class);
         $this->expectExceptionMessage('Database is in READ-ONLY mode. Please renew your subscription to resume editing.');
 
         DB::table('users')->insert([
@@ -228,6 +230,8 @@ class LicenseSystemTest extends TestCase
     /** @test */
     public function it_allows_database_writes_to_exempt_tables_when_cannot_write()
     {
+        config(['services.license.test_write_block' => true]);
+
         // Set state to locked (canWrite() = false)
         Cache::put(LicenseStatus::CACHE_KEY, [
             'stage'   => LicenseStatus::STAGE_LOCKED,

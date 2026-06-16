@@ -42,10 +42,26 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            // Check if it failed because the account is disabled (but credentials are correct)
+            $user = \App\Models\User::where('email', $this->email)->first();
+            if ($user && !$user->is_active && \Illuminate\Support\Facades\Hash::check($this->password, $user->password)) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'email' => __('Your account has been disabled.'),
+                ]);
+            }
+
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
+            ]);
+        }
+
+        if (! Auth::user()->is_active) {
+            Auth::logout();
+            throw ValidationException::withMessages([
+                'email' => __('Your account has been disabled.'),
             ]);
         }
 

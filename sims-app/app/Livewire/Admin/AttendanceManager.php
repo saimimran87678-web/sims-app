@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Holiday;
 
 class AttendanceManager extends Component
 {
@@ -20,14 +21,25 @@ class AttendanceManager extends Component
     // UI State
     public $attendance_status = 'not_submitted'; // 'submitted' | 'not_submitted'
     public $is_weekend = false;
+    public $is_holiday = false;
+    public $holiday_reason = '';
     public $summary = ['present' => 0, 'absent' => 0, 'leave' => 0, 'total' => 0];
+
+    // Holiday Modal State
+    public $showHolidayModal = false;
+    public $holidaysList = [];
+    public $holidayId = null;
+    public $isMultiDay = false;
+    public $holidayStart = '';
+    public $holidayEnd = '';
+    public $holidayReason = '';
 
     public function mount()
     {
         $this->authorize('students.manage');
         $this->date = Carbon::now()->format('Y-m-d');
         $this->loadClasses();
-        $this->checkWeekend();
+        $this->checkDateStatus();
     }
     
     public function loadClasses()
@@ -51,7 +63,7 @@ class AttendanceManager extends Component
 
     public function updatedDate()
     {
-        $this->checkWeekend();
+        $this->checkDateStatus();
         // Prevent future dates (optional strict check)
         if (Carbon::parse($this->date)->isFuture()) {
             // allowing today, but not tomorrow
@@ -59,10 +71,100 @@ class AttendanceManager extends Component
         $this->loadStudentsAndAttendance();
     }
 
-    public function checkWeekend()
+    public function checkDateStatus()
     {
         $d = Carbon::parse($this->date);
-        $this->is_weekend = $d->isWeekend();
+        $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
+
+        $this->is_weekend = $weekendMode === 'sun_only'
+            ? $d->isSunday()           // Only Sunday is a weekend
+            : $d->isWeekend();         // Saturday + Sunday are weekends
+
+        $holiday = Holiday::where('start_date', '<=', $this->date)
+            ->where('end_date', '>=', $this->date)
+            ->first();
+
+        if ($holiday) {
+            $this->is_holiday = true;
+            $this->holiday_reason = $holiday->reason;
+        } else {
+            $this->is_holiday = false;
+            $this->holiday_reason = '';
+        }
+    }
+
+    public function openHolidayModal()
+    {
+        $this->resetHolidayForm();
+        $this->loadHolidays();
+        $this->showHolidayModal = true;
+    }
+
+    public function closeHolidayModal()
+    {
+        $this->showHolidayModal = false;
+        $this->resetHolidayForm();
+    }
+
+    public function resetHolidayForm()
+    {
+        $this->holidayId = null;
+        $this->isMultiDay = false;
+        $this->holidayStart = '';
+        $this->holidayEnd = '';
+        $this->holidayReason = '';
+    }
+
+    public function loadHolidays()
+    {
+        $this->holidaysList = Holiday::orderBy('start_date', 'desc')->get();
+    }
+
+    public function saveHoliday()
+    {
+        if (!$this->isMultiDay) {
+            $this->holidayEnd = $this->holidayStart;
+        }
+
+        $this->validate([
+            'holidayStart' => 'required|date',
+            'holidayEnd' => 'required|date|after_or_equal:holidayStart',
+            'holidayReason' => 'nullable|string|max:255',
+        ]);
+
+        Holiday::updateOrCreate(
+            ['id' => $this->holidayId],
+            [
+                'start_date' => $this->holidayStart,
+                'end_date' => $this->holidayEnd,
+                'reason' => $this->holidayReason,
+            ]
+        );
+
+        $this->resetHolidayForm();
+        $this->loadHolidays();
+        $this->checkDateStatus(); // Update current view if it affects the selected date
+        session()->flash('holiday_message', 'Holiday saved successfully!');
+    }
+
+    public function editHoliday($id)
+    {
+        $holiday = Holiday::find($id);
+        if ($holiday) {
+            $this->holidayId = $holiday->id;
+            $this->holidayStart = $holiday->start_date->format('Y-m-d');
+            $this->holidayEnd = $holiday->end_date->format('Y-m-d');
+            $this->isMultiDay = $this->holidayStart !== $this->holidayEnd;
+            $this->holidayReason = $holiday->reason;
+        }
+    }
+
+    public function deleteHoliday($id)
+    {
+        Holiday::destroy($id);
+        $this->loadHolidays();
+        $this->checkDateStatus();
+        session()->flash('holiday_message', 'Holiday revoked successfully!');
     }
 
     public function loadStudentsAndAttendance()
@@ -167,6 +269,11 @@ class AttendanceManager extends Component
     {
         if ($this->is_weekend) {
             session()->flash('error', 'Cannot mark attendance on weekends.');
+            return;
+        }
+        
+        if ($this->is_holiday) {
+            session()->flash('error', 'Cannot mark attendance on holidays.');
             return;
         }
 

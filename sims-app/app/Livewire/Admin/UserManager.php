@@ -22,6 +22,13 @@ class UserManager extends Component
     public $isModalOpen = false;
     public $isEditMode = false;
 
+    // PIN Confirmation Fields
+    public $isPinModalOpen = false;
+    public $pin = '';
+    public $usePasswordForPin = false;
+    public $pendingAction = ''; // 'store', 'delete', 'toggleAccountStatus'
+    public $pendingUserId = null;
+
     // Form Fields
     public $userId;
     public $name;
@@ -177,6 +184,19 @@ class UserManager extends Component
 
         $this->validate($rules);
 
+        // Check if Admin Action PIN is required
+        $targetRole = $this->isEditMode ? User::findOrFail($this->userId)->role : $this->role;
+        // If creating a new admin, or modifying an existing admin, or changing someone TO an admin
+        if (\App\Models\Setting::get('admin_action_pin_enabled', false) && ($targetRole === 'admin' || $this->role === 'admin')) {
+            $this->confirmPinAction('store');
+            return;
+        }
+
+        $this->executeStore();
+    }
+
+    private function executeStore()
+    {
         DB::beginTransaction();
         try {
             if ($this->isEditMode) {
@@ -247,8 +267,105 @@ class UserManager extends Component
             session()->flash('error', 'You cannot delete your own account.');
             return;
         }
+
+        $user = User::findOrFail($id);
+        if (\App\Models\Setting::get('admin_action_pin_enabled', false) && $user->role === 'admin') {
+            $this->confirmPinAction('delete', $id);
+            return;
+        }
+
+        $this->executeDelete($id);
+    }
+
+    private function executeDelete($id)
+    {
         User::findOrFail($id)->delete();
         session()->flash('message', 'User deleted successfully.');
+    }
+
+    public function toggleAccountStatus($id)
+    {
+        if ($id == auth()->id()) {
+            session()->flash('error', 'You cannot disable your own account.');
+            return;
+        }
+
+        $user = User::findOrFail($id);
+        if (\App\Models\Setting::get('admin_action_pin_enabled', false) && $user->role === 'admin') {
+            $this->confirmPinAction('toggleAccountStatus', $id);
+            return;
+        }
+
+        $this->executeToggleAccountStatus($id);
+    }
+
+    private function executeToggleAccountStatus($id)
+    {
+        $user = User::findOrFail($id);
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        session()->flash('message', 'User account ' . ($user->is_active ? 'enabled' : 'disabled') . ' successfully.');
+    }
+
+    public function confirmPinAction($action, $userId = null)
+    {
+        $this->pendingAction = $action;
+        $this->pendingUserId = $userId;
+        $this->isPinModalOpen = true;
+        $this->pin = '';
+        $this->usePasswordForPin = false;
+        
+        // Hide edit modal if it's open, but remember state
+        if ($action === 'store') {
+            $this->isModalOpen = false;
+        }
+    }
+
+    public function verifyPin()
+    {
+        if ($this->usePasswordForPin) {
+            $this->validate(['pin' => 'required']);
+            if (!Hash::check($this->pin, auth()->user()->password)) {
+                $this->addError('pin', 'Incorrect password.');
+                return;
+            }
+        } else {
+            $this->validate(['pin' => 'required']);
+            $correctPin = \App\Models\Setting::get('admin_action_pin');
+            if ($this->pin !== $correctPin) {
+                $this->addError('pin', 'Incorrect PIN.');
+                return;
+            }
+        }
+
+        // Success
+        $this->isPinModalOpen = false;
+        $this->pin = '';
+
+        if ($this->pendingAction === 'store') {
+            $this->executeStore();
+        } elseif ($this->pendingAction === 'delete') {
+            $this->executeDelete($this->pendingUserId);
+        } elseif ($this->pendingAction === 'toggleAccountStatus') {
+            $this->executeToggleAccountStatus($this->pendingUserId);
+        }
+
+        $this->pendingAction = '';
+        $this->pendingUserId = null;
+    }
+
+    public function closePinModal()
+    {
+        $this->isPinModalOpen = false;
+        $this->pin = '';
+        
+        // If we were trying to store, bring back the edit modal
+        if ($this->pendingAction === 'store') {
+            $this->isModalOpen = true;
+        }
+        $this->pendingAction = '';
+        $this->pendingUserId = null;
     }
 
     public function closeModal()

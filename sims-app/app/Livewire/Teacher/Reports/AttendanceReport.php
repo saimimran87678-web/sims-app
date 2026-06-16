@@ -118,8 +118,24 @@ class AttendanceReport extends Component
                 ->get();
 
             // 3. Process Data
-            // Count unique dates where attendance was recorded for ANY student in this class
-            $teachingDates = $records->pluck('date')->unique();
+            // Count unique dates where attendance was recorded, filtered by the weekend mode.
+            // If weekend_mode = sat_sun → exclude Saturdays (safety net for mode changes).
+            // If weekend_mode = sun_only → Saturday is a valid working day, include it.
+            $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
+
+            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode) {
+                $d = \Carbon\Carbon::parse($date);
+                $isWeekend = $weekendMode === 'sun_only'
+                    ? $d->isSunday()
+                    : $d->isWeekend();
+
+                $isHoliday = \App\Models\Holiday::where('start_date', '<=', $date)
+                    ->where('end_date', '>=', $date)
+                    ->exists();
+
+                return !$isWeekend && !$isHoliday;
+            });
+
             $totalTeachingDays = $teachingDates->count();
 
             if ($totalTeachingDays === 0) {

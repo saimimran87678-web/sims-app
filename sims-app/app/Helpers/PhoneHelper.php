@@ -56,8 +56,9 @@ class PhoneHelper
      * @param string $schoolName
      * @return string
      */
-    public static function getAbsentMessage(string $studentName, $rollNo, string $date, string $schoolName = 'IMCB G-6/2'): string
+    public static function getAbsentMessage(string $studentName, $rollNo, string $date, string $schoolName = null): string
     {
+        $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
         return "*Auto Generated Message*\n\nDear Parents,\nYour son {$studentName} (Roll No: {$rollNo}) is ABSENT from school today ({$date}).\nPlease contact the Class Teacher and give a valid reason.\n\n- {$schoolName} Administration";
     }
 
@@ -70,8 +71,9 @@ class PhoneHelper
      * @param string $schoolName
      * @return string
      */
-    public static function getLeaveMessage(string $studentName, $rollNo, string $date, string $schoolName = 'IMCB G-6/2'): string
+    public static function getLeaveMessage(string $studentName, $rollNo, string $date, string $schoolName = null): string
     {
+        $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
         return "*Auto Generated Message*\n\nDear Parents,\nYour son {$studentName} (Roll No: {$rollNo}) is on LEAVE today ({$date}).\n\n- {$schoolName} Administration";
     }
 }

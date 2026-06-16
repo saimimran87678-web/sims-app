@@ -38,9 +38,14 @@
         </div>
     @endif
 
-    {{-- Weekend Warning --}}
-    @if($is_weekend)
-        <div class="bg-orange-50 border border-orange-100 p-4 rounded-xl flex items-center gap-3 text-orange-800">
+    {{-- Holiday Warning --}}
+    @if($is_holiday)
+        <div class="bg-purple-50 border border-purple-100 p-4 rounded-xl flex items-center gap-3 text-purple-800 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+            <p class="font-medium">Holiday: {{ $holiday_reason ?: 'Declared' }}. Attendance cannot be marked.</p>
+        </div>
+    @elseif($is_weekend)
+        <div class="bg-orange-50 border border-orange-100 p-4 rounded-xl flex items-center gap-3 text-orange-800 mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
             <p class="font-medium">Selected date is a weekend. Attendance cannot be marked.</p>
         </div>
@@ -71,8 +76,8 @@
                             wire:model.live.debounce.300ms="absent_rolls"
                             type="text"
                             placeholder="e.g. 2, 5, 12"
-                            @if($is_weekend) disabled @endif
-                            class="w-full pl-4 pr-24 py-3 rounded-xl border-2 border-red-100 focus:border-red-500 focus:ring-0 outline-none transition-colors text-lg font-medium placeholder:font-normal placeholder-red-200"
+                            @if($is_weekend || $is_holiday) disabled @endif
+                            class="w-full pl-4 pr-24 py-3 rounded-xl border-2 border-red-100 focus:border-red-500 focus:ring-0 outline-none transition-colors text-lg font-medium placeholder:font-normal placeholder-red-200 disabled:bg-gray-50 disabled:opacity-75"
                         />
                         <div class="hidden md:block absolute right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">
                             ABSENT
@@ -91,8 +96,8 @@
                             wire:model.live.debounce.300ms="leave_rolls"
                             type="text"
                             placeholder="e.g. 8, 15"
-                             @if($is_weekend) disabled @endif
-                            class="w-full pl-4 pr-24 py-3 rounded-xl border-2 border-yellow-100 focus:border-yellow-500 focus:ring-0 outline-none transition-colors text-lg font-medium placeholder:font-normal placeholder-yellow-200"
+                             @if($is_weekend || $is_holiday) disabled @endif
+                            class="w-full pl-4 pr-24 py-3 rounded-xl border-2 border-yellow-100 focus:border-yellow-500 focus:ring-0 outline-none transition-colors text-lg font-medium placeholder:font-normal placeholder-yellow-200 disabled:bg-gray-50 disabled:opacity-75"
                         />
                         <div class="hidden md:block absolute right-3 top-1/2 -translate-y-1/2 bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-1 rounded">
                             LEAVE
@@ -131,7 +136,7 @@
                 <button
                     type="submit"
                     wire:loading.attr="disabled"
-                    @if($is_weekend) disabled @endif
+                    @if($is_weekend || $is_holiday) disabled @endif
                     class="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-bold shadow-lg shadow-blue-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <span wire:loading.remove>Save Attendance</span>

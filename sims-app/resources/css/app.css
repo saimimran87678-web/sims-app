@@ -37,3 +37,25 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: #94a3b8;
 }
+
+/* ============================================================
+   Strip Livewire's white error modal canvas so the app's
+   beautiful background image shows through behind the popup
+   ============================================================ */
+/* The outer fixed-position wrapper Livewire creates */
+body > div[style*="z-index: 2147483647"],
+body > div[style*="z-index:2147483647"] {
+    background: transparent !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+/* Any solid white child wrapper inside that overlay */
+body > div[style*="z-index: 2147483647"] > div,
+body > div[style*="z-index:2147483647"] > div {
+    background: transparent !important;
+}
+/* The iframe itself */
+body > div[style*="z-index: 2147483647"] iframe,
+body > div[style*="z-index:2147483647"] iframe {
+    background: transparent !important;
+}

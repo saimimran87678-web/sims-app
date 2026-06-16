@@ -1,8 +1,13 @@
 <div class="space-y-6">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">Academic Sessions</h1>
-            <p class="text-gray-500">Manage school academic years</p>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('admin.settings') }}" class="p-2 -ml-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors" title="Back to Settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </a>
+                <h1 class="text-2xl font-bold text-gray-800">Academic Sessions</h1>
+            </div>
+            <p class="text-gray-500 ml-10">Manage school academic years</p>
         </div>
         <div class="flex gap-2">
             <button wire:click="runAutoUpdate" class="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200">

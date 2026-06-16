@@ -13,7 +13,6 @@ class ScheduleManager extends Component
     // Day Selection
     public $selectedDay = 'Monday';
     public $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    public $includeSaturday = false;
     public $applyToAllDays = false;
 
     // Data
@@ -53,7 +52,13 @@ class ScheduleManager extends Component
     public function mount()
     {
         $this->authorize('schedule.manage');
-        
+
+        // Set working days based on the global Weekend Mode setting
+        $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
+        $this->days = $weekendMode === 'sun_only'
+            ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
         $this->academicSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
@@ -172,18 +177,7 @@ class ScheduleManager extends Component
         $this->applyToAllDays = false;
     }
 
-    public function updatedIncludeSaturday()
-    {
-        if ($this->includeSaturday) {
-            $this->days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        } else {
-            $this->days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-            if ($this->selectedDay === 'Saturday') {
-                $this->selectedDay = 'Monday';
-                $this->loadTimetables();
-            }
-        }
-    }
+
 
     public function loadAvailableTeachers()
     {

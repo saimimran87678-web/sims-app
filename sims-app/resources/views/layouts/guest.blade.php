@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ $title ?? 'Login' }} | IMCB G-6/2</title>
+        <title>{{ $title ?? 'Login' }} | {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

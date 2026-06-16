@@ -63,11 +63,24 @@ class AttendanceReport extends Component
                 ->get();
 
             // 3. Process Data
-            $totalDays = Carbon::parse($this->selectedMonth)->daysInMonth; // Or count distinct dates in DB? 
-            // Better: use only days where attendance was taken? React logic calculated totalDays based on existing records.
-            // Let's count *teaching days* (unique dates in attendance table for this class) to be accurate.
-            
-            $teachingDates = $records->pluck('date')->unique();
+            // Count unique dates where attendance was recorded, filtered by the weekend mode.
+            // If weekend_mode = sat_sun → exclude any Saturday records (safety net if data exists from a mode change).
+            // If weekend_mode = sun_only → Saturday is a valid working day, count it.
+            $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
+
+            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode) {
+                $d = \Carbon\Carbon::parse($date);
+                $isWeekend = $weekendMode === 'sun_only'
+                    ? $d->isSunday()
+                    : $d->isWeekend();
+
+                $isHoliday = \App\Models\Holiday::where('start_date', '<=', $date)
+                    ->where('end_date', '>=', $date)
+                    ->exists();
+
+                return !$isWeekend && !$isHoliday;
+            });
+
             $totalTeachingDays = $teachingDates->count();
 
             // Check if any attendance data exists for this month

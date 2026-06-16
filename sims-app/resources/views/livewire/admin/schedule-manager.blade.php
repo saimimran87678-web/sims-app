@@ -7,24 +7,7 @@
                 <p class="text-gray-500">Assign teachers to classes for each period</p>
             </div>
         </div>
-        @can('schedule.view-sessions')
-        <div class="relative w-40">
-             <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-             </div>
-             <select 
-                wire:model.live="selectedSessionId" 
-                class="w-full pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 text-gray-700 text-sm appearance-none cursor-pointer shadow-sm"
-            >
-                @foreach($academicSessions as $session)
-                    <option value="{{ $session->id }}">{{ $session->name }} @if($session->is_active) (Current) @endif</option>
-                @endforeach
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-           </div>
-        </div>
-        @endrole
+
     </div>
 
     @if(session()->has('message'))
@@ -49,13 +32,9 @@
                     wire:click="$set('selectedDay', '{{ $day }}')"
                     class="px-4 py-2 rounded-t-lg font-medium transition-colors {{ $selectedDay === $day ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
                 >
-                    {{ substr($day, 0, 3) }}
+                 {{ substr($day, 0, 3) }}
                 </button>
             @endforeach
-            <label class="flex items-center gap-1.5 ml-2 cursor-pointer">
-                <input type="checkbox" wire:model.live="includeSaturday" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-                <span class="text-sm text-gray-600">+Sat</span>
-            </label>
         </div>
         <div class="flex gap-2">
             <button
@@ -206,7 +185,7 @@
                                 <input type="checkbox" wire:model="applyToAllDays" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                                 <span class="text-sm font-medium text-blue-700">Apply to all days</span>
                             </label>
-                            <p class="text-xs text-blue-600 ml-6">{{ $applyToAllDays ? 'Will assign to: ' . implode(', ', $days) : 'Assign this schedule to everyday (Mon-Fri' . ($includeSaturday ? '+Sat' : '') . ')' }}</p>
+                            <p class="text-xs text-blue-600 ml-6">{{ $applyToAllDays ? 'Will assign to: ' . implode(', ', $days) : 'Assign this schedule to all days (' . implode(', ', array_map(fn($d) => substr($d,0,3), $days)) . ')' }}</p>
                         </div>
                     @endif
 

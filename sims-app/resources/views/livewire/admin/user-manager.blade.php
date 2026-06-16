@@ -62,7 +62,14 @@
                                     {{ substr($user->name, 0, 1) }}
                                 </div>
                                 <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">{{ $user->name }}</div>
+                                    <div class="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                        {{ $user->name }}
+                                        @if(!$user->is_active)
+                                            <span class="px-2 inline-flex text-[10px] leading-4 font-semibold rounded bg-red-100 text-red-800 border border-red-200">
+                                                Disabled
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -96,12 +103,22 @@
                             @if(!$user->class_id && $allocs->isEmpty())
                                 <span class="text-gray-400">-</span>
                             @endif
-                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
             <button wire:click="edit({{ $user->id }})" class="text-blue-600 hover:text-blue-900 mr-3 transition-transform hover:scale-110" title="Edit">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
             @if($user->id !== auth()->id())
+                <button
+                    wire:click="toggleAccountStatus({{ $user->id }})"
+                    class="{{ $user->is_active ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800' }} mr-3 transition-transform hover:scale-110"
+                    title="{{ $user->is_active ? 'Disable Account' : 'Enable Account' }}"
+                >
+                    @if($user->is_active)
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    @else
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                    @endif
+                </button>
                 <button
                     wire:click="delete({{ $user->id }})"
                     wire:confirm="Are you sure you want to delete this user?"
@@ -258,6 +275,74 @@
                             {{ $isEditMode ? 'Update User' : 'Create User' }}
                         </button>
                         <button type="button" wire:click="closeModal" class="mt-3 w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endteleport
+    @endif
+
+    {{-- PIN Modal --}}
+    @if($isPinModalOpen)
+    @teleport('body')
+    <div class="fixed inset-0 z-[1000] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm transition-opacity" aria-hidden="true" wire:click="closePinModal"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-100">
+                <form wire:submit.prevent="verifyPin">
+                    <div class="bg-white px-6 pt-6 pb-6 rounded-t-2xl">
+                        <div class="flex flex-col items-center justify-center text-center">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4 shadow-inner">
+                                <svg class="h-8 w-8 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl leading-6 font-bold text-gray-900" id="modal-title">
+                                Security Verification Required
+                            </h3>
+                            <p class="text-sm text-gray-500 mt-2">
+                                You are about to modify an Admin account. Please confirm your identity.
+                            </p>
+                        </div>
+                        
+                        <div class="mt-6">
+                            @if(!$usePasswordForPin)
+                                <label class="block text-sm font-medium text-gray-700 text-center">Enter Admin Action PIN</label>
+                                <div class="mt-2 flex justify-center">
+                                    <input type="password" wire:model.defer="pin" class="block w-48 text-center text-2xl tracking-widest rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring focus:ring-red-200 focus:ring-opacity-50" placeholder="••••" autofocus />
+                                </div>
+                            @else
+                                <label class="block text-sm font-medium text-gray-700 text-center">Enter Your Account Password</label>
+                                <div class="mt-2 flex justify-center">
+                                    <input type="password" wire:model.defer="pin" class="block w-64 rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring focus:ring-red-200 focus:ring-opacity-50" placeholder="Password" autofocus />
+                                </div>
+                            @endif
+                            @error('pin') <span class="text-red-500 text-sm font-medium mt-2 block text-center">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="mt-4 text-center">
+                            @if(!$usePasswordForPin)
+                                <button type="button" wire:click="$set('usePasswordForPin', true)" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                    Forgot PIN? Use Password
+                                </button>
+                            @else
+                                <button type="button" wire:click="$set('usePasswordForPin', false)" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                    Use Admin Action PIN instead
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 rounded-b-2xl flex justify-center gap-3">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-3 bg-red-600 text-base font-bold text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:w-auto sm:text-sm">
+                            Confirm Action
+                        </button>
+                        <button type="button" wire:click="closePinModal" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:w-auto sm:text-sm">
                             Cancel
                         </button>
                     </div>

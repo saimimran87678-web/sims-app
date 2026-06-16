@@ -59,6 +59,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::get('/attendance', \App\Livewire\Admin\AttendanceManager::class)->name('attendance');
     Route::get('/whatsapp-setup', \App\Livewire\Admin\WhatsAppSetup::class)->name('whatsapp-setup');
     Route::get('/communication-hub', \App\Livewire\Admin\CommunicationHub::class)->name('communication-hub');
+    Route::get('/settings', \App\Livewire\Admin\Settings::class)->name('settings');
     
     Route::middleware(['permission:schedule.config'])->get('/period-config', \App\Livewire\Admin\PeriodConfigManager::class)->name('period-config');
     Route::middleware(['permission:schedule.view'])->get('/view-schedule', \App\Livewire\Admin\ViewSchedule::class)->name('view-schedule');

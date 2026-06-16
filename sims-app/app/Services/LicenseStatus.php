@@ -125,9 +125,9 @@ class LicenseStatus
         // Layer 5: Expiry & Suspension Timeline Check
         if ($status === 'suspended') {
             return [
-                'stage' => self::STAGE_BLOCKED,
+                'stage' => self::STAGE_LOCKED,
                 'reason' => 'suspended',
-                'message' => 'Your subscription has been suspended by the vendor. Please contact support.',
+                'message' => 'Your subscription has been suspended by the vendor. The system is now in READ-ONLY mode.',
             ];
         }
 
@@ -147,10 +147,11 @@ class LicenseStatus
             ];
         }
 
-        $expiry = Carbon::parse($record->expires_at);
+        $expiry = Carbon::parse($record->expires_at)->startOfDay();
+        $today = $now->copy()->startOfDay();
 
-        if ($now->gt($expiry)) {
-            $overdueDays = (int) abs($now->diffInDays($expiry));
+        if ($today->gt($expiry)) {
+            $overdueDays = (int) abs($today->diffInDays($expiry));
 
             if ($overdueDays <= 3) {
                 return [
@@ -176,11 +177,9 @@ class LicenseStatus
             }
         }
 
-        // Active checks (expires_at is in the future)
-        // Use precise signed difference: positive = days remaining
-        // diffInRealMinutes / 60 / 24 gives exact fractional days; floor for stage thresholds
-        $minutesRemaining = (int) $now->diffInMinutes($expiry, false); // negative if past
-        $daysRemaining    = (int) floor($minutesRemaining / 60 / 24);  // signed, floored
+        // Active checks (expires_at is today or in the future)
+        // Use precise signed difference in whole days by comparing startOfDay boundaries
+        $daysRemaining = (int) $today->diffInDays($expiry, false); // always positive here
 
         if ($daysRemaining <= 3) {
             $daysLabel = max(0, $daysRemaining);

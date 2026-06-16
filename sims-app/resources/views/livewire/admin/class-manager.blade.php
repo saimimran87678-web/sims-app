@@ -5,30 +5,7 @@
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
             <h3 class="text-lg font-bold text-gray-800">Manage Classes</h3>
             <div class="flex flex-col md:flex-row gap-3 items-center w-full md:w-auto">
-                @can('classes.view-sessions')
-                <div class="flex items-center gap-2">
-                    <div class="relative">
-                        <select 
-                            wire:model.live="selectedSessionId" 
-                            class="appearance-none pl-3 pr-8 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm w-40"
-                        >
-                            @foreach($academicSessions as $session)
-                                <option value="{{ $session->id }}">
-                                    {{ $session->name }} {{ $session->is_active ? '(Current)' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </div>
-                    </div>
-                    @can('sessions.manage')
-                        <a href="{{ route('admin.academic-sessions') }}" class="p-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200" title="Manage Sessions">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                        </a>
-                    @endcan
-                </div>
-                @endrole
+
 
                 @can('class.create')
                 <div class="flex flex-col gap-1 w-full md:w-auto">
