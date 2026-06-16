@@ -80,7 +80,9 @@ class AttendanceManager extends Component
             ? $d->isSunday()           // Only Sunday is a weekend
             : $d->isWeekend();         // Saturday + Sunday are weekends
 
-        $holiday = Holiday::where('start_date', '<=', $this->date)
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $holiday = Holiday::where('academic_session_id', $activeSessionId)
+            ->where('start_date', '<=', $this->date)
             ->where('end_date', '>=', $this->date)
             ->first();
 
@@ -117,7 +119,10 @@ class AttendanceManager extends Component
 
     public function loadHolidays()
     {
-        $this->holidaysList = Holiday::orderBy('start_date', 'desc')->get();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->holidaysList = Holiday::where('academic_session_id', $activeSessionId)
+            ->orderBy('start_date', 'desc')
+            ->get();
     }
 
     public function saveHoliday()
@@ -132,9 +137,12 @@ class AttendanceManager extends Component
             'holidayReason' => 'nullable|string|max:255',
         ]);
 
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         Holiday::updateOrCreate(
             ['id' => $this->holidayId],
             [
+                'academic_session_id' => $activeSessionId,
                 'start_date' => $this->holidayStart,
                 'end_date' => $this->holidayEnd,
                 'reason' => $this->holidayReason,
@@ -259,7 +267,7 @@ class AttendanceManager extends Component
     {
         if (empty(trim($string))) return [];
         
-        return collect(explode(',', $string))
+        return collect(preg_split('/\s+/', $string))
             ->map(fn($s) => trim($s))
             ->filter(fn($s) => $s !== '')
             ->all();

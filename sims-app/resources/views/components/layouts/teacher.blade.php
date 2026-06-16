@@ -181,7 +181,10 @@
 
                 <div class="flex items-center gap-4">
                     <div class="hidden text-right md:block">
-                        <div class="text-sm font-bold text-gray-800">{{ Auth::user()->name }}</div>
+                        <div class="flex items-center gap-2 justify-end mb-1">
+                            <livewire:session-shifter />
+                            <div class="text-sm font-bold text-gray-800">{{ Auth::user()->name }}</div>
+                        </div>
                         <div class="text-xs px-2 py-0.5 rounded-full inline-block bg-green-100 text-green-700">
                             {{ ucfirst(Auth::user()->role) }}
                         </div>

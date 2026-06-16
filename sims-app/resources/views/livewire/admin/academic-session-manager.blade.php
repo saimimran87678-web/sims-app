@@ -39,7 +39,14 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @foreach($sessions as $session)
                 <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $session->name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {{ $session->name }}
+                        @if($session->shift_type === 'Evening')
+                            <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded bg-purple-100 text-purple-800">Evening Shift</span>
+                        @elseif($session->shift_type === 'Morning')
+                            <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded bg-orange-100 text-orange-800">Morning Shift</span>
+                        @endif
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $session->start_date }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $session->end_date }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -62,8 +69,22 @@
                         @endif
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button wire:click="edit({{ $session->id }})" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
-                        <button wire:click="delete({{ $session->id }})" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure?') || event.stopImmediatePropagation()">Delete</button>
+                        <div class="flex items-center justify-end gap-2">
+                            @if(is_null($session->parent_id) && !$sessions->contains('parent_id', $session->id))
+                                <button wire:click="generateEveningShift({{ $session->id }})" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800 rounded-lg transition-colors border border-purple-200 shadow-sm" title="Generate Evening Shift">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                    Generate Evening
+                                </button>
+                            @endif
+                            <button wire:click="edit({{ $session->id }})" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 rounded-lg transition-colors border border-blue-200 shadow-sm" title="Edit Session">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                Edit
+                            </button>
+                            <button wire:click="delete({{ $session->id }})" onclick="return confirm('Are you sure you want to delete this session? This action cannot be undone.') || event.stopImmediatePropagation()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 rounded-lg transition-colors border border-red-200 shadow-sm" title="Delete Session">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                Delete
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 @endforeach

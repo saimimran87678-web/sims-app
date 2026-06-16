@@ -11,7 +11,26 @@ class AcademicSession extends Model
         'start_date',
         'end_date',
         'is_active',
+        'parent_id',
+        'shift_type',
     ];
+
+    public function parent()
+    {
+        return $this->belongsTo(AcademicSession::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(AcademicSession::class, 'parent_id');
+    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'session_user')
+            ->withPivot('is_active', 'is_primary')
+            ->withTimestamps();
+    }
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -21,8 +40,11 @@ class AcademicSession extends Model
     {
         static::saved(function ($session) {
             if ($session->is_active) {
-                // Deactivate all other sessions (using raw update to avoid recursion)
-                static::where('id', '!=', $session->id)->update(['is_active' => false]);
+                // If it's a parent session, deactivate all other parent sessions and THEIR children.
+                if (is_null($session->parent_id)) {
+                    static::where('id', '!=', $session->id)->whereNull('parent_id')->update(['is_active' => false]);
+                    static::whereNotNull('parent_id')->where('parent_id', '!=', $session->id)->update(['is_active' => false]);
+                }
                 
                 // Update teachers' assigned classes
                 static::updateTeacherClassAssignments($session);
@@ -32,25 +54,32 @@ class AcademicSession extends Model
 
     public static function getActiveSessionId()
     {
-        // For non-admin/non-Super Admin users (e.g. teachers), always scope to the database active session.
-        if (auth()->check() && auth()->user()->role !== 'admin' && !auth()->user()->hasRole('Super Admin')) {
-            $activeSessionId = static::where('is_active', true)->value('id');
-            if (!$activeSessionId) {
-                $activeSessionId = static::orderBy('start_date', 'desc')->value('id');
-            }
-            return $activeSessionId;
+        // 1. If a specific session context is explicitly set for the user (via login or session shifter), use it.
+        if (session()->has('current_session_id')) {
+            return session('current_session_id');
         }
-
-        if (session()->has('selected_academic_session_id')) {
+        
+        // Admin overrides for viewing other sessions
+        if (session()->has('selected_academic_session_id') && auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->hasRole('Super Admin'))) {
             return session('selected_academic_session_id');
         }
 
-        $activeSessionId = static::where('is_active', true)->value('id');
-        if (!$activeSessionId) {
-            $activeSessionId = static::orderBy('start_date', 'desc')->value('id');
+        // 2. Default: Find the currently active parent session (or Morning shift)
+        $activeSession = static::where('is_active', true)
+                               ->where(function($query) {
+                                   $query->whereNull('parent_id')->orWhere('shift_type', 'Morning');
+                               })
+                               ->first();
+
+        if (!$activeSession) {
+            $activeSession = static::where('is_active', true)->first();
         }
 
-        return $activeSessionId;
+        if (!$activeSession) {
+            $activeSession = static::orderBy('start_date', 'desc')->first();
+        }
+
+        return $activeSession ? $activeSession->id : null;
     }
 
     public static function updateTeacherClassAssignments($activeSession)

@@ -6,31 +6,39 @@ use Illuminate\Database\Eloquent\Model;
 
 class Setting extends Model
 {
-    protected $primaryKey = 'key';
-    public $incrementing = false;
-    protected $keyType = 'string';
 
     protected $fillable = [
         'key',
         'value',
+        'academic_session_id',
     ];
 
     /**
-     * Get a setting value by key, with optional default.
+     * Get a setting value by key, scoped to the active academic session.
      */
     public static function get(string $key, $default = null)
     {
-        $setting = self::find($key);
+        $sessionId = \App\Models\AcademicSession::getActiveSessionId();
+        
+        $setting = self::where('key', $key)->where('academic_session_id', $sessionId)->first();
+        
+        // Fallback to global setting if session-specific is not found
+        if (!$setting) {
+            $setting = self::where('key', $key)->whereNull('academic_session_id')->first();
+        }
+
         return $setting ? $setting->value : $default;
     }
 
     /**
-     * Set a setting value.
+     * Set a setting value for the active academic session.
      */
     public static function set(string $key, $value)
     {
+        $sessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         return self::updateOrCreate(
-            ['key' => $key],
+            ['key' => $key, 'academic_session_id' => $sessionId],
             ['value' => $value]
         );
     }

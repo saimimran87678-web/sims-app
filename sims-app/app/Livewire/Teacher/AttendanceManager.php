@@ -149,7 +149,7 @@ class AttendanceManager extends Component
     {
         if (empty(trim($string))) return [];
         
-        return collect(explode(',', $string))
+        return collect(preg_split('/\s+/', $string))
             ->map(fn($s) => trim($s))
             ->filter(fn($s) => $s !== '')
             ->all();

@@ -102,4 +102,111 @@
             <li>• You may need to re-scan the QR code periodically (every ~2 weeks).</li>
         </ul>
     </div>
+
+    {{-- Message Queue Manager --}}
+    <div class="glass-card p-6 rounded-2xl border border-gray-100 mt-6" wire:poll.10s>
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">Message Queue Manager</h3>
+        </div>
+        
+        {{-- Queue Settings --}}
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6">
+            <h4 class="font-semibold text-gray-700 mb-3">Auto-Send Settings</h4>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Service Status</label>
+                    <div class="flex items-center h-10">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" wire:model="autoSendEnabled" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            <span class="ml-3 text-sm font-medium text-gray-700">{{ $autoSendEnabled ? 'Enabled' : 'Disabled' }}</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Start Time</label>
+                    <input type="time" wire:model="autoSendStart" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">End Time</label>
+                    <input type="time" wire:model="autoSendEnd" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Delay (Secs)</label>
+                    <input type="number" min="3" max="60" wire:model="queueDelay" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                </div>
+                <div class="md:col-span-4 flex justify-end">
+                    <button wire:click="saveSettings" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium shadow-sm">
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Queue Table --}}
+        <div class="overflow-x-auto rounded-xl border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message Preview</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @forelse($queue as $msg)
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ $msg->phone }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500">
+                                <span class="truncate block max-w-xs" title="{{ $msg->message }}">{{ \Illuminate\Support\Str::limit($msg->message, 40) }}</span>
+                                @if($msg->error_message)
+                                    <span class="text-xs text-red-500 block mt-1" title="{{ $msg->error_message }}">Error: {{ \Illuminate\Support\Str::limit($msg->error_message, 40) }}</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-center">
+                                @if($msg->status === 'sent')
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">Sent</span>
+                                @elseif($msg->status === 'failed')
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">Failed</span>
+                                @elseif($msg->status === 'paused')
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">Paused</span>
+                                @else
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-200">Pending</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex items-center justify-end gap-2">
+                                    @if(in_array($msg->status, ['pending', 'paused', 'failed']))
+                                        <button wire:click="toggleMessageStatus({{ $msg->id }})" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="{{ $msg->status === 'paused' ? 'Play' : 'Pause' }}">
+                                            @if($msg->status === 'paused')
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            @else
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            @endif
+                                        </button>
+                                        <button wire:click="sendManual({{ $msg->id }})" class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Send Now">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                        </button>
+                                    @endif
+                                    <button wire:click="deleteMessage({{ $msg->id }})" onclick="return confirm('Delete this message?') || event.stopImmediatePropagation()" class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-gray-500">The queue is completely empty.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            @if($queue->hasPages())
+                <div class="px-4 py-3 border-t border-gray-200">
+                    {{ $queue->links() }}
+                </div>
+            @endif
+        </div>
+    </div>
 </div>

@@ -64,7 +64,7 @@
                                 <div class="ml-4">
                                     <div class="text-sm font-medium text-gray-900 flex items-center gap-2">
                                         {{ $user->name }}
-                                        @if(!$user->is_active)
+                                        @if(!($user->session_is_active ?? true))
                                             <span class="px-2 inline-flex text-[10px] leading-4 font-semibold rounded bg-red-100 text-red-800 border border-red-200">
                                                 Disabled
                                             </span>
@@ -110,10 +110,10 @@
             @if($user->id !== auth()->id())
                 <button
                     wire:click="toggleAccountStatus({{ $user->id }})"
-                    class="{{ $user->is_active ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800' }} mr-3 transition-transform hover:scale-110"
-                    title="{{ $user->is_active ? 'Disable Account' : 'Enable Account' }}"
+                    class="{{ ($user->session_is_active ?? true) ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800' }} mr-3 transition-transform hover:scale-110"
+                    title="{{ ($user->session_is_active ?? true) ? 'Disable Account' : 'Enable Account' }}"
                 >
-                    @if($user->is_active)
+                    @if($user->session_is_active ?? true)
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     @else
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>

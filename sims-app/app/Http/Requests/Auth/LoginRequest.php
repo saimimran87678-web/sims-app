@@ -42,27 +42,66 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            // Check if it failed because the account is disabled (but credentials are correct)
-            $user = \App\Models\User::where('email', $this->email)->first();
-            if ($user && !$user->is_active && \Illuminate\Support\Facades\Hash::check($this->password, $user->password)) {
-                RateLimiter::hit($this->throttleKey());
-                throw ValidationException::withMessages([
-                    'email' => __('Your account has been disabled.'),
-                ]);
-            }
-
             RateLimiter::hit($this->throttleKey());
-
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
 
-        if (! Auth::user()->is_active) {
+        $user = Auth::user();
+        
+        // Retrieve system active sessions
+        $activeSessions = \App\Models\AcademicSession::where('is_active', true)->get();
+        
+        // Check user's access via session_user pivot
+        $userSessions = \Illuminate\Support\Facades\DB::table('session_user')
+            ->where('user_id', $user->id)
+            ->whereIn('academic_session_id', $activeSessions->pluck('id'))
+            ->get();
+
+        $activeUserSessions = $userSessions->filter(fn($s) => $s->is_active);
+
+        // If completely blocked and not Super Admin
+        if ($activeUserSessions->isEmpty() && !$user->hasRole('Super Admin')) {
             Auth::logout();
             throw ValidationException::withMessages([
-                'email' => __('Your account has been disabled.'),
+                'email' => __('Your account has been disabled in all active shifts.'),
             ]);
+        }
+
+        if ($user->hasRole('Super Admin') && $activeUserSessions->isEmpty()) {
+            // Super admins can bypass, just pick the first active system session
+            $targetSessionId = $activeSessions->first()->id ?? null;
+            if ($targetSessionId) {
+                session(['current_session_id' => $targetSessionId]);
+            }
+        } elseif ($activeUserSessions->isNotEmpty()) {
+            // Determine Time-Based Default Shift (12:00am - 2:00pm = Morning, 2:01pm - 11:59pm = Evening)
+            $now = now()->format('H:i');
+            $preferredShift = ($now >= '00:00' && $now <= '14:00') ? 'Morning' : 'Evening';
+            
+            // Map the active sessions to their shift types (assuming parent or 'Morning' is Morning)
+            $morningSession = $activeSessions->first(fn($s) => $s->shift_type === 'Morning' || is_null($s->parent_id));
+            $eveningSession = $activeSessions->first(fn($s) => $s->shift_type === 'Evening');
+            
+            $morningId = $morningSession ? $morningSession->id : null;
+            $eveningId = $eveningSession ? $eveningSession->id : null;
+
+            $targetSessionId = null;
+
+            // Attempt to assign the preferred shift
+            if ($preferredShift === 'Morning' && $morningId && $activeUserSessions->contains('academic_session_id', $morningId)) {
+                $targetSessionId = $morningId;
+            } elseif ($preferredShift === 'Evening' && $eveningId && $activeUserSessions->contains('academic_session_id', $eveningId)) {
+                $targetSessionId = $eveningId;
+            }
+
+            // Fallback to whichever shift is available to them
+            if (!$targetSessionId) {
+                $targetSessionId = $activeUserSessions->first()->academic_session_id;
+            }
+
+            session(['current_session_id' => $targetSessionId]);
         }
 
         RateLimiter::clear($this->throttleKey());

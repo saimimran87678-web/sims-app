@@ -10,6 +10,7 @@ class Holiday extends Model
     use HasFactory;
 
     protected $fillable = [
+        'academic_session_id',
         'start_date',
         'end_date',
         'reason',

@@ -105,22 +105,22 @@
 @endif
 
     <!-- ── Sync Popup Modal ─────────────────────────────────────── -->
-    <div id="sims-sync-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:1rem">
-        <div style="background:#1e293b;border:1px solid #334155;border-radius:1rem;padding:2rem;max-width:420px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.5);font-family:system-ui,sans-serif">
+    <div id="sims-sync-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:1rem">
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:1rem;padding:2rem;max-width:420px;width:100%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);font-family:system-ui,sans-serif">
             <div id="sims-modal-loading" style="text-align:center">
-                <div style="width:48px;height:48px;border:4px solid #4f46e5;border-top-color:transparent;border-radius:50%;animation:sims-spin 0.8s linear infinite;margin:0 auto 1rem"></div>
-                <p style="color:#e2e8f0;font-weight:600;margin:0">Verifying with SIMS License Server…</p>
-                <p style="color:#94a3b8;font-size:0.75rem;margin-top:0.5rem">Securely connecting to our servers. Please wait a moment.</p>
+                <div style="width:48px;height:48px;border:4px solid #f3f4f6;border-top-color:#9333ea;border-radius:50%;animation:sims-spin 0.8s linear infinite;margin:0 auto 1rem"></div>
+                <p style="color:#111827;font-weight:700;font-size:1.1rem;margin:0">Verifying License…</p>
+                <p style="color:#6b7280;font-size:0.85rem;margin-top:0.5rem">Securely connecting to Adminova servers. Please wait.</p>
             </div>
             <div id="sims-modal-result" style="display:none">
-                <div style="text-align:center;margin-bottom:1.25rem">
-                    <div id="sims-modal-icon" style="font-size:3rem;margin-bottom:0.5rem"></div>
-                    <p id="sims-modal-title" style="color:#f1f5f9;font-weight:700;font-size:1.1rem;margin:0 0 0.5rem"></p>
-                    <p id="sims-modal-msg" style="color:#94a3b8;font-size:0.8rem;white-space:pre-line;margin:0"></p>
+                <div style="text-align:center;margin-bottom:1.5rem">
+                    <div id="sims-modal-icon" style="font-size:3.5rem;margin-bottom:0.5rem"></div>
+                    <p id="sims-modal-title" style="color:#111827;font-weight:700;font-size:1.25rem;margin:0 0 0.5rem"></p>
+                    <p id="sims-modal-msg" style="color:#4b5563;font-size:0.9rem;white-space:pre-line;margin:0"></p>
                 </div>
                 <div style="display:flex;justify-content:center;gap:0.75rem">
-                    <button id="sims-modal-close" onclick="simsModalClose()" style="padding:0.6rem 1.5rem;background:#334155;color:#e2e8f0;border:none;border-radius:0.5rem;cursor:pointer;font-weight:600;font-size:0.85rem">Close</button>
-                    <button id="sims-modal-reload" onclick="location.reload()" style="display:none;padding:0.6rem 1.5rem;background:#4f46e5;color:#fff;border:none;border-radius:0.5rem;cursor:pointer;font-weight:600;font-size:0.85rem">↺ Reload Page</button>
+                    <button id="sims-modal-close" onclick="simsModalClose()" style="padding:0.6rem 1.5rem;background:#f3f4f6;color:#374151;border:none;border-radius:0.5rem;cursor:pointer;font-weight:600;font-size:0.875rem;transition:background 0.2s" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">Close</button>
+                    <button id="sims-modal-reload" onclick="location.reload()" style="display:none;padding:0.6rem 1.5rem;background:#9333ea;color:#ffffff;border:none;border-radius:0.5rem;cursor:pointer;font-weight:600;font-size:0.875rem;transition:background 0.2s" onmouseover="this.style.background='#7e22ce'" onmouseout="this.style.background='#9333ea'">↺ Reload Page</button>
                 </div>
             </div>
         </div>
@@ -210,7 +210,7 @@
                 document.getElementById('sims-modal-title').textContent = isOffline ? 'No Internet Connection' : 'Server Unreachable';
                 document.getElementById('sims-modal-msg').textContent   = isOffline
                     ? 'Your device is not connected to the internet.\n\nPlease connect to Wi-Fi or mobile data, then tap "Sync Now" again to update your license status.'
-                    : 'Could not reach the SIMS License Server. Please try again in a moment.\n\nIf this problem persists, contact your vendor.';
+                    : 'Could not reach the Adminova License Server. Please try again in a moment.\n\nIf this problem persists, contact your vendor.';
             });
         }
 

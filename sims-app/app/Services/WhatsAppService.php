@@ -204,42 +204,41 @@ class WhatsAppService
             return ['sent' => 0, 'failed' => 0, 'skipped' => $skipped, 'alreadyNotified' => $alreadyNotified];
         }
 
-        $result = $this->sendBulk($messages);
-        
-        // DEBUG: Log bulk send result
-        Log::info('WhatsApp sendBulk result', [
-            'messages_sent' => count($messages),
-            'result' => $result
-        ]);
-        $sentCount = $result['sent'] ?? 0;
-        if ($sentCount > 0) {
-            $now = now();
-            $records = [];
-            
-            // Only record for students that were successfully sent
-            foreach ($studentIdsToNotify as $index => $studentId) {
-                // Check if this specific message was sent successfully
-                if (isset($result['results'][$index]) && $result['results'][$index]['success']) {
-                    $records[] = [
-                        'student_id' => $studentId,
-                        'date' => $date,
-                        'type' => $type,
-                        'sent' => true,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
-                }
-            }
-            
-            if (!empty($records)) {
-                // Use insertOrIgnore to handle any race conditions
-                \Illuminate\Support\Facades\DB::table('whatsapp_notifications')->insertOrIgnore($records);
-            }
+        $now = now();
+        $queueRecords = [];
+        $notificationRecords = [];
+
+        // Insert into whatsapp_queue and whatsapp_notifications
+        foreach ($messages as $index => $msg) {
+            $studentId = $studentIdsToNotify[$index];
+
+            $queueRecords[] = [
+                'phone' => $msg['phone'],
+                'message' => $msg['message'],
+                'status' => 'pending',
+                'student_id' => $studentId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
+            $notificationRecords[] = [
+                'student_id' => $studentId,
+                'date' => $date,
+                'type' => $type,
+                'sent' => true, // We mark true to prevent duplicates, actual send is async
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if (!empty($queueRecords)) {
+            \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert($queueRecords);
+            \Illuminate\Support\Facades\DB::table('whatsapp_notifications')->insertOrIgnore($notificationRecords);
         }
 
         return [
-            'sent' => $result['sent'] ?? 0,
-            'failed' => $result['failed'] ?? 0,
+            'sent' => count($queueRecords), // Return as sent since they are successfully queued
+            'failed' => 0,
             'skipped' => $skipped,
             'alreadyNotified' => $alreadyNotified
         ];

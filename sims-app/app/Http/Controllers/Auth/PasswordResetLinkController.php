@@ -38,10 +38,19 @@ class PasswordResetLinkController extends Controller
         $email = $request->email;
         $user = User::where('email', $email)->first();
 
-        if ($user && !$user->is_active) {
-            throw ValidationException::withMessages([
-                'email' => __('Your account has been disabled.'),
-            ]);
+        if ($user && !$user->hasRole('Super Admin')) {
+            $activeSessions = \App\Models\AcademicSession::where('is_active', true)->pluck('id');
+            $hasActiveSession = \Illuminate\Support\Facades\DB::table('session_user')
+                ->where('user_id', $user->id)
+                ->whereIn('academic_session_id', $activeSessions)
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$hasActiveSession) {
+                throw ValidationException::withMessages([
+                    'email' => __('Your account has been disabled in all active shifts.'),
+                ]);
+            }
         }
 
         $otp = rand(100000, 999999);

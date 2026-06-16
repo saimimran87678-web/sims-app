@@ -67,17 +67,21 @@ class UserManager extends Component
 
     public function render()
     {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         $users = User::query()
             ->leftJoin('classes', 'users.class_id', '=', 'classes.id')
-            ->select('users.*', 'classes.name as class_name')
+            ->leftJoin('session_user', function($join) use ($activeSessionId) {
+                $join->on('users.id', '=', 'session_user.user_id')
+                     ->where('session_user.academic_session_id', '=', $activeSessionId);
+            })
+            ->select('users.*', 'classes.name as class_name', 'session_user.is_active as session_is_active')
             ->where(function($q) {
                 $q->where('users.name', 'like', '%' . $this->search . '%')
                   ->orWhere('users.email', 'like', '%' . $this->search . '%');
             })
             ->orderBy('users.created_at', 'desc')
             ->paginate(10);
-
-        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         // Load subject allocations for each user
         $userIds = $users->pluck('id')->toArray();
@@ -302,10 +306,24 @@ class UserManager extends Component
     private function executeToggleAccountStatus($id)
     {
         $user = User::findOrFail($id);
-        $user->is_active = !$user->is_active;
-        $user->save();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        
+        $sessionUser = \Illuminate\Support\Facades\DB::table('session_user')
+            ->where('user_id', $user->id)
+            ->where('academic_session_id', $activeSessionId)
+            ->first();
 
-        session()->flash('message', 'User account ' . ($user->is_active ? 'enabled' : 'disabled') . ' successfully.');
+        if ($sessionUser) {
+            $newStatus = !$sessionUser->is_active;
+            \Illuminate\Support\Facades\DB::table('session_user')
+                ->where('user_id', $user->id)
+                ->where('academic_session_id', $activeSessionId)
+                ->update(['is_active' => $newStatus]);
+                
+            session()->flash('message', 'User account ' . ($newStatus ? 'enabled' : 'disabled') . ' successfully for the active session.');
+        } else {
+            session()->flash('error', 'User is not part of the active session.');
+        }
     }
 
     public function confirmPinAction($action, $userId = null)

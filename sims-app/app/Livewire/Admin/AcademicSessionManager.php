@@ -33,20 +33,40 @@ class AcademicSessionManager extends Component
             'end_date' => 'required|date|after:start_date',
         ]);
 
-        if ($this->is_active) {
-            AcademicSession::where('id', '!=', $this->sessionId)->update(['is_active' => false]);
-        }
-
         AcademicSession::updateOrCreate(['id' => $this->sessionId], [
             'name' => $this->name,
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
-            'is_active' => $this->is_active
+            'is_active' => $this->is_active,
+            // Only set Morning if creating a new one or if it was null/Regular and we want to enforce it.
+            // Let's just leave it or set it to Morning if we want.
         ]);
 
         session()->flash('message', $this->sessionId ? 'Session Updated Successfully.' : 'Session Created Successfully.');
         $this->closeModal();
         $this->resetInputFields();
+    }
+
+    public function generateEveningShift($parentId)
+    {
+        $parent = AcademicSession::findOrFail($parentId);
+
+        // Ensure parent is Morning
+        if ($parent->shift_type !== 'Morning') {
+            $parent->update(['shift_type' => 'Morning']);
+        }
+
+        // Create the evening shift
+        $evening = AcademicSession::create([
+            'name' => $parent->name . ' (Evening)',
+            'start_date' => $parent->start_date,
+            'end_date' => $parent->end_date,
+            'is_active' => $parent->is_active,
+            'parent_id' => $parent->id,
+            'shift_type' => 'Evening'
+        ]);
+
+        session()->flash('message', 'Evening Shift Generated Successfully!');
     }
 
     public function edit($id)
