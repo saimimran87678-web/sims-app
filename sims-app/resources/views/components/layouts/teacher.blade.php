@@ -139,28 +139,6 @@
 
             </nav>
 
-            <div class="p-4 border-t border-gray-100 flex-shrink-0">
-                <div class="p-4 border border-green-100 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="flex items-center justify-center w-10 h-10 text-lg font-bold text-green-600 bg-white shadow-sm rounded-full">
-                            {{ substr(Auth::user()->name, 0, 1) }}
-                        </div>
-                        <div class="overflow-hidden">
-                            <p class="text-sm font-bold text-gray-800 truncate">{{ Auth::user()->name }}</p>
-                            <p class="text-xs font-medium text-green-600 truncate">{{ Auth::user()->email }}</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Logout Form -->
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="flex items-center justify-center w-full gap-2 px-3 py-2 text-sm font-medium text-red-500 transition-colors bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                            Sign Out
-                        </button>
-                    </form>
-                </div>
-            </div>
         </aside>
 
         <!-- Main Content -->
@@ -179,24 +157,54 @@
                     <!-- Session Selector Removed -->
                 </div>
 
-                <div class="flex items-center gap-4">
-                    <div class="hidden text-right md:block">
-                        <div class="flex items-center gap-2 justify-end mb-1">
-                            <livewire:session-shifter />
-                            <div class="text-sm font-bold text-gray-800">{{ Auth::user()->name }}</div>
-                        </div>
-                        <div class="text-xs px-2 py-0.5 rounded-full inline-block bg-green-100 text-green-700">
-                            {{ ucfirst(Auth::user()->role) }}
-                        </div>
+                <div class="flex items-center gap-3 md:gap-5">
+                    <!-- Session Shifter (Morning/Evening) -->
+                    <div class="hidden md:flex items-center">
+                        <livewire:session-shifter />
                     </div>
 
-                    <div class="hidden pl-4 ml-2 text-right border-l border-gray-200 md:block">
-                        <p class="text-sm font-medium text-gray-600">
-                            {{ now()->format('l, d M Y') }}
-                        </p>
+                    <!-- Date -->
+                    <div class="hidden md:block text-sm font-semibold text-gray-600 border-r border-gray-200 pr-5">
+                        {{ now()->format('l, d M Y') }}
                     </div>
-                    <div class="flex items-center justify-center w-8 h-8 transition-colors bg-gray-100 rounded-full cursor-pointer hover:bg-gray-200 text-gray-500">
+
+                    <!-- Notifications -->
+                    <button class="relative flex items-center justify-center w-9 h-9 transition-colors bg-gray-100 rounded-full hover:bg-gray-200 text-gray-500">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                        <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                    </button>
+
+                    <!-- Profile Dropdown -->
+                    <div x-data="{ profileOpen: false }" class="relative">
+                        <button @click="profileOpen = !profileOpen" @click.away="profileOpen = false" class="flex items-center gap-2 focus:outline-none bg-white p-1 pr-3 rounded-full border border-gray-200 hover:border-green-300 transition-all shadow-sm">
+                            <div class="flex items-center justify-center w-8 h-8 text-sm font-bold text-green-600 bg-green-50 rounded-full">
+                                {{ substr(Auth::user()->name, 0, 1) }}
+                            </div>
+                            <div class="hidden md:block text-left">
+                                <p class="text-sm font-bold text-gray-800 leading-none">{{ Auth::user()->name }}</p>
+                                <p class="text-[10px] font-bold text-green-600 uppercase mt-0.5">{{ Auth::user()->role }}</p>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 hidden md:block" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
+                        <div x-show="profileOpen" style="display: none;" x-transition.opacity class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] py-2 border border-gray-100 z-50">
+                            <div class="px-4 py-2 border-b border-gray-50 md:hidden">
+                                <p class="text-sm font-bold text-gray-800">{{ Auth::user()->name }}</p>
+                                <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
+                            </div>
+                            
+                            <div class="h-px bg-gray-100 my-1"></div>
+                            
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="w-full flex items-center px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                                    Sign Out
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </header>

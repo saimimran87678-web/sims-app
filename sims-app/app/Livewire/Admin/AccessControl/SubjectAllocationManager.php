@@ -97,29 +97,33 @@ class SubjectAllocationManager extends Component
         }
 
         // MERGE: Add inherent Class Teacher Subject if exists
-        $user = User::with('class')->find($this->selectedUserId);
-        if ($user && $user->class_id && $user->class_subject) {
-            $class = Classes::find($user->class_id);
-            // Try to find subject ID by name in that class
-            $subject = Subject::where('class_id', $user->class_id)
-                ->where('name', $user->class_subject)
-                ->first();
+        $user = User::find($this->selectedUserId);
+        if ($user) {
+            $userClassId = $user->getSessionClassId($activeSessionId);
+            $userClassSubject = $user->getSessionClassSubject($activeSessionId);
+            if ($userClassId && $userClassSubject) {
+                $class = Classes::find($userClassId);
+                // Try to find subject ID by name in that class
+                $subject = Subject::where('class_id', $userClassId)
+                    ->where('name', $userClassSubject)
+                    ->first();
 
-            if ($class && $subject) {
-                // Create a synthetic object matching query structure
-                $inherent = new \stdClass();
-                $inherent->id = null; // No allocation ID
-                $inherent->class_id = $class->id;
-                $inherent->subject_id = $subject->id;
-                $inherent->class_name = $class->name;
-                $inherent->subject_name = $user->class_subject;
-                $inherent->is_inherent = true; // Flag for UI
-                
-                $key = $class->id . '-' . $subject->id;
-                $inherent->is_locked = in_array($key, $locks);
-                
-                // Prepend or push
-                $this->allocations->prepend($inherent);
+                if ($class && $subject) {
+                    // Create a synthetic object matching query structure
+                    $inherent = new \stdClass();
+                    $inherent->id = null; // No allocation ID
+                    $inherent->class_id = $class->id;
+                    $inherent->subject_id = $subject->id;
+                    $inherent->class_name = $class->name;
+                    $inherent->subject_name = $userClassSubject;
+                    $inherent->is_inherent = true; // Flag for UI
+                    
+                    $key = $class->id . '-' . $subject->id;
+                    $inherent->is_locked = in_array($key, $locks);
+                    
+                    // Prepend or push
+                    $this->allocations->prepend($inherent);
+                }
             }
         }
     }

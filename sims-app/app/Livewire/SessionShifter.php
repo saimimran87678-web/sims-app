@@ -18,19 +18,19 @@ class SessionShifter extends Component
         $user = auth()->user();
         if (!$user) return;
 
-        // Get all active sessions in the database
-        $systemActiveSessions = AcademicSession::where('is_active', true)->get();
+        // Get ALL sessions so users can access historical data
+        $systemSessions = AcademicSession::orderBy('start_date', 'desc')->get();
 
-        if ($user->hasRole('Super Admin')) {
-            $this->activeSessions = $systemActiveSessions;
+        if ($user->hasRole('Super Admin') || $user->role === 'admin') {
+            $this->activeSessions = $systemSessions;
         } else {
-            // Only get sessions the user is active in
+            // For teachers/staff, restrict access to only globally active sessions they are actively assigned to (not disabled)
             $userSessionIds = DB::table('session_user')
                 ->where('user_id', $user->id)
                 ->where('is_active', true)
                 ->pluck('academic_session_id');
 
-            $this->activeSessions = $systemActiveSessions->whereIn('id', $userSessionIds);
+            $this->activeSessions = $systemSessions->where('is_active', true)->whereIn('id', $userSessionIds);
         }
     }
 

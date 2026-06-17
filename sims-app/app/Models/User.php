@@ -24,8 +24,6 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'class_id',
-        'class_subject',
     ];
 
     /**
@@ -62,48 +60,31 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the class ID attribute, dynamically mapping it to the active session.
+     * Get the teacher's class_id from the session_user pivot for the given (or active) session.
      */
-    public function getClassIdAttribute($value)
+    public function getSessionClassId($sessionId = null)
     {
-        if (!$value) {
-            return null;
-        }
+        $sessionId = $sessionId ?? AcademicSession::getActiveSessionId();
+        if (!$sessionId) return null;
 
-        try {
-            // Fetch active session ID
-            $activeSessionId = AcademicSession::getActiveSessionId();
+        return \Illuminate\Support\Facades\DB::table('session_user')
+            ->where('user_id', $this->id)
+            ->where('academic_session_id', $sessionId)
+            ->value('class_id');
+    }
 
-            if (!$activeSessionId) {
-                return $value;
-            }
+    /**
+     * Get the teacher's class_subject from the session_user pivot for the given (or active) session.
+     */
+    public function getSessionClassSubject($sessionId = null)
+    {
+        $sessionId = $sessionId ?? AcademicSession::getActiveSessionId();
+        if (!$sessionId) return null;
 
-            // Check if the current class_id belongs to the active session
-            $currentClass = \Illuminate\Support\Facades\DB::table('classes')
-                ->where('id', $value)
-                ->first();
-
-            if ($currentClass && $currentClass->academic_session_id == $activeSessionId) {
-                return $value;
-            }
-
-            // If it belongs to a different session, find the class with the same name in the active session
-            if ($currentClass) {
-                $matchingClassId = \Illuminate\Support\Facades\DB::table('classes')
-                    ->where('academic_session_id', $activeSessionId)
-                    ->where('name', $currentClass->name)
-                    ->value('id');
-
-                if ($matchingClassId) {
-                    return $matchingClassId;
-                }
-            }
-        } catch (\Throwable $e) {
-            // Table might not exist yet during migrations/seeding
-            return $value;
-        }
-
-        return null;
+        return \Illuminate\Support\Facades\DB::table('session_user')
+            ->where('user_id', $this->id)
+            ->where('academic_session_id', $sessionId)
+            ->value('class_subject');
     }
 
     public function academicSession()

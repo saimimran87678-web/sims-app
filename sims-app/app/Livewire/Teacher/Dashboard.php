@@ -28,13 +28,12 @@ class Dashboard extends Component
         
         // Class Teacher Primary Subject
         // If user is class teacher AND has a class_subject defined
+        $userClassId = $user->getSessionClassId($activeSessionId);
+        $userClassSubject = $user->getSessionClassSubject($activeSessionId);
+
         $hasInherentSubject = false;
-        if ($user->class_id && !empty($user->class_subject)) {
+        if ($userClassId && !empty($userClassSubject)) {
              $hasInherentSubject = true;
-             
-             // Check if this specific combo (class_id + subject_name) is already in manual allocations to detect overlap
-             // We need to resolve subject name to ID for accurate checking, or just assume separate for now.
-             // Usually, system prevents duplicate assignment. We'll add 1.
         }
         
         $totalSubjects = $allocatedCount + ($hasInherentSubject ? 1 : 0);
@@ -44,8 +43,8 @@ class Dashboard extends Component
         // Get all unique class IDs the teacher interacts with
         $classIds = $manualAllocations->pluck('class_id')->toArray();
         
-        if ($user->class_id) {
-            $classIds[] = $user->class_id;
+        if ($userClassId) {
+            $classIds[] = $userClassId;
         }
         $classIds = array_unique($classIds);
 

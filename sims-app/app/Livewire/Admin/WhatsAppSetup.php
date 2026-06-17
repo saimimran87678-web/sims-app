@@ -17,6 +17,7 @@ class WhatsAppSetup extends Component
     public $autoSendEnabled;
     public $autoSendStart;
     public $autoSendEnd;
+    public $forceSendNow;
 
     public function mount()
     {
@@ -27,6 +28,7 @@ class WhatsAppSetup extends Component
         $this->autoSendEnabled = \App\Models\Setting::get('whatsapp_auto_send_enabled', 'false') === 'true';
         $this->autoSendStart = \App\Models\Setting::get('whatsapp_auto_send_start', '09:00');
         $this->autoSendEnd = \App\Models\Setting::get('whatsapp_auto_send_end', '22:00');
+        $this->forceSendNow = \App\Models\Setting::get('whatsapp_force_send_now', 'false') === 'true';
 
         $this->refreshStatus();
     }
@@ -69,6 +71,7 @@ class WhatsAppSetup extends Component
         \App\Models\Setting::set('whatsapp_auto_send_enabled', $this->autoSendEnabled ? 'true' : 'false');
         \App\Models\Setting::set('whatsapp_auto_send_start', $this->autoSendStart);
         \App\Models\Setting::set('whatsapp_auto_send_end', $this->autoSendEnd);
+        \App\Models\Setting::set('whatsapp_force_send_now', $this->forceSendNow ? 'true' : 'false');
         session()->flash('message', 'Queue settings saved successfully.');
     }
 
@@ -102,8 +105,14 @@ class WhatsAppSetup extends Component
 
     public function render()
     {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
         $queue = \Illuminate\Support\Facades\DB::table('whatsapp_queue')
-            ->orderBy('id', 'desc')
+            ->join('students', 'whatsapp_queue.student_id', '=', 'students.id')
+            ->join('classes', 'students.class_id', '=', 'classes.id')
+            ->where('classes.academic_session_id', $activeSessionId)
+            ->select('whatsapp_queue.*')
+            ->orderBy('whatsapp_queue.id', 'desc')
             ->paginate(10);
 
         return view('livewire.admin.whatsapp-setup', [

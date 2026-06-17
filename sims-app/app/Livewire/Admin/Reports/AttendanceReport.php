@@ -67,8 +67,9 @@ class AttendanceReport extends Component
             // If weekend_mode = sat_sun → exclude any Saturday records (safety net if data exists from a mode change).
             // If weekend_mode = sun_only → Saturday is a valid working day, count it.
             $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
-            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode) {
+            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode, $activeSessionId) {
                 $d = \Carbon\Carbon::parse($date);
                 $isWeekend = $weekendMode === 'sun_only'
                     ? $d->isSunday()
@@ -76,6 +77,7 @@ class AttendanceReport extends Component
 
                 $isHoliday = \App\Models\Holiday::where('start_date', '<=', $date)
                     ->where('end_date', '>=', $date)
+                    ->where('academic_session_id', $activeSessionId)
                     ->exists();
 
                 return !$isWeekend && !$isHoliday;

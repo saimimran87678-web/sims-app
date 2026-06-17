@@ -29,7 +29,8 @@ class AttendanceManager extends Component
     public function mount()
     {
         $this->date = Carbon::now()->format('Y-m-d');
-        $this->classId = Auth::user()->class_id;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->classId = Auth::user()->getSessionClassId($activeSessionId);
 
         if (!$this->classId) {
             session()->flash('error', 'You are not assigned to any class.');
@@ -63,8 +64,10 @@ class AttendanceManager extends Component
             ? $d->isSunday()           // Only Sunday is a weekend
             : $d->isWeekend();         // Saturday + Sunday are weekends
 
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $holiday = Holiday::where('start_date', '<=', $this->date)
             ->where('end_date', '>=', $this->date)
+            ->where('academic_session_id', $activeSessionId)
             ->first();
 
         if ($holiday) {

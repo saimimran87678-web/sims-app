@@ -12,7 +12,7 @@ class AcademicSessionScopingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_class_id_resolves_to_active_session_class_by_name(): void
+    public function test_user_class_id_resolves_via_session_user_pivot(): void
     {
         // 1. Create Academic Sessions
         $session1 = AcademicSession::create([
@@ -36,33 +36,37 @@ class AcademicSessionScopingTest extends TestCase
             'academic_session_id' => $session1->id,
         ]);
 
-        // Disable global scope temporarily or bypass to create class in inactive session if needed,
-        // but wait, classes table insert doesn't filter, only queries filter.
-        // Let's create the class for session 2.
         $classInSession2 = Classes::create([
             'name' => 'Class 9',
             'numeric_value' => 9,
             'academic_session_id' => $session2->id,
         ]);
 
-        // 3. Create a teacher and assign to the class from the old session (session 1)
+        // 3. Create a teacher
         $teacher = User::factory()->create([
             'role' => 'teacher',
-            'class_id' => $classInSession1->id,
         ]);
 
-        // 4. Verify that calling class_id returns the class in the active session (session 2)
-        $this->assertEquals($classInSession2->id, $teacher->class_id);
+        // Attach to sessions via pivot with class assignments
+        $teacher->academicSessions()->attach($session1->id, [
+            'class_id' => $classInSession1->id,
+            'class_subject' => 'Math',
+            'is_active' => true,
+        ]);
 
-        // 5. Switch active session back to session 1
-        $session2->update(['is_active' => false]);
-        $session1->update(['is_active' => true]);
+        $teacher->academicSessions()->attach($session2->id, [
+            'class_id' => $classInSession2->id,
+            'class_subject' => 'English',
+            'is_active' => true,
+        ]);
 
-        // Clear user instance cache / refresh to verify it updates
-        $teacher = $teacher->fresh();
+        // 4. Verify that getSessionClassId returns the correct class in each session
+        $this->assertEquals($classInSession1->id, $teacher->getSessionClassId($session1->id));
+        $this->assertEquals($classInSession2->id, $teacher->getSessionClassId($session2->id));
 
-        // 6. Verify that class_id now returns class in session 1
-        $this->assertEquals($classInSession1->id, $teacher->class_id);
+        // 5. Verify that getSessionClassSubject returns the correct subject in each session
+        $this->assertEquals('Math', $teacher->getSessionClassSubject($session1->id));
+        $this->assertEquals('English', $teacher->getSessionClassSubject($session2->id));
     }
 
     public function test_non_admin_user_ignores_session_store_selected_academic_session(): void

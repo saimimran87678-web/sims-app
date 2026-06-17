@@ -65,6 +65,10 @@ class ResultReport extends Component
     public function mount()
     {
         $user = Auth::user();
+        $this->sessions = AcademicSession::orderBy('start_date', 'desc')->get();
+        $this->selectedSession = AcademicSession::getActiveSessionId();
+
+        $userClassId = $user->getSessionClassId($this->selectedSession);
 
         // 1. View All / Restricted Permission
         if ($user->can('reports.view') || $user->can('reports.view-all-classes')) {
@@ -75,35 +79,37 @@ class ResultReport extends Component
                 ->toArray();
            
            if (!empty($restrictedIds)) {
-               $this->classes = Classes::whereIn('id', $restrictedIds)->orderBy('numeric_value')->get();
+               $this->classes = Classes::whereIn('id', $restrictedIds)
+                   ->where('academic_session_id', $this->selectedSession)
+                   ->orderBy('numeric_value')
+                   ->get();
            } elseif ($user->can('reports.view-all-classes')) {
-               $this->classes = Classes::orderBy('numeric_value')->get();
+               $this->classes = Classes::where('academic_session_id', $this->selectedSession)
+                   ->orderBy('numeric_value')
+                   ->get();
            } else {
                // Fallback if just 'reports.view' but no restricted list (Own class only)
-                $this->classes = $user->class_id ? Classes::where('id', $user->class_id)->get() : collect();
+                $this->classes = $userClassId ? Classes::where('id', $userClassId)->get() : collect();
            }
         } 
         // 2. Class Teacher Check: Only own class
-        elseif ($user->class_id) {
-            $this->classes = Classes::where('id', $user->class_id)->get();
+        elseif ($userClassId) {
+            $this->classes = Classes::where('id', $userClassId)->get();
         } 
         // 3. Fallback: No access
         else {
             $this->classes = collect();
         }
 
-        $this->sessions = AcademicSession::orderBy('start_date', 'desc')->get();
-        $this->selectedSession = AcademicSession::getActiveSessionId();
-
         // Set Default Selection
         if ($this->classes->isNotEmpty()) {
-             if ($this->selectedClass) {
-                 // Already set (e.g. wire:model persistence or passed in)
-             } elseif ($user->class_id && $this->classes->where('id', $user->class_id)->isNotEmpty()) {
-                $this->selectedClass = $user->class_id;
-            } else {
-                $this->selectedClass = $this->classes->first()->id;
-            }
+              if ($this->selectedClass) {
+                  // Already set (e.g. wire:model persistence or passed in)
+              } elseif ($userClassId && $this->classes->where('id', $userClassId)->isNotEmpty()) {
+                 $this->selectedClass = $userClassId;
+             } else {
+                 $this->selectedClass = $this->classes->first()->id;
+             }
         }
         
         $this->updatedSelectedClass();

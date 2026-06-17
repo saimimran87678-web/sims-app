@@ -46,6 +46,24 @@ class UpdateAcademicSession extends Command
             ]
         );
 
+        if ($session->wasRecentlyCreated) {
+            $users = \App\Models\User::pluck('id');
+            $pivotData = [];
+            foreach ($users as $userId) {
+                $pivotData[] = [
+                    'user_id' => $userId,
+                    'academic_session_id' => $session->id,
+                    'is_active' => true,
+                    'is_primary' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            if (!empty($pivotData)) {
+                \Illuminate\Support\Facades\DB::table('session_user')->insert($pivotData);
+            }
+        }
+
         $this->info("Academic Session '{$sessionName}' is now ACTIVE.");
     }
 }

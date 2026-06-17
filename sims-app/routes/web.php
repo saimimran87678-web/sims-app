@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function () {
         $sessionId = $request->input('academic_session_id');
         if (\App\Models\AcademicSession::where('id', $sessionId)->exists()) {
             session(['selected_academic_session_id' => $sessionId]);
+            // Clear current_session_id to ensure the admin override takes precedence
+            session()->forget('current_session_id');
         }
         return redirect()->back();
     })->name('change-session');
@@ -128,5 +130,7 @@ Route::post('/license-blocked/activate', [\App\Http\Controllers\LicenseControlle
 
 Route::post('/license/sync', [\App\Http\Controllers\LicenseController::class, 'sync'])
     ->name('license.sync');
+
+
 
 require __DIR__.'/auth.php';

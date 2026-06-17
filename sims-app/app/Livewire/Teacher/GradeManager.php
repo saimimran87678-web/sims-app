@@ -78,12 +78,13 @@ class GradeManager extends Component
         $classIds = [];
 
         // Class Teacher's own class
-        if ($user->class_id) {
-            $classIds[] = $user->class_id;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $userClassId = $user->getSessionClassId($activeSessionId);
+        if ($userClassId) {
+            $classIds[] = $userClassId;
         }
 
         // Subject allocations (filtered by active session)
-        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $allocatedClassIds = DB::table('subject_allocations')
             ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
             ->where('subject_allocations.user_id', $user->id)
@@ -132,8 +133,10 @@ class GradeManager extends Component
 
         // Auto-select first class, prioritizing class teacher's own class
         if ($this->availableClasses->isNotEmpty()) {
-            if ($user->class_id && in_array($user->class_id, $validClassIds)) {
-                $this->selectedClassId = $user->class_id;
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $userClassId = $user->getSessionClassId($activeSessionId);
+            if ($userClassId && in_array($userClassId, $validClassIds)) {
+                $this->selectedClassId = $userClassId;
             } else {
                 $this->selectedClassId = $this->availableClasses->first()->id;
             }
@@ -168,8 +171,11 @@ class GradeManager extends Component
         $allowedSubjectIds = [];
         
         // 1. If class teacher for this class, add their class_subject
-        if ($user->class_id == $this->selectedClassId && $user->class_subject) {
-            $allowedSubjectNames[] = $user->class_subject;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $userClassId = $user->getSessionClassId($activeSessionId);
+        $userClassSubject = $user->getSessionClassSubject($activeSessionId);
+        if ($userClassId == $this->selectedClassId && $userClassSubject) {
+            $allowedSubjectNames[] = $userClassSubject;
         }
         
         // 2. Also add subjects from subject_allocations (works for both class teacher and subject teacher)
@@ -400,9 +406,11 @@ class GradeManager extends Component
     public function render()
     {
         $user = Auth::user();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $userClassId = $user->getSessionClassId($activeSessionId);
         
         return view('livewire.teacher.grade-manager', [
-            'isClassTeacher' => $this->selectedClassId && $user->class_id == $this->selectedClassId,
+            'isClassTeacher' => $this->selectedClassId && $userClassId == $this->selectedClassId,
         ])->layout('components.layouts.teacher', ['title' => 'Gradebook']);
     }
 }

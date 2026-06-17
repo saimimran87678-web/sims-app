@@ -64,7 +64,7 @@
                                 <div class="ml-4">
                                     <div class="text-sm font-medium text-gray-900 flex items-center gap-2">
                                         {{ $user->name }}
-                                        @if(!($user->session_is_active ?? true))
+                                        @if(!($user->session_is_active ?? false))
                                             <span class="px-2 inline-flex text-[10px] leading-4 font-semibold rounded bg-red-100 text-red-800 border border-red-200">
                                                 Disabled
                                             </span>
@@ -82,12 +82,12 @@
                             </span>
                         </td>
                          <td class="px-6 py-4 text-sm">
-                            @if($user->class_id)
+                            @if($user->session_class_id)
                                 <div class="mb-1">
                                     <span class="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs font-semibold">Class Teacher</span>
-                                    <span class="font-medium text-gray-700 ml-1">{{ $user->class_name ?? 'Class '.$user->class_id }}</span>
-                                    @if($user->class_subject)
-                                        <span class="text-gray-500 text-xs ml-1">({{ $user->class_subject }})</span>
+                                    <span class="font-medium text-gray-700 ml-1">{{ $user->class_name ?? 'Class '.$user->session_class_id }}</span>
+                                    @if($user->session_class_subject)
+                                        <span class="text-gray-500 text-xs ml-1">({{ $user->session_class_subject }})</span>
                                     @endif
                                 </div>
                             @endif
@@ -110,10 +110,10 @@
             @if($user->id !== auth()->id())
                 <button
                     wire:click="toggleAccountStatus({{ $user->id }})"
-                    class="{{ ($user->session_is_active ?? true) ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800' }} mr-3 transition-transform hover:scale-110"
-                    title="{{ ($user->session_is_active ?? true) ? 'Disable Account' : 'Enable Account' }}"
+                    class="{{ ($user->session_is_active ?? false) ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800' }} mr-3 transition-transform hover:scale-110"
+                    title="{{ ($user->session_is_active ?? false) ? 'Disable Account' : 'Enable Account' }}"
                 >
-                    @if($user->session_is_active ?? true)
+                    @if($user->session_is_active ?? false)
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     @else
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>

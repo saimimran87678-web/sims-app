@@ -4,6 +4,12 @@
             <h1 class="text-2xl font-bold text-gray-800">WhatsApp Setup</h1>
             <p class="text-gray-500">Connect WhatsApp for automated parent notifications</p>
         </div>
+        <a href="#queue-manager" class="px-4 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-xl transition-colors font-medium inline-flex items-center gap-2 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            Check Message Queue
+        </a>
     </div>
 
     {{-- Status Card --}}
@@ -104,7 +110,7 @@
     </div>
 
     {{-- Message Queue Manager --}}
-    <div class="glass-card p-6 rounded-2xl border border-gray-100 mt-6" wire:poll.10s>
+    <div id="queue-manager" class="glass-card p-6 rounded-2xl border border-gray-100 mt-6 scroll-mt-6" wire:poll.10s>
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-bold text-gray-800">Message Queue Manager</h3>
         </div>
@@ -112,14 +118,14 @@
         {{-- Queue Settings --}}
         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6">
             <h4 class="font-semibold text-gray-700 mb-3">Auto-Send Settings</h4>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Service Status</label>
-                    <div class="flex items-center h-10">
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" wire:model="autoSendEnabled" class="sr-only peer">
+                    <div class="flex items-center h-10" x-data="{ enabled: @entangle('autoSendEnabled') }">
+                        <label class="relative inline-flex items-center cursor-pointer" title="Enable to start processing messages">
+                            <input type="checkbox" x-model="enabled" class="sr-only peer">
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                            <span class="ml-3 text-sm font-medium text-gray-700">{{ $autoSendEnabled ? 'Enabled' : 'Disabled' }}</span>
+                            <span class="ml-3 text-sm font-medium text-gray-700" x-text="enabled ? 'Enabled' : 'Disabled'">{{ $autoSendEnabled ? 'Enabled' : 'Disabled' }}</span>
                         </label>
                     </div>
                 </div>
@@ -135,9 +141,32 @@
                     <label class="block text-sm font-medium text-gray-600 mb-1">Delay (Secs)</label>
                     <input type="number" min="3" max="60" wire:model="queueDelay" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
                 </div>
-                <div class="md:col-span-4 flex justify-end">
-                    <button wire:click="saveSettings" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium shadow-sm">
-                        Save Settings
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1 text-red-600">Force Send Now</label>
+                    <div class="flex items-center h-10" x-data="{ force: @entangle('forceSendNow') }">
+                        <label class="relative inline-flex items-center cursor-pointer" title="Bypass Start/End time and send immediately">
+                            <input type="checkbox" x-model="force" class="sr-only peer">
+                            <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-red-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                            <span class="ml-3 text-sm font-bold text-red-600" x-text="force ? 'Active' : 'Off'">{{ $forceSendNow ? 'Active' : 'Off' }}</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="md:col-span-5 flex justify-end items-center gap-3">
+                    @if (session()->has('message'))
+                        <span class="text-sm font-bold text-green-600 flex items-center gap-1" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition.duration.500ms>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            {{ session('message') }}
+                        </span>
+                    @endif
+                    <button wire:click="saveSettings" class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-bold shadow-sm inline-flex items-center gap-2">
+                        <span wire:loading.remove wire:target="saveSettings">Save Settings</span>
+                        <span wire:loading wire:target="saveSettings" class="inline-flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Saving...
+                        </span>
                     </button>
                 </div>
             </div>

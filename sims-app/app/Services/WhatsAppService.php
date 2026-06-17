@@ -34,7 +34,7 @@ class WhatsAppService
             return ['ready' => false, 'hasQr' => false, 'error' => 'Service unavailable'];
         } catch (\Exception $e) {
             Log::error('WhatsApp Status Check Failed: ' . $e->getMessage());
-            return ['ready' => false, 'hasQr' => false, 'error' => $e->getMessage()];
+            return ['ready' => false, 'hasQr' => false, 'error' => 'WhatsApp service server is offline. Please make sure the service is running.'];
         }
     }
 
@@ -55,7 +55,7 @@ class WhatsAppService
             return ['success' => false, 'message' => 'Failed to get QR code'];
         } catch (\Exception $e) {
             Log::error('WhatsApp QR Fetch Failed: ' . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage()];
+            return ['success' => false, 'message' => 'WhatsApp service server is offline. Could not fetch QR code.'];
         }
     }
 
@@ -89,7 +89,7 @@ class WhatsAppService
             return $response->json();
         } catch (\Exception $e) {
             Log::error('WhatsApp Send Failed: ' . $e->getMessage());
-            return ['success' => false, 'error' => $e->getMessage()];
+            return ['success' => false, 'error' => 'WhatsApp service server is offline. Message kept in queue.'];
         }
     }
 
@@ -118,7 +118,7 @@ class WhatsAppService
             return $response->json();
         } catch (\Exception $e) {
             Log::error('WhatsApp Bulk Send Failed: ' . $e->getMessage());
-            return ['success' => false, 'error' => $e->getMessage()];
+            return ['success' => false, 'error' => 'WhatsApp service server is offline. Messages kept in queue.'];
         }
     }
 
@@ -147,7 +147,7 @@ class WhatsAppService
             return $response->json();
         } catch (\Exception $e) {
             Log::error('WhatsApp Media Send Failed: ' . $e->getMessage());
-            return ['success' => false, 'error' => $e->getMessage()];
+            return ['success' => false, 'error' => 'WhatsApp service server is offline. Message kept in queue.'];
         }
     }
 
@@ -255,7 +255,7 @@ class WhatsAppService
             return $response->json();
         } catch (\Exception $e) {
             Log::error('WhatsApp Logout Failed: ' . $e->getMessage());
-            return ['success' => false, 'error' => $e->getMessage()];
+            return ['success' => false, 'error' => 'WhatsApp service server is offline.'];
         }
     }
 }

@@ -33,14 +33,29 @@ class AcademicSessionManager extends Component
             'end_date' => 'required|date|after:start_date',
         ]);
 
-        AcademicSession::updateOrCreate(['id' => $this->sessionId], [
+        $session = AcademicSession::updateOrCreate(['id' => $this->sessionId], [
             'name' => $this->name,
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
             'is_active' => $this->is_active,
-            // Only set Morning if creating a new one or if it was null/Regular and we want to enforce it.
-            // Let's just leave it or set it to Morning if we want.
         ]);
+
+        // If this is a new session, auto-attach all users
+        if (!$this->sessionId) {
+            $users = \App\Models\User::pluck('id');
+            $pivotData = [];
+            foreach ($users as $userId) {
+                $pivotData[] = [
+                    'user_id' => $userId,
+                    'academic_session_id' => $session->id,
+                    'is_active' => true,
+                    'is_primary' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            \Illuminate\Support\Facades\DB::table('session_user')->insert($pivotData);
+        }
 
         session()->flash('message', $this->sessionId ? 'Session Updated Successfully.' : 'Session Created Successfully.');
         $this->closeModal();
@@ -65,6 +80,21 @@ class AcademicSessionManager extends Component
             'parent_id' => $parent->id,
             'shift_type' => 'Evening'
         ]);
+
+        // Auto-attach all users to the evening shift as well
+        $users = \App\Models\User::pluck('id');
+        $pivotData = [];
+        foreach ($users as $userId) {
+            $pivotData[] = [
+                'user_id' => $userId,
+                'academic_session_id' => $evening->id,
+                'is_active' => true,
+                'is_primary' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        \Illuminate\Support\Facades\DB::table('session_user')->insert($pivotData);
 
         session()->flash('message', 'Evening Shift Generated Successfully!');
     }

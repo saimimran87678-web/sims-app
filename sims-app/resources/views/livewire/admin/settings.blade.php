@@ -1,8 +1,13 @@
 <div class="space-y-6 max-w-2xl mx-auto">
-    <div class="flex justify-between items-center">
+    <div class="flex items-center gap-4">
+        <a href="{{ route('admin.dashboard') }}" class="p-2 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:text-blue-600 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+        </a>
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">System Settings</h1>
-            <p class="text-gray-500">Configure global configurations for your Adminova instance</p>
+            <h1 class="text-2xl font-bold text-gray-800 tracking-tight">System Settings</h1>
+            <p class="text-sm font-medium text-gray-500 mt-0.5">Configure global configurations for your Adminova instance</p>
         </div>
     </div>
 

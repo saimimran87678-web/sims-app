@@ -45,7 +45,8 @@ class CommunicationHub extends Component
         
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
-        $classTeacherIds = $user->class_id ? collect([$user->class_id]) : collect();
+        $userClassId = $user->getSessionClassId($activeSessionId);
+        $classTeacherIds = $userClassId ? collect([$userClassId]) : collect();
 
         $subjectClassIds = DB::table('subject_allocations')
             ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')

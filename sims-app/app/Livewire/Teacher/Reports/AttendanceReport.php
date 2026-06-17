@@ -32,6 +32,8 @@ class AttendanceReport extends Component
     public function loadClasses()
     {
         $user = Auth::user();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $userClassId = $user->getSessionClassId($activeSessionId);
         
         // 1. View All Classes Permission
         if ($user->can('reports.view-all-classes') || $user->can('reports.view')) {
@@ -42,25 +44,30 @@ class AttendanceReport extends Component
                 ->toArray();
            
            if (!empty($restrictedIds)) {
-               $this->classes = Classes::whereIn('id', $restrictedIds)->orderBy('numeric_value')->get();
+               $this->classes = Classes::whereIn('id', $restrictedIds)
+                   ->where('academic_session_id', $activeSessionId)
+                   ->orderBy('numeric_value')
+                   ->get();
            } elseif ($user->can('reports.view-all-classes')) {
-               $this->classes = Classes::orderBy('numeric_value')->get();
+               $this->classes = Classes::where('academic_session_id', $activeSessionId)
+                   ->orderBy('numeric_value')
+                   ->get();
            } else {
                // Fallback for simple 'reports.view' if no explicit allow-all (behaves like own class only unless otherwise specified)
-               $this->classes = $user->class_id ? Classes::where('id', $user->class_id)->get() : collect();
+               $this->classes = $userClassId ? Classes::where('id', $userClassId)->get() : collect();
            }
         } 
         // 2. Default: Own Class
-        elseif ($user->class_id) {
-            $this->classes = Classes::where('id', $user->class_id)->get();
+        elseif ($userClassId) {
+            $this->classes = Classes::where('id', $userClassId)->get();
         } else {
             $this->classes = collect();
         }
 
         if ($this->classes->isNotEmpty()) {
             // Default to own class if available in the list, otherwise first
-            if ($user->class_id && $this->classes->where('id', $user->class_id)->isNotEmpty()) {
-                $this->selectedClass = $user->class_id;
+            if ($userClassId && $this->classes->where('id', $userClassId)->isNotEmpty()) {
+                $this->selectedClass = $userClassId;
             } else {
                 $this->selectedClass = $this->classes->first()->id;
             }
@@ -122,8 +129,9 @@ class AttendanceReport extends Component
             // If weekend_mode = sat_sun → exclude Saturdays (safety net for mode changes).
             // If weekend_mode = sun_only → Saturday is a valid working day, include it.
             $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
-            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode) {
+            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode, $activeSessionId) {
                 $d = \Carbon\Carbon::parse($date);
                 $isWeekend = $weekendMode === 'sun_only'
                     ? $d->isSunday()
@@ -131,6 +139,7 @@ class AttendanceReport extends Component
 
                 $isHoliday = \App\Models\Holiday::where('start_date', '<=', $date)
                     ->where('end_date', '>=', $date)
+                    ->where('academic_session_id', $activeSessionId)
                     ->exists();
 
                 return !$isWeekend && !$isHoliday;

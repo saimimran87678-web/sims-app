@@ -65,17 +65,25 @@ class UserManager extends Component
         $this->resetPage();
     }
 
+    public function updatedClassId()
+    {
+        $this->class_subject = '';
+    }
+
     public function render()
     {
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         $users = User::query()
-            ->leftJoin('classes', 'users.class_id', '=', 'classes.id')
             ->leftJoin('session_user', function($join) use ($activeSessionId) {
                 $join->on('users.id', '=', 'session_user.user_id')
                      ->where('session_user.academic_session_id', '=', $activeSessionId);
             })
-            ->select('users.*', 'classes.name as class_name', 'session_user.is_active as session_is_active')
+            ->leftJoin('classes', function($join) use ($activeSessionId) {
+                $join->on('session_user.class_id', '=', 'classes.id')
+                     ->where('classes.academic_session_id', '=', $activeSessionId);
+            })
+            ->select('users.*', 'classes.name as class_name', 'session_user.is_active as session_is_active', 'session_user.class_id as session_class_id', 'session_user.class_subject as session_class_subject')
             ->where(function($q) {
                 $q->where('users.name', 'like', '%' . $this->search . '%')
                   ->orWhere('users.email', 'like', '%' . $this->search . '%');
@@ -126,11 +134,15 @@ class UserManager extends Component
         $this->name = $user->name;
         $this->email = $user->email;
         $this->role = $user->role;
-        $this->class_id = $user->class_id;
-        $this->class_subject = $user->class_subject;
-        $this->password = ''; 
-
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionUser = DB::table('session_user')
+            ->where('user_id', $user->id)
+            ->where('academic_session_id', $activeSessionId)
+            ->first();
+
+        $this->class_id = $sessionUser ? $sessionUser->class_id : null;
+        $this->class_subject = $sessionUser ? $sessionUser->class_subject : null;
+        $this->password = ''; 
 
         // Load Allocations
         $allocations = DB::table('subject_allocations')
@@ -209,16 +221,40 @@ class UserManager extends Component
                     'name' => $this->name,
                     'email' => $this->email,
                     'role' => $this->role,
-                    'class_id' => ($this->role === 'teacher') ? $this->class_id : null,
-                    'class_subject' => ($this->role === 'teacher' && $this->class_id) ? $this->class_subject : null,
                 ];
                 if (!empty($this->password)) {
                     $data['password'] = Hash::make($this->password);
                 }
                 $user->update($data);
                 
-                // Sync Allocations
-                DB::table('subject_allocations')->where('user_id', $user->id)->delete();
+                $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
+                // Update or Insert Session User class assignment
+                $finalClassId = ($this->role === 'teacher' && !empty($this->class_id)) ? $this->class_id : null;
+                $finalClassSubject = ($this->role === 'teacher' && !empty($this->class_id) && !empty($this->class_subject)) ? $this->class_subject : null;
+
+                DB::table('session_user')->updateOrInsert(
+                    [
+                        'user_id' => $user->id,
+                        'academic_session_id' => $activeSessionId,
+                    ],
+                    [
+                        'class_id' => $finalClassId,
+                        'class_subject' => $finalClassSubject,
+                        'updated_at' => now(),
+                    ]
+                );
+                
+                // Sync Allocations for Current Shift
+                $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+                $currentShiftClassIds = DB::table('classes')
+                    ->where('academic_session_id', $activeSessionId)
+                    ->pluck('id');
+                
+                DB::table('subject_allocations')
+                    ->where('user_id', $user->id)
+                    ->whereIn('class_id', $currentShiftClassIds)
+                    ->delete();
                 if($this->role === 'teacher') {
                      foreach($this->teachingAssignments as $assignment) {
                         DB::table('subject_allocations')->insert([
@@ -238,9 +274,22 @@ class UserManager extends Component
                     'email' => $this->email,
                     'password' => Hash::make($this->password),
                     'role' => $this->role,
-                    'class_id' => ($this->role === 'teacher') ? $this->class_id : null,
-                    'class_subject' => ($this->role === 'teacher' && $this->class_id) ? $this->class_subject : null,
                 ]);
+
+                // Automatically attach newly created users to the active session
+                $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+                if ($activeSessionId) {
+                    \Illuminate\Support\Facades\DB::table('session_user')->insert([
+                        'user_id' => $user->id,
+                        'academic_session_id' => $activeSessionId,
+                        'is_active' => true,
+                        'is_primary' => true,
+                        'class_id' => $finalClassId,
+                        'class_subject' => $finalClassSubject,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
                 
                  if($this->role === 'teacher') {
                      foreach($this->teachingAssignments as $assignment) {
@@ -322,7 +371,16 @@ class UserManager extends Component
                 
             session()->flash('message', 'User account ' . ($newStatus ? 'enabled' : 'disabled') . ' successfully for the active session.');
         } else {
-            session()->flash('error', 'User is not part of the active session.');
+            // User isn't explicitly part of this session yet; attach them as enabled.
+            \Illuminate\Support\Facades\DB::table('session_user')->insert([
+                'user_id' => $user->id,
+                'academic_session_id' => $activeSessionId,
+                'is_active' => true,
+                'is_primary' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            session()->flash('message', 'User account enabled and attached to the active session.');
         }
     }
 

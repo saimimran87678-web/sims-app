@@ -70,7 +70,8 @@ class StudentList extends Component
 
     public function mount()
     {
-        $this->classId = Auth::user()->class_id;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $this->classId = Auth::user()->getSessionClassId($activeSessionId);
         
         if ($this->classId) {
             $this->className = DB::table('classes')

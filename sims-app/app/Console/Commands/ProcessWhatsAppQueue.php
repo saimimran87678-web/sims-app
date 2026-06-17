@@ -31,19 +31,24 @@ class ProcessWhatsAppQueue extends Command
     public function handle(WhatsAppService $whatsapp)
     {
         $enabled = Setting::get('whatsapp_auto_send_enabled', 'false') === 'true';
-        if (!$enabled) {
+        $forceSendNow = Setting::get('whatsapp_force_send_now', 'false') === 'true';
+
+        if (!$enabled && !$forceSendNow) {
             return;
         }
 
-        $startTime = Setting::get('whatsapp_auto_send_start', '09:00');
-        $endTime = Setting::get('whatsapp_auto_send_end', '22:00');
-        
-        $now = Carbon::now();
-        $start = Carbon::createFromTimeString($startTime);
-        $end = Carbon::createFromTimeString($endTime);
+        // Enforce time window only if we are NOT forcing sending now
+        if (!$forceSendNow) {
+            $startTime = Setting::get('whatsapp_auto_send_start', '09:00');
+            $endTime = Setting::get('whatsapp_auto_send_end', '22:00');
+            
+            $now = Carbon::now();
+            $start = Carbon::createFromTimeString($startTime);
+            $end = Carbon::createFromTimeString($endTime);
 
-        if (!$now->between($start, $end)) {
-            return;
+            if (!$now->between($start, $end)) {
+                return;
+            }
         }
 
         $delay = (int) Setting::get('whatsapp_queue_delay', 5);
