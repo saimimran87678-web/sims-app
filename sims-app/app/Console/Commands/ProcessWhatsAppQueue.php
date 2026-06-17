@@ -57,6 +57,7 @@ class ProcessWhatsAppQueue extends Command
 
         $messages = DB::table('whatsapp_queue')
             ->where('status', 'pending')
+            ->orderBy('priority', 'desc')
             ->orderBy('id', 'asc')
             ->limit($limit)
             ->get();

@@ -151,4 +151,65 @@
             </div>
         </form>
     </div>
+
+    @if($attendance_status === 'submitted')
+        <div class="glass-card p-6 rounded-2xl bg-white border border-gray-100 shadow-sm mt-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Manage Late Arrivals
+            </h3>
+            
+            <p class="text-sm text-gray-500 mb-6">
+                Students marked Absent or On Leave are listed below. Click **"Mark as Late"** when a student arrives. They will be marked as **Present**, and an urgent priority late notification will be queued for their parents.
+            </p>
+
+            @php
+                $lateCandidates = $this->absentOrLeaveStudents;
+            @endphp
+
+            @if($lateCandidates->isEmpty())
+                <div class="bg-gray-50 border border-dashed border-gray-200 p-8 rounded-xl text-center text-gray-500">
+                    No students are currently marked absent or on leave for this date.
+                </div>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 rounded-lg">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 rounded-l-lg">Roll No</th>
+                                <th scope="col" class="px-6 py-3">Student Name</th>
+                                <th scope="col" class="px-6 py-3">Status</th>
+                                <th scope="col" class="px-6 py-3 rounded-r-lg text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @foreach($lateCandidates as $student)
+                                <tr class="bg-white hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 font-bold text-gray-900">#{{ $student->roll_no }}</td>
+                                    <td class="px-6 py-4 font-medium text-gray-700">{{ $student->name }}</td>
+                                    <td class="px-6 py-4">
+                                        @if($student->status === 'A')
+                                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-red-50 text-red-600 border border-red-100">Absent</span>
+                                        @else
+                                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100">On Leave</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button 
+                                            wire:click="markAsLate({{ $student->id }})" 
+                                            wire:loading.attr="disabled"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                            Mark as Late
+                                        </button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    @endif
 </div>

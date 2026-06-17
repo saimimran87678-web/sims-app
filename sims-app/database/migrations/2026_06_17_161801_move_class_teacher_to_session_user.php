@@ -9,8 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('session_user', function (Blueprint $table) {
-            $table->foreignId('class_id')->nullable()->constrained('classes')->nullOnDelete();
-            $table->string('class_subject')->nullable();
+            if (!Schema::hasColumn('session_user', 'class_id')) {
+                $table->foreignId('class_id')->nullable()->constrained('classes')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('session_user', 'class_subject')) {
+                $table->string('class_subject')->nullable();
+            }
         });
 
         // Migrate existing data for active sessions
@@ -33,9 +37,23 @@ return new class extends Migration
     {
         Schema::table('session_user', function (Blueprint $table) {
             if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
-                $table->dropForeign(['class_id']);
+                try {
+                    $table->dropForeign(['class_id']);
+                } catch (\Exception $e) {
+                    // Ignore if foreign key doesn't exist
+                }
             }
-            $table->dropColumn(['class_id', 'class_subject']);
+            
+            $dropColumns = [];
+            if (Schema::hasColumn('session_user', 'class_id')) {
+                $dropColumns[] = 'class_id';
+            }
+            if (Schema::hasColumn('session_user', 'class_subject')) {
+                $dropColumns[] = 'class_subject';
+            }
+            if (!empty($dropColumns)) {
+                $table->dropColumn($dropColumns);
+            }
         });
     }
 };

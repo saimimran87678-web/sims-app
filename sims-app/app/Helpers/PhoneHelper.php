@@ -76,4 +76,19 @@ class PhoneHelper
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
         return "*Auto Generated Message*\n\nDear Parents,\nYour son {$studentName} (Roll No: {$rollNo}) is on LEAVE today ({$date}).\n\n- {$schoolName} Administration";
     }
+
+    /**
+     * Generate a late arrival message.
+     * 
+     * @param string $studentName
+     * @param string|int $rollNo
+     * @param string $time (e.g. 08:30 AM)
+     * @param string $schoolName
+     * @return string
+     */
+    public static function getLateMessage(string $studentName, $rollNo, string $time, string $schoolName = null): string
+    {
+        $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        return "*Urgent Message*\n\nDear Parents,\nWe noticed that your son {$studentName} (Roll No: {$rollNo}) was marked absent/leave, but he has now arrived late at school today at {$time}.\nPlease ensure he arrives on time in the future to avoid any warning.\n\n- {$schoolName} Administration";
+    }
 }

@@ -298,6 +298,74 @@ class AttendanceManager extends Component
         }
     }
 
+    public function getAbsentOrLeaveStudentsProperty()
+    {
+        if ($this->attendance_status !== 'submitted') {
+            return collect();
+        }
+
+        return DB::table('attendances')
+            ->join('students', 'attendances.student_id', '=', 'students.id')
+            ->where('students.class_id', $this->classId)
+            ->where('attendances.date', $this->date)
+            ->whereIn('attendances.status', ['A', 'L'])
+            ->select('students.id', 'students.name', 'students.roll_no', 'students.phone', 'attendances.status')
+            ->orderByRaw('CAST(students.roll_no AS INTEGER) ASC')
+            ->get();
+    }
+
+    public function markAsLate($studentId)
+    {
+        $attendance = DB::table('attendances')
+            ->join('students', 'attendances.student_id', '=', 'students.id')
+            ->where('students.class_id', $this->classId)
+            ->where('attendances.student_id', $studentId)
+            ->where('attendances.date', $this->date)
+            ->whereIn('attendances.status', ['A', 'L'])
+            ->select('attendances.*', 'students.name', 'students.roll_no', 'students.phone')
+            ->first();
+
+        if (!$attendance) {
+            session()->flash('error', 'Student not found in absent/leave list.');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            DB::table('attendances')
+                ->where('id', $attendance->id)
+                ->update([
+                    'status' => 'P',
+                    'updated_at' => now(),
+                ]);
+
+            if (!empty($attendance->phone)) {
+                $now = now();
+                $formattedTime = $now->format('h:i A');
+                
+                $messageText = \App\Helpers\PhoneHelper::getLateMessage($attendance->name, $attendance->roll_no, $formattedTime);
+
+                DB::table('whatsapp_queue')->insert([
+                    'phone' => $attendance->phone,
+                    'message' => $messageText,
+                    'status' => 'pending',
+                    'priority' => 1, // High priority
+                    'student_id' => $studentId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            DB::commit();
+
+            $this->loadAttendance();
+            session()->flash('message', "Student {$attendance->name} marked as Late. Present status saved and parent notification queued.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Error marking student as late: ' . $e->getMessage());
+        }
+    }
+
     public function render()
     {
         return view('livewire.teacher.attendance-manager')->layout('components.layouts.teacher', ['title' => 'Attendance']);
