@@ -70,7 +70,12 @@
                         @if($classSchedule)
                             <div class="p-4 rounded-xl border flex items-center justify-between {{ $isNow ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100' }}">
                                 <div>
-                                    <h4 class="font-bold {{ $isNow ? 'text-blue-900' : 'text-gray-800' }}">{{ $classSchedule->subject_name }}</h4>
+                                    <h4 class="font-bold {{ $isNow ? 'text-blue-900' : 'text-gray-800' }} flex items-center gap-2">
+                                        {{ $classSchedule->subject_name }}
+                                        @if($classSchedule->is_substitute)
+                                            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] uppercase tracking-wider font-bold rounded-full">Substitute</span>
+                                        @endif
+                                    </h4>
                                     <p class="text-sm {{ $isNow ? 'text-blue-700' : 'text-gray-600' }}">
                                         {{ $classSchedule->class_name }} • {{ $start->format('h:i A') }} - {{ $end->format('h:i A') }}
                                     </p>

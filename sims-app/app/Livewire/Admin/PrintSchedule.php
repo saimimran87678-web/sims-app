@@ -54,7 +54,7 @@ class PrintSchedule extends Component
 
     public function getScheduleByClass($classId, $periodNo)
     {
-        return $this->timetables->where('class_id', $classId)->where('period_no', $periodNo)->first();
+        return $this->timetables->where('class_id', $classId)->where('period_no', $periodNo);
     }
 
     public function getSchedulesByTeacher($teacherId, $periodNo)

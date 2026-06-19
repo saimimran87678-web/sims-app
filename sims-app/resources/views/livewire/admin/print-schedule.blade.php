@@ -99,15 +99,21 @@
                                     <span class="text-[9px] font-semibold text-gray-600">ASSEMBLY</span>
                                 </td>
                             @else
-                                @php $schedule = $this->getScheduleByClass($class->id, $period->period_no); @endphp
+                                @php $schedules = $this->getScheduleByClass($class->id, $period->period_no); @endphp
                                 <td class="border border-black px-1 py-1 text-center h-10 align-middle">
-                                    @if($schedule)
-                                        @php
-                                            $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
-                                            $subject = \App\Models\Subject::find($schedule->subject_id);
-                                        @endphp
-                                        <div class="font-bold text-[10px] text-black">{{ $subject->name ?? '-' }}</div>
-                                        <div class="text-[9px] text-gray-700">{{ $teacher->name ?? '-' }}</div>
+                                    @if($schedules->isNotEmpty())
+                                        <div class="flex flex-col gap-1">
+                                            @foreach($schedules as $schedule)
+                                                @php
+                                                    $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
+                                                    $subject = \App\Models\Subject::find($schedule->subject_id);
+                                                @endphp
+                                                <div class="{{ $loop->index > 0 ? 'border-t border-gray-300 pt-0.5' : '' }}">
+                                                    <div class="font-bold text-[10px] text-black">{{ $subject->name ?? '-' }}</div>
+                                                    <div class="text-[9px] text-gray-700">{{ $teacher->name ?? '-' }}</div>
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     @else
                                         -
                                     @endif

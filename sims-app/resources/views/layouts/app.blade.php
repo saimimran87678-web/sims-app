@@ -33,5 +33,7 @@
                 {{ $slot }}
             </main>
         </div>
+        
+        <x-security-scripts />
     </body>
 </html>

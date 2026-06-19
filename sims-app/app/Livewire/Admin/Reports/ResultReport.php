@@ -118,7 +118,7 @@ class ResultReport extends Component
             }
 
             // Fetch Students
-            $students = DB::table('students')
+            $students = \App\Models\Student::with('subjects')
                 ->where('class_id', $this->selectedClassId)
                 ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
@@ -145,12 +145,26 @@ class ResultReport extends Component
                     'absent_subjects' => [],
                 ];
 
+                $studentSubjectIds = $student->subjects->pluck('id')->toArray();
+
                 foreach ($subjects as $subject) {
+                    $isEnrolled = empty($studentSubjectIds) || in_array($subject->id, $studentSubjectIds);
+                    $maxMarks = $this->subjectMaxMarks[$subject->id] ?? 100;
+
+                    if (!$isEnrolled) {
+                        $row['subjects'][$subject->id] = [
+                            'score' => '-',
+                            'max' => '-',
+                            'is_absent' => false,
+                            'is_failed' => false,
+                            'not_enrolled' => true,
+                        ];
+                        continue;
+                    }
+
                     $markRecord = $marks->where('student_id', $student->id)
                                         ->where('subject_id', $subject->id)
                                         ->first();
-                    
-                    $maxMarks = $this->subjectMaxMarks[$subject->id] ?? 100;
                     
                     if ($markRecord) {
                         // Check if marked as absent

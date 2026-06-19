@@ -26,7 +26,7 @@
                     <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8;">
                         <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
                     </span>
-                    <input id="email" class="input-modern" style="padding-left: 44px;" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username" placeholder="Enter your email">
+                    <input id="email" class="input-modern" style="padding-left: 44px;" type="email" name="email" value="{{ old('email', \Illuminate\Support\Facades\Cookie::get('remember_email')) }}" required autofocus autocomplete="username" placeholder="Enter your email">
                 </div>
                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
             </div>
@@ -55,7 +55,7 @@
             {{-- Remember Me & Forgot Password --}}
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                 <label for="remember_me" style="display: flex; align-items: center; cursor: pointer;">
-                    <input id="remember_me" type="checkbox" class="checkbox-modern" name="remember">
+                    <input id="remember_me" type="checkbox" class="checkbox-modern" name="remember" {{ \Illuminate\Support\Facades\Cookie::has('remember_email') ? 'checked' : '' }}>
                     <span style="margin-left: 8px; font-size: 13px; color: #64748b;">Remember me</span>
                 </label>
                 
@@ -67,7 +67,7 @@
             </div>
 
             {{-- Login Button --}}
-            <button type="submit" class="btn-login">
+            <button type="submit" class="btn-login" onclick="sessionStorage.setItem('sims_tab_auth', 'active');">
                 <span style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
                     Sign In

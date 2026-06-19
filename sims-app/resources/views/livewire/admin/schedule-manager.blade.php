@@ -88,22 +88,26 @@
                                         <span class="text-purple-600 text-xs">Assembly</span>
                                     </td>
                                 @else
-                                    @php $schedule = $this->getSchedule($class->id, $period->period_no); @endphp
+                                    @php $schedules = $this->getSchedule($class->id, $period->period_no); @endphp
                                     <td
                                         wire:click="openModal({{ $class->id }}, {{ $period->period_no }})"
                                         class="px-2 py-2 cursor-pointer hover:bg-blue-50 transition-colors border-l border-gray-100"
                                     >
-                                        @if($schedule)
-                                            @php
-                                                $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
-                                                $subject = \App\Models\Subject::find($schedule->subject_id);
-                                            @endphp
-                                            <div class="text-xs space-y-0.5">
-                                                <div class="font-bold text-blue-700 truncate">{{ $subject->name ?? '-' }}</div>
-                                                <div class="text-gray-500 truncate">{{ $teacher->name ?? '-' }}</div>
-                                                @if($schedule->is_divided)
-                                                    <span class="text-[10px] text-purple-600 bg-purple-50 px-1 rounded">Divided</span>
-                                                @endif
+                                        @if($schedules->isNotEmpty())
+                                            <div class="flex flex-col gap-1">
+                                                @foreach($schedules as $schedule)
+                                                    @php
+                                                        $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
+                                                        $subject = \App\Models\Subject::find($schedule->subject_id);
+                                                    @endphp
+                                                    <div class="text-xs space-y-0.5 {{ $loop->index > 0 ? 'border-t border-gray-200 pt-1' : '' }}">
+                                                        <div class="font-bold text-blue-700 truncate">{{ $subject->name ?? '-' }}</div>
+                                                        <div class="text-gray-500 truncate">{{ $teacher->name ?? '-' }}</div>
+                                                        @if($schedule->is_divided && $loop->last)
+                                                            <span class="text-[10px] text-purple-600 bg-purple-50 px-1 rounded">Divided</span>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
                                             </div>
                                         @else
                                             <div class="text-center text-gray-300 text-xs py-2">+ Assign</div>
@@ -221,33 +225,6 @@
                                         @endif
                                     @endforeach
                                 </select>
-                            </div>
-                        </div>
-                    @endif
-
-                    {{-- Substitute --}}
-                    <div class="border-t border-gray-100 pt-4">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" wire:model.live="isSubstitute" class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
-                            <span class="text-sm font-medium text-gray-700">Add Substitute (Single Day)</span>
-                        </label>
-                    </div>
-
-                    @if($isSubstitute)
-                        <div class="bg-orange-50 p-4 rounded-xl space-y-3">
-                            <div>
-                                <label class="block text-sm font-medium text-orange-700 mb-1">Date</label>
-                                <input type="date" wire:model="substituteDate" class="w-full px-4 py-2 rounded-xl border border-orange-200 focus:ring-2 focus:ring-orange-500 outline-none bg-white" />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-orange-700 mb-1">Substitute Teacher</label>
-                                <select wire:model="substituteTeacherId" class="w-full px-4 py-2 rounded-xl border border-orange-200 focus:ring-2 focus:ring-orange-500 outline-none bg-white">
-                                    <option value="">Select Substitute</option>
-                                    @foreach($availableSubstituteTeachers as $teacher)
-                                        <option value="{{ $teacher->id }}">{{ $teacher->name }}</option>
-                                    @endforeach
-                                </select>
-                                <p class="text-xs text-orange-600 mt-1">Only shows teachers free this period</p>
                             </div>
                         </div>
                     @endif

@@ -101,19 +101,23 @@
                                         <span class="text-purple-600 text-xs">Assembly</span>
                                     </td>
                                 @else
-                                    @php $schedule = $this->getScheduleByClass($class->id, $period->period_no); @endphp
+                                    @php $schedules = $this->getScheduleByClass($class->id, $period->period_no); @endphp
                                     <td 
                                         wire:click="viewDetail({{ $class->id }}, {{ $period->period_no }})"
-                                        class="px-2 py-2 border-l border-gray-100 text-center {{ $schedule ? 'cursor-pointer hover:bg-blue-50' : '' }}"
+                                        class="px-2 py-2 border-l border-gray-100 text-center {{ $schedules->isNotEmpty() ? 'cursor-pointer hover:bg-blue-50' : '' }}"
                                     >
-                                        @if($schedule)
-                                            @php
-                                                $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
-                                                $subject = \App\Models\Subject::find($schedule->subject_id);
-                                            @endphp
-                                            <div class="text-xs">
-                                                <div class="font-semibold text-blue-700">{{ $subject->name ?? '-' }}</div>
-                                                <div class="text-gray-500">{{ $teacher->name ?? '-' }}</div>
+                                        @if($schedules->isNotEmpty())
+                                            <div class="flex flex-col gap-1">
+                                                @foreach($schedules as $schedule)
+                                                    @php
+                                                        $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
+                                                        $subject = \App\Models\Subject::find($schedule->subject_id);
+                                                    @endphp
+                                                    <div class="text-xs {{ $loop->index > 0 ? 'border-t border-gray-200 pt-1' : '' }}">
+                                                        <div class="font-semibold text-blue-700">{{ $subject->name ?? '-' }}</div>
+                                                        <div class="text-gray-500">{{ $teacher->name ?? '-' }}</div>
+                                                    </div>
+                                                @endforeach
                                             </div>
                                         @else
                                             <span class="text-gray-300 text-xs">-</span>
@@ -338,27 +342,31 @@
                         <div class="text-lg font-semibold text-gray-800">{{ $detailData['period_time'] }}</div>
                     </div>
 
-                    <div class="bg-blue-50 rounded-xl p-4">
-                        <label class="block text-xs font-medium text-blue-600 uppercase mb-1">Teacher</label>
-                        <div class="text-lg font-semibold text-gray-800">{{ $detailData['teacher_name'] }}</div>
-                    </div>
+                    @foreach($detailData['entries'] as $entry)
+                        <div class="mt-4 space-y-4 {{ $loop->index > 0 ? 'border-t border-gray-200 pt-4' : '' }}">
+                            <div class="bg-blue-50 rounded-xl p-4">
+                                <label class="block text-xs font-medium text-blue-600 uppercase mb-1">Teacher {{ $loop->count > 1 ? ($loop->index + 1) : '' }}</label>
+                                <div class="text-lg font-semibold text-gray-800">{{ $entry['teacher_name'] }}</div>
+                            </div>
 
-                    <div class="bg-green-50 rounded-xl p-4">
-                        <label class="block text-xs font-medium text-green-600 uppercase mb-1">Subject</label>
-                        <div class="text-lg font-semibold text-gray-800">{{ $detailData['subject_name'] }}</div>
-                    </div>
+                            <div class="bg-green-50 rounded-xl p-4">
+                                <label class="block text-xs font-medium text-green-600 uppercase mb-1">Subject {{ $loop->count > 1 ? ($loop->index + 1) : '' }}</label>
+                                <div class="text-lg font-semibold text-gray-800">{{ $entry['subject_name'] }}</div>
+                            </div>
 
-                    <div class="bg-orange-50 rounded-xl p-4">
-                        <label class="block text-xs font-medium text-orange-600 uppercase mb-1">Room</label>
-                        <div class="text-lg font-semibold text-gray-800">{{ $detailData['room'] }}</div>
-                    </div>
+                            <div class="bg-orange-50 rounded-xl p-4">
+                                <label class="block text-xs font-medium text-orange-600 uppercase mb-1">Room {{ $loop->count > 1 ? ($loop->index + 1) : '' }}</label>
+                                <div class="text-lg font-semibold text-gray-800">{{ $entry['room'] }}</div>
+                            </div>
 
-                    @if($detailData['is_divided'])
-                        <div class="bg-purple-50 rounded-xl p-4 text-center">
-                            <span class="text-purple-700 font-semibold">🔀 Divided Class</span>
-                            <p class="text-xs text-purple-600 mt-1">Multiple teachers assigned to this period</p>
+                            @if($entry['is_divided'])
+                                <div class="bg-purple-50 rounded-xl p-4 text-center">
+                                    <span class="text-purple-700 font-semibold">🔀 Divided Class</span>
+                                    <p class="text-xs text-purple-600 mt-1">Multiple teachers assigned to this period</p>
+                                </div>
+                            @endif
                         </div>
-                    @endif
+                    @endforeach
                 </div>
 
                 <div class="mt-6">

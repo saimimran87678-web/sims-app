@@ -51,6 +51,16 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     // Legacy/Existing Routes (keeping if needed or removing if replacing)
     // Route::get('/exams/{exam}/datesheet', ...);
     Route::get('/schedule', \App\Livewire\Admin\ScheduleManager::class)->name('schedule');
+    Route::get('/substitutions', \App\Livewire\Admin\SubstitutionManager::class)->name('substitutions');
+    Route::get('/substitutions/print', function() {
+        abort_if(request()->user()->cannot('schedule.manage'), 403);
+        $manager = new \App\Livewire\Admin\SubstitutionManager();
+        $manager->selectedDate = request('date', now()->format('Y-m-d'));
+        // Need to mock mount manually or load data
+        $manager->selectedSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $manager->loadData();
+        return view('pdf.daily-substitutions', ['date' => $manager->selectedDate, 'data' => $manager->prepareReportData()]);
+    })->name('substitutions.print');
     Route::get('/classes', \App\Livewire\Admin\ClassManager::class)->name('classes');
     Route::get('/students', \App\Livewire\Admin\StudentManager::class)->name('students');
     Route::get('/academic-sessions', \App\Livewire\Admin\AcademicSessionManager::class)->name('academic-sessions');
@@ -131,6 +141,12 @@ Route::post('/license-blocked/activate', [\App\Http\Controllers\LicenseControlle
 Route::post('/license/sync', [\App\Http\Controllers\LicenseController::class, 'sync'])
     ->name('license.sync');
 
+Route::get('/ping', function () {
+    return response()->json(['status' => 'alive']);
+})->middleware('auth')->name('ping');
 
+Route::get('/refresh-csrf', function () {
+    return response()->json(['token' => csrf_token()]);
+})->name('csrf.refresh');
 
 require __DIR__.'/auth.php';

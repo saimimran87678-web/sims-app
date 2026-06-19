@@ -24,6 +24,7 @@ class ScheduleManager extends Component
     // Modal State
     public $showModal = false;
     public $editingId = null;
+    public $editingId2 = null;
     public $modalClassId;
     public $modalPeriodNo;
     public $modalPeriodLabel;
@@ -35,12 +36,9 @@ class ScheduleManager extends Component
     public $isDivided = false;
     public $selectedTeacherId2 = '';
     public $selectedSubjectId2 = '';
-    public $isSubstitute = false;
-    public $substituteDate = '';
-    public $substituteTeacherId = '';
-
+    public $availableSubjects = [];
     public $availableSubjects2 = [];
-    public $availableSubstituteTeachers = [];
+    public $availableTeachers = [];
 
     // Session Management
     public $selectedSessionId;
@@ -108,7 +106,7 @@ class ScheduleManager extends Component
             ->where('timetables.is_substitute', false)
             ->select('timetables.*')
             ->get()
-            ->keyBy(fn($t) => $t->class_id . '_' . $t->period_no);
+            ->groupBy(fn($t) => $t->class_id . '_' . $t->period_no);
     }
 
     public function updatedSelectedDay()
@@ -118,7 +116,7 @@ class ScheduleManager extends Component
 
     public function getSchedule($classId, $periodNo)
     {
-        return $this->timetables[$classId . '_' . $periodNo] ?? null;
+        return $this->timetables[$classId . '_' . $periodNo] ?? collect();
     }
 
     public function openModal($classId, $periodNo)
@@ -137,13 +135,21 @@ class ScheduleManager extends Component
         $this->room = $class->name ?? '';
 
         // Load existing if editing
-        $existing = $this->getSchedule($classId, $periodNo);
-        if ($existing) {
+        $existingSchedules = $this->getSchedule($classId, $periodNo);
+        if ($existingSchedules->isNotEmpty()) {
+            $existing = $existingSchedules->first();
             $this->editingId = $existing->id;
             $this->selectedTeacherId = $existing->teacher_id;
             $this->selectedSubjectId = $existing->subject_id;
             $this->room = $existing->room;
             $this->isDivided = $existing->is_divided;
+
+            if ($this->isDivided && $existingSchedules->count() > 1) {
+                $second = $existingSchedules->last();
+                $this->editingId2 = $second->id;
+                $this->selectedTeacherId2 = $second->teacher_id;
+                $this->selectedSubjectId2 = $second->subject_id;
+            }
         }
 
         // Load smart dropdowns
@@ -162,6 +168,7 @@ class ScheduleManager extends Component
     public function resetModal()
     {
         $this->editingId = null;
+        $this->editingId2 = null;
         $this->modalClassId = null;
         $this->modalPeriodNo = null;
         $this->modalPeriodLabel = '';
@@ -171,9 +178,6 @@ class ScheduleManager extends Component
         $this->isDivided = false;
         $this->selectedTeacherId2 = '';
         $this->selectedSubjectId2 = '';
-        $this->isSubstitute = false;
-        $this->substituteDate = now()->format('Y-m-d');
-        $this->substituteTeacherId = '';
         $this->applyToAllDays = false;
     }
 
@@ -189,15 +193,13 @@ class ScheduleManager extends Component
             ->where('timetables.period_no', $this->modalPeriodNo)
             ->where('timetables.is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('timetables.id', '!=', $this->editingId))
+            ->when($this->editingId2 ?? false, fn($q) => $q->where('timetables.id', '!=', $this->editingId2))
             ->pluck('timetables.teacher_id')
             ->toArray();
 
         $this->availableTeachers = collect($this->teachers)
             ->filter(fn($t) => !in_array($t->id, $busyTeacherIds))
             ->values();
-
-        // Substitute teachers - same logic
-        $this->availableSubstituteTeachers = $this->availableTeachers;
     }
 
     public function loadAvailableSubjects()
@@ -211,6 +213,7 @@ class ScheduleManager extends Component
             ->where('day', $this->selectedDay)
             ->where('is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
+            ->when($this->editingId2 ?? false, fn($q) => $q->where('id', '!=', $this->editingId2))
             ->pluck('subject_id')
             ->toArray();
 
@@ -293,33 +296,21 @@ class ScheduleManager extends Component
                     'substitute_date' => null,
                     'start_time' => null,
                     'end_time' => null,
-                    'created_at' => now(),
                     'updated_at' => now(),
                 ];
-                DB::table('timetables')->insert($data2);
+                
+                if ($this->editingId2 && $day === $this->selectedDay) {
+                    DB::table('timetables')->where('id', $this->editingId2)->update($data2);
+                } else {
+                    $data2['created_at'] = now();
+                    DB::table('timetables')->insert($data2);
+                }
+            } else {
+                // If it was divided but is no longer divided, delete the second entry
+                if ($this->editingId2 && $day === $this->selectedDay) {
+                    DB::table('timetables')->where('id', $this->editingId2)->delete();
+                }
             }
-        }
-
-
-
-        // Handle substitute
-        if ($this->isSubstitute && $this->substituteTeacherId && $this->substituteDate) {
-            $subData = [
-                'class_id' => $this->modalClassId,
-                'subject_id' => $this->selectedSubjectId,
-                'teacher_id' => $this->substituteTeacherId,
-                'day' => $this->selectedDay,
-                'period_no' => $this->modalPeriodNo,
-                'room' => $this->room,
-                'is_divided' => false,
-                'is_substitute' => true,
-                'substitute_date' => $this->substituteDate,
-                'start_time' => null,
-                'end_time' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-            DB::table('timetables')->insert($subData);
         }
 
         session()->flash('message', 'Schedule saved successfully!');

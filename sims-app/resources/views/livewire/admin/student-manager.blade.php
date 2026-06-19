@@ -105,12 +105,53 @@
             </div>
         </div>
 
+        {{-- Bulk Actions Bar --}}
+        @if(count($selectedStudentIds) > 0)
+        <div class="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4 transition-all duration-300">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                    {{ count($selectedStudentIds) }}
+                </div>
+                <span class="text-sm font-semibold text-blue-900">students selected for bulk action</span>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                @if(count($this->bulkSubjects) > 0)
+                    <div class="flex items-center gap-2">
+                        <select wire:model="bulkSubjectId" class="px-3 py-1.5 rounded-xl border border-blue-200 text-sm focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 font-medium">
+                            <option value="">Choose Elective...</option>
+                            @foreach($this->bulkSubjects as $sub)
+                                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                            @endforeach
+                        </select>
+                        <button wire:click="bulkAssignSubject" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl shadow-sm transition-colors">
+                            Assign Group
+                        </button>
+                        <button wire:click="bulkUnassignSubject" class="px-4 py-1.5 bg-white border border-red-200 hover:bg-red-50 text-red-600 font-medium text-sm rounded-xl transition-colors">
+                            Remove Group
+                        </button>
+                    </div>
+                @else
+                    <span class="text-xs text-blue-700 bg-blue-100/50 px-3 py-1.5 rounded-lg border border-blue-200/50">
+                        Please filter by a class with divided/elective subjects to assign groups.
+                    </span>
+                @endif
+                <button wire:click="$set('selectedStudentIds', [])" class="text-sm text-gray-500 hover:text-gray-700 underline font-medium">
+                    Deselect All
+                </button>
+            </div>
+        </div>
+        @endif
+
         {{-- Content --}}
         @if($viewMode === 'list')
         <div class="overflow-x-auto rounded-xl border border-gray-100">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50/50">
                     <tr>
+                        <th class="px-6 py-3 text-left w-10">
+                            <input type="checkbox" wire:model.live="selectAll" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer" />
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" wire:click="sortByField('admission_no')">
                             <div class="flex items-center gap-1">
                                 Adm No
@@ -143,7 +184,10 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($students as $student)
-                        <tr class="hover:bg-gray-50 transition-colors">
+                        <tr class="hover:bg-gray-50 transition-colors {{ in_array($student->id, $selectedStudentIds) ? 'bg-blue-50/20' : '' }}">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-10">
+                                <input type="checkbox" wire:model.live="selectedStudentIds" value="{{ $student->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer" />
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $student->admission_no }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{{ $student->roll_no }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $student->name }}</td>
@@ -191,9 +235,12 @@
         {{-- Grid View --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @forelse($students as $student)
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border {{ in_array($student->id, $selectedStudentIds) ? 'border-blue-400 ring-2 ring-blue-500/20' : 'border-gray-100' }} hover:shadow-md transition-all relative overflow-hidden group">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="flex gap-4">
+                        <div class="flex gap-3 items-center">
+                            {{-- Checkbox --}}
+                            <input type="checkbox" wire:model.live="selectedStudentIds" value="{{ $student->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer w-4 h-4 shadow-sm shrink-0" />
+                            
                             {{-- Avatar --}}
                             <div class="shrink-0">
                                 @if($student->profile_photo_path)
@@ -358,13 +405,38 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Class *</label>
-                        <select wire:model="class_id" required class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <select wire:model.live="class_id" required class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                             <option value="">Select Class</option>
                             @foreach($classes as $cls)
                                 <option value="{{ $cls->id }}">{{ $cls->name }}</option>
                             @endforeach
                         </select>
                         @error('class_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+
+                        @if($class_id)
+                            @php
+                                $dividedSubIds = DB::table('timetables')
+                                    ->where('class_id', $class_id)
+                                    ->where('is_divided', true)
+                                    ->pluck('subject_id')
+                                    ->unique();
+                                $divSubjects = \App\Models\Subject::whereIn('id', $dividedSubIds)->orderBy('name')->get();
+                            @endphp
+                            @if($divSubjects->isNotEmpty())
+                                <div class="mt-3 bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Subject Enrollments (Electives/Groups)</label>
+                                    <p class="text-xs text-gray-400 mb-3">If unchecked, the student is enrolled in all subjects. Check specific subjects to restrict them to an elective group (e.g. Computer Science vs Biology).</p>
+                                    <div class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                                        @foreach($divSubjects as $sub)
+                                            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-200/30 p-1 rounded transition-colors">
+                                                <input type="checkbox" wire:model="studentSubjects" value="{{ $sub->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300">
+                                                <span class="text-sm text-gray-700 font-medium">{{ $sub->name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        @endif
                     </div>
 
                     <div>

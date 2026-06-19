@@ -229,5 +229,7 @@
         </main>
     </div>
     @stack('scripts')
+    
+    <x-security-scripts />
 </body>
 </html>

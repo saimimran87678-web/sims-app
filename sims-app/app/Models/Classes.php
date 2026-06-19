@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Classes extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'classes';
     
     protected $fillable = ['name', 'numeric_value', 'academic_session_id'];
@@ -44,5 +47,15 @@ class Classes extends Model
     public function subjects()
     {
         return $this->hasMany(Subject::class, 'class_id');
+    }
+
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'class_id');
+    }
+
+    public function timetables()
+    {
+        return $this->hasMany(\App\Models\Timetable::class, 'class_id');
     }
 }

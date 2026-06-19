@@ -69,7 +69,7 @@ class ViewSchedule extends Component
 
     public function getScheduleByClass($classId, $periodNo)
     {
-        return $this->timetables->where('class_id', $classId)->where('period_no', $periodNo)->first();
+        return $this->timetables->where('class_id', $classId)->where('period_no', $periodNo);
     }
 
     public function getSchedulesByTeacher($teacherId, $periodNo)
@@ -82,21 +82,28 @@ class ViewSchedule extends Component
         $this->detailClassId = $classId;
         $this->detailPeriodNo = $periodNo;
         
-        $schedule = $this->timetables->where('class_id', $classId)->where('period_no', $periodNo)->first();
-        if ($schedule) {
-            $teacher = collect($this->teachers)->firstWhere('id', $schedule->teacher_id);
-            $subject = Subject::find($schedule->subject_id);
+        $schedules = $this->timetables->where('class_id', $classId)->where('period_no', $periodNo);
+        if ($schedules->isNotEmpty()) {
             $class = collect($this->classes)->firstWhere('id', $classId);
             $period = $this->periods->firstWhere('period_no', $periodNo);
+            
+            $entries = [];
+            foreach ($schedules as $schedule) {
+                $teacher = collect($this->teachers)->firstWhere('id', $schedule->teacher_id);
+                $subject = Subject::find($schedule->subject_id);
+                $entries[] = [
+                    'teacher_name' => $teacher->name ?? '-',
+                    'subject_name' => $subject->name ?? '-',
+                    'room' => $schedule->room ?? '-',
+                    'is_divided' => $schedule->is_divided,
+                ];
+            }
             
             $this->detailData = [
                 'class_name' => $class->name ?? '-',
                 'period_label' => $period->label ?? "Period $periodNo",
                 'period_time' => $period ? \Carbon\Carbon::parse($period->start_time)->format('h:i A') . ' - ' . \Carbon\Carbon::parse($period->end_time)->format('h:i A') : '-',
-                'teacher_name' => $teacher->name ?? '-',
-                'subject_name' => $subject->name ?? '-',
-                'room' => $schedule->room ?? '-',
-                'is_divided' => $schedule->is_divided,
+                'entries' => $entries,
             ];
             
             $this->showDetailModal = true;

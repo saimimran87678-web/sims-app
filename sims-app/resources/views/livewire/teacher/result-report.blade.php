@@ -121,16 +121,17 @@
                                 @foreach($columnHeaders as $subjectId => $subjectName)
                                     @php
                                         $subjectData = $row['subjects'][$subjectId] ?? null;
+                                        $isNotEnrolled = $subjectData['not_enrolled'] ?? false;
                                         $score = $subjectData['score'] ?? null;
                                         $maxMarks = $subjectMaxMarks[$subjectId] ?? 100;
                                         $passingPct = $subjectPassingMarks[$subjectId] ?? 33;
                                         $passingScore = ($maxMarks * $passingPct) / 100;
-                                        $isFailing = $score !== null && $score < $passingScore;
-                                        $isAbsent = in_array($subjectName, $row['absent_subjects'] ?? []);
+                                        $isFailing = !$isNotEnrolled && $score !== null && $score < $passingScore;
+                                        $isAbsent = !$isNotEnrolled && in_array($subjectName, $row['absent_subjects'] ?? []);
                                     @endphp
                                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center 
-                                        {{ $isAbsent ? 'text-red-600 font-bold' : ($isFailing ? 'bg-red-100 text-red-900 font-bold' : 'text-gray-700') }}">
-                                        {{ $isAbsent ? 'A' : ($score !== null ? $score : '-') }}
+                                        {{ $isAbsent ? 'text-red-600 font-bold' : ($isFailing ? 'bg-red-100 text-red-900 font-bold' : ($isNotEnrolled ? 'text-gray-400 bg-gray-50/50' : 'text-gray-700')) }}">
+                                        {{ $isAbsent ? 'A' : ($isNotEnrolled ? '-' : ($score !== null ? $score : '-')) }}
                                     </td>
                                 @endforeach
                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-center font-bold text-gray-900">
@@ -189,6 +190,9 @@
         let subjectRows = '';
         for (const [subjectId, subjectName] of Object.entries(data.columnHeaders)) {
             const subjectData = student.subjects[subjectId] || {};
+            if (subjectData.not_enrolled) {
+                continue;
+            }
             const isAbsent = (student.absent_subjects || []).includes(subjectName);
             const isFailed = subjectData.is_failed || false;
             
@@ -307,16 +311,19 @@
             let subjectCells = '';
             subjectNames.forEach(function(item) {
                 const subjectData = student.subjects[item.id] || {};
-                const isAbsent = (student.absent_subjects || []).includes(item.name);
-                const isFailed = subjectData.is_failed || false;
+                const isNotEnrolled = subjectData.not_enrolled || false;
+                const isAbsent = !isNotEnrolled && (student.absent_subjects || []).includes(item.name);
+                const isFailed = !isNotEnrolled && (subjectData.is_failed || false);
                 
-                const score = isAbsent ? 'A' : (subjectData.score !== null && subjectData.score !== undefined ? subjectData.score : '-');
+                const score = isNotEnrolled ? '-' : (isAbsent ? 'A' : (subjectData.score !== null && subjectData.score !== undefined ? subjectData.score : '-'));
                 
                 let cellStyle = '';
                 if (isAbsent) {
                     cellStyle = 'color: red; font-weight: bold;';
                 } else if (isFailed) {
                     cellStyle = 'background-color: #fee2e2; color: #7f1d1d; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact;'; 
+                } else if (isNotEnrolled) {
+                    cellStyle = 'color: #999; background-color: #fafafa;';
                 }
                 
                 subjectCells += '<td style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 11px;' + cellStyle + '">' + score + '</td>';

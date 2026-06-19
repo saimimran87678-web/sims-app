@@ -41,11 +41,20 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // Always pass false for 'remember' to prevent persistent long-term sessions.
+        // We only use the 'remember' checkbox to pre-fill the email address on the login screen.
+        if (! Auth::attempt($this->only('email', 'password'), false)) {
             RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
+        }
+
+        // Handle Custom "Remember Email" Behavior
+        if ($this->boolean('remember')) {
+            \Illuminate\Support\Facades\Cookie::queue('remember_email', $this->email, 60 * 24 * 30); // 30 days
+        } else {
+            \Illuminate\Support\Facades\Cookie::queue(\Illuminate\Support\Facades\Cookie::forget('remember_email'));
         }
 
         $user = Auth::user();

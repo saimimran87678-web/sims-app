@@ -34,6 +34,44 @@ class StudentManager extends Component
     public $editingStudentId = null;
     public $viewingStudent = null; // Holds the student model for viewing
 
+    // Bulk Actions & Electives
+    public $selectedStudentIds = [];
+    public $bulkSubjectId = '';
+    public $studentSubjects = [];
+    public $selectAll = false;
+
+    public function updatedSelectAll($value)
+    {
+        if ($value) {
+            $query = Student::query();
+            
+            // Apply current filters to selection
+            if ($this->selectedClassId) {
+                $query->where('class_id', $this->selectedClassId);
+            }
+            if ($this->search) {
+                $query->where(function($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('roll_no', 'like', '%' . $this->search . '%')
+                      ->orWhere('admission_no', 'like', '%' . $this->search . '%');
+                });
+            }
+            if ($this->filterSport) {
+                $query->where('sports', 'like', '%' . $this->filterSport . '%');
+            }
+            if ($this->filterActivity) {
+                $query->where('extra_curriculars', 'like', '%' . $this->filterActivity . '%');
+            }
+            if ($this->filterTransport) {
+                $query->where('transport_mode', $this->filterTransport);
+            }
+            
+            $this->selectedStudentIds = $query->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } else {
+            $this->selectedStudentIds = [];
+        }
+    }
+
     // Session Management
     public $selectedSessionId;
     public $academicSessions = [];
@@ -154,15 +192,15 @@ class StudentManager extends Component
         $this->loadClasses();
     }
 
-    // Reset pagination when filtering
-    public function updatedSearch() { $this->resetPage(); }
-    public function updatedSelectedClassId() { $this->resetPage(); }
-    public function updatedFilterSport() { $this->resetPage(); }
-    public function updatedFilterActivity() { $this->resetPage(); }
-    public function updatedFilterTransport() { $this->resetPage(); }
-    public function updatedFilterBus() { $this->resetPage(); }
-    public function updatedSortBy() { $this->resetPage(); }
-    public function updatedSortDir() { $this->resetPage(); }
+    // Reset pagination and selection when filtering
+    public function updatedSearch() { $this->resetPage(); $this->selectedStudentIds = []; }
+    public function updatedSelectedClassId() { $this->resetPage(); $this->selectedStudentIds = []; }
+    public function updatedFilterSport() { $this->resetPage(); $this->selectedStudentIds = []; }
+    public function updatedFilterActivity() { $this->resetPage(); $this->selectedStudentIds = []; }
+    public function updatedFilterTransport() { $this->resetPage(); $this->selectedStudentIds = []; }
+    public function updatedFilterBus() { $this->resetPage(); $this->selectedStudentIds = []; }
+    public function updatedSortBy() { $this->resetPage(); $this->selectedStudentIds = []; }
+    public function updatedSortDir() { $this->resetPage(); $this->selectedStudentIds = []; }
 
     public function sortByField($field)
     {
@@ -177,7 +215,7 @@ class StudentManager extends Component
 
     public function openModal()
     {
-        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address']);
+        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects']);
         $this->class_id = $this->selectedClassId; // Default to currently selected filter
         $this->showModal = true;
     }
@@ -201,9 +239,11 @@ class StudentManager extends Component
         $this->transport_mode = $student->transport_mode ?? 'none';
         $this->vehicle_number = $student->vehicle_number ?? '';
         $this->dob = $student->dob ? $student->dob->format('Y-m-d') : '';
-        $this->dob = $student->dob ? $student->dob->format('Y-m-d') : '';
         $this->admission_date = $student->admission_date ? $student->admission_date->format('Y-m-d') : '';
         $this->address = $student->address;
+
+        // Load assigned subjects
+        $this->studentSubjects = $student->subjects()->pluck('subjects.id')->toArray();
 
         $this->isEditing = true;
         $this->showModal = true;
@@ -244,21 +284,83 @@ class StudentManager extends Component
 
         if ($this->isEditing) {
             Student::where('id', $this->editingStudentId)->update($data);
+            $student = Student::findOrFail($this->editingStudentId);
             session()->flash('message', 'Student updated successfully.');
         } else {
-            Student::create($data);
+            $student = Student::create($data);
             session()->flash('message', 'Student added successfully.');
         }
 
+        $student->subjects()->sync($this->studentSubjects);
+
         $this->showModal = false;
-        $this->showModal = false;
-        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address']);
+        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects']);
     }
 
     public function delete($id)
     {
         Student::where('id', $id)->delete();
         session()->flash('message', 'Student deleted successfully.');
+    }
+
+    public function getBulkSubjectsProperty()
+    {
+        if (!$this->selectedClassId) {
+            return collect();
+        }
+
+        $dividedSubjectIds = DB::table('timetables')
+            ->where('class_id', $this->selectedClassId)
+            ->where('is_divided', true)
+            ->pluck('subject_id')
+            ->unique()
+            ->toArray();
+
+        return \App\Models\Subject::whereIn('id', $dividedSubjectIds)->get();
+    }
+
+    public function bulkAssignSubject()
+    {
+        $this->validate([
+            'bulkSubjectId' => 'required|exists:subjects,id',
+        ]);
+
+        if (empty($this->selectedStudentIds)) {
+            return;
+        }
+
+        DB::transaction(function() {
+            foreach ($this->selectedStudentIds as $studentId) {
+                DB::table('student_subject')->updateOrInsert([
+                    'student_id' => $studentId,
+                    'subject_id' => $this->bulkSubjectId,
+                ]);
+            }
+        });
+
+        $this->selectedStudentIds = [];
+        $this->bulkSubjectId = '';
+        session()->flash('message', 'Elective subject assigned successfully.');
+    }
+
+    public function bulkUnassignSubject()
+    {
+        $this->validate([
+            'bulkSubjectId' => 'required|exists:subjects,id',
+        ]);
+
+        if (empty($this->selectedStudentIds)) {
+            return;
+        }
+
+        DB::table('student_subject')
+            ->whereIn('student_id', $this->selectedStudentIds)
+            ->where('subject_id', $this->bulkSubjectId)
+            ->delete();
+
+        $this->selectedStudentIds = [];
+        $this->bulkSubjectId = '';
+        session()->flash('message', 'Elective subject unassigned successfully.');
     }
 
     public function render()
