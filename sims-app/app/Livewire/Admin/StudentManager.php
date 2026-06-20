@@ -94,8 +94,10 @@ class StudentManager extends Component
     public $admission_no = '';
     public $father_name = '';
     public $phone = '';
+    public $email = '';
     public $class_id = '';
     public $section_id = '';
+    public $gender = 'Male';
     public $sports = [];
     public $extra_curriculars = [];
     public $transport_mode = 'none';
@@ -105,9 +107,11 @@ class StudentManager extends Component
     public $address = '';
     public $photo;
 
-    // Constants for Options
-    public const SPORTS_OPTIONS = ['Cricket', 'Football', 'Hockey', 'Badminton', 'Table Tennis', 'Volleyball', 'Basketball', 'Athletics'];
-    public const ACTIVITY_OPTIONS = ['Naat', 'Tilawat', 'Speech (Urdu)', 'Speech (English)', 'Debate', 'Quiz', 'Drama'];
+    // Option Editing State
+    public $newSportName = '';
+    public $newActivityName = '';
+    public $editingOptionId = null;
+    public $editingOptionName = '';
     public const BUS_OPTIONS = ['135', '147']; // Strict options for School Bus
     public const TRANSPORT_OPTIONS = [
         'school_bus' => 'School Bus',
@@ -125,6 +129,7 @@ class StudentManager extends Component
             'name' => 'required|string|max:255',
             'father_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
             'class_id' => 'required|exists:classes,id',
             'admission_no' => [
                 'required', 
@@ -140,8 +145,8 @@ class StudentManager extends Component
                     })
                     ->ignore($this->editingStudentId)
             ],
+            'gender' => 'required|in:Male,Female,Other',
             'sports' => 'array',
-            'extra_curriculars' => 'array',
             'extra_curriculars' => 'array',
             'transport_mode' => 'required|string',
             'vehicle_number' => 'nullable|string|max:255',
@@ -215,7 +220,7 @@ class StudentManager extends Component
 
     public function openModal()
     {
-        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects']);
+        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName']);
         $this->class_id = $this->selectedClassId; // Default to currently selected filter
         $this->showModal = true;
     }
@@ -230,8 +235,10 @@ class StudentManager extends Component
         $this->admission_no = $student->admission_no;
         $this->father_name = $student->father_name;
         $this->phone = $student->phone;
+        $this->email = $student->email;
         $this->class_id = $student->class_id;
         $this->section_id = $student->section_id;
+        $this->gender = $student->gender ?? 'Male';
         
         // Deserialize comma-separated strings
         $this->sports = $student->sports ? explode(',', $student->sports) : [];
@@ -266,8 +273,10 @@ class StudentManager extends Component
             'admission_no' => $this->admission_no,
             'father_name' => $this->father_name,
             'phone' => $this->phone,
+            'email' => $this->email,
             'class_id' => $this->class_id,
             'section_id' => $this->section_id,
+            'gender' => $this->gender,
             'sports' => !empty($this->sports) ? implode(',', $this->sports) : null,
             'extra_curriculars' => !empty($this->extra_curriculars) ? implode(',', $this->extra_curriculars) : null,
             'transport_mode' => $this->transport_mode,
@@ -294,7 +303,67 @@ class StudentManager extends Component
         $student->subjects()->sync($this->studentSubjects);
 
         $this->showModal = false;
-        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects']);
+        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName']);
+    }
+
+    public function addOption($type)
+    {
+        $name = $type === 'sport' ? $this->newSportName : $this->newActivityName;
+        if (trim($name) === '') return;
+        
+        \App\Models\DefinedOption::firstOrCreate(['type' => $type, 'name' => trim($name)]);
+        
+        if ($type === 'sport') $this->newSportName = '';
+        if ($type === 'activity') $this->newActivityName = '';
+    }
+
+    public function startEditOption($id, $name)
+    {
+        $this->editingOptionId = $id;
+        $this->editingOptionName = $name;
+    }
+
+    public function renameOption()
+    {
+        if (!$this->editingOptionId || trim($this->editingOptionName) === '') return;
+        
+        $option = \App\Models\DefinedOption::find($this->editingOptionId);
+        if ($option) {
+            $oldName = $option->name;
+            $newName = trim($this->editingOptionName);
+            $option->update(['name' => $newName]);
+            
+            // Sync old names in existing students
+            $field = $option->type === 'sport' ? 'sports' : 'extra_curriculars';
+            $students = Student::where($field, 'LIKE', "%{$oldName}%")->get();
+            foreach ($students as $s) {
+                // simple replace logic, works best if options are unique
+                $updatedStr = implode(',', array_map(function($val) use ($oldName, $newName) {
+                    return trim($val) === $oldName ? $newName : trim($val);
+                }, explode(',', $s->$field)));
+                $s->update([$field => $updatedStr]);
+            }
+
+            // Also update current form state if it was checked
+            if ($option->type === 'sport') {
+                $idx = array_search($oldName, $this->sports);
+                if ($idx !== false) {
+                    $this->sports[$idx] = $newName;
+                }
+            } else {
+                $idx = array_search($oldName, $this->extra_curriculars);
+                if ($idx !== false) {
+                    $this->extra_curriculars[$idx] = $newName;
+                }
+            }
+        }
+        $this->editingOptionId = null;
+        $this->editingOptionName = '';
+    }
+
+    public function deleteOption($id)
+    {
+        \App\Models\DefinedOption::where('id', $id)->delete();
     }
 
     public function delete($id)
@@ -443,9 +512,14 @@ class StudentManager extends Component
             ? 'components.layouts.teacher' 
             : 'components.layouts.admin';
 
+        $sportsOptions = \App\Models\DefinedOption::sports()->get();
+        $activityOptions = \App\Models\DefinedOption::activities()->get();
+
         return view('livewire.admin.student-manager', [
             'students' => $students,
-            'classes' => $viewClasses
+            'classes' => $viewClasses,
+            'sportsOptions' => $sportsOptions,
+            'activityOptions' => $activityOptions
         ])->layout($layout, ['title' => 'Student Management']);
     }
 }

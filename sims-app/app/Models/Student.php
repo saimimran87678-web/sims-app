@@ -21,6 +21,7 @@ class Student extends Model
         'section_id',
         'father_name',
         'phone',
+        'email',
         'gender',
         'dob', // already present in schema but maybe not in form yet
         'sports',

@@ -23,7 +23,7 @@ class WhatsAppSetup extends Component
     {
         $this->authorize('students.manage'); // Reuse existing permission
         
-        // Load Settings
+        // Load Queue Settings
         $this->queueDelay = \App\Models\Setting::get('whatsapp_queue_delay', 5);
         $this->autoSendEnabled = \App\Models\Setting::get('whatsapp_auto_send_enabled', 'false') === 'true';
         $this->autoSendStart = \App\Models\Setting::get('whatsapp_auto_send_start', '09:00');
@@ -72,6 +72,7 @@ class WhatsAppSetup extends Component
         \App\Models\Setting::set('whatsapp_auto_send_start', $this->autoSendStart);
         \App\Models\Setting::set('whatsapp_auto_send_end', $this->autoSendEnd);
         \App\Models\Setting::set('whatsapp_force_send_now', $this->forceSendNow ? 'true' : 'false');
+
         session()->flash('message', 'Queue settings saved successfully.');
     }
 

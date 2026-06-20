@@ -109,6 +109,20 @@
         </ul>
     </div>
 
+    {{-- Message Templates Link --}}
+    <div class="glass-card p-6 rounded-2xl border border-gray-100 mt-6 bg-gradient-to-r from-purple-50 to-white flex justify-between items-center">
+        <div>
+            <h3 class="text-xl font-bold text-gray-800 mb-1">Message Templates</h3>
+            <p class="text-sm text-gray-500">Configure custom text templates for Absent, Leave, and Late notifications.</p>
+        </div>
+        <a href="{{ route('admin.whatsapp-templates') }}" class="px-5 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors text-sm font-bold shadow-md inline-flex items-center gap-2 whitespace-nowrap">
+            Configure Templates
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+        </a>
+    </div>
+
     {{-- Message Queue Manager --}}
     <div id="queue-manager" class="glass-card p-6 rounded-2xl border border-gray-100 mt-6 scroll-mt-6" wire:poll.10s>
         <div class="flex justify-between items-center mb-6">

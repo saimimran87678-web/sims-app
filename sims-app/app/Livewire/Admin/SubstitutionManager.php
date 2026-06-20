@@ -62,10 +62,21 @@ class SubstitutionManager extends Component
 
     public function loadData()
     {
-        $this->teachers = User::where('role', 'teacher')->orderBy('name')->get();
+        $this->teachers = User::where('role', 'teacher')
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                      ->from('session_user')
+                      ->whereColumn('session_user.user_id', 'users.id')
+                      ->where('session_user.academic_session_id', $this->selectedSessionId)
+                      ->where('session_user.is_active', true);
+            })
+            ->orderBy('name')
+            ->get();
         
-        // Load attendances for the selected date
-        $attendances = TeacherAttendance::where('date', $this->selectedDate)->get()->keyBy('teacher_id');
+        // Load attendances for the selected date and session
+        $attendances = TeacherAttendance::where('date', $this->selectedDate)
+            ->where('academic_session_id', $this->selectedSessionId)
+            ->get()->keyBy('teacher_id');
         
         $this->teacherStatuses = [];
         $this->substitutions = [];
@@ -86,7 +97,11 @@ class SubstitutionManager extends Component
     {
         // Save to DB immediately
         TeacherAttendance::updateOrCreate(
-            ['teacher_id' => $teacherId, 'date' => $this->selectedDate],
+            [
+                'teacher_id' => $teacherId, 
+                'date' => $this->selectedDate,
+                'academic_session_id' => $this->selectedSessionId
+            ],
             ['status' => $value]
         );
 
@@ -324,7 +339,10 @@ class SubstitutionManager extends Component
 
     public function downloadPDF()
     {
-        return redirect()->route('admin.substitutions.print', ['date' => $this->selectedDate]);
+        return redirect()->route('admin.substitutions.print', [
+            'date' => $this->selectedDate,
+            'session_id' => $this->selectedSessionId
+        ]);
     }
 
     public function prepareReportData()

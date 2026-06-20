@@ -316,7 +316,8 @@ class AttendanceManager extends Component
                         'id' => $student->id,
                         'name' => $student->name,
                         'roll_no' => $student->roll_no,
-                        'phone' => $student->phone ?? null
+                        'phone' => $student->phone ?? null,
+                        'gender' => $student->gender ?? null
                     ];
                 } elseif (in_array($roll, $leaveRolls)) {
                     $status = 'L';
@@ -324,7 +325,8 @@ class AttendanceManager extends Component
                         'id' => $student->id,
                         'name' => $student->name,
                         'roll_no' => $student->roll_no,
-                        'phone' => $student->phone ?? null
+                        'phone' => $student->phone ?? null,
+                        'gender' => $student->gender ?? null
                     ];
                 }
 

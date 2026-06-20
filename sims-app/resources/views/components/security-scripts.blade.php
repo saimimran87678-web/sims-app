@@ -29,11 +29,23 @@
             let isExpired = false;
             let checkInterval;
             let pingDebounce = false;
+            let lastLoginTime = 0; // Prevents duplicate popups right after a successful login
 
             let currentUserEmail = '{{ auth()->user()->email }}';
             let loginUrl = '{{ route('login') }}';
             let refreshCsrfUrl = '{{ route('csrf.refresh') }}';
             let logoutUrl = '{{ route('logout.get') }}';
+
+            function obfuscateEmail(email) {
+                if (!email || !email.includes('@')) return email;
+                let [name, domain] = email.split('@');
+                if (name.length <= 2) {
+                    name = name.charAt(0) + '*'.repeat(name.length > 1 ? 1 : 0);
+                } else {
+                    name = name.charAt(0) + '*'.repeat(name.length - 2) + name.charAt(name.length - 1);
+                }
+                return name + '@' + domain;
+            }
 
             function updateActivity() {
                 if (isExpired) return; // Do not update activity if session has already expired
@@ -175,14 +187,14 @@
                             
                             <!-- Error Msg -->
                             <div id="expired-error-msg" class="hidden mb-4 p-3 bg-red-50 text-red-700 rounded-xl text-xs font-medium border border-red-100 text-center">
-                                \${errorMessage}
+                                ${errorMessage}
                             </div>
                             
                             <!-- Login Form -->
                             <form id="expired-login-form" class="space-y-4 text-left">
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email Address</label>
-                                    <input type="email" id="expired-email" value="\${currentUserEmail}" readonly class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500 focus:outline-none cursor-not-allowed">
+                                    <input type="email" id="expired-email" value="${obfuscateEmail(currentUserEmail)}" readonly class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500 focus:outline-none cursor-not-allowed">
                                 </div>
                                 
                                 <div>
@@ -197,7 +209,7 @@
                             
                             <!-- Switch Account / Logout -->
                             <div class="text-center mt-4">
-                                <a href="\${logoutUrl}" class="text-xs text-blue-600 hover:underline">
+                                <a href="${logoutUrl}" class="text-xs text-blue-600 hover:underline">
                                     Sign in as a different user
                                 </a>
                             </div>
@@ -262,6 +274,8 @@
                     .then(response => {
                         if (response.ok) {
                             // Session restored successfully!
+                            lastLoginTime = Date.now();
+                            
                             let modal = document.getElementById('session-expired-modal');
                             if (modal) modal.remove();
                             
@@ -301,7 +315,7 @@
                     <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    \${message}
+                    ${message}
                 `;
                 document.body.appendChild(toast);
                 
@@ -339,8 +353,12 @@
                 Livewire.hook('request', ({ fail }) => {
                     fail(({ status, preventDefault }) => {
                         if (status === 419) {
-                            preventDefault();
-                            triggerExpiration();
+                            // Ignore 419 errors if we successfully logged in less than 5 seconds ago.
+                            // (Prevents duplicate popups from lagging background requests that failed while the modal was open)
+                            if (Date.now() - lastLoginTime > 5000) {
+                                preventDefault();
+                                triggerExpiration();
+                            }
                         }
                     });
                 });

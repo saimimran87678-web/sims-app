@@ -36,7 +36,8 @@ class StudentList extends Component
     public $admission_no = '';
     public $father_name = '';
     public $phone = '';
-    public $gender = 'male';
+    public $email = '';
+    public $gender = 'Male';
     public $dob = '';
     public $admission_date = '';
     public $sports = [];
@@ -46,13 +47,20 @@ class StudentList extends Component
     public $address = '';
     public $photo;
 
+    // Option Editing State
+    public $newSportName = '';
+    public $newActivityName = '';
+    public $editingOptionId = null;
+    public $editingOptionName = '';
+
     protected $rules = [
         'name' => 'required|min:2',
         'roll_no' => 'required',
         'admission_no' => 'required',
         'father_name' => 'nullable',
         'phone' => 'nullable',
-        'gender' => 'required|in:male,female,other',
+        'email' => 'nullable|email|max:255',
+        'gender' => 'required|in:Male,Female,Other',
         'dob' => 'nullable|date',
         'admission_date' => 'nullable|date',
         'sports' => 'nullable|array',
@@ -64,9 +72,6 @@ class StudentList extends Component
     ];
 
     public $sortOrder = 'asc'; // 'asc' or 'desc'
-    
-    // Dynamic Options
-    public $newSportName = '';
 
     public function mount()
     {
@@ -83,20 +88,6 @@ class StudentList extends Component
     public function updatedFilterBus()
     {
         // For Livewire reactivity
-    }
-    
-    public function addSport()
-    {
-        $this->validate([
-            'newSportName' => 'required|string|min:2|max:30|unique:defined_options,name'
-        ]);
-
-        \App\Models\DefinedOption::create([
-            'type' => 'sport',
-            'name' => ucwords(trim($this->newSportName))
-        ]);
-
-        $this->newSportName = '';
     }
 
     public function create()
@@ -121,7 +112,8 @@ class StudentList extends Component
         $this->admission_no = $student->admission_no;
         $this->father_name = $student->father_name;
         $this->phone = $student->phone;
-        $this->gender = $student->gender ?? 'male';
+        $this->email = $student->email;
+        $this->gender = $student->gender ?? 'Male';
         $this->dob = $student->dob ? $student->dob->format('Y-m-d') : '';
         $this->admission_date = $student->admission_date ? $student->admission_date->format('Y-m-d') : '';
         $this->address = $student->address;
@@ -162,6 +154,7 @@ class StudentList extends Component
             'admission_no' => $this->admission_no,
             'father_name' => $this->father_name,
             'phone' => $this->phone,
+            'email' => $this->email,
             'gender' => $this->gender,
             'dob' => $this->dob ?: null,
             'admission_date' => $this->admission_date ?: null,
@@ -209,22 +202,81 @@ class StudentList extends Component
         $this->resetForm();
     }
 
+    public function addOption($type)
+    {
+        $name = $type === 'sport' ? $this->newSportName : $this->newActivityName;
+        if (trim($name) === '') return;
+        
+        \App\Models\DefinedOption::firstOrCreate(['type' => $type, 'name' => trim($name)]);
+        
+        if ($type === 'sport') $this->newSportName = '';
+        if ($type === 'activity') $this->newActivityName = '';
+    }
+
+    public function startEditOption($id, $name)
+    {
+        $this->editingOptionId = $id;
+        $this->editingOptionName = $name;
+    }
+
+    public function renameOption()
+    {
+        if (!$this->editingOptionId || trim($this->editingOptionName) === '') return;
+        
+        $option = \App\Models\DefinedOption::find($this->editingOptionId);
+        if ($option) {
+            $oldName = $option->name;
+            $newName = trim($this->editingOptionName);
+            $option->update(['name' => $newName]);
+            
+            // Sync old names in existing students
+            $field = $option->type === 'sport' ? 'sports' : 'extra_curriculars';
+            $students = \App\Models\Student::where($field, 'LIKE', "%{$oldName}%")->get();
+            foreach ($students as $s) {
+                $updatedStr = implode(',', array_map(function($val) use ($oldName, $newName) {
+                    return trim($val) === $oldName ? $newName : trim($val);
+                }, explode(',', $s->$field)));
+                $s->update([$field => $updatedStr]);
+            }
+
+            // Also update current form state if it was checked
+            if ($option->type === 'sport') {
+                $idx = array_search($oldName, $this->sports);
+                if ($idx !== false) {
+                    $this->sports[$idx] = $newName;
+                }
+            } else {
+                $idx = array_search($oldName, $this->extra_curriculars);
+                if ($idx !== false) {
+                    $this->extra_curriculars[$idx] = $newName;
+                }
+            }
+        }
+        $this->editingOptionId = null;
+        $this->editingOptionName = '';
+    }
+
+    public function deleteOption($id)
+    {
+        \App\Models\DefinedOption::where('id', $id)->delete();
+    }
+
     private function resetForm()
     {
         $this->reset([
-            'name', 'roll_no', 'admission_no', 'father_name', 'phone', 'gender', 'dob', 'admission_date',
-            'editStudentId', 'photo', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'address', 'newSportName'
+            'name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'gender', 'dob', 'admission_date',
+            'editStudentId', 'photo', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'address', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName'
         ]);
         $this->sports = [];
         $this->extra_curriculars = [];
         $this->transport_mode = 'none';
-        $this->gender = 'male';
+        $this->gender = 'Male';
     }
 
     public function render()
     {
-        $sportsOptions = \App\Models\DefinedOption::sports()->pluck('name');
-        $activityOptions = \App\Models\DefinedOption::activities()->pluck('name');
+        $sportsOptions = \App\Models\DefinedOption::sports()->get();
+        $activityOptions = \App\Models\DefinedOption::activities()->get();
 
         if (!$this->classId) {
             return view('livewire.teacher.student-list', [

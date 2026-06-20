@@ -188,9 +188,10 @@ class WhatsAppService
                 continue;
             }
 
+            $gender = $student['gender'] ?? null;
             $message = $status === 'A'
-                ? PhoneHelper::getAbsentMessage($student['name'], $student['roll_no'], $date)
-                : PhoneHelper::getLeaveMessage($student['name'], $student['roll_no'], $date);
+                ? PhoneHelper::getAbsentMessage($student['name'], $student['roll_no'], $date, null, $gender)
+                : PhoneHelper::getLeaveMessage($student['name'], $student['roll_no'], $date, null, $gender);
 
             $messages[] = [
                 'phone' => $student['phone'],

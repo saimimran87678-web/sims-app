@@ -13,6 +13,7 @@ class TeacherAttendance extends Model
         'teacher_id',
         'date',
         'status',
+        'academic_session_id',
     ];
 
     public function teacher()

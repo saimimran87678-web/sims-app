@@ -79,8 +79,8 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Details</label>
                     <div class="flex gap-2">
-                         <select wire:model.live="filterSport" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Sport</option>@foreach($sportsOptions as $s)<option>{{$s}}</option>@endforeach</select>
-                         <select wire:model.live="filterActivity" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Activity</option>@foreach($activityOptions as $a)<option>{{$a}}</option>@endforeach</select>
+                         <select wire:model.live="filterSport" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Sport</option>@foreach($sportsOptions as $s)<option value="{{$s->name}}">{{$s->name}}</option>@endforeach</select>
+                         <select wire:model.live="filterActivity" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Activity</option>@foreach($activityOptions as $a)<option value="{{$a->name}}">{{$a->name}}</option>@endforeach</select>
                     </div>
                 </div>
                 <div>
@@ -160,7 +160,7 @@
                                 {{ $student->phone ?? '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ $student->gender === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700' }}">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ strtolower($student->gender) === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700' }}">
                                     {{ ucfirst($student->gender ?? 'N/A') }}
                                 </span>
                             </td>
@@ -209,8 +209,8 @@
                                         {{ substr($student->name, 0, 1) }}
                                     </div>
                                 @endif
-                                <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white font-bold {{ $student->gender === 'male' ? 'bg-blue-400' : 'bg-pink-400' }}" title="{{ ucfirst($student->gender) }}">
-                                    {{ substr(ucfirst($student->gender), 0, 1) }}
+                                <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white font-bold {{ strtolower($student->gender) === 'male' ? 'bg-blue-400' : 'bg-pink-400' }}" title="{{ ucfirst($student->gender) }}">
+                                    {{ substr(ucfirst($student->gender ?? 'N'), 0, 1) }}
                                 </div>
                             </div>
                             
@@ -363,10 +363,11 @@
                             
                             <div class="grid grid-cols-2 gap-4">
                                  <div>
-                                    <label class="block text-sm font-medium text-gray-700">Gender</label>
-                                    <select wire:model="gender" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
+                                    <label class="block text-sm font-medium text-gray-700">Gender *</label>
+                                    <select wire:model="gender" required class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
                                     </select>
                                     @error('gender') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
@@ -410,6 +411,10 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                                     <input wire:model="phone" type="tel" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" placeholder="+1234567890" />
                                 </div>
+                                 <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address (Optional)</label>
+                                    <input wire:model="email" type="email" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" placeholder="student@example.com" />
+                                </div>
                             </div>
                             
                             <div>
@@ -418,34 +423,65 @@
                             </div>
 
                              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sports</label>
-                                    <div class="space-y-1 h-32 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 mb-2">
-                                        @foreach($sportsOptions as $sport)
-                                            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
-                                                <input type="checkbox" wire:model="sports" value="{{ $sport }}" class="rounded text-blue-600 focus:ring-blue-500">
-                                                <span class="text-sm text-gray-700">{{ $sport }}</span>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sports</label>
+                            <div class="space-y-1 h-32 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 mb-2">
+                                @foreach($sportsOptions as $sport)
+                                    <div class="flex items-center justify-between hover:bg-gray-100 p-1 rounded group">
+                                        @if($editingOptionId === $sport->id)
+                                            <div class="flex items-center gap-2 w-full">
+                                                <input type="text" wire:model="editingOptionName" class="flex-1 text-sm border-gray-300 rounded px-2 py-1" @keydown.enter.prevent="$wire.renameOption()">
+                                                <button type="button" wire:click="renameOption" class="text-green-600 hover:text-green-700 p-1">✓</button>
+                                                <button type="button" wire:click="$set('editingOptionId', null)" class="text-gray-500 hover:text-gray-700 p-1">✕</button>
+                                            </div>
+                                        @else
+                                            <label class="flex items-center space-x-2 cursor-pointer flex-1">
+                                                <input type="checkbox" wire:model="sports" value="{{ $sport->name }}" class="rounded text-blue-600 focus:ring-blue-500">
+                                                <span class="text-sm text-gray-700">{{ $sport->name }}</span>
                                             </label>
-                                        @endforeach
+                                            <div class="hidden group-hover:flex items-center gap-1">
+                                                <button type="button" wire:click="startEditOption({{ $sport->id }}, '{{ addslashes($sport->name) }}')" class="text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition-colors">Edit</button>
+                                                <button type="button" wire:click="deleteOption({{ $sport->id }})" class="text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded transition-colors">Delete</button>
+                                            </div>
+                                        @endif
                                     </div>
-                                    <div class="flex gap-2">
-                                        <input type="text" wire:model="newSportName" placeholder="Add new sport..." class="flex-1 text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 px-2 py-1">
-                                        <button type="button" wire:click="addSport" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition-colors">+</button>
-                                    </div>
-                                    @error('newSportName') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                </div>
+                                @endforeach
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" wire:model="newSportName" placeholder="Add new sport..." class="flex-1 text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 px-2 py-1" @keydown.enter.prevent="$wire.addOption('sport')">
+                                <button type="button" wire:click="addOption('sport')" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition-colors">+</button>
+                            </div>
+                        </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Extra-Curricular Activities</label>
-                                    <div class="space-y-1 h-32 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50">
-                                        @foreach($activityOptions as $activity)
-                                            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
-                                                <input type="checkbox" wire:model="extra_curriculars" value="{{ $activity }}" class="rounded text-blue-600 focus:ring-blue-500">
-                                                <span class="text-sm text-gray-700">{{ $activity }}</span>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Extra-Curricular Activities</label>
+                            <div class="space-y-1 h-32 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 mb-2">
+                                @foreach($activityOptions as $activity)
+                                    <div class="flex items-center justify-between hover:bg-gray-100 p-1 rounded group">
+                                        @if($editingOptionId === $activity->id)
+                                            <div class="flex items-center gap-2 w-full">
+                                                <input type="text" wire:model="editingOptionName" class="flex-1 text-sm border-gray-300 rounded px-2 py-1" @keydown.enter.prevent="$wire.renameOption()">
+                                                <button type="button" wire:click="renameOption" class="text-green-600 hover:text-green-700 p-1">✓</button>
+                                                <button type="button" wire:click="$set('editingOptionId', null)" class="text-gray-500 hover:text-gray-700 p-1">✕</button>
+                                            </div>
+                                        @else
+                                            <label class="flex items-center space-x-2 cursor-pointer flex-1">
+                                                <input type="checkbox" wire:model="extra_curriculars" value="{{ $activity->name }}" class="rounded text-blue-600 focus:ring-blue-500">
+                                                <span class="text-sm text-gray-700">{{ $activity->name }}</span>
                                             </label>
-                                        @endforeach
+                                            <div class="hidden group-hover:flex items-center gap-1">
+                                                <button type="button" wire:click="startEditOption({{ $activity->id }}, '{{ addslashes($activity->name) }}')" class="text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition-colors">Edit</button>
+                                                <button type="button" wire:click="deleteOption({{ $activity->id }})" class="text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded transition-colors">Delete</button>
+                                            </div>
+                                        @endif
                                     </div>
-                                </div>
+                                @endforeach
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" wire:model="newActivityName" placeholder="Add new activity..." class="flex-1 text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 px-2 py-1" @keydown.enter.prevent="$wire.addOption('activity')">
+                                <button type="button" wire:click="addOption('activity')" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition-colors">+</button>
+                            </div>
+                        </div>
                             </div>
 
                         </div>
@@ -557,6 +593,10 @@
                                     <div class="profile-row">
                                         <span class="profile-label">Phone</span>
                                         <span class="profile-value">{{ $viewingStudent->phone ?? '-' }}</span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="profile-label">Email</span>
+                                        <span class="profile-value">{{ $viewingStudent->email ?? '-' }}</span>
                                     </div>
                                     <div class="profile-row">
                                         <span class="profile-label">Address</span>

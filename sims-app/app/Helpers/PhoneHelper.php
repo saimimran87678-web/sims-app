@@ -48,18 +48,56 @@ class PhoneHelper
     }
 
     /**
+     * Resolve child relation string for messages based on gender.
+     */
+    private static function resolveRelation(?string $gender): string
+    {
+        $gender = strtolower($gender ?? '');
+        if ($gender === 'male') return 'son';
+        if ($gender === 'female') return 'daughter';
+        return 'child';
+    }
+
+    /**
+     * Helper to process the template.
+     */
+    private static function processTemplate(string $template, array $data): string
+    {
+        $replacements = [
+            '{student_name}' => $data['student_name'] ?? '',
+            '{roll_no}' => $data['roll_no'] ?? '',
+            '{date}' => $data['date'] ?? '',
+            '{time}' => $data['time'] ?? '',
+            '{school_name}' => $data['school_name'] ?? '',
+            '{relation}' => self::resolveRelation($data['gender'] ?? null),
+        ];
+
+        return str_replace(array_keys($replacements), array_values($replacements), $template);
+    }
+
+    /**
      * Generate an absence notification message.
      * 
      * @param string $studentName
      * @param string|int $rollNo
      * @param string $date (format: Y-m-d or any readable format)
      * @param string $schoolName
+     * @param string|null $gender
      * @return string
      */
-    public static function getAbsentMessage(string $studentName, $rollNo, string $date, string $schoolName = null): string
+    public static function getAbsentMessage(string $studentName, $rollNo, string $date, string $schoolName = null, string $gender = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-        return "*Auto Generated Message*\n\nDear Parents,\nYour son {$studentName} (Roll No: {$rollNo}) is ABSENT from school today ({$date}).\nPlease contact the Class Teacher and give a valid reason.\n\n- {$schoolName} Administration";
+        $defaultTemplate = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is ABSENT from school today ({date}).\nPlease contact the Class Teacher and give a valid reason.\n\n- {school_name} Administration";
+        $template = \App\Models\Setting::get('whatsapp_template_absent', $defaultTemplate);
+
+        return self::processTemplate($template, [
+            'student_name' => $studentName,
+            'roll_no' => $rollNo,
+            'date' => $date,
+            'school_name' => $schoolName,
+            'gender' => $gender,
+        ]);
     }
 
     /**
@@ -69,12 +107,22 @@ class PhoneHelper
      * @param string|int $rollNo
      * @param string $date (format: Y-m-d or any readable format)
      * @param string $schoolName
+     * @param string|null $gender
      * @return string
      */
-    public static function getLeaveMessage(string $studentName, $rollNo, string $date, string $schoolName = null): string
+    public static function getLeaveMessage(string $studentName, $rollNo, string $date, string $schoolName = null, string $gender = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-        return "*Auto Generated Message*\n\nDear Parents,\nYour son {$studentName} (Roll No: {$rollNo}) is on LEAVE today ({$date}).\n\n- {$schoolName} Administration";
+        $defaultTemplate = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is on LEAVE today ({date}).\n\n- {school_name} Administration";
+        $template = \App\Models\Setting::get('whatsapp_template_leave', $defaultTemplate);
+
+        return self::processTemplate($template, [
+            'student_name' => $studentName,
+            'roll_no' => $rollNo,
+            'date' => $date,
+            'school_name' => $schoolName,
+            'gender' => $gender,
+        ]);
     }
 
     /**
@@ -84,11 +132,21 @@ class PhoneHelper
      * @param string|int $rollNo
      * @param string $time (e.g. 08:30 AM)
      * @param string $schoolName
+     * @param string|null $gender
      * @return string
      */
-    public static function getLateMessage(string $studentName, $rollNo, string $time, string $schoolName = null): string
+    public static function getLateMessage(string $studentName, $rollNo, string $time, string $schoolName = null, string $gender = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-        return "*Urgent Message*\n\nDear Parents,\nWe noticed that your son {$studentName} (Roll No: {$rollNo}) was marked absent/leave, but he has now arrived late at school today at {$time}.\nPlease ensure he arrives on time in the future to avoid any warning.\n\n- {$schoolName} Administration";
+        $defaultTemplate = "*Urgent Message*\n\nDear Parents,\nWe noticed that your {relation} {student_name} (Roll No: {roll_no}) was marked absent/leave, but has now arrived late at school today at {time}.\nPlease ensure they arrive on time in the future to avoid any warning.\n\n- {school_name} Administration";
+        $template = \App\Models\Setting::get('whatsapp_template_late', $defaultTemplate);
+
+        return self::processTemplate($template, [
+            'student_name' => $studentName,
+            'roll_no' => $rollNo,
+            'time' => $time,
+            'school_name' => $schoolName,
+            'gender' => $gender,
+        ]);
     }
 }
