@@ -198,4 +198,107 @@ class FeeManagementTest extends TestCase
         $recordBJulyUpdated = \App\Models\FeeRecord::where('student_id', $studentB->id)->where('period', '2026-07')->first();
         $this->assertEquals(2200.00, $recordBJulyUpdated->total_amount); // 2300 - 100 custom discount
     }
+
+    public function test_record_payment_with_partial_and_specific_head_distribution(): void
+    {
+        // Create Fee Heads to satisfy foreign key constraint
+        $head1 = \App\Models\FeeHead::create([
+            'name' => 'Tuition Fee',
+            'academic_session_id' => $this->session->id,
+        ]);
+        $head2 = \App\Models\FeeHead::create([
+            'name' => 'Admission Fee',
+            'academic_session_id' => $this->session->id,
+        ]);
+
+        // 1. Create a FeeRecord with two items
+        $record = FeeRecord::create([
+            'student_id' => $this->student->id,
+            'class_id' => $this->class->id,
+            'academic_session_id' => $this->session->id,
+            'period' => '2026-06',
+            'cycle' => 'monthly',
+            'total_amount' => 4500.00,
+            'paid_amount' => 0.00,
+            'balance' => 4500.00,
+            'status' => 'unpaid',
+            'due_date' => '2026-06-10',
+        ]);
+
+        $item1 = FeeRecordItem::create([
+            'fee_record_id' => $record->id,
+            'fee_head_id' => $head1->id,
+            'fee_head_name' => 'Tuition Fee',
+            'amount' => 1500.00,
+            'paid_amount' => 0.00,
+            'balance' => 1500.00,
+            'category' => 'monthly',
+        ]);
+
+        $item2 = FeeRecordItem::create([
+            'fee_record_id' => $record->id,
+            'fee_head_id' => $head2->id,
+            'fee_head_name' => 'Admission Fee',
+            'amount' => 3000.00,
+            'paid_amount' => 0.00,
+            'balance' => 3000.00,
+            'category' => 'one_time',
+        ]);
+
+        // 2. Test Livewire RecordPayment component
+        $test = Livewire::test(\App\Livewire\Admin\Fee\RecordPayment::class)
+            ->call('selectRecord', $record->id);
+
+        // Verify initial state: overall amount defaults to full balance, itemPayments maps are set correctly
+        $test->assertSet('amount', 4500.00)
+            ->assertSet('itemPayments.' . $item1->id, 1500.00)
+            ->assertSet('itemPayments.' . $item2->id, 3000.00);
+
+        // 3. Change overall amount to 2000 and verify it distributes (1500 to first item, 500 to second item)
+        $test->set('amount', 2000.00)
+            ->assertSet('itemPayments.' . $item1->id, 1500.00)
+            ->assertSet('itemPayments.' . $item2->id, 500.00);
+
+        // 4. Manually customize item level payment: pay 1000 for item1 and 1000 for item2
+        $test->set('itemPayments.' . $item1->id, 1000.00)
+            ->set('itemPayments.' . $item2->id, 1000.00);
+
+        // Verify total amount updates to 2000
+        $test->assertSet('amount', 2000.00);
+
+        // 5. Submit payment
+        $test->set('payment_date', '2026-06-05')
+            ->set('payment_method', 'bank_transfer')
+            ->set('reference_number', 'TXN-999')
+            ->set('remarks', 'Partial payment')
+            ->call('storePayment');
+
+        // Verify database updates
+        $this->assertDatabaseHas('fee_records', [
+            'id' => $record->id,
+            'paid_amount' => 2000.00,
+            'balance' => 2500.00,
+            'status' => 'partial',
+        ]);
+
+        $this->assertDatabaseHas('fee_record_items', [
+            'id' => $item1->id,
+            'paid_amount' => 1000.00,
+            'balance' => 500.00,
+        ]);
+
+        $this->assertDatabaseHas('fee_record_items', [
+            'id' => $item2->id,
+            'paid_amount' => 1000.00,
+            'balance' => 2000.00,
+        ]);
+
+        $this->assertDatabaseHas('fee_payments', [
+            'fee_record_id' => $record->id,
+            'student_id' => $this->student->id,
+            'amount_paid' => 2000.00,
+            'payment_method' => 'bank_transfer',
+            'notes' => 'Partial payment [Ref: TXN-999]',
+        ]);
+    }
 }

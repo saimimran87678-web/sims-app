@@ -27,6 +27,7 @@ class RecordPayment extends Component
     public $filter_class = '';
     public $filter_status = 'active';
     public $isPage = false;
+    public $itemPayments = [];
 
     public function mount()
     {
@@ -93,19 +94,64 @@ class RecordPayment extends Component
         $this->search = '';
     }
 
+    public function selectRecord($recordId)
+    {
+        $this->loadRecord($recordId);
+    }
+
     #[On('openPaymentModal')]
     public function loadRecord($recordId)
     {
         $this->recordId = $recordId;
-        $this->record = FeeRecord::with('student')->findOrFail($recordId);
+        $this->record = FeeRecord::with(['student', 'items'])->findOrFail($recordId);
         
         $this->payment_date = date('Y-m-d');
-        $this->amount = $this->record->balance; // Default to full balance
         $this->payment_method = 'cash';
         $this->reference_number = '';
         $this->remarks = '';
         
+        $this->itemPayments = [];
+        foreach ($this->record->items as $item) {
+            if ($item->amount <= 0) {
+                continue;
+            }
+            $balance = $item->balance !== null ? (float)$item->balance : (float)$item->amount;
+            $this->itemPayments[$item->id] = $balance;
+        }
+
+        $this->calculateTotalAmount();
         $this->isOpen = true;
+    }
+
+    public function updatedItemPayments($value, $key)
+    {
+        $this->calculateTotalAmount();
+    }
+
+    public function updatedAmount($value)
+    {
+        $value = (float)$value;
+        $remaining = $value;
+        
+        foreach ($this->record->items as $item) {
+            if ($item->amount <= 0) {
+                continue;
+            }
+            
+            $maxBalance = $item->balance !== null ? (float)$item->balance : (float)$item->amount;
+            $itemPay = min($remaining, $maxBalance);
+            $this->itemPayments[$item->id] = $itemPay;
+            $remaining -= $itemPay;
+        }
+    }
+
+    public function calculateTotalAmount()
+    {
+        $sum = 0;
+        foreach ($this->itemPayments as $itemId => $payAmount) {
+            $sum += (float)$payAmount;
+        }
+        $this->amount = $sum;
     }
 
     public function close()
@@ -113,6 +159,7 @@ class RecordPayment extends Component
         $this->isOpen = false;
         $this->record = null;
         $this->recordId = null;
+        $this->itemPayments = [];
         $this->resetValidation();
     }
 
@@ -126,21 +173,53 @@ class RecordPayment extends Component
             'remarks' => 'nullable|string',
         ]);
 
+        // Validate individual item payments
+        foreach ($this->record->items as $item) {
+            if ($item->amount <= 0) {
+                continue;
+            }
+            $itemId = $item->id;
+            $payAmount = isset($this->itemPayments[$itemId]) ? (float)$this->itemPayments[$itemId] : 0.0;
+            $maxBalance = $item->balance !== null ? (float)$item->balance : (float)$item->amount;
+            
+            if ($payAmount < 0 || $payAmount > $maxBalance) {
+                $this->addError('itemPayments.' . $itemId, 'Invalid payment amount.');
+                return;
+            }
+        }
+
         $studentId = $this->record->student_id;
         $payment = null;
 
         \DB::transaction(function () use (&$payment) {
+            $notes = $this->remarks;
+            if ($this->reference_number) {
+                $notes = trim(($notes ? $notes . ' ' : '') . '[Ref: ' . $this->reference_number . ']');
+            }
+
             // Create payment
             $payment = FeePayment::create([
                 'fee_record_id' => $this->recordId,
                 'student_id' => $this->record->student_id,
-                'academic_session_id' => $this->record->academic_session_id,
-                'amount' => $this->amount,
-                'payment_date' => $this->payment_date,
+                'amount_paid' => $this->amount,
                 'payment_method' => $this->payment_method,
-                'reference_number' => $this->reference_number,
-                'remarks' => $this->remarks,
+                'received_by' => auth()->user()->name ?? 'System',
+                'payment_date' => $this->payment_date,
+                'notes' => $notes,
             ]);
+
+            // Update item balances
+            foreach ($this->record->items as $item) {
+                if ($item->amount <= 0) {
+                    continue;
+                }
+                $itemId = $item->id;
+                $payAmount = isset($this->itemPayments[$itemId]) ? (float)$this->itemPayments[$itemId] : 0.0;
+                
+                $item->paid_amount += $payAmount;
+                $item->balance = ($item->balance !== null ? $item->balance : $item->amount) - $payAmount;
+                $item->save();
+            }
 
             // Update record balance
             $this->record->paid_amount += $this->amount;

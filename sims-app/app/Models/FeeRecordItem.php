@@ -15,12 +15,16 @@ class FeeRecordItem extends Model
         'fee_head_name',
         'subject_name',
         'amount',
+        'paid_amount',
+        'balance',
         'category',
         'description',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'balance' => 'decimal:2',
     ];
 
     public function record()

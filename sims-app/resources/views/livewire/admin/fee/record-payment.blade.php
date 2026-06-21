@@ -206,6 +206,49 @@
                             </div>
                         </div>
 
+                        <!-- Pay Head Breakdown -->
+                        <div class="mb-5 bg-gray-50/50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/60">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Pay Head Breakdown</label>
+                            <div class="space-y-3">
+                                @foreach($record->items as $item)
+                                    @if($item->amount > 0)
+                                        <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-gray-100 dark:border-gray-700 last:border-b-0 last:pb-0">
+                                            <div class="min-w-0 flex-1">
+                                                <span class="block font-bold text-gray-800 dark:text-gray-250 text-sm truncate">
+                                                    {{ $item->fee_head_name }}
+                                                    @if($item->subject_name)
+                                                        <span class="text-xs font-normal text-gray-500">({{ $item->subject_name }})</span>
+                                                    @endif
+                                                </span>
+                                                <span class="block text-xs text-gray-400 mt-0.5">
+                                                    Total: Rs. {{ number_format($item->amount, 2) }} | Paid: Rs. {{ number_format($item->paid_amount ?? 0, 2) }}
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-[11px] font-bold text-gray-400 dark:text-gray-500">Due: Rs. {{ number_format(($item->balance !== null ? $item->balance : $item->amount), 2) }}</span>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    min="0" 
+                                                    max="{{ $item->balance !== null ? $item->balance : $item->amount }}" 
+                                                    wire:model.live="itemPayments.{{ $item->id }}" 
+                                                    class="w-24 px-2 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-right font-black text-xs text-emerald-600 dark:text-emerald-400 focus:ring-emerald-500 focus:border-emerald-500"
+                                                />
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-gray-700 last:border-b-0 last:pb-0">
+                                            <div>
+                                                <span class="block font-bold text-red-600 dark:text-red-400 text-sm">{{ $item->fee_head_name }} (Discount)</span>
+                                                <span class="block text-xs text-gray-400 mt-0.5">{{ $item->description }}</span>
+                                            </div>
+                                            <span class="font-extrabold text-red-600 dark:text-red-400 text-sm">-Rs. {{ number_format(abs($item->amount), 2) }}</span>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Payment Method <span class="text-red-500">*</span></label>
