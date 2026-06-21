@@ -21,6 +21,7 @@ class Dashboard extends Component
             ? DB::table('students')
                 ->join('classes', 'students.class_id', '=', 'classes.id')
                 ->where('classes.academic_session_id', $activeSessionId)
+                ->where('students.status', 'active')
                 ->count()
             : 0;
 

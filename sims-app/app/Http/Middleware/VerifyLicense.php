@@ -86,4 +86,28 @@ class VerifyLicense
 
         return false;
     }
+
+    /**
+     * Handle tasks after the response has been sent to the browser.
+     * This ensures the auto-sync happens completely in the background
+     * without slowing down the user's page load time.
+     */
+    public function terminate(Request $request, Response $response): void
+    {
+        // Don't trigger auto-sync on exempt paths (like assets, livewire polls)
+        if ($this->isExempt($request->path()) || $request->path() === 'license-blocked') {
+            return;
+        }
+
+        $record = LicenseStatus::getLicenseRecord();
+        if ($record && $record->last_online_verified_at) {
+            $lastVerified = \Carbon\Carbon::parse($record->last_online_verified_at);
+            $now = \Carbon\Carbon::now();
+
+            // Sync if more than 60 mins passed OR if it's a new day
+            if ($now->diffInMinutes($lastVerified) >= 60 || !$lastVerified->isSameDay($now)) {
+                \App\Services\LicenseSyncService::syncBackground();
+            }
+        }
+    }
 }

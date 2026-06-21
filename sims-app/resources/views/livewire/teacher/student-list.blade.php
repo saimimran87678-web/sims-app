@@ -98,6 +98,14 @@
                         </template>
                     </div>
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
+                    <select wire:model.live="filterStatus" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
+                        <option value="">All Statuses</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -129,6 +137,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father's Name</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -162,6 +171,11 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium {{ strtolower($student->gender) === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700' }}">
                                     {{ ucfirst($student->gender ?? 'N/A') }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ $student->status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
+                                    {{ ucfirst($student->status ?? 'Active') }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -232,6 +246,9 @@
                         </span>
                         <span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-gray-50 text-gray-600 border border-gray-200">
                             Adm: {{ $student->admission_no }}
+                        </span>
+                        <span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide {{ $student->status === 'active' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100' }}">
+                            {{ ucfirst($student->status ?? 'Active') }}
                         </span>
                     </div>
 

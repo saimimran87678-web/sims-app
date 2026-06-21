@@ -49,6 +49,7 @@ class CommunicationHub extends Component
         // 1. Fetch students for selected classes
         if (!empty($this->selectedClasses)) {
             $students = Student::whereIn('class_id', $this->selectedClasses)
+                ->where('status', 'active')
                 ->orderBy('class_id')
                 ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
@@ -92,7 +93,7 @@ class CommunicationHub extends Component
     public function toggleClassStudents($classId)
     {
         // Helper to select/deselect all students of a specific class
-        $classStudents = Student::where('class_id', $classId)->pluck('id')->toArray();
+        $classStudents = Student::where('class_id', $classId)->where('status', 'active')->pluck('id')->toArray();
         
         // Check if all are currently selected
         $intersect = array_intersect($classStudents, $this->selectedStudents);
@@ -126,6 +127,7 @@ class CommunicationHub extends Component
             // 1. Gather Recipients
             // Fetch select students with phone numbers
             $recipients = Student::whereIn('id', $this->selectedStudents)
+                ->where('status', 'active')
                 ->whereNotNull('phone')
                 ->get()
                 ->map(function ($s) {
@@ -187,7 +189,7 @@ class CommunicationHub extends Component
 
     protected function getRecipients()
     {
-        $query = Student::where('is_active', true)->whereNotNull('phone');
+        $query = Student::where('status', 'active')->whereNotNull('phone');
 
         if ($this->recipientType === 'class') {
             $query->where('class_id', $this->selectedClassId);

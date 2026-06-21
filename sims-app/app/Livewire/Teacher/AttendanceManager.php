@@ -83,6 +83,7 @@ class AttendanceManager extends Component
     {
         $this->students = DB::table('students')
             ->where('class_id', $this->classId)
+            ->where('status', 'active')
             ->orderByRaw('CAST(roll_no AS INTEGER) ASC') // Ensure ordered by roll number for easier checking
             ->get();
             

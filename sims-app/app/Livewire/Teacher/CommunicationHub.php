@@ -63,6 +63,7 @@ class CommunicationHub extends Component
     {
         if (!empty($this->selectedClasses)) {
             $students = Student::whereIn('class_id', $this->selectedClasses)
+                ->where('status', 'active')
                 ->orderBy('class_id')
                 ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get();
@@ -81,7 +82,7 @@ class CommunicationHub extends Component
 
     public function toggleClassStudents($classId)
     {
-        $classStudents = Student::where('class_id', $classId)->pluck('id')->toArray();
+        $classStudents = Student::where('class_id', $classId)->where('status', 'active')->pluck('id')->toArray();
         $intersect = array_intersect($classStudents, $this->selectedStudents);
         $allSelected = count($intersect) === count($classStudents);
         
@@ -110,6 +111,7 @@ class CommunicationHub extends Component
 
             // 1. Gather Recipients
             $recipients = Student::whereIn('id', $this->selectedStudents)
+                ->where('status', 'active')
                 ->whereNotNull('phone')
                 ->get()
                 ->map(function ($s) {

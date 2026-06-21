@@ -58,4 +58,14 @@ class Classes extends Model
     {
         return $this->hasMany(\App\Models\Timetable::class, 'class_id');
     }
+
+    public function feeStructures()
+    {
+        return $this->hasMany(FeeStructure::class, 'class_id');
+    }
+
+    public function feeRecords()
+    {
+        return $this->hasMany(FeeRecord::class, 'class_id');
+    }
 }

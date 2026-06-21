@@ -17,6 +17,7 @@ class ResultReport extends Component
     public $examName = '';
     
     public $selectedExamId = '';
+    public $filterStatus = 'active';
     
     public $reportData = [];
     public $columnHeaders = []; // subject_id => name
@@ -155,10 +156,35 @@ class ResultReport extends Component
             }
 
             // Fetch Students with all needed fields
-            $students = \App\Models\Student::with('subjects')
-                ->where('class_id', $this->classId)
-                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
-                ->get();
+            $studentsQuery = \App\Models\Student::with('subjects')
+                ->where('class_id', $this->classId);
+
+            if ($this->filterStatus === 'active') {
+                $studentsQuery->where('status', 'active');
+            } elseif ($this->filterStatus === 'inactive') {
+                $studentsQuery->where('status', 'inactive')
+                    ->whereExists(function ($q) {
+                        $q->select(DB::raw(1))
+                          ->from('exam_marks')
+                          ->whereColumn('exam_marks.student_id', 'students.id')
+                          ->where('exam_marks.exam_id', $this->selectedExamId);
+                    });
+            } else {
+                $studentsQuery->where(function ($q) {
+                    $q->where('status', 'active')
+                      ->orWhere(function ($sq) {
+                          $sq->where('status', 'inactive')
+                            ->whereExists(function ($eq) {
+                                $eq->select(DB::raw(1))
+                                  ->from('exam_marks')
+                                  ->whereColumn('exam_marks.student_id', 'students.id')
+                                  ->where('exam_marks.exam_id', $this->selectedExamId);
+                            });
+                      });
+                });
+            }
+
+            $students = $studentsQuery->orderByRaw('CAST(roll_no AS INTEGER) ASC')->get();
 
             // Fetch All Marks for this Exam/Class
             $marks = DB::table('exam_marks')

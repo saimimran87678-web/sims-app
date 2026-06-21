@@ -12,6 +12,7 @@ class AttendanceReport extends Component
     public $classes = [];
     public $selectedClassId = '';
     public $selectedMonth = ''; // YYYY-MM
+    public $filterStatus = 'active';
     
     public $reportData = [];
     public $isLoading = false;
@@ -39,11 +40,39 @@ class AttendanceReport extends Component
         $this->reportData = [];
 
         try {
+            $startOfMonth = Carbon::parse($this->selectedMonth)->startOfMonth()->format('Y-m-d');
+            $endOfMonth = Carbon::parse($this->selectedMonth)->endOfMonth()->format('Y-m-d');
+
             // 1. Fetch Students
-            $students = DB::table('students')
-                ->where('class_id', $this->selectedClassId)
-                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
-                ->get();
+            $studentsQuery = DB::table('students')
+                ->where('class_id', $this->selectedClassId);
+
+            if ($this->filterStatus === 'active') {
+                $studentsQuery->where('status', 'active');
+            } elseif ($this->filterStatus === 'inactive') {
+                $studentsQuery->where('status', 'inactive')
+                    ->whereExists(function ($q) use ($startOfMonth, $endOfMonth) {
+                        $q->select(DB::raw(1))
+                          ->from('attendances')
+                          ->whereColumn('attendances.student_id', 'students.id')
+                          ->whereBetween('attendances.date', [$startOfMonth, $endOfMonth]);
+                    });
+            } else {
+                $studentsQuery->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                    $q->where('status', 'active')
+                      ->orWhere(function ($sq) use ($startOfMonth, $endOfMonth) {
+                          $sq->where('status', 'inactive')
+                            ->whereExists(function ($eq) use ($startOfMonth, $endOfMonth) {
+                                $eq->select(DB::raw(1))
+                                  ->from('attendances')
+                                  ->whereColumn('attendances.student_id', 'students.id')
+                                  ->whereBetween('attendances.date', [$startOfMonth, $endOfMonth]);
+                            });
+                      });
+                });
+            }
+
+            $students = $studentsQuery->orderByRaw('CAST(roll_no AS INTEGER) ASC')->get();
 
             if ($students->isEmpty()) {
                 $this->reportData = [];
@@ -52,8 +81,6 @@ class AttendanceReport extends Component
             }
 
             // 2. Fetch Attendance Records for the month
-            $startOfMonth = Carbon::parse($this->selectedMonth)->startOfMonth()->format('Y-m-d');
-            $endOfMonth = Carbon::parse($this->selectedMonth)->endOfMonth()->format('Y-m-d');
 
             $studentIds = $students->pluck('id')->toArray();
 

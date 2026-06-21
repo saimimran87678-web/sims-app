@@ -265,6 +265,7 @@ class GradeManager extends Component
 
         // Fetch Students
         $this->students = \App\Models\Student::where('class_id', $this->selectedClassId)
+            ->where('status', 'active')
             ->where(function($query) {
                 $query->whereDoesntHave('subjects')
                       ->orWhereHas('subjects', function($q) {

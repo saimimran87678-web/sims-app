@@ -23,6 +23,7 @@ class StudentManager extends Component
     public $filterActivity = '';
     public $filterTransport = '';
     public $filterBus = '';
+    public $filterStatus = 'active';
     public $viewMode = 'grid'; // 'grid' or 'list'
     public $sortBy = 'roll_no';
     public $sortDir = 'asc';
@@ -84,6 +85,7 @@ class StudentManager extends Component
         'filterActivity', 
         'filterTransport',
         'filterBus',
+        'filterStatus',
         'sortBy',
         'sortDir'
     ];
@@ -105,6 +107,7 @@ class StudentManager extends Component
     public $dob = '';
     public $admission_date = '';
     public $address = '';
+    public $status = 'active';
     public $photo;
 
     // Option Editing State
@@ -154,6 +157,7 @@ class StudentManager extends Component
             'admission_date' => 'nullable|date',
             'photo' => 'nullable|image|max:1024',
             'address' => 'nullable|string|max:1000',
+            'status' => 'required|string|in:active,inactive',
         ];
     }
 
@@ -204,6 +208,7 @@ class StudentManager extends Component
     public function updatedFilterActivity() { $this->resetPage(); $this->selectedStudentIds = []; }
     public function updatedFilterTransport() { $this->resetPage(); $this->selectedStudentIds = []; }
     public function updatedFilterBus() { $this->resetPage(); $this->selectedStudentIds = []; }
+    public function updatedFilterStatus() { $this->resetPage(); $this->selectedStudentIds = []; }
     public function updatedSortBy() { $this->resetPage(); $this->selectedStudentIds = []; }
     public function updatedSortDir() { $this->resetPage(); $this->selectedStudentIds = []; }
 
@@ -220,7 +225,7 @@ class StudentManager extends Component
 
     public function openModal()
     {
-        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName']);
+        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
         $this->class_id = $this->selectedClassId; // Default to currently selected filter
         $this->showModal = true;
     }
@@ -238,7 +243,7 @@ class StudentManager extends Component
         $this->email = $student->email;
         $this->class_id = $student->class_id;
         $this->section_id = $student->section_id;
-        $this->gender = $student->gender ?? 'Male';
+        $this->gender = $student->gender ? ucfirst($student->gender) : 'Male';
         
         // Deserialize comma-separated strings
         $this->sports = $student->sports ? explode(',', $student->sports) : [];
@@ -248,6 +253,7 @@ class StudentManager extends Component
         $this->dob = $student->dob ? $student->dob->format('Y-m-d') : '';
         $this->admission_date = $student->admission_date ? $student->admission_date->format('Y-m-d') : '';
         $this->address = $student->address;
+        $this->status = $student->status ?? 'active';
 
         // Load assigned subjects
         $this->studentSubjects = $student->subjects()->pluck('subjects.id')->toArray();
@@ -275,8 +281,8 @@ class StudentManager extends Component
             'phone' => $this->phone,
             'email' => $this->email,
             'class_id' => $this->class_id,
-            'section_id' => $this->section_id,
-            'gender' => $this->gender,
+            'section_id' => $this->section_id ?: null,
+            'gender' => strtolower($this->gender),
             'sports' => !empty($this->sports) ? implode(',', $this->sports) : null,
             'extra_curriculars' => !empty($this->extra_curriculars) ? implode(',', $this->extra_curriculars) : null,
             'transport_mode' => $this->transport_mode,
@@ -284,6 +290,7 @@ class StudentManager extends Component
             'dob' => $this->dob ?: null,
             'admission_date' => $this->admission_date ?: null,
             'address' => $this->address,
+            'status' => $this->status,
         ];
 
         if ($this->photo) {
@@ -303,7 +310,7 @@ class StudentManager extends Component
         $student->subjects()->sync($this->studentSubjects);
 
         $this->showModal = false;
-        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName']);
+        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
     }
 
     public function addOption($type)
@@ -484,6 +491,9 @@ class StudentManager extends Component
             })
             ->when($this->filterTransport === 'school_bus' && $this->filterBus, function($q) {
                 $q->where('students.vehicle_number', $this->filterBus);
+            })
+            ->when($this->filterStatus, function($q) {
+                $q->where('students.status', $this->filterStatus);
             });
 
         // 1. Mandatory Teacher Restriction (Always apply)

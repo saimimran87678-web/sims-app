@@ -91,4 +91,11 @@ class User extends Authenticatable
     {
         return $this->belongsTo(AcademicSession::class);
     }
+
+    public function academicSessions()
+    {
+        return $this->belongsToMany(AcademicSession::class, 'session_user')
+            ->withPivot('class_id', 'class_subject', 'is_active')
+            ->withTimestamps();
+    }
 }

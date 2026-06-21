@@ -245,6 +245,81 @@ class WhatsAppService
         ];
     }
     /**
+     * Send fee payment confirmation.
+     */
+    public function sendPaymentNotification($payment): void
+    {
+        $student = $payment->student;
+        if (empty($student->phone)) {
+            return;
+        }
+
+        $formattedPeriod = \Carbon\Carbon::parse($payment->record->period . '-01')->format('F Y');
+        
+        $message = PhoneHelper::getPaymentMessage(
+            $student->name,
+            $payment->amount,
+            $formattedPeriod,
+            $payment->record->balance
+        );
+
+        $now = now();
+        \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert([
+            'phone' => $student->phone,
+            'message' => $message,
+            'status' => 'pending',
+            'student_id' => $student->id,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+
+    /**
+     * Send bulk fee reminders.
+     * @param array $records Array of FeeRecord models
+     */
+    public function sendFeeReminders($records): array
+    {
+        $queueRecords = [];
+        $now = now();
+
+        foreach ($records as $record) {
+            $student = $record->student;
+            if (empty($student->phone) || $record->balance <= 0) {
+                continue;
+            }
+
+            $formattedPeriod = \Carbon\Carbon::parse($record->period . '-01')->format('F Y');
+            $dueDate = $record->due_date->format('d M, Y');
+
+            $message = PhoneHelper::getFeeReminderMessage(
+                $student->name,
+                $record->balance,
+                $formattedPeriod,
+                $dueDate
+            );
+
+            $queueRecords[] = [
+                'phone' => $student->phone,
+                'message' => $message,
+                'status' => 'pending',
+                'student_id' => $student->id,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if (!empty($queueRecords)) {
+            \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert($queueRecords);
+        }
+
+        return [
+            'sent' => count($queueRecords),
+            'failed' => 0
+        ];
+    }
+
+    /**
      * Logout and destroy session.
      *
      * @return array{success: bool, message?: string}

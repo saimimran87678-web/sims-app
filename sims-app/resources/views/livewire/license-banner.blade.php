@@ -1,4 +1,4 @@
-<div wire:init="verifyLicenseBackground">
+<div>
     @php
     $vendorPhone = preg_replace('/[^0-9]/', '', config('services.license.vendor_phone', '923220190291'));
     $schoolId    = config('services.license.school_id', '');

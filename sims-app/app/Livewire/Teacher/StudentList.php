@@ -19,6 +19,7 @@ class StudentList extends Component
     public $filterActivity = '';
     public $filterTransport = '';
     public $filterBus = '';
+    public $filterStatus = 'active'; // 'active' | 'inactive' | '' (all)
     public $viewMode = 'grid'; // 'grid' or 'list'
     
     // Modal State
@@ -288,6 +289,10 @@ class StudentList extends Component
         }
 
         $query = \App\Models\Student::where('class_id', $this->classId);
+
+        if ($this->filterStatus) {
+            $query->where('status', $this->filterStatus);
+        }
 
         if ($this->search) {
             $query->where(function ($q) {

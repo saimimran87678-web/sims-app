@@ -9,7 +9,7 @@
                 <span x-text="showFilters ? 'Hide Filters' : 'Show Advanced Filters'"></span>
             </button>
 
-            <div x-show="showFilters" x-collapse class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+            <div x-show="showFilters" x-collapse class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 mt-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Session</label>
                     <select wire:model.live="selectedSessionId" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
@@ -61,6 +61,14 @@
                     <select wire:model.live="sortDir" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                         <option value="asc">Ascending</option>
                         <option value="desc">Descending</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
+                    <select wire:model.live="filterStatus" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">All Statuses</option>
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
                     </select>
                 </div>
             </div>
@@ -179,6 +187,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father's Name</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -196,6 +205,11 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $student->father_name }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $student->phone }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold {{ $student->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                    {{ ucfirst($student->status) }}
+                                </span>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                                 <div class="flex gap-2 justify-end">
                                     <button
@@ -289,10 +303,10 @@
                     </div>
                 
                     <div class="pt-4 border-t border-gray-100 flex items-center justify-between">
-                         <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                            Active
-                         </div>
+                         <div class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 {{ $student->status === 'active' ? 'text-green-600' : 'text-red-500' }}">
+                             <span class="w-2.5 h-2.5 rounded-full {{ $student->status === 'active' ? 'bg-green-500' : 'bg-red-500' }}"></span>
+                             {{ ucfirst($student->status) }}
+                          </div>
                          <div class="flex gap-2">
                              <button wire:click="view({{ $student->id }})" class="text-gray-400 hover:text-blue-600 p-1" title="View Bio-Data">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
@@ -495,6 +509,14 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Email Address (Optional)</label>
                             <input wire:model="email" type="email" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="student@example.com" />
                             @error('email') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                            <select wire:model="status" required class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                            @error('status') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
                     

@@ -32,6 +32,26 @@ class AcademicSession extends Model
             ->withTimestamps();
     }
 
+    public function feeHeads()
+    {
+        return $this->hasMany(FeeHead::class);
+    }
+
+    public function feeStructures()
+    {
+        return $this->hasMany(FeeStructure::class);
+    }
+
+    public function feeRecords()
+    {
+        return $this->hasMany(FeeRecord::class);
+    }
+
+    public function feeOverrides()
+    {
+        return $this->hasMany(StudentFeeOverride::class);
+    }
+
     protected $casts = [
         'is_active' => 'boolean',
     ];

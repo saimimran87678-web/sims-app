@@ -31,6 +31,7 @@ class Student extends Model
         'profile_photo_path',
         'admission_date',
         'address',
+        'status',
     ];
 
     protected $casts = [
@@ -51,5 +52,20 @@ class Student extends Model
     public function subjects()
     {
         return $this->belongsToMany(Subject::class, 'student_subject', 'student_id', 'subject_id');
+    }
+
+    public function feeRecords()
+    {
+        return $this->hasMany(FeeRecord::class);
+    }
+
+    public function feePayments()
+    {
+        return $this->hasMany(FeePayment::class);
+    }
+
+    public function feeOverrides()
+    {
+        return $this->hasMany(StudentFeeOverride::class);
     }
 }

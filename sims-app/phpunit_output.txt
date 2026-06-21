@@ -1,0 +1,19 @@
+
+
+An error occurred inside PHPUnit.
+
+Message:  Unclosed '{' on line 8
+Location: /home/saim/SIMS/sims-app/tests/TestCase.php:22
+
+#0 /home/saim/SIMS/sims-app/vendor/composer/ClassLoader.php(427): Composer\Autoload\{closure}()
+#1 /home/saim/SIMS/sims-app/tests/Feature/AcademicSessionScopingTest.php(11): Composer\Autoload\ClassLoader->loadClass()
+#2 /home/saim/SIMS/sims-app/vendor/phpunit/phpunit/src/Runner/TestSuiteLoader.php(116): require_once('...')
+#3 /home/saim/SIMS/sims-app/vendor/phpunit/phpunit/src/Runner/TestSuiteLoader.php(49): PHPUnit\Runner\TestSuiteLoader->loadSuiteClassFile()
+#4 /home/saim/SIMS/sims-app/vendor/phpunit/phpunit/src/Framework/TestSuite.php(231): PHPUnit\Runner\TestSuiteLoader->load()
+#5 /home/saim/SIMS/sims-app/vendor/phpunit/phpunit/src/TextUI/Configuration/Xml/TestSuiteMapper.php(105): PHPUnit\Framework\TestSuite->addTestFile()
+#6 /home/saim/SIMS/sims-app/vendor/phpunit/phpunit/src/TextUI/Configuration/TestSuiteBuilder.php(75): PHPUnit\TextUI\XmlConfiguration\TestSuiteMapper->map()
+#7 /home/saim/SIMS/sims-app/vendor/phpunit/phpunit/src/TextUI/Application.php(412): PHPUnit\TextUI\Configuration\TestSuiteBuilder->build()
+#8 /home/saim/SIMS/sims-app/vendor/phpunit/phpunit/src/TextUI/Application.php(182): PHPUnit\TextUI\Application->buildTestSuite()
+#9 /home/saim/SIMS/sims-app/vendor/phpunit/phpunit/phpunit(104): PHPUnit\TextUI\Application->run()
+#10 /home/saim/SIMS/sims-app/vendor/bin/phpunit(122): include('...')
+#11 {main}

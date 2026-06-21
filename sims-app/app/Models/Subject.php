@@ -12,4 +12,9 @@ class Subject extends Model
     {
         return $this->belongsTo(Classes::class, 'class_id');
     }
+
+    public function feeStructures()
+    {
+        return $this->hasMany(FeeStructure::class);
+    }
 }

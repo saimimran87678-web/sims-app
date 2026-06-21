@@ -41,6 +41,16 @@
                     />
                 </div>
 
+                {{-- Status --}}
+                <div class="w-full md:w-48">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select wire:model="filterStatus" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
+                        <option value="">All Statuses</option>
+                    </select>
+                </div>
+
                 {{-- Generate --}}
                 <button
                     type="submit"

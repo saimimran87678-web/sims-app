@@ -59,6 +59,7 @@ class Dashboard extends Component
                 ->join('classes', 'students.class_id', '=', 'classes.id')
                 ->whereIn('students.class_id', $classIds)
                 ->where('classes.academic_session_id', $activeSessionId)
+                ->where('students.status', 'active')
                 ->count();
         }
 

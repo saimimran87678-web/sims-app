@@ -9,3 +9,8 @@ Artisan::command('inspire', function () {
 
 use Illuminate\Support\Facades\Schedule;
 Schedule::command('whatsapp:process-queue')->everyMinute()->withoutOverlapping();
+
+// Daily background sync for licenses at midnight ("every day starting")
+Schedule::call(function () {
+    \App\Services\LicenseSyncService::syncBackground();
+})->daily();

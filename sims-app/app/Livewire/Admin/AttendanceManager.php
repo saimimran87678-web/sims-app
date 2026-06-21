@@ -184,6 +184,7 @@ class AttendanceManager extends Component
 
         $this->students = DB::table('students')
             ->where('class_id', $this->selectedClassId)
+            ->where('status', 'active')
             ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
             ->get();
             

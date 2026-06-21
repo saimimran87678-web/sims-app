@@ -54,6 +54,7 @@ class LicenseStatus
                 'stage' => self::STAGE_BLOCKED,
                 'reason' => 'unlicensed',
                 'message' => 'No software license installed. Please contact support to activate your system.',
+                'plan' => 'basic',
             ];
         }
 
@@ -63,6 +64,7 @@ class LicenseStatus
                 'stage' => self::STAGE_BLOCKED,
                 'reason' => 'tampered_hash',
                 'message' => 'License integrity check failed (tampering detected). Please contact support.',
+                'plan' => 'basic',
             ];
         }
 
@@ -76,16 +78,22 @@ class LicenseStatus
                 'stage' => self::STAGE_BLOCKED,
                 'reason' => 'decryption_failed',
                 'message' => 'Failed to decrypt license payload. Re-installation required.',
+                'plan' => 'basic',
             ];
         }
 
+        $baseStatus = [
+            'plan' => $plan,
+            'school_name' => $record->school_id,
+        ];
+
         // Layer 2: RSA Signature Validation (prevents manual SQLite field editing)
         if (!LicenseVerifier::verifyRsaSignature($licenseKey, $record->expires_at, $status, $record->rsa_signature)) {
-            return [
+            return array_merge($baseStatus, [
                 'stage' => self::STAGE_BLOCKED,
                 'reason' => 'invalid_signature',
                 'message' => 'Cryptographic license signature is invalid. Re-activation required.',
-            ];
+            ]);
         }
 
         // Layer 3: System Time Travel Check (clock-tampering mitigation)
@@ -94,11 +102,11 @@ class LicenseStatus
             $lastVerified = Carbon::parse($record->last_online_verified_at);
             // Allow 1-hour tolerance for timezone / drift
             if ($now->lt($lastVerified->subHour())) {
-                return [
+                return array_merge($baseStatus, [
                     'stage' => self::STAGE_LOCKED,
                     'reason' => 'clock_tampering',
                     'message' => 'System clock mismatch detected. Please set your computer clock to the correct time to continue editing.',
-                ];
+                ]);
             }
         }
 
@@ -107,44 +115,44 @@ class LicenseStatus
             $lastVerified = Carbon::parse($record->last_online_verified_at);
             $daysOffline = $now->diffInDays($lastVerified);
             if ($daysOffline > ($record->offline_grace_days ?? 7)) {
-                return [
+                return array_merge($baseStatus, [
                     'stage' => self::STAGE_LOCKED,
                     'reason' => 'offline_limit',
                     'message' => 'Offline grace period exceeded. Please connect to the internet to verify your subscription.',
-                ];
+                ]);
             }
         } else {
             // First run check
-            return [
+            return array_merge($baseStatus, [
                 'stage' => self::STAGE_LOCKED,
                 'reason' => 'never_verified',
                 'message' => 'Initial online verification required. Please connect to the internet to activate your software.',
-            ];
+            ]);
         }
 
         // Layer 5: Expiry & Suspension Timeline Check
         if ($status === 'suspended') {
-            return [
+            return array_merge($baseStatus, [
                 'stage' => self::STAGE_LOCKED,
                 'reason' => 'suspended',
                 'message' => 'Your subscription has been suspended by the vendor. The system is now in READ-ONLY mode.',
-            ];
+            ]);
         }
 
         if ($status === 'expired') {
-            return [
+            return array_merge($baseStatus, [
                 'stage' => self::STAGE_BLOCKED,
                 'reason' => 'expired_blocked',
                 'message' => 'Your subscription has been marked as expired by the vendor. Access is blocked. Please renew.',
-            ];
+            ]);
         }
 
         if (!$record->expires_at) {
-            return [
+            return array_merge($baseStatus, [
                 'stage' => self::STAGE_BLOCKED,
                 'reason' => 'no_expiry',
                 'message' => 'Invalid license structure (missing expiry). Please contact support.',
-            ];
+            ]);
         }
 
         $expiry = Carbon::parse($record->expires_at)->startOfDay();
@@ -154,26 +162,26 @@ class LicenseStatus
             $overdueDays = (int) abs($today->diffInDays($expiry));
 
             if ($overdueDays <= 3) {
-                return [
+                return array_merge($baseStatus, [
                     'stage' => self::STAGE_GRACE,
                     'reason' => 'expiry_grace',
                     'days_past' => $overdueDays,
                     'message' => 'Your subscription has expired. You are in a 3-day grace period. Please renew.',
-                ];
+                ]);
             } elseif ($overdueDays <= 10) {
-                return [
+                return array_merge($baseStatus, [
                     'stage' => self::STAGE_LOCKED,
                     'reason' => 'expired_locked',
                     'days_past' => $overdueDays,
                     'message' => 'Your account status is suspended. The system is now in READ-ONLY mode. Please renew.',
-                ];
+                ]);
             } else {
-                return [
+                return array_merge($baseStatus, [
                     'stage' => self::STAGE_BLOCKED,
                     'reason' => 'expired_blocked',
                     'days_past' => $overdueDays,
                     'message' => 'Your subscription has expired. Full access is blocked. Please renew.',
-                ];
+                ]);
             }
         }
 
@@ -183,14 +191,14 @@ class LicenseStatus
 
         if ($daysRemaining <= 3) {
             $daysLabel = max(0, $daysRemaining);
-            return [
+            return array_merge($baseStatus, [
                 'stage'     => self::STAGE_WARNING,
                 'reason'    => 'expiry_warning',
                 'days_left' => $daysLabel,
                 'message'   => $daysLabel === 0
                     ? 'Your subscription expires TODAY. Please renew immediately to avoid interruption.'
                     : "Your subscription will expire in {$daysLabel} " . ($daysLabel === 1 ? 'day' : 'days') . ". Please renew soon.",
-            ];
+            ]);
         }
 
         return [
