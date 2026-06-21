@@ -136,7 +136,7 @@
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 text-right">
-                                                <button wire:click="selectRecord({{ $rec->id }})" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-colors shadow-sm">
+                                                <button type="button" wire:click="selectRecord({{ $rec->id }})" class="px-4 py-2 text-white rounded-xl font-bold text-sm transition-colors shadow-sm" style="background-color: #059669; color: #ffffff;">
                                                     Collect Payment
                                                 </button>
                                             </td>
@@ -161,39 +161,39 @@
 
     <!-- Payment Dialog (Modal or Full View) -->
     @if($isOpen && $record)
-        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm">
-            <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden border border-gray-100 dark:border-gray-750 transform scale-100 transition-all duration-300">
+        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-755 transform scale-100 transition-all duration-300 flex flex-col max-h-[90vh]">
                 <!-- Modal Header -->
-                <div class="px-8 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
-                    <h3 class="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2.5">
-                        <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                <div class="px-8 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
+                    <h3 class="text-lg font-extrabold text-gray-900 dark:text-white flex items-center gap-2.5">
+                        <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         Record Payment
                     </h3>
-                    <button wire:click="close" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <button type="button" wire:click="close" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
                 
-                <div class="p-8">
-                    <!-- Summary Card -->
-                    <div class="bg-gradient-to-br from-emerald-50/70 to-teal-50/30 dark:from-emerald-950/20 dark:to-teal-950/5 rounded-2xl p-5 mb-6 border border-emerald-100/50 dark:border-emerald-900/35 text-sm shadow-sm">
-                        <div class="flex justify-between items-center mb-2.5">
-                            <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Student:</span>
-                            <span class="font-extrabold text-emerald-950 dark:text-white text-base">{{ $record->student->name }}</span>
+                <!-- Payment Form -->
+                <form wire:submit.prevent="storePayment" class="flex flex-col flex-1 min-h-0">
+                    <div class="p-6 md:p-8 overflow-y-auto flex-1 space-y-4">
+                        <!-- Summary Card -->
+                        <div class="bg-gradient-to-br from-emerald-50/70 to-teal-50/30 dark:from-emerald-950/20 dark:to-teal-950/5 rounded-2xl p-5 border border-emerald-100/50 dark:border-emerald-900/35 text-sm shadow-sm">
+                            <div class="flex justify-between items-center mb-2.5">
+                                <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Student:</span>
+                                <span class="font-extrabold text-emerald-950 dark:text-white text-base">{{ $record->student->name }}</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Bill Period:</span>
+                                <span class="font-bold text-emerald-900 dark:text-emerald-250">{{ \Carbon\Carbon::parse($record->period . '-01')->format('F Y') }}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-base border-t border-emerald-200/50 dark:border-emerald-900/50 pt-3 mt-3">
+                                <span class="text-emerald-800 dark:text-emerald-400 font-bold text-base">Pending Balance:</span>
+                                <span class="font-black text-red-600 dark:text-red-400 text-lg">Rs. {{ number_format($record->balance, 2) }}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Bill Period:</span>
-                            <span class="font-bold text-emerald-900 dark:text-emerald-250">{{ \Carbon\Carbon::parse($record->period . '-01')->format('F Y') }}</span>
-                        </div>
-                        <div class="flex justify-between items-center text-base border-t border-emerald-200/50 dark:border-emerald-900/50 pt-3 mt-3">
-                            <span class="text-emerald-800 dark:text-emerald-400 font-bold text-base">Pending Balance:</span>
-                            <span class="font-black text-red-600 dark:text-red-400 text-lg">Rs. {{ number_format($record->balance, 2) }}</span>
-                        </div>
-                    </div>
 
-                    <!-- Payment Form -->
-                    <form wire:submit.prevent="storePayment">
-                        <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Payment Date <span class="text-red-500">*</span></label>
                                 <input type="date" wire:model="payment_date" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-emerald-500 focus:border-emerald-500 font-medium">
@@ -207,49 +207,68 @@
                         </div>
 
                         <!-- Pay Head Breakdown -->
-                        <div class="mb-5 bg-gray-50/50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/60">
+                        <div class="bg-gray-50/50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/60">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Pay Head Breakdown</label>
-                            <div class="space-y-3">
-                                @foreach($record->items as $item)
-                                    @if($item->amount > 0)
-                                        <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-gray-100 dark:border-gray-700 last:border-b-0 last:pb-0">
-                                            <div class="min-w-0 flex-1">
-                                                <span class="block font-bold text-gray-800 dark:text-gray-250 text-sm truncate">
-                                                    {{ $item->fee_head_name }}
-                                                    @if($item->subject_name)
-                                                        <span class="text-xs font-normal text-gray-500">({{ $item->subject_name }})</span>
-                                                    @endif
-                                                </span>
-                                                <span class="block text-xs text-gray-400 mt-0.5">
-                                                    Total: Rs. {{ number_format($item->amount, 2) }} | Paid: Rs. {{ number_format($item->paid_amount ?? 0, 2) }}
-                                                </span>
-                                            </div>
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-[11px] font-bold text-gray-400 dark:text-gray-500">Due: Rs. {{ number_format(($item->balance !== null ? $item->balance : $item->amount), 2) }}</span>
-                                                <input 
-                                                    type="number" 
-                                                    step="0.01" 
-                                                    min="0" 
-                                                    max="{{ $item->balance !== null ? $item->balance : $item->amount }}" 
-                                                    wire:model.live="itemPayments.{{ $item->id }}" 
-                                                    class="w-24 px-2 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-right font-black text-xs text-emerald-600 dark:text-emerald-400 focus:ring-emerald-500 focus:border-emerald-500"
-                                                />
-                                            </div>
-                                        </div>
-                                    @else
-                                        <div class="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-gray-700 last:border-b-0 last:pb-0">
-                                            <div>
-                                                <span class="block font-bold text-red-600 dark:text-red-400 text-sm">{{ $item->fee_head_name }} (Discount)</span>
-                                                <span class="block text-xs text-gray-400 mt-0.5">{{ $item->description }}</span>
-                                            </div>
-                                            <span class="font-extrabold text-red-600 dark:text-red-400 text-sm">-Rs. {{ number_format(abs($item->amount), 2) }}</span>
-                                        </div>
-                                    @endif
-                                @endforeach
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="border-b border-gray-200 dark:border-gray-700 text-gray-500 font-bold">
+                                            <th class="pb-2 uppercase">Fee Head</th>
+                                            <th class="pb-2 uppercase text-right px-2">Total / Paid</th>
+                                            <th class="pb-2 uppercase text-right px-2">Due</th>
+                                            <th class="pb-2 uppercase text-right w-24">Paying</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800/80">
+                                        @foreach($record->items as $item)
+                                            @if($item->amount > 0)
+                                                <tr>
+                                                    <td class="py-2.5 font-bold text-gray-800 dark:text-gray-200">
+                                                        <span class="block truncate max-w-[120px]" title="{{ $item->fee_head_name }}">
+                                                            {{ $item->fee_head_name }}
+                                                        </span>
+                                                        @if($item->subject_name)
+                                                            <span class="block text-[10px] font-normal text-gray-400 truncate max-w-[120px]">({{ $item->subject_name }})</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="py-2.5 text-right px-2 text-gray-500">
+                                                        <span class="block font-semibold">Rs. {{ number_format($item->amount, 2) }}</span>
+                                                        <span class="block text-[10px] text-gray-400">Paid: {{ number_format($item->paid_amount ?? 0, 2) }}</span>
+                                                    </td>
+                                                    <td class="py-2.5 text-right px-2 font-bold text-gray-700 dark:text-gray-300">
+                                                        Rs. {{ number_format(($item->balance !== null ? $item->balance : $item->amount), 2) }}
+                                                    </td>
+                                                    <td class="py-2.5 text-right">
+                                                        <input 
+                                                            type="number" 
+                                                            step="0.01" 
+                                                            min="0" 
+                                                            max="{{ $item->balance !== null ? $item->balance : $item->amount }}" 
+                                                            wire:model.live="itemPayments.{{ $item->id }}" 
+                                                            class="w-full px-2 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-right font-black text-emerald-600 dark:text-emerald-400 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            @else
+                                                <tr class="bg-red-50/20 dark:bg-red-950/5">
+                                                    <td class="py-2.5 font-bold text-red-600 dark:text-red-400">
+                                                        {{ $item->fee_head_name }} (Discount)
+                                                        @if($item->description)
+                                                            <span class="block text-[10px] font-normal text-red-400">{{ $item->description }}</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="py-2.5 text-right text-red-500 font-semibold px-2" colspan="3">
+                                                        -Rs. {{ number_format(abs($item->amount), 2) }}
+                                                    </td>
+                                                </tr>
+                                            @endif
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Payment Method <span class="text-red-500">*</span></label>
                                 <select wire:model="payment_method" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-semibold">
@@ -267,23 +286,23 @@
                             </div>
                         </div>
 
-                        <div class="mb-6">
+                        <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Remarks</label>
                             <input type="text" wire:model="remarks" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-emerald-500 focus:border-emerald-500 text-sm" placeholder="e.g. Paid by father">
                             @error('remarks') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
+                    </div>
 
-                        <!-- Modal Actions -->
-                        <div class="flex justify-end gap-3.5 border-t border-gray-100 dark:border-gray-700 pt-5 mt-5">
-                            <button type="button" wire:click="close" class="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-250 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-xl font-bold transition-all text-sm">
-                                Cancel
-                            </button>
-                            <button type="submit" wire:loading.attr="disabled" class="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-extrabold shadow-lg shadow-emerald-600/20 transition-all text-sm disabled:opacity-75">
-                                Confirm Payment
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <!-- Modal Actions -->
+                    <div class="px-8 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3.5 bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
+                        <button type="button" wire:click="close" class="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-xl font-bold transition-all text-sm">
+                            Cancel
+                        </button>
+                        <button type="submit" wire:loading.attr="disabled" class="px-5 py-2.5 text-white rounded-xl font-extrabold shadow-lg transition-all text-sm disabled:opacity-75" style="background-color: #059669; color: #ffffff;">
+                            Confirm Payment
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     @endif
