@@ -7,11 +7,18 @@ use App\Models\FeeRecord;
 use App\Models\FeePayment;
 use App\Models\AcademicSession;
 use Livewire\Component;
+use Livewire\Attributes\On;
 
 class StudentLedger extends Component
 {
     public $student;
     public $studentId;
+
+    #[On('refreshFeeRecords')]
+    public function refreshLedger()
+    {
+        // Refreshes view dynamically when payment is recorded
+    }
 
     public function mount($studentId)
     {
@@ -23,17 +30,10 @@ class StudentLedger extends Component
     {
         $sessionId = AcademicSession::getActiveSessionId();
 
-        $records = FeeRecord::with('items')
+        $records = FeeRecord::with(['items', 'payments'])
             ->where('student_id', $this->studentId)
             ->where('academic_session_id', $sessionId)
             ->orderBy('period', 'desc')
-            ->get();
-
-        $payments = FeePayment::with('record')
-            ->where('student_id', $this->studentId)
-            ->where('academic_session_id', $sessionId)
-            ->orderBy('payment_date', 'desc')
-            ->orderBy('created_at', 'desc')
             ->get();
 
         // Calculate totals
@@ -43,7 +43,6 @@ class StudentLedger extends Component
 
         return view('livewire.admin.fee.student-ledger', [
             'records' => $records,
-            'payments' => $payments,
             'totalBilled' => $totalBilled,
             'totalPaid' => $totalPaid,
             'totalBalance' => $totalBalance,

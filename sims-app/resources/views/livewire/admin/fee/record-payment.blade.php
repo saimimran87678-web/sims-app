@@ -52,7 +52,7 @@
                                         <div>
                                             <h4 class="font-bold text-gray-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors text-base">{{ $st->name }}</h4>
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                Class: {{ $st->class->name }} | Admn: {{ $st->admission_no }} | 
+                                                Father: {{ $st->father_name }} | Class: {{ $st->class->name }} | Admn: {{ $st->admission_no }} | 
                                                 <span class="font-bold {{ $st->status === 'active' ? 'text-green-650 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                                                     {{ ucfirst($st->status ?? 'Active') }}
                                                 </span>
@@ -67,10 +67,18 @@
                                                 </span>
                                             @endif
                                         </div>
-                                        <button wire:click="selectStudent({{ $st->id }})" 
-                                                class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-emerald-500 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 rounded-xl font-bold text-sm transition-all shadow-sm">
-                                            Select
-                                        </button>
+                                        <div class="flex gap-2 items-center">
+                                            <a href="{{ route('admin.fee.ledger', $st->id) }}" 
+                                               class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 rounded-xl font-bold text-sm transition-all shadow-sm flex items-center gap-1.5"
+                                               title="View Fee Ledger">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                Ledger
+                                            </a>
+                                            <button wire:click="selectStudent({{ $st->id }})" 
+                                                    class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-emerald-500 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 rounded-xl font-bold text-sm transition-all shadow-sm">
+                                                Select
+                                            </button>
+                                        </div>
                                     </div>
                                 @empty
                                     <div class="col-span-2 text-center py-8 text-gray-500">
@@ -94,7 +102,7 @@
                         <div>
                             <div class="flex items-center gap-2">
                                 <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">{{ $selectedStudent->class->name }}</span>
-                                <span class="text-xs text-gray-500">Admn: {{ $selectedStudent->admission_no }}</span>
+                                <span class="text-xs text-gray-500">Admn: {{ $selectedStudent->admission_no }} | Father: {{ $selectedStudent->father_name }}</span>
                             </div>
                             <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{{ $selectedStudent->name }}</h2>
                         </div>
@@ -182,6 +190,10 @@
                             <div class="flex justify-between items-center mb-2.5">
                                 <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Student:</span>
                                 <span class="font-extrabold text-emerald-950 dark:text-white text-base">{{ $record->student->name }}</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-2.5">
+                                <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Father Name:</span>
+                                <span class="font-bold text-emerald-900 dark:text-gray-250">{{ $record->student->father_name }}</span>
                             </div>
                             <div class="flex justify-between items-center mb-3">
                                 <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Bill Period:</span>

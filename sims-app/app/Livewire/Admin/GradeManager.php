@@ -168,15 +168,9 @@ class GradeManager extends Component
         $this->passingMarks = $marksConfig->passing_marks ?? 33;
         $this->passingScore = ($this->maxMarks * $this->passingMarks) / 100;
 
-        // Fetch Students
+        // Fetch Students (Admins see all active students in the class)
         $this->students = \App\Models\Student::where('class_id', $this->selectedClassId)
             ->where('status', 'active')
-            ->where(function($query) {
-                $query->whereDoesntHave('subjects')
-                      ->orWhereHas('subjects', function($q) {
-                          $q->where('subjects.id', $this->selectedSubjectId);
-                      });
-            })
             ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
             ->get();
 

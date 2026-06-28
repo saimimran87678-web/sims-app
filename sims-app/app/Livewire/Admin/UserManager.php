@@ -356,6 +356,12 @@ class UserManager extends Component
     {
         $user = User::findOrFail($id);
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
+        // Guard: ensure the active session actually exists in the database
+        if (!$activeSessionId || !\App\Models\AcademicSession::find($activeSessionId)) {
+            session()->flash('error', 'No valid active academic session found. Please set an active session first.');
+            return;
+        }
         
         $sessionUser = \Illuminate\Support\Facades\DB::table('session_user')
             ->where('user_id', $user->id)
@@ -383,6 +389,7 @@ class UserManager extends Component
             session()->flash('message', 'User account enabled and attached to the active session.');
         }
     }
+
 
     public function confirmPinAction($action, $userId = null)
     {

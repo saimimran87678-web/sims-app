@@ -6,7 +6,6 @@ use Livewire\Component;
 
 class InvoiceGenerator extends Component
 {
-    public $classes = [];
     public $selectedClassId = '';
     public $billingMonth = '';
     
@@ -42,6 +41,11 @@ class InvoiceGenerator extends Component
     public $editingFeeHeadName = '';
     public $activeTab = 'setup';
 
+    // Subject Enrollment Modal
+    public $showSubjectEnrollmentModal = false;
+    public $studentSubjectsList = []; // subject_id[] currently assigned to the student
+    public $classSubjectsList = [];   // all subjects in the selected class
+
     // View Vouchers Properties
     public $viewClassId = '';
     public $viewStudentId = 'all';
@@ -64,7 +68,6 @@ class InvoiceGenerator extends Component
         // Add one empty row by default
         $this->baseItems[] = ['id' => uniqid(), 'name' => '', 'amount' => '', 'category' => 'monthly'];
         
-        $this->loadClasses();
         $this->loadFeeHeads();
     }
     
@@ -190,13 +193,7 @@ class InvoiceGenerator extends Component
         }
     }
     
-    public function loadClasses()
-    {
-        $sessionId = \App\Models\AcademicSession::getActiveSessionId();
-        if ($sessionId) {
-            $this->classes = \App\Models\Classes::where('academic_session_id', $sessionId)->get();
-        }
-    }
+
 
     public function updatedSelectedClassId()
     {
@@ -353,6 +350,7 @@ class InvoiceGenerator extends Component
         $sessionId = \App\Models\AcademicSession::getActiveSessionId();
         $studentRecords = \App\Models\Student::where('class_id', $this->selectedClassId)
             ->where('status', 'active')
+            ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
             ->get();
         
         $this->students = [];
@@ -885,10 +883,10 @@ class InvoiceGenerator extends Component
         if ($value) {
             $this->viewStudents = \App\Models\Student::where('class_id', $value)
                 ->where('status', 'active')
-                ->orderBy('first_name')
+                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get()
                 ->mapWithKeys(function ($std) {
-                    return [$std->id => $std->first_name . ' ' . $std->last_name . ' (' . ($std->roll_number ?? 'N/A') . ')'];
+                    return [$std->id => $std->name . ' (' . ($std->roll_no ?? 'N/A') . ')'];
                 })->toArray();
         } else {
             $this->viewStudents = [];
@@ -901,10 +899,10 @@ class InvoiceGenerator extends Component
         if ($value) {
             $this->receiptStudents = \App\Models\Student::where('class_id', $value)
                 ->where('status', 'active')
-                ->orderBy('first_name')
+                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
                 ->get()
                 ->mapWithKeys(function ($std) {
-                    return [$std->id => $std->first_name . ' ' . $std->last_name . ' (' . ($std->roll_number ?? 'N/A') . ')'];
+                    return [$std->id => $std->name . ' (' . ($std->roll_no ?? 'N/A') . ')'];
                 })->toArray();
         } else {
             $this->receiptStudents = [];
@@ -929,7 +927,9 @@ class InvoiceGenerator extends Component
             $query->where('student_id', $this->viewStudentId);
         }
 
-        return $query->orderBy('created_at', 'desc')->get();
+        return $query->get()->sortBy(function ($record) {
+            return (int) ($record->student->roll_no ?? 999999);
+        })->values();
     }
 
     public function getReceiptsProperty()
@@ -954,7 +954,9 @@ class InvoiceGenerator extends Component
             $query->where('student_id', $this->receiptStudentId);
         }
 
-        return $query->orderBy('payment_date', 'desc')->orderBy('created_at', 'desc')->get();
+        return $query->get()->sortBy(function ($payment) {
+            return (int) ($payment->student->roll_no ?? 999999);
+        })->values();
     }
 
     public function sendVoucherWhatsApp($recordId)
@@ -1136,8 +1138,62 @@ class InvoiceGenerator extends Component
         return storage_path("app/public/{$fileName}");
     }
 
+    /**
+     * Open the Subject Enrollment modal for the currently selected student.
+     */
+    public function openSubjectEnrollmentModal()
+    {
+        $studentId = $this->selectedTarget;
+        if (!$studentId || $studentId === 'all') {
+            return;
+        }
+
+        // Load all subjects for the selected class
+        $this->classSubjectsList = \App\Models\Subject::where('class_id', $this->selectedClassId)
+            ->orderBy('name')
+            ->get()
+            ->toArray();
+
+        // Load the student's currently assigned subjects (empty = all enrolled)
+        $student = \App\Models\Student::find($studentId);
+        $this->studentSubjectsList = $student
+            ? $student->subjects()->pluck('subjects.id')->map(fn($id) => (string) $id)->toArray()
+            : [];
+
+        $this->showSubjectEnrollmentModal = true;
+    }
+
+    /**
+     * Save the updated subject enrollments for the selected student.
+     */
+    public function saveSubjectEnrollments()
+    {
+        $studentId = $this->selectedTarget;
+        if (!$studentId || $studentId === 'all') {
+            $this->showSubjectEnrollmentModal = false;
+            return;
+        }
+
+        $student = \App\Models\Student::find($studentId);
+        if (!$student) {
+            $this->showSubjectEnrollmentModal = false;
+            return;
+        }
+
+        // Sync: empty array means enrolled in all (no rows in pivot = default all)
+        $student->subjects()->sync($this->studentSubjectsList);
+
+        $this->showSubjectEnrollmentModal = false;
+        session()->flash('message', 'Subject enrollment updated successfully.');
+    }
+
     public function render()
     {
-        return view('livewire.admin.fee.invoice-generator')->layout('components.layouts.admin', ['title' => 'Voucher Management']);
+        $sessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $classesList = $sessionId ? \App\Models\Classes::where('academic_session_id', $sessionId)->get() : collect();
+
+        return view('livewire.admin.fee.invoice-generator', [
+            'classes' => $classesList
+        ])->layout('components.layouts.admin', ['title' => 'Voucher Management']);
     }
 }

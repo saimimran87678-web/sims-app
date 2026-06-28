@@ -70,7 +70,7 @@ class InvoiceService
             'institutePhone' => $institutePhone,
             'instituteEmail' => $instituteEmail,
             'invoiceNumber' => $invoiceNumber
-        ]);
+        ])->setPaper('a4', 'landscape');
 
         $pdfPath = $invoice ? $invoice->pdf_path : null;
         if ($saveToDisk) {
@@ -87,9 +87,9 @@ class InvoiceService
             'invoice_sequence' => $nextSequence,
             'school_code' => $schoolCode,
             'period_code' => $periodCode,
-            'student_name' => $record->student->first_name . ' ' . $record->student->last_name,
-            'roll_number' => $record->student->roll_number,
-            'admission_number' => $record->student->admission_number,
+            'student_name' => $record->student->name,
+            'roll_number' => $record->student->roll_no,
+            'admission_number' => $record->student->admission_no,
             'parent_phone' => $record->student->phone,
             'class_name' => $record->class->name,
             'invoice_data' => [

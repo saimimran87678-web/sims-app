@@ -174,8 +174,17 @@ class ResultReport extends Component
                 $studentSubjectIds = $student->subjects->pluck('id')->toArray();
 
                 foreach ($subjects as $subject) {
-                    $isEnrolled = empty($studentSubjectIds) || in_array($subject->id, $studentSubjectIds);
                     $maxMarks = $this->subjectMaxMarks[$subject->id] ?? 100;
+
+                    $markRecord = $marks->where('student_id', $student->id)
+                                        ->where('subject_id', $subject->id)
+                                        ->first();
+
+                    // isEnrolled: true if student has no subject restrictions, or is specifically enrolled,
+                    // OR if admin has explicitly assigned marks for this subject.
+                    $isEnrolled = empty($studentSubjectIds)
+                        || in_array($subject->id, $studentSubjectIds)
+                        || !is_null($markRecord);
 
                     if (!$isEnrolled) {
                         $row['subjects'][$subject->id] = [
@@ -188,10 +197,8 @@ class ResultReport extends Component
                         continue;
                     }
 
-                    $markRecord = $marks->where('student_id', $student->id)
-                                        ->where('subject_id', $subject->id)
-                                        ->first();
                     
+
                     if ($markRecord) {
                         // Check if marked as absent
                         if (!empty($markRecord->is_absent)) {

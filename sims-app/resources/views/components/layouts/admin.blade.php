@@ -434,6 +434,30 @@
                 return response;
             };
         })();
+        function printPdf(url) {
+            let iframe = document.getElementById('pdf-print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'pdf-print-iframe';
+                iframe.style.position = 'fixed';
+                iframe.style.right = '0';
+                iframe.style.bottom = '0';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = '0';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = url;
+            iframe.onload = function() {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    console.error("Direct printing failed, opening PDF in new tab:", e);
+                    window.open(url, '_blank');
+                }
+            };
+        }
     </script>
     
     <x-security-scripts />

@@ -234,6 +234,9 @@ class RecordPayment extends Component
             $this->record->save();
         });
 
+        // Reset search/student selection for standalone page mode
+        $this->resetStudentSelection();
+
         session()->flash('message', 'Payment recorded successfully.');
         $this->close();
         
@@ -249,7 +252,5 @@ class RecordPayment extends Component
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failed to dispatch payment notification: ' . $e->getMessage());
         }
-
-        return redirect()->route('admin.fee.ledger', $studentId);
     }
 }

@@ -117,6 +117,18 @@
                                 <span class="font-bold text-red-600 dark:text-red-400 block mt-0.5">Rs. {{ number_format($students[$selectedTarget]['arrears']) }}</span>
                             </div>
                         </div>
+
+                        <!-- Assign Subjects Button -->
+                        <div class="flex-shrink-0 pt-2 md:pt-0">
+                            <button wire:click="openSubjectEnrollmentModal"
+                                class="inline-flex items-center gap-2 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg shadow shadow-violet-600/25 transition-all hover:scale-[1.02] active:scale-95"
+                                title="Manage which subjects this student is enrolled in">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                </svg>
+                                Assign Subjects
+                            </button>
+                        </div>
                     </div>
                     @endif
 
@@ -588,6 +600,116 @@
             <div class="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end flex-shrink-0">
                 <button wire:click="$set('showManageHeadsModal', false)" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-bold text-gray-800 dark:text-white rounded-lg transition-colors">
                     Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+    @endif
+
+    <!-- Subject Enrollment Modal -->
+    @if($showSubjectEnrollmentModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" wire:click.self="$set('showSubjectEnrollmentModal', false)">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full mx-4 shadow-2xl border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[80vh]">
+
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
+                <div>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span class="inline-flex items-center justify-center w-7 h-7 bg-violet-100 dark:bg-violet-900/40 rounded-lg">
+                            <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                            </svg>
+                        </span>
+                        Assign Subjects
+                    </h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        @if(isset($students[$selectedTarget]))
+                            {{ $students[$selectedTarget]['name'] }} &mdash; Check subjects to restrict enrollment. Unchecked = All subjects.
+                        @endif
+                    </p>
+                </div>
+                <button wire:click="$set('showSubjectEnrollmentModal', false)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Info Banner -->
+            <div class="px-6 pt-4 flex-shrink-0">
+                <div class="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <p class="text-xs text-amber-700 dark:text-amber-400">
+                        <strong>Default:</strong> If no subjects are checked, the student is enrolled in all class subjects. Check specific subjects to restrict them (e.g. Computer Science group vs. Biology group).
+                    </p>
+                </div>
+            </div>
+
+            <!-- Subjects List -->
+            <div class="px-6 py-4 overflow-y-auto flex-1 space-y-1.5">
+                @if(empty($classSubjectsList))
+                    <div class="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-gray-500">
+                        <svg class="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        <p class="text-sm font-medium">No subjects found for this class.</p>
+                        <p class="text-xs mt-1">Add subjects to this class from the class management section.</p>
+                    </div>
+                @else
+                    @foreach($classSubjectsList as $subject)
+                    <label wire:key="sub-{{ $subject['id'] }}" class="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-transparent hover:border-gray-200 dark:hover:border-gray-600 transition-all group">
+                        <div class="relative flex-shrink-0">
+                            <input
+                                type="checkbox"
+                                wire:model="studentSubjectsList"
+                                value="{{ $subject['id'] }}"
+                                class="w-4 h-4 rounded text-violet-600 border-gray-300 dark:border-gray-600 focus:ring-violet-500 dark:bg-gray-700 transition-colors cursor-pointer"
+                            >
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <span class="text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">
+                                {{ $subject['name'] }}
+                            </span>
+                            @if(!empty($subject['code']))
+                            <span class="ml-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{{ $subject['code'] }}</span>
+                            @endif
+                        </div>
+                        <div class="flex-shrink-0">
+                            @if(in_array((string)$subject['id'], $studentSubjectsList))
+                                <span class="text-[10px] font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 rounded-full">Enrolled</span>
+                            @else
+                                <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500">&mdash;</span>
+                            @endif
+                        </div>
+                    </label>
+                    @endforeach
+                @endif
+            </div>
+
+            <!-- Quick Actions -->
+            @if(!empty($classSubjectsList))
+            <div class="px-6 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 flex-shrink-0">
+                <button type="button"
+                    wire:click="$set('studentSubjectsList', {{ json_encode(collect($classSubjectsList)->pluck('id')->map(fn($id) => (string)$id)->toArray()) }})"
+                    class="text-xs font-semibold text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-300 px-2 py-1 rounded hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors">
+                    Check All
+                </button>
+                <button type="button"
+                    wire:click="$set('studentSubjectsList', [])"
+                    class="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    Uncheck All (Default)
+                </button>
+            </div>
+            @endif
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 flex-shrink-0">
+                <button wire:click="$set('showSubjectEnrollmentModal', false)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-semibold text-gray-700 dark:text-gray-300 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button wire:click="saveSubjectEnrollments" class="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-lg shadow shadow-violet-600/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2" wire:loading.attr="disabled" wire:target="saveSubjectEnrollments">
+                    <span wire:loading.remove wire:target="saveSubjectEnrollments">Save Enrollment</span>
+                    <span wire:loading wire:target="saveSubjectEnrollments" class="flex items-center gap-1.5">
+                        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Saving...
+                    </span>
                 </button>
             </div>
 

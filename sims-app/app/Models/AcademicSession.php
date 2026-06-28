@@ -73,12 +73,22 @@ class AcademicSession extends Model
     {
         // 1. If a specific session context is explicitly set for the user (via login or session shifter), use it.
         if (session()->has('current_session_id')) {
-            return session('current_session_id');
+            $id = session('current_session_id');
+            // Validate the stored ID still exists in the database
+            if (static::where('id', $id)->exists()) {
+                return $id;
+            }
+            // Stale reference — clear it and fall through
+            session()->forget('current_session_id');
         }
         
         // Admin overrides for viewing other sessions
         if (session()->has('selected_academic_session_id') && auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->hasRole('Super Admin'))) {
-            return session('selected_academic_session_id');
+            $id = session('selected_academic_session_id');
+            if (static::where('id', $id)->exists()) {
+                return $id;
+            }
+            session()->forget('selected_academic_session_id');
         }
 
         // 2. Default: Find the currently active parent session (or Morning shift)
