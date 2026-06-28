@@ -84,7 +84,7 @@
                     </button>
                     
                     <div x-show="feeOpen" x-transition class="pl-11 pr-3 py-2 space-y-1">
-                        <a href="{{ route('admin.fee.generator') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-blue-700 hover:bg-blue-50 {{ request()->routeIs('admin.fee.generator') ? 'text-blue-700 bg-blue-50 font-medium' : '' }}">Invoice Generator</a>
+                        <a href="{{ route('admin.fee.generator') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-blue-700 hover:bg-blue-50 {{ request()->routeIs('admin.fee.generator') ? 'text-blue-700 bg-blue-50 font-medium' : '' }}">Voucher Management</a>
                         <a href="{{ route('admin.fee.record-payment') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-blue-700 hover:bg-blue-50 {{ request()->routeIs('admin.fee.record-payment') ? 'text-blue-700 bg-blue-50 font-medium' : '' }}">Collect Fees</a>
                         <a href="{{ route('admin.fee.defaulters') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-blue-700 hover:bg-blue-50 {{ request()->routeIs('admin.fee.defaulters') ? 'text-blue-700 bg-blue-50 font-medium' : '' }}">Defaulter List</a>
                     </div>

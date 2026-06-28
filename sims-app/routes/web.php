@@ -81,6 +81,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         Route::get('/defaulters', \App\Livewire\Admin\Fee\DefaulterList::class)->name('defaulters');
         Route::get('/ledger/{studentId}', \App\Livewire\Admin\Fee\StudentLedger::class)->name('ledger');
         Route::get('/invoice/{record}/download', \App\Http\Controllers\Admin\Fee\DownloadInvoiceController::class)->name('invoice.download');
+        Route::get('/receipt/{payment}/download', \App\Http\Controllers\Admin\Fee\DownloadReceiptController::class)->name('receipt.download');
     });
     Route::middleware(['permission:schedule.config'])->get('/period-config', \App\Livewire\Admin\PeriodConfigManager::class)->name('period-config');
     Route::middleware(['permission:schedule.view'])->get('/view-schedule', \App\Livewire\Admin\ViewSchedule::class)->name('view-schedule');

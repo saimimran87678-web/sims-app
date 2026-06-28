@@ -41,17 +41,25 @@ class InvoiceService
         $institutePhone = Setting::get('institute_phone', '');
         $instituteEmail = Setting::get('institute_email', '');
 
-        // 1. Generate sequence and invoice number
+        // 1. Check if invoice already exists for this fee record
+        $invoice = \App\Models\FeeInvoice::where('fee_record_id', $record->id)->first();
+
         $schoolCode = $this->getSchoolCode();
         $periodCode = substr(str_replace('-', '', $record->period), -4); // 2026-07 -> 2607
-        
-        // Find latest sequence for this period code
-        $latestInvoice = \App\Models\FeeInvoice::where('period_code', $periodCode)
-            ->orderBy('invoice_sequence', 'desc')
-            ->first();
-            
-        $nextSequence = $latestInvoice ? $latestInvoice->invoice_sequence + 1 : 1;
-        $invoiceNumber = sprintf("%s-%s-%03d", $schoolCode, $periodCode, $nextSequence);
+
+        if ($invoice) {
+            $invoiceNumber = $invoice->invoice_number;
+            $nextSequence = $invoice->invoice_sequence;
+            $schoolCode = $invoice->school_code;
+        } else {
+            // Find latest sequence for this period code
+            $latestInvoice = \App\Models\FeeInvoice::where('period_code', $periodCode)
+                ->orderBy('invoice_sequence', 'desc')
+                ->first();
+                
+            $nextSequence = $latestInvoice ? $latestInvoice->invoice_sequence + 1 : 1;
+            $invoiceNumber = sprintf("%s-%s-%03d", $schoolCode, $periodCode, $nextSequence);
+        }
 
         // 2. Generate PDF
         $pdf = Pdf::loadView('pdf.fee-invoice', [
@@ -64,15 +72,15 @@ class InvoiceService
             'invoiceNumber' => $invoiceNumber
         ]);
 
-        $pdfPath = null;
+        $pdfPath = $invoice ? $invoice->pdf_path : null;
         if ($saveToDisk) {
             $fileName = "invoices/{$invoiceNumber}.pdf";
             Storage::disk('public')->put($fileName, $pdf->output());
             $pdfPath = "public/{$fileName}";
         }
 
-        // 3. Persist to DB
-        $invoice = \App\Models\FeeInvoice::create([
+        // 3. Persist to DB (Update or Create)
+        $invoiceData = [
             'fee_record_id' => $record->id,
             'student_id' => $record->student_id,
             'invoice_number' => $invoiceNumber,
@@ -82,7 +90,7 @@ class InvoiceService
             'student_name' => $record->student->first_name . ' ' . $record->student->last_name,
             'roll_number' => $record->student->roll_number,
             'admission_number' => $record->student->admission_number,
-            'parent_phone' => $record->student->phone, // Ensure phone is here
+            'parent_phone' => $record->student->phone,
             'class_name' => $record->class->name,
             'invoice_data' => [
                 'total_amount' => $record->total_amount,
@@ -96,7 +104,13 @@ class InvoiceService
                 ])->toArray(),
             ],
             'pdf_path' => $pdfPath,
-        ]);
+        ];
+
+        if ($invoice) {
+            $invoice->update($invoiceData);
+        } else {
+            $invoice = \App\Models\FeeInvoice::create($invoiceData);
+        }
 
         if ($saveToDisk) {
             return storage_path("app/{$pdfPath}");

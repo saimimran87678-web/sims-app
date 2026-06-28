@@ -301,4 +301,85 @@ class FeeManagementTest extends TestCase
             'notes' => 'Partial payment [Ref: TXN-999]',
         ]);
     }
+
+    public function test_view_vouchers_and_receipts_tabs_logic()
+    {
+        // Set student phone for WhatsApp notifications testing
+        $this->student->update(['phone' => '+923001234567']);
+
+        // 1. Create a fee record and a payment
+        $record = \App\Models\FeeRecord::create([
+            'student_id' => $this->student->id,
+            'class_id' => $this->class->id,
+            'academic_session_id' => \App\Models\AcademicSession::getActiveSessionId(),
+            'period' => '2026-06',
+            'cycle' => 'monthly',
+            'total_amount' => 4500.00,
+            'paid_amount' => 1500.00,
+            'balance' => 3000.00,
+            'due_date' => '2026-06-15',
+            'status' => 'partial',
+        ]);
+
+        $payment = \App\Models\FeePayment::create([
+            'fee_record_id' => $record->id,
+            'student_id' => $this->student->id,
+            'amount_paid' => 1500.00,
+            'payment_date' => '2026-06-05',
+            'payment_method' => 'cash',
+            'notes' => 'Received cash payment',
+        ]);
+
+        // 2. Test Livewire filter view class logic for View Vouchers tab
+        $test = Livewire::test(InvoiceGenerator::class)
+            ->set('activeTab', 'vouchers')
+            ->set('viewClassId', $this->class->id);
+
+        // Verify class students loaded
+        $this->assertArrayHasKey($this->student->id, $test->get('viewStudents'));
+
+        // Verify vouchers computed property returns the created record
+        $vouchers = $test->get('vouchers');
+        $this->assertCount(1, $vouchers);
+        $this->assertEquals($record->id, $vouchers->first()->id);
+
+        // 3. Test Livewire filter view class logic for View Receipts tab
+        $testReceipts = Livewire::test(InvoiceGenerator::class)
+            ->set('activeTab', 'receipts')
+            ->set('receiptClassId', $this->class->id);
+
+        // Verify class students loaded
+        $this->assertArrayHasKey($this->student->id, $testReceipts->get('receiptStudents'));
+
+        // Verify receipts computed property returns the created payment
+        $receipts = $testReceipts->get('receipts');
+        $this->assertCount(1, $receipts);
+        $this->assertEquals($payment->id, $receipts->first()->id);
+
+        // 4. Test WhatsApp offline/plain reminder queuing logic
+        $test->call('sendVoucherWhatsApp', $record->id);
+        $this->assertDatabaseHas('whatsapp_queue', [
+            'student_id' => $this->student->id,
+            'phone' => $this->student->phone,
+            'status' => 'pending',
+        ]);
+
+        $testReceipts->call('sendReceiptWhatsApp', $payment->id);
+        $this->assertDatabaseHas('whatsapp_queue', [
+            'student_id' => $this->student->id,
+            'phone' => $this->student->phone,
+            'status' => 'pending',
+        ]);
+
+        // 5. Test PDF download routes
+        $this->actingAs($this->admin);
+        
+        $responseInvoice = $this->get(route('admin.fee.invoice.download', $record->id));
+        $responseInvoice->assertStatus(200);
+        $responseInvoice->assertHeader('Content-Type', 'application/pdf');
+
+        $responseReceipt = $this->get(route('admin.fee.receipt.download', $payment->id));
+        $responseReceipt->assertStatus(200);
+        $responseReceipt->assertHeader('Content-Type', 'application/pdf');
+    }
 }

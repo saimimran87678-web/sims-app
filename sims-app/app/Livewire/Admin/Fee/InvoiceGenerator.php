@@ -40,10 +40,25 @@ class InvoiceGenerator extends Component
     public $activeRowIndexForNewHead = null;
     public $editingFeeHeadId = null;
     public $editingFeeHeadName = '';
+    public $activeTab = 'setup';
+
+    // View Vouchers Properties
+    public $viewClassId = '';
+    public $viewStudentId = 'all';
+    public $viewMonth = '';
+    public $viewStudents = [];
+
+    // View Receipts Properties
+    public $receiptClassId = '';
+    public $receiptStudentId = 'all';
+    public $receiptMonth = '';
+    public $receiptStudents = [];
 
     public function mount()
     {
         $this->billingMonth = date('Y-m');
+        $this->viewMonth = date('Y-m');
+        $this->receiptMonth = date('Y-m');
         $this->instituteName = \App\Models\Setting::get('institute_name', 'SIMS Institute');
         
         // Add one empty row by default
@@ -864,8 +879,265 @@ class InvoiceGenerator extends Component
         $this->loadLastVoucherItems(); // Refresh editor items view
     }
 
+    public function updatedViewClassId($value)
+    {
+        $this->viewStudentId = 'all';
+        if ($value) {
+            $this->viewStudents = \App\Models\Student::where('class_id', $value)
+                ->where('status', 'active')
+                ->orderBy('first_name')
+                ->get()
+                ->mapWithKeys(function ($std) {
+                    return [$std->id => $std->first_name . ' ' . $std->last_name . ' (' . ($std->roll_number ?? 'N/A') . ')'];
+                })->toArray();
+        } else {
+            $this->viewStudents = [];
+        }
+    }
+
+    public function updatedReceiptClassId($value)
+    {
+        $this->receiptStudentId = 'all';
+        if ($value) {
+            $this->receiptStudents = \App\Models\Student::where('class_id', $value)
+                ->where('status', 'active')
+                ->orderBy('first_name')
+                ->get()
+                ->mapWithKeys(function ($std) {
+                    return [$std->id => $std->first_name . ' ' . $std->last_name . ' (' . ($std->roll_number ?? 'N/A') . ')'];
+                })->toArray();
+        } else {
+            $this->receiptStudents = [];
+        }
+    }
+
+    public function getVouchersProperty()
+    {
+        if (!$this->viewClassId) {
+            return collect();
+        }
+
+        $query = \App\Models\FeeRecord::with(['student', 'class', 'items'])
+            ->where('class_id', $this->viewClassId)
+            ->where('academic_session_id', \App\Models\AcademicSession::getActiveSessionId());
+
+        if ($this->viewMonth) {
+            $query->where('period', $this->viewMonth);
+        }
+
+        if ($this->viewStudentId && $this->viewStudentId !== 'all') {
+            $query->where('student_id', $this->viewStudentId);
+        }
+
+        return $query->orderBy('created_at', 'desc')->get();
+    }
+
+    public function getReceiptsProperty()
+    {
+        if (!$this->receiptClassId) {
+            return collect();
+        }
+
+        $query = \App\Models\FeePayment::with(['student', 'record', 'record.class'])
+            ->whereHas('record', function ($q) {
+                $q->where('class_id', $this->receiptClassId)
+                  ->where('academic_session_id', \App\Models\AcademicSession::getActiveSessionId());
+            });
+
+        if ($this->receiptMonth) {
+            $query->whereHas('record', function ($q) {
+                $q->where('period', $this->receiptMonth);
+            });
+        }
+
+        if ($this->receiptStudentId && $this->receiptStudentId !== 'all') {
+            $query->where('student_id', $this->receiptStudentId);
+        }
+
+        return $query->orderBy('payment_date', 'desc')->orderBy('created_at', 'desc')->get();
+    }
+
+    public function sendVoucherWhatsApp($recordId)
+    {
+        $record = \App\Models\FeeRecord::with(['student', 'class', 'items'])->find($recordId);
+        if (!$record) {
+            session()->flash('error', 'Voucher not found.');
+            return;
+        }
+
+        $student = $record->student;
+        if (!$student || empty($student->phone)) {
+            session()->flash('error', 'Parent phone number not configured for this student.');
+            return;
+        }
+
+        $whatsapp = app(\App\Services\WhatsAppService::class);
+        
+        // 1. Check if WhatsApp service is connected
+        if (!$whatsapp->isConnected()) {
+            // Queue a text notification instead
+            $formattedPeriod = \Carbon\Carbon::parse($record->period . '-01')->format('F Y');
+            $dueDate = $record->due_date->format('d M, Y');
+            $message = \App\Helpers\PhoneHelper::getFeeReminderMessage(
+                $student->name,
+                $record->balance,
+                $formattedPeriod,
+                $dueDate
+            );
+
+            \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert([
+                'phone' => $student->phone,
+                'message' => $message,
+                'status' => 'pending',
+                'student_id' => $student->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            session()->flash('message', 'WhatsApp service is offline. A plain-text fee reminder has been queued.');
+            return;
+        }
+
+        // 2. Generate PDF voucher using our helper
+        try {
+            $invoiceService = app(\App\Services\InvoiceService::class);
+            $filePath = $invoiceService->generateInvoice($record, true);
+
+            if (!file_exists($filePath)) {
+                session()->flash('error', 'Failed to generate PDF voucher file.');
+                return;
+            }
+
+            // 3. Send media message
+            $formattedPeriod = \Carbon\Carbon::parse($record->period . '-01')->format('F Y');
+            $caption = "Dear Parent, please find attached the fee voucher for {$student->name} for the month of {$formattedPeriod}. Total payable: Rs. {$record->balance}. Due Date: {$record->due_date->format('d M, Y')}.";
+            
+            $result = $whatsapp->sendMediaMessage($student->phone, $caption, $filePath);
+
+            if ($result['success'] ?? false) {
+                // Log notification
+                \Illuminate\Support\Facades\DB::table('whatsapp_notifications')->insert([
+                    'student_id' => $student->id,
+                    'date' => now()->format('Y-m-d'),
+                    'type' => 'voucher',
+                    'sent' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                session()->flash('message', "Voucher PDF sent to parent's WhatsApp successfully!");
+            } else {
+                session()->flash('error', 'WhatsApp Service Error: ' . ($result['error'] ?? 'Unknown error'));
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('WhatsApp Media Send Error: ' . $e->getMessage());
+            session()->flash('error', 'Failed to send PDF: ' . $e->getMessage());
+        }
+    }
+
+    public function sendReceiptWhatsApp($paymentId)
+    {
+        $payment = \App\Models\FeePayment::with(['student', 'record'])->find($paymentId);
+        if (!$payment) {
+            session()->flash('error', 'Payment receipt not found.');
+            return;
+        }
+
+        $student = $payment->student;
+        if (!$student || empty($student->phone)) {
+            session()->flash('error', 'Parent phone number not configured for this student.');
+            return;
+        }
+
+        $whatsapp = app(\App\Services\WhatsAppService::class);
+        
+        // 1. Check if WhatsApp service is connected
+        if (!$whatsapp->isConnected()) {
+            // Queue a text notification instead
+            $formattedPeriod = \Carbon\Carbon::parse($payment->record->period . '-01')->format('F Y');
+            $message = \App\Helpers\PhoneHelper::getPaymentMessage(
+                $student->name,
+                $payment->amount_paid,
+                $formattedPeriod,
+                $payment->record->balance
+            );
+
+            \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert([
+                'phone' => $student->phone,
+                'message' => $message,
+                'status' => 'pending',
+                'student_id' => $student->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            session()->flash('message', 'WhatsApp service is offline. A plain-text payment confirmation has been queued.');
+            return;
+        }
+
+        // 2. Generate PDF receipt
+        try {
+            $filePath = $this->generateReceiptPdfFile($payment);
+
+            if (!$filePath || !file_exists($filePath)) {
+                session()->flash('error', 'Failed to generate PDF receipt file.');
+                return;
+            }
+
+            // 3. Send media message
+            $formattedPeriod = \Carbon\Carbon::parse($payment->record->period . '-01')->format('F Y');
+            $caption = "Dear Parent, please find attached the payment receipt for {$student->name} for the month of {$formattedPeriod}. Amount received: Rs. {$payment->amount_paid}. Remaining balance: Rs. {$payment->record->balance}. Thank you!";
+            
+            $result = $whatsapp->sendMediaMessage($student->phone, $caption, $filePath);
+
+            if ($result['success'] ?? false) {
+                // Log notification
+                \Illuminate\Support\Facades\DB::table('whatsapp_notifications')->insert([
+                    'student_id' => $student->id,
+                    'date' => now()->format('Y-m-d'),
+                    'type' => 'receipt',
+                    'sent' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                session()->flash('message', "Receipt PDF sent to parent's WhatsApp successfully!");
+            } else {
+                session()->flash('error', 'WhatsApp Service Error: ' . ($result['error'] ?? 'Unknown error'));
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('WhatsApp Receipt Media Send Error: ' . $e->getMessage());
+            session()->flash('error', 'Failed to send PDF receipt: ' . $e->getMessage());
+        }
+    }
+
+    protected function generateReceiptPdfFile($payment)
+    {
+        $payment->load(['student', 'record', 'record.class', 'record.items']);
+        $instituteName = \App\Models\Setting::get('institute_name', 'SIMS');
+        $instituteAddress = \App\Models\Setting::get('institute_address', '');
+        $institutePhone = \App\Models\Setting::get('institute_phone', '');
+        $instituteEmail = \App\Models\Setting::get('institute_email', '');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.fee-receipt', [
+            'payment' => $payment,
+            'record' => $payment->record,
+            'student' => $payment->student,
+            'instituteName' => $instituteName,
+            'instituteAddress' => $instituteAddress,
+            'institutePhone' => $institutePhone,
+            'instituteEmail' => $instituteEmail,
+        ]);
+
+        $fileName = "receipts/REC-{$payment->id}.pdf";
+        \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $pdf->output());
+        return storage_path("app/public/{$fileName}");
+    }
+
     public function render()
     {
-        return view('livewire.admin.fee.invoice-generator')->layout('components.layouts.admin', ['title' => 'Fee Voucher Generator']);
+        return view('livewire.admin.fee.invoice-generator')->layout('components.layouts.admin', ['title' => 'Voucher Management']);
     }
 }
