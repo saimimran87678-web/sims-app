@@ -34,7 +34,12 @@ class InvoiceService
      */
     public function generateInvoice(FeeRecord $record, bool $saveToDisk = false)
     {
-        $record->load(['student', 'class', 'items', 'payments']);
+        $record->load([
+            'student',
+            'class' => fn($q) => $q->withoutGlobalScopes(),
+            'items',
+            'payments'
+        ]);
 
         $instituteName = Setting::get('institute_name', 'SIMS');
         $instituteAddress = Setting::get('institute_address', '');
