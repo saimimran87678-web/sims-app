@@ -169,7 +169,8 @@
 
     <!-- Payment Dialog (Modal or Full View) -->
     @if($isOpen && $record)
-        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    @teleport('body')
+        <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
             <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-755 transform scale-100 transition-all duration-300 flex flex-col max-h-[90vh]">
                 <!-- Modal Header -->
                 <div class="px-8 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
@@ -317,5 +318,6 @@
                 </form>
             </div>
         </div>
+    @endteleport
     @endif
 </div>

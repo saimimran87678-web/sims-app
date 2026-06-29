@@ -529,7 +529,8 @@
 
     <!-- Manage Payment Heads Modal -->
     @if($showManageHeadsModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    @teleport('body')
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-xl border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
             
             <!-- Modal Header -->
@@ -605,11 +606,13 @@
 
         </div>
     </div>
+    @endteleport
     @endif
 
     <!-- Subject Enrollment Modal -->
     @if($showSubjectEnrollmentModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" wire:click.self="$set('showSubjectEnrollmentModal', false)">
+    @teleport('body')
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" wire:click.self="$set('showSubjectEnrollmentModal', false)">
         <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full mx-4 shadow-2xl border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[80vh]">
 
             <!-- Modal Header -->
@@ -715,6 +718,7 @@
 
         </div>
     </div>
+    @endteleport
     @endif
 </div>
 

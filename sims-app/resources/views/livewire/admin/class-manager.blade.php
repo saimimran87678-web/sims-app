@@ -23,8 +23,8 @@
 
             <div class="flex flex-wrap gap-3 items-center">
                 {{-- Session Selector --}}
-                @if(count($academicSessions) > 1)
-                    <select wire:model.live="selectedSessionId" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                @if(count($academicSessions) >= 1)
+                    <select wire:model.live="selectedSessionId" class="pl-3 pr-10 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-750 dark:text-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
                         @foreach($academicSessions as $session)
                             <option value="{{ $session->id }}">{{ $session->name }}</option>
                         @endforeach
