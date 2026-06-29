@@ -65,21 +65,6 @@ class WhatsAppSetup extends Component
         }
     }
 
-    public function processQueue($once = false)
-    {
-        try {
-            $artisanPath = base_path('artisan');
-            $flag = $once ? ' --once' : '';
-            // Run the queue processor command in the background on Linux
-            shell_exec("php {$artisanPath} whatsapp:process-queue{$flag} > /dev/null 2>&1 &");
-            
-            session()->flash('message', $once ? 'Queue processing started in the background.' : 'Queue processor started in the background.');
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to run WhatsApp queue in background: ' . $e->getMessage());
-            session()->flash('error', 'Failed to start queue processor: ' . $e->getMessage());
-        }
-    }
-
     public function saveSettings()
     {
         \App\Models\Setting::set('whatsapp_queue_delay', $this->queueDelay);
@@ -88,10 +73,16 @@ class WhatsAppSetup extends Component
         \App\Models\Setting::set('whatsapp_auto_send_end', $this->autoSendEnd);
         \App\Models\Setting::set('whatsapp_force_send_now', $this->forceSendNow ? 'true' : 'false');
 
-        session()->flash('message', 'Queue settings saved successfully.');
+        session()->flash('message', 'Settings saved. Queue processor updated.');
 
-        // Automatically trigger queue processing in the background (continuous daemon mode)
-        $this->processQueue(false);
+        // Start the daemon in the background. The daemon itself checks the toggles
+        // and time window on each loop iteration, so it self-manages start/stop.
+        try {
+            $artisanPath = base_path('artisan');
+            shell_exec("php {$artisanPath} whatsapp:process-queue > /dev/null 2>&1 &");
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to launch queue daemon: ' . $e->getMessage());
+        }
     }
 
     public function toggleMessageStatus($id)
