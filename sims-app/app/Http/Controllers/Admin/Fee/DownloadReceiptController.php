@@ -37,7 +37,7 @@ class DownloadReceiptController extends Controller
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="receipt-' . $payment->id . '.pdf"'
+            'Content-Disposition' => 'inline; filename="receipt-' . $payment->id . '.pdf"'
         ]);
     }
 }

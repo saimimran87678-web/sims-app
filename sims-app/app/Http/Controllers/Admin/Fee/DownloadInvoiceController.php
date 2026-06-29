@@ -22,7 +22,7 @@ class DownloadInvoiceController extends Controller
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="invoice-' . $record->id . '.pdf"'
+            'Content-Disposition' => 'inline; filename="invoice-' . $record->id . '.pdf"'
         ]);
     }
 }
