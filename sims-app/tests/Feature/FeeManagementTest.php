@@ -304,6 +304,11 @@ class FeeManagementTest extends TestCase
 
     public function test_view_vouchers_and_receipts_tabs_logic()
     {
+        // Fake WhatsApp service as offline to force message queuing
+        \Illuminate\Support\Facades\Http::fake([
+            'localhost:3000/*' => \Illuminate\Support\Facades\Http::response(['ready' => false, 'hasQr' => false], 200),
+        ]);
+
         // Set student phone for WhatsApp notifications testing
         $this->student->update(['phone' => '+923001234567']);
 

@@ -109,9 +109,12 @@ class WhatsAppSetup extends Component
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
         $queue = \Illuminate\Support\Facades\DB::table('whatsapp_queue')
-            ->join('students', 'whatsapp_queue.student_id', '=', 'students.id')
-            ->join('classes', 'students.class_id', '=', 'classes.id')
-            ->where('classes.academic_session_id', $activeSessionId)
+            ->leftJoin('students', 'whatsapp_queue.student_id', '=', 'students.id')
+            ->leftJoin('classes', 'students.class_id', '=', 'classes.id')
+            ->where(function ($query) use ($activeSessionId) {
+                $query->where('classes.academic_session_id', $activeSessionId)
+                      ->orWhereNull('whatsapp_queue.student_id');
+            })
             ->select('whatsapp_queue.*')
             ->orderBy('whatsapp_queue.id', 'desc')
             ->paginate(10);
