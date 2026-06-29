@@ -16,7 +16,7 @@ class ProcessWhatsAppQueue extends Command
      *
      * @var string
      */
-    protected $signature = 'whatsapp:process-queue';
+    protected $signature = 'whatsapp:process-queue {--once : Process all pending messages and exit}';
 
     /**
      * The console command description.
@@ -44,20 +44,21 @@ class ProcessWhatsAppQueue extends Command
             return;
         }
 
-        $this->info('WhatsApp queue processor daemon started.');
+        $runOnce = $this->option('once');
+        $this->info('WhatsApp queue processor daemon started' . ($runOnce ? ' (once mode)' : '') . '.');
 
         while (true) {
             $enabled = Setting::get('whatsapp_auto_send_enabled', 'false') === 'true';
             $forceSendNow = Setting::get('whatsapp_force_send_now', 'false') === 'true';
 
             // Check if we should keep running
-            if (!$enabled && !$forceSendNow) {
+            if (!$enabled && !$forceSendNow && !$runOnce) {
                 $this->info('Processor stopping: both auto-send and force-send are disabled.');
                 break;
             }
 
-            // If not forcing, check the time window
-            if (!$forceSendNow) {
+            // If not forcing and not running once, check the time window
+            if (!$forceSendNow && !$runOnce) {
                 $startTime = Setting::get('whatsapp_auto_send_start', '09:00');
                 $endTime = Setting::get('whatsapp_auto_send_end', '22:00');
                 
@@ -82,6 +83,10 @@ class ProcessWhatsAppQueue extends Command
                 ->get();
 
             if ($messages->isEmpty()) {
+                if ($runOnce) {
+                    $this->info('No pending messages. Exiting once-mode.');
+                    break;
+                }
                 // SAVING MODE: Sleep for a longer period to save compute resources & power
                 sleep(10);
                 continue;
@@ -117,6 +122,14 @@ class ProcessWhatsAppQueue extends Command
                 
                 // Sleep to pace messages and avoid WhatsApp ban
                 sleep($delay);
+            }
+
+            if ($runOnce) {
+                // Check if more pending messages exist
+                $hasMore = DB::table('whatsapp_queue')->where('status', 'pending')->exists();
+                if (!$hasMore) {
+                    break;
+                }
             }
         }
 
