@@ -80,6 +80,7 @@
             padding: 1.5px 0;
         }
         .student-box {
+            position: relative;
             border: 1px solid #cbd5e1;
             border-radius: 4px;
             padding: 5px 6px;
@@ -151,17 +152,19 @@
         }
         .stamp-paid {
             position: absolute;
-            top: 140px;
-            left: 20px;
-            border: 3px solid #16a34a;
+            top: 6px;
+            left: 15px;
+            border: 2px solid #16a34a;
             color: #16a34a;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 900;
             text-transform: uppercase;
-            padding: 4px 10px;
-            transform: rotate(-12deg);
-            opacity: 0.75;
+            padding: 2px 6px;
+            transform: rotate(-10deg);
+            opacity: 0.95;
+            z-index: 50;
             border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.85);
         }
         .sig-table {
             width: 100%;
@@ -199,10 +202,6 @@
             @foreach($copies as $key => $title)
                 <!-- Challan Copy Column -->
                 <td class="challan-column" style="position: relative;">
-                    <!-- Paid stamp overlay -->
-                    @if($record->status === 'paid')
-                        <div class="stamp-paid">PAID</div>
-                    @endif
 
                     <!-- Header -->
                     <div class="header-logo-text">
@@ -248,6 +247,10 @@
                                 <td class="value">{{ $student->admission_no }}</td>
                             </tr>
                         </table>
+                        <!-- Paid stamp overlay -->
+                        @if($record->status === 'paid')
+                            <div class="stamp-paid">PAID</div>
+                        @endif
                     </div>
 
                     <!-- Fee Breakdown Table -->

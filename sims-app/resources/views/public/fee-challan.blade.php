@@ -34,21 +34,26 @@
         }
         .stamp-container {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 50%;
+            left: 35px;
+            transform: translateY(-50%) rotate(-10deg);
             pointer-events: none;
-            transform: rotate(-10deg);
-            z-index: 10;
+            z-index: 50;
+        }
+        .stamp-container svg {
+            width: 125px;
+            height: 125px;
+            opacity: 0.95;
         }
         @media (max-width: 640px) {
             .stamp-container {
-                position: relative;
-                top: 0;
-                right: 0;
-                margin: 15px auto;
-                transform: rotate(-5deg);
-                display: flex;
-                justify-content: center;
+                left: 15px;
+                transform: translateY(-50%) rotate(-8deg);
+            }
+            .stamp-container svg {
+                width: 95px;
+                height: 95px;
+                opacity: 0.9;
             }
         }
     </style>
@@ -74,37 +79,6 @@
 
         <!-- Main Invoice Card -->
         <div class="relative glass-card rounded-3xl shadow-xl overflow-hidden p-6 sm:p-8">
-            
-            <!-- STAMP OVERLAY (Only visible if paid) -->
-            @if($record->status === 'paid')
-                <div class="stamp-container">
-                    <svg width="150" height="150" viewBox="0 0 150 150" class="opacity-90 select-none">
-                        <!-- Double circle border -->
-                        <circle cx="75" cy="75" r="70" fill="none" stroke="#10b981" stroke-width="3" stroke-dasharray="none" />
-                        <circle cx="75" cy="75" r="63" fill="none" stroke="#10b981" stroke-width="1.5" />
-                        
-                        <defs>
-                            <!-- Circle text path (rotated to start text at a natural position) -->
-                            <path id="textCircle" d="M 75, 75 m -52, 0 a 52,52 0 1,1 104,0 a 52,52 0 1,1 -104,0" />
-                        </defs>
-                        
-                        <text font-size="8.5" font-weight="900" fill="#10b981" letter-spacing="1">
-                            <textPath href="#textCircle" startOffset="50%" text-anchor="middle">
-                                ★ {{ strtoupper($instituteName) }} ★
-                            </textPath>
-                        </text>
-                        
-                        <!-- Center status and dates -->
-                        <text x="75" y="73" font-size="22" font-weight="900" fill="#10b981" text-anchor="middle" letter-spacing="0.5">PAID</text>
-                        
-                        <text x="75" y="93" font-size="8" font-weight="700" fill="#10b981" text-anchor="middle">
-                            {{ $record->paid_date ? $record->paid_date->format('d-M-Y') : now()->format('d-M-Y') }}
-                        </text>
-                        
-                        <path d="M 50 100 L 100 100" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3,3" />
-                    </svg>
-                </div>
-            @endif
 
             <!-- School Details & Branding -->
             <div class="border-b border-slate-200/60 pb-6 mb-6">
@@ -124,7 +98,7 @@
             </div>
 
             <!-- Student Profile Information -->
-            <div class="bg-slate-50/50 rounded-2xl border border-slate-100 p-4 sm:p-5 mb-6">
+            <div class="relative bg-slate-50/50 rounded-2xl border border-slate-100 p-4 sm:p-5 mb-6 overflow-hidden">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Student Information</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div class="flex justify-between sm:justify-start gap-2 border-b sm:border-0 border-slate-100 pb-2 sm:pb-0">
@@ -144,6 +118,37 @@
                         <span class="font-bold text-slate-800">{{ $student->roll_no }} / {{ $student->admission_no }}</span>
                     </div>
                 </div>
+
+                <!-- STAMP OVERLAY (Only visible if paid) -->
+                @if($record->status === 'paid')
+                    <div class="stamp-container">
+                        <svg width="150" height="150" viewBox="0 0 150 150" class="opacity-90 select-none">
+                            <!-- Double circle border -->
+                            <circle cx="75" cy="75" r="70" fill="none" stroke="#10b981" stroke-width="3" stroke-dasharray="none" />
+                            <circle cx="75" cy="75" r="63" fill="none" stroke="#10b981" stroke-width="1.5" />
+                            
+                            <defs>
+                                <!-- Circle text path (rotated to start text at a natural position) -->
+                                <path id="textCircle" d="M 75, 75 m -52, 0 a 52,52 0 1,1 104,0 a 52,52 0 1,1 -104,0" />
+                            </defs>
+                            
+                            <text font-size="8.5" font-weight="900" fill="#10b981" letter-spacing="1">
+                                <textPath href="#textCircle" startOffset="50%" text-anchor="middle">
+                                    ★ {{ strtoupper($instituteName) }} ★
+                                </textPath>
+                            </text>
+                            
+                            <!-- Center status and dates -->
+                            <text x="75" y="73" font-size="22" font-weight="900" fill="#10b981" text-anchor="middle" letter-spacing="0.5">PAID</text>
+                            
+                            <text x="75" y="93" font-size="8" font-weight="700" fill="#10b981" text-anchor="middle">
+                                {{ $record->paid_date ? $record->paid_date->format('d-M-Y') : now()->format('d-M-Y') }}
+                            </text>
+                            
+                            <path d="M 50 100 L 100 100" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3,3" />
+                        </svg>
+                    </div>
+                @endif
             </div>
 
             <!-- Challan Dates & Quick Summary -->
