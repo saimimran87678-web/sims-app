@@ -146,7 +146,7 @@ class PhoneHelper
     public static function getPaymentMessage(string $studentName, $amount, string $period, string $balance, string $schoolName = null, string $link = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-        $defaultTemplate = "*Payment Confirmation*\n\nDear Parents,\nWe have received a payment of Rs. {amount} for {student_name} for the period {period}.\nRemaining Balance: Rs. {balance}\n\nView updated receipt: {challan_link}\n\nThank you.\n- {school_name} Administration";
+        $defaultTemplate = "*Payment Confirmation*\n\nDear Parents,\nWe have received a payment of Rs. {amount} for {student_name} for the period {period}.\nRemaining Balance: Rs. {balance}\n\nView updated receipt:\n{challan_link}\n\nThank you.\n- {school_name} Administration";
         $template = \App\Models\Setting::get('whatsapp_template_payment', $defaultTemplate);
 
         $linkStr = $link ? $link : '';
@@ -164,7 +164,7 @@ class PhoneHelper
     public static function getFeeReminderMessage(string $studentName, $balance, string $period, string $dueDate, string $schoolName = null, string $link = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-        $defaultTemplate = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher: {challan_link}\n\n- {school_name} Administration";
+        $defaultTemplate = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher:\n{challan_link}\n\n- {school_name} Administration";
         $template = \App\Models\Setting::get('whatsapp_template_reminder', $defaultTemplate);
 
         $linkStr = $link ? $link : '';
