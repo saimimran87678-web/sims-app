@@ -24,3 +24,8 @@ Homestead.yaml
 Thumbs.db
 /database/*.sqlite
 /database/*.sqlite-journal
+
+# Secrets & Keys
+/private.pem
+/public.pem
+/debug_plan.md
