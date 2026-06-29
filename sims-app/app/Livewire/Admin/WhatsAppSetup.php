@@ -65,6 +65,21 @@ class WhatsAppSetup extends Component
         }
     }
 
+    public function processQueue($once = false)
+    {
+        try {
+            $artisanPath = base_path('artisan');
+            $flag = $once ? ' --once' : '';
+            // Run the queue processor command in the background on Linux
+            shell_exec("php {$artisanPath} whatsapp:process-queue{$flag} > /dev/null 2>&1 &");
+            
+            session()->flash('message', $once ? 'Queue processing started in the background.' : 'Queue processor started in the background.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to run WhatsApp queue in background: ' . $e->getMessage());
+            session()->flash('error', 'Failed to start queue processor: ' . $e->getMessage());
+        }
+    }
+
     public function saveSettings()
     {
         \App\Models\Setting::set('whatsapp_queue_delay', $this->queueDelay);
@@ -74,6 +89,9 @@ class WhatsAppSetup extends Component
         \App\Models\Setting::set('whatsapp_force_send_now', $this->forceSendNow ? 'true' : 'false');
 
         session()->flash('message', 'Queue settings saved successfully.');
+
+        // Automatically trigger queue processing in the background (continuous daemon mode)
+        $this->processQueue(false);
     }
 
     public function toggleMessageStatus($id)
