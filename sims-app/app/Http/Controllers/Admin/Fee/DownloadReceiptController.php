@@ -18,10 +18,7 @@ class DownloadReceiptController extends Controller
 
         $payment->load(['student', 'record', 'record.class', 'record.items']);
 
-        // Must be for current session
-        if ($payment->record->academic_session_id !== \App\Models\AcademicSession::getActiveSessionId()) {
-            abort(404);
-        }
+
 
         $instituteName = \App\Models\Setting::get('institute_name', 'SIMS');
         $instituteAddress = \App\Models\Setting::get('institute_address', '');
@@ -40,7 +37,7 @@ class DownloadReceiptController extends Controller
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="receipt-' . $payment->id . '.pdf"'
+            'Content-Disposition' => 'attachment; filename="receipt-' . $payment->id . '.pdf"'
         ]);
     }
 }

@@ -16,16 +16,13 @@ class DownloadInvoiceController extends Controller
             abort(403);
         }
 
-        // Must be for current session
-        if ($record->academic_session_id !== \App\Models\AcademicSession::getActiveSessionId()) {
-            abort(404);
-        }
+
 
         $pdfContent = $invoiceService->generateInvoice($record, false);
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="invoice-' . $record->id . '.pdf"'
+            'Content-Disposition' => 'attachment; filename="invoice-' . $record->id . '.pdf"'
         ]);
     }
 }
