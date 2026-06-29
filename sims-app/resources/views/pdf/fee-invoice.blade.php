@@ -39,15 +39,7 @@
             margin: 0 auto;
             position: relative;
         }
-        .scissors-icon {
-            position: absolute;
-            top: 40%;
-            left: -8px;
-            background: #ffffff;
-            padding: 4px 0;
-            color: #64748b;
-            font-size: 12px;
-        }
+
         .header-logo-text {
             text-align: center;
             margin-bottom: 6px;
@@ -293,9 +285,9 @@
                     <div class="bank-details">
                         <p class="bank-title">Payment Instructions</p>
                         <div style="margin-top: 1px;">
-                            • Deposit fee in HBL (A/C: 1234-567890-01) or Bank Alfalah (A/C: 9876-543210-02).<br>
-                            • Please verify challan details before depositing.<br>
-                            • Retain your copy and ensure stamp is placed after payment.
+                            &bull; Deposit fee in HBL (A/C: 1234-567890-01) or Bank Alfalah (A/C: 9876-543210-02).<br>
+                            &bull; Please verify challan details before depositing.<br>
+                            &bull; Retain your copy and ensure stamp is placed after payment.
                         </div>
                     </div>
 
@@ -315,7 +307,6 @@
                 @if(!$loop->last)
                     <td class="divider">
                         <div class="divider-line"></div>
-                        <div class="scissors-icon">✂</div>
                     </td>
                 @endif
             @endforeach
