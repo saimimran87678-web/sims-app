@@ -17,8 +17,14 @@ gnome-terminal --tab --title="Laravel" -- bash -c "php artisan serve; exec bash"
 
 sleep 2
 
+# Start Laravel Scheduler (Runs scheduled background tasks like WhatsApp queue)
+gnome-terminal --tab --title="Scheduler" -- bash -c "php artisan schedule:work; exec bash" &
+
+sleep 2
+
 # Start Ngrok Tunnel
 gnome-terminal --tab --title="Ngrok" -- bash -c "ngrok http --domain=isabella-cherrylike-anomalously.ngrok-free.dev 8000; exec bash" &
 
 echo "✅ All services starting!"
 echo "📱 Access: https://isabella-cherrylike-anomalously.ngrok-free.dev"
+
