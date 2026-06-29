@@ -975,18 +975,20 @@ class InvoiceGenerator extends Component
 
         $whatsapp = app(\App\Services\WhatsAppService::class);
         
-        // 1. Check if WhatsApp service is connected
-        if (!$whatsapp->isConnected()) {
-            // Queue a text notification instead
-            $formattedPeriod = \Carbon\Carbon::parse($record->period . '-01')->format('F Y');
-            $dueDate = $record->due_date->format('d M, Y');
-            $message = \App\Helpers\PhoneHelper::getFeeReminderMessage(
-                $student->name,
-                $record->balance,
-                $formattedPeriod,
-                $dueDate
-            );
+        $formattedPeriod = \Carbon\Carbon::parse($record->period . '-01')->format('F Y');
+        $dueDate = $record->due_date->format('d M, Y');
+        $link = url('/v/' . $record->access_token);
+        
+        $message = \App\Helpers\PhoneHelper::getFeeReminderMessage(
+            $student->name,
+            $record->balance,
+            $formattedPeriod,
+            $dueDate,
+            null,
+            $link
+        );
 
+        if (!$whatsapp->isConnected()) {
             \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert([
                 'phone' => $student->phone,
                 'message' => $message,
@@ -996,28 +998,14 @@ class InvoiceGenerator extends Component
                 'updated_at' => now(),
             ]);
 
-            session()->flash('message', 'WhatsApp service is offline. A plain-text fee reminder has been queued.');
+            session()->flash('message', 'WhatsApp service is offline. A fee reminder with a secure link has been queued.');
             return;
         }
 
-        // 2. Generate PDF voucher using our helper
         try {
-            $invoiceService = app(\App\Services\InvoiceService::class);
-            $filePath = $invoiceService->generateInvoice($record, true);
-
-            if (!file_exists($filePath)) {
-                session()->flash('error', 'Failed to generate PDF voucher file.');
-                return;
-            }
-
-            // 3. Send media message
-            $formattedPeriod = \Carbon\Carbon::parse($record->period . '-01')->format('F Y');
-            $caption = "Dear Parent, please find attached the fee voucher for {$student->name} for the month of {$formattedPeriod}. Total payable: Rs. {$record->balance}. Due Date: {$record->due_date->format('d M, Y')}.";
-            
-            $result = $whatsapp->sendMediaMessage($student->phone, $caption, $filePath);
+            $result = $whatsapp->sendMessage($student->phone, $message);
 
             if ($result['success'] ?? false) {
-                // Log notification
                 \Illuminate\Support\Facades\DB::table('whatsapp_notifications')->insert([
                     'student_id' => $student->id,
                     'date' => now()->format('Y-m-d'),
@@ -1027,14 +1015,13 @@ class InvoiceGenerator extends Component
                     'updated_at' => now(),
                 ]);
 
-                session()->flash('message', "Voucher PDF sent to parent's WhatsApp successfully!");
+                session()->flash('message', "Voucher link sent to parent's WhatsApp successfully!");
             } else {
                 session()->flash('error', 'WhatsApp Service Error: ' . ($result['error'] ?? 'Unknown error'));
             }
-
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('WhatsApp Media Send Error: ' . $e->getMessage());
-            session()->flash('error', 'Failed to send PDF: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('WhatsApp Send Error: ' . $e->getMessage());
+            session()->flash('error', 'Failed to send WhatsApp message: ' . $e->getMessage());
         }
     }
 
@@ -1054,17 +1041,19 @@ class InvoiceGenerator extends Component
 
         $whatsapp = app(\App\Services\WhatsAppService::class);
         
-        // 1. Check if WhatsApp service is connected
-        if (!$whatsapp->isConnected()) {
-            // Queue a text notification instead
-            $formattedPeriod = \Carbon\Carbon::parse($payment->record->period . '-01')->format('F Y');
-            $message = \App\Helpers\PhoneHelper::getPaymentMessage(
-                $student->name,
-                $payment->amount_paid,
-                $formattedPeriod,
-                $payment->record->balance
-            );
+        $formattedPeriod = \Carbon\Carbon::parse($payment->record->period . '-01')->format('F Y');
+        $link = url('/v/' . $payment->record->access_token);
+        
+        $message = \App\Helpers\PhoneHelper::getPaymentMessage(
+            $student->name,
+            $payment->amount_paid,
+            $formattedPeriod,
+            $payment->record->balance,
+            null,
+            $link
+        );
 
+        if (!$whatsapp->isConnected()) {
             \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert([
                 'phone' => $student->phone,
                 'message' => $message,
@@ -1074,27 +1063,14 @@ class InvoiceGenerator extends Component
                 'updated_at' => now(),
             ]);
 
-            session()->flash('message', 'WhatsApp service is offline. A plain-text payment confirmation has been queued.');
+            session()->flash('message', 'WhatsApp service is offline. A payment receipt confirmation with a secure link has been queued.');
             return;
         }
 
-        // 2. Generate PDF receipt
         try {
-            $filePath = $this->generateReceiptPdfFile($payment);
-
-            if (!$filePath || !file_exists($filePath)) {
-                session()->flash('error', 'Failed to generate PDF receipt file.');
-                return;
-            }
-
-            // 3. Send media message
-            $formattedPeriod = \Carbon\Carbon::parse($payment->record->period . '-01')->format('F Y');
-            $caption = "Dear Parent, please find attached the payment receipt for {$student->name} for the month of {$formattedPeriod}. Amount received: Rs. {$payment->amount_paid}. Remaining balance: Rs. {$payment->record->balance}. Thank you!";
-            
-            $result = $whatsapp->sendMediaMessage($student->phone, $caption, $filePath);
+            $result = $whatsapp->sendMessage($student->phone, $message);
 
             if ($result['success'] ?? false) {
-                // Log notification
                 \Illuminate\Support\Facades\DB::table('whatsapp_notifications')->insert([
                     'student_id' => $student->id,
                     'date' => now()->format('Y-m-d'),
@@ -1104,14 +1080,13 @@ class InvoiceGenerator extends Component
                     'updated_at' => now(),
                 ]);
 
-                session()->flash('message', "Receipt PDF sent to parent's WhatsApp successfully!");
+                session()->flash('message', "Receipt confirmation link sent to parent's WhatsApp successfully!");
             } else {
                 session()->flash('error', 'WhatsApp Service Error: ' . ($result['error'] ?? 'Unknown error'));
             }
-
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('WhatsApp Receipt Media Send Error: ' . $e->getMessage());
-            session()->flash('error', 'Failed to send PDF receipt: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('WhatsApp Receipt Send Error: ' . $e->getMessage());
+            session()->flash('error', 'Failed to send PDF receipt link: ' . $e->getMessage());
         }
     }
 

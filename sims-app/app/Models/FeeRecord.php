@@ -22,7 +22,17 @@ class FeeRecord extends Model
         'due_date',
         'paid_date',
         'is_custom',
+        'access_token',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($record) {
+            if (empty($record->access_token)) {
+                $record->access_token = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+    }
 
     protected $casts = [
         'total_amount' => 'decimal:2',

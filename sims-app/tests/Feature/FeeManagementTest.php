@@ -382,4 +382,58 @@ class FeeManagementTest extends TestCase
         $responseReceipt->assertStatus(200);
         $responseReceipt->assertHeader('Content-Type', 'application/pdf');
     }
+
+    public function test_public_voucher_access_and_pdf_download()
+    {
+        // 1. Create a fee record (UUID should be automatically generated)
+        $record = \App\Models\FeeRecord::create([
+            'student_id' => $this->student->id,
+            'class_id' => $this->class->id,
+            'academic_session_id' => $this->session->id,
+            'period' => '2026-06',
+            'cycle' => 'monthly',
+            'total_amount' => 3000.00,
+            'paid_amount' => 0.00,
+            'balance' => 3000.00,
+            'due_date' => '2026-06-15',
+            'status' => 'unpaid',
+        ]);
+
+        $this->assertNotEmpty($record->access_token);
+
+        // Logout the admin so we act as a guest
+        \Illuminate\Support\Facades\Auth::logout();
+
+        // 2. Access the public route (as guest)
+        $this->assertGuest();
+        $response = $this->get(route('public.voucher.show', $record->access_token));
+        $response->assertStatus(200);
+        $response->assertSee($this->student->name);
+        $response->assertSee('Rs. 3,000.00');
+        // Unpaid, should see Unpaid status and should not see the PAID stamp svg
+        $response->assertSee('Unpaid');
+        $response->assertDontSee('PAID');
+
+        // 3. Mark the record as paid and view again
+        $record->update([
+            'status' => 'paid',
+            'paid_amount' => 3000.00,
+            'balance' => 0.00,
+            'paid_date' => now(),
+        ]);
+
+        $responsePaid = $this->get(route('public.voucher.show', $record->access_token));
+        $responsePaid->assertStatus(200);
+        // Should now see the PAID stamp SVG text
+        $responsePaid->assertSee('PAID');
+
+        // 4. Download PDF
+        $responsePdf = $this->get(route('public.voucher.pdf', $record->access_token));
+        $responsePdf->assertStatus(200);
+        $responsePdf->assertHeader('Content-Type', 'application/pdf');
+
+        // 5. Test invalid token gives 404
+        $response404 = $this->get(route('public.voucher.show', 'invalid-uuid'));
+        $response404->assertStatus(404);
+    }
 }

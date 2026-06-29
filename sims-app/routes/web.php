@@ -7,6 +7,14 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Public Vouchers/Receipts (Guest-accessible)
+Route::get('/v/{token}', [\App\Http\Controllers\PublicVoucherController::class, 'show'])
+    ->name('public.voucher.show')
+    ->middleware('throttle:60,1');
+Route::get('/v/{token}/pdf', [\App\Http\Controllers\PublicVoucherController::class, 'downloadPdf'])
+    ->name('public.voucher.pdf')
+    ->middleware('throttle:60,1');
+
 Route::get('/dashboard', function () {
     $user = \Illuminate\Support\Facades\Auth::user();
     

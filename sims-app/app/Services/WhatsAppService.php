@@ -255,12 +255,15 @@ class WhatsAppService
         }
 
         $formattedPeriod = \Carbon\Carbon::parse($payment->record->period . '-01')->format('F Y');
+        $link = url('/v/' . $payment->record->access_token);
         
         $message = PhoneHelper::getPaymentMessage(
             $student->name,
             $payment->amount,
             $formattedPeriod,
-            $payment->record->balance
+            $payment->record->balance,
+            null,
+            $link
         );
 
         $now = now();
@@ -291,12 +294,15 @@ class WhatsAppService
 
             $formattedPeriod = \Carbon\Carbon::parse($record->period . '-01')->format('F Y');
             $dueDate = $record->due_date->format('d M, Y');
+            $link = url('/v/' . $record->access_token);
 
             $message = PhoneHelper::getFeeReminderMessage(
                 $student->name,
                 $record->balance,
                 $formattedPeriod,
-                $dueDate
+                $dueDate,
+                null,
+                $link
             );
 
             $queueRecords[] = [

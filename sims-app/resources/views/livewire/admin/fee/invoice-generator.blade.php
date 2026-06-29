@@ -299,8 +299,8 @@
                             <label class="block text-xs font-bold text-gray-750 dark:text-gray-300 uppercase tracking-wider mb-2">Select Class <span class="text-red-500">*</span></label>
                             <select wire:model.live="viewClassId" class="w-full text-sm border-gray-300 dark:border-gray-600 rounded-lg text-gray-750 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 shadow-sm px-3 py-2.5">
                                 <option value="">-- Choose Class --</option>
-                                @foreach($classes as $cId => $cName)
-                                    <option value="{{ $cId }}">{{ $cName }}</option>
+                                @foreach($classes as $class)
+                                    <option value="{{ $class->id }}">{{ $class->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -420,8 +420,8 @@
                             <label class="block text-xs font-bold text-gray-750 dark:text-gray-300 uppercase tracking-wider mb-2">Select Class <span class="text-red-500">*</span></label>
                             <select wire:model.live="receiptClassId" class="w-full text-sm border-gray-300 dark:border-gray-600 rounded-lg text-gray-750 dark:text-gray-300 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-900 shadow-sm px-3 py-2.5">
                                 <option value="">-- Choose Class --</option>
-                                @foreach($classes as $cId => $cName)
-                                    <option value="{{ $cId }}">{{ $cName }}</option>
+                                @foreach($classes as $class)
+                                    <option value="{{ $class->id }}">{{ $class->name }}</option>
                                 @endforeach
                             </select>
                         </div>
