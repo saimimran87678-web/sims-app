@@ -13,7 +13,15 @@ class PublicVoucherController extends Controller
      */
     public function show(string $token)
     {
-        $record = FeeRecord::with(['student', 'class', 'items', 'payments'])
+        $record = FeeRecord::with([
+                'student',
+                'items',
+                'payments',
+                // Bypass the active_session global scope — public page is unauthenticated
+                // so auth()->user() is null and the scope defaults to the wrong session,
+                // returning null for classes that belong to a non-primary shift.
+                'class' => fn($q) => $q->withoutGlobalScopes(),
+            ])
             ->where('access_token', $token)
             ->firstOrFail();
 
