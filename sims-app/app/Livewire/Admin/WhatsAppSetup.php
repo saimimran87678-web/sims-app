@@ -23,12 +23,12 @@ class WhatsAppSetup extends Component
     {
         $this->authorize('students.manage'); // Reuse existing permission
         
-        // Load Queue Settings
-        $this->queueDelay = \App\Models\Setting::get('whatsapp_queue_delay', 5);
-        $this->autoSendEnabled = \App\Models\Setting::get('whatsapp_auto_send_enabled', 'false') === 'true';
-        $this->autoSendStart = \App\Models\Setting::get('whatsapp_auto_send_start', '09:00');
-        $this->autoSendEnd = \App\Models\Setting::get('whatsapp_auto_send_end', '22:00');
-        $this->forceSendNow = \App\Models\Setting::get('whatsapp_force_send_now', 'false') === 'true';
+        // Load Queue Settings (global — not session-scoped)
+        $this->queueDelay = \App\Models\Setting::getGlobal('whatsapp_queue_delay', 5);
+        $this->autoSendEnabled = \App\Models\Setting::getGlobal('whatsapp_auto_send_enabled', 'false') === 'true';
+        $this->autoSendStart = \App\Models\Setting::getGlobal('whatsapp_auto_send_start', '09:00');
+        $this->autoSendEnd = \App\Models\Setting::getGlobal('whatsapp_auto_send_end', '22:00');
+        $this->forceSendNow = \App\Models\Setting::getGlobal('whatsapp_force_send_now', 'false') === 'true';
 
         $this->refreshStatus();
     }
@@ -67,11 +67,11 @@ class WhatsAppSetup extends Component
 
     public function saveSettings()
     {
-        \App\Models\Setting::set('whatsapp_queue_delay', $this->queueDelay);
-        \App\Models\Setting::set('whatsapp_auto_send_enabled', $this->autoSendEnabled ? 'true' : 'false');
-        \App\Models\Setting::set('whatsapp_auto_send_start', $this->autoSendStart);
-        \App\Models\Setting::set('whatsapp_auto_send_end', $this->autoSendEnd);
-        \App\Models\Setting::set('whatsapp_force_send_now', $this->forceSendNow ? 'true' : 'false');
+        \App\Models\Setting::setGlobal('whatsapp_queue_delay', $this->queueDelay);
+        \App\Models\Setting::setGlobal('whatsapp_auto_send_enabled', $this->autoSendEnabled ? 'true' : 'false');
+        \App\Models\Setting::setGlobal('whatsapp_auto_send_start', $this->autoSendStart);
+        \App\Models\Setting::setGlobal('whatsapp_auto_send_end', $this->autoSendEnd);
+        \App\Models\Setting::setGlobal('whatsapp_force_send_now', $this->forceSendNow ? 'true' : 'false');
 
         session()->flash('message', 'Settings saved. Queue processor updated.');
 

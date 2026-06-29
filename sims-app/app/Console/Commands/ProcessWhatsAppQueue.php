@@ -48,8 +48,8 @@ class ProcessWhatsAppQueue extends Command
         $this->info('WhatsApp queue processor daemon started' . ($runOnce ? ' (once mode)' : '') . '.');
 
         while (true) {
-            $enabled = Setting::get('whatsapp_auto_send_enabled', 'false') === 'true';
-            $forceSendNow = Setting::get('whatsapp_force_send_now', 'false') === 'true';
+            $enabled = Setting::getGlobal('whatsapp_auto_send_enabled', 'false') === 'true';
+            $forceSendNow = Setting::getGlobal('whatsapp_force_send_now', 'false') === 'true';
 
             // Check if we should keep running
             if (!$enabled && !$forceSendNow && !$runOnce) {
@@ -59,8 +59,8 @@ class ProcessWhatsAppQueue extends Command
 
             // If not forcing and not running once, check the time window
             if (!$forceSendNow && !$runOnce) {
-                $startTime = Setting::get('whatsapp_auto_send_start', '09:00');
-                $endTime = Setting::get('whatsapp_auto_send_end', '22:00');
+                $startTime = Setting::getGlobal('whatsapp_auto_send_start', '09:00');
+                $endTime = Setting::getGlobal('whatsapp_auto_send_end', '22:00');
                 
                 $now = Carbon::now();
                 $start = Carbon::createFromTimeString($startTime);
@@ -72,7 +72,7 @@ class ProcessWhatsAppQueue extends Command
                 }
             }
 
-            $delay = (int) Setting::get('whatsapp_queue_delay', 5);
+            $delay = (int) Setting::getGlobal('whatsapp_queue_delay', 5);
             $delay = max(1, $delay);
 
             $messages = DB::table('whatsapp_queue')

@@ -42,4 +42,26 @@ class Setting extends Model
             ['value' => $value]
         );
     }
+
+    /**
+     * Get a global setting (not scoped to any academic session).
+     * Used for system-level settings like WhatsApp queue configuration
+     * that must be accessible from CLI commands and background daemons.
+     */
+    public static function getGlobal(string $key, $default = null)
+    {
+        $setting = self::where('key', $key)->whereNull('academic_session_id')->first();
+        return $setting ? $setting->value : $default;
+    }
+
+    /**
+     * Set a global setting (not scoped to any academic session).
+     */
+    public static function setGlobal(string $key, $value)
+    {
+        return self::updateOrCreate(
+            ['key' => $key, 'academic_session_id' => null],
+            ['value' => $value]
+        );
+    }
 }
