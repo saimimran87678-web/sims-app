@@ -4,8 +4,38 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
     <title>{{ $title ?? 'Dashboard' }} | {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}</title>
+
+    @php
+        $instName = \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        $firstLetter = strtoupper(substr(trim($instName), 0, 1));
+        
+        // Define page-specific colors for the monogram favicon
+        $pageTitleLower = strtolower($title ?? 'dashboard');
+        $faviconColor = '%232563eb'; // Blue default
+        if (str_contains($pageTitleLower, 'user')) {
+            $faviconColor = '%237c3aed'; // Purple
+        } elseif (str_contains($pageTitleLower, 'class')) {
+            $faviconColor = '%23059669'; // Emerald
+        } elseif (str_contains($pageTitleLower, 'student')) {
+            $faviconColor = '%23db2777'; // Pink
+        } elseif (str_contains($pageTitleLower, 'fee')) {
+            $faviconColor = '%23d97706'; // Amber
+        } elseif (str_contains($pageTitleLower, 'attendance')) {
+            $faviconColor = '%23ca8a04'; // Yellow
+        } elseif (str_contains($pageTitleLower, 'whatsapp')) {
+            $faviconColor = '%2316a34a'; // Green
+        } elseif (str_contains($pageTitleLower, 'report')) {
+            $faviconColor = '%233b82f6'; // Light Blue
+        } elseif (str_contains($pageTitleLower, 'exam') || str_contains($pageTitleLower, 'datesheet')) {
+            $faviconColor = '%23dc2626'; // Red
+        } elseif (str_contains($pageTitleLower, 'schedule') || str_contains($pageTitleLower, 'substitution')) {
+            $faviconColor = '%230891b2'; // Cyan
+        } elseif (str_contains($pageTitleLower, 'setting')) {
+            $faviconColor = '%234b5563'; // Gray
+        }
+    @endphp
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='{{ $faviconColor }}'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='18' fill='%23ffffff'%3E{{ $firstLetter }}%3C/text%3E%3C/svg%3E">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -184,8 +214,13 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
                     </button>
 
-                    <h2 class="text-xl font-bold text-gray-800">
-                        @yield('header', 'Dashboard')
+                    <h2 class="text-xl font-bold text-gray-800" x-data="{ pageTitle: '{{ $header ?? $title ?? 'Dashboard' }}' }" x-init="
+                        pageTitle = document.title.split(' | ')[0] || 'Dashboard';
+                        document.addEventListener('livewire:navigated', () => {
+                            pageTitle = document.title.split(' | ')[0] || 'Dashboard';
+                        });
+                    }">
+                        <span x-text="pageTitle"></span>
                     </h2>
 
                     <!-- Session Selector -->
@@ -285,9 +320,10 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100"
                 x-transition:leave-end="opacity-0"
-                @click="sidebarOpen = false" 
+                @click="sidebarOpen = false"
                 class="fixed inset-0 z-40 bg-black/50 md:hidden"
             ></div>
+
         </main>
     </div>
     @stack('scripts')
@@ -460,6 +496,30 @@
         }
     </script>
     
+    <!-- Floating Add Student Action Button (shown on Dashboard & Class Management) -->
+    @can('students.manage')
+        @if(
+            in_array($title ?? '', ['Dashboard', 'Class Management']) ||
+            request()->routeIs('admin.dashboard') || 
+            request()->routeIs('admin.classes') || 
+            request()->is('admin/dashboard') || 
+            request()->is('admin/classes')
+        )
+            <div class="fixed bottom-6 right-6 z-[9999]">
+                <a 
+                    href="{{ route('admin.students', ['open_add_modal' => 1]) }}" 
+                    class="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full shadow-[0_4px_20px_rgba(37,99,235,0.4)] hover:shadow-[0_6px_25px_rgba(37,99,235,0.5)] transition-all duration-300 hover:-translate-y-1 group relative"
+                    title="Add New Student"
+                >
+                    <span class="absolute inset-0 rounded-full bg-blue-500/20 animate-ping scale-105 group-hover:duration-1000"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                </a>
+            </div>
+        @endif
+    @endcan
+
     <x-security-scripts />
 </body>
 </html>

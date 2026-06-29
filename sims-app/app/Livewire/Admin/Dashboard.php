@@ -25,11 +25,24 @@ class Dashboard extends Component
                 ->count()
             : 0;
 
+        $currentMonth = date('Y-m');
+        $paidCount = $activeSessionId
+            ? DB::table('fee_records')
+                ->where('academic_session_id', $activeSessionId)
+                ->where('period', $currentMonth)
+                ->where('status', 'paid')
+                ->count()
+            : 0;
+
+        $leftCount = max(0, $studentsCount - $paidCount);
+
         $stats = [
             'users' => User::count(),
             'classes' => $classesCount,
             'students' => $studentsCount,
             'attendance' => 0, // Default
+            'paid_this_month' => $paidCount,
+            'students_left' => $leftCount,
         ];
 
         // Calculate simplified attendance percentage if data exists

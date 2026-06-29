@@ -7,6 +7,27 @@
 
     <title>{{ $title ?? 'Dashboard' }} | {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}</title>
 
+    @php
+        $instName = \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        $firstLetter = strtoupper(substr(trim($instName), 0, 1));
+        
+        // Define page-specific green/emerald shades for teacher portal favicon
+        $pageTitleLower = strtolower($title ?? 'dashboard');
+        $faviconColor = '%23059669'; // Emerald default
+        if (str_contains($pageTitleLower, 'class')) {
+            $faviconColor = '%230d9488'; // Teal
+        } elseif (str_contains($pageTitleLower, 'student')) {
+            $faviconColor = '%2310b981'; // Mint
+        } elseif (str_contains($pageTitleLower, 'attendance')) {
+            $faviconColor = '%2316a34a'; // Green
+        } elseif (str_contains($pageTitleLower, 'exam') || str_contains($pageTitleLower, 'grade') || str_contains($pageTitleLower, 'datesheet')) {
+            $faviconColor = '%23047857'; // Dark green
+        } elseif (str_contains($pageTitleLower, 'schedule') || str_contains($pageTitleLower, 'period')) {
+            $faviconColor = '%230891b2'; // Cyan/Teal
+        }
+    @endphp
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='{{ $faviconColor }}'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='18' fill='%23ffffff'%3E{{ $firstLetter }}%3C/text%3E%3C/svg%3E">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -150,8 +171,13 @@
                     <button @click="sidebarOpen = !sidebarOpen" class="text-gray-600">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
                     </button>
-                    <h2 class="text-xl font-bold text-gray-800">
-                        @yield('header', 'Dashboard')
+                    <h2 class="text-xl font-bold text-gray-800" x-data="{ pageTitle: '{{ $header ?? $title ?? 'Dashboard' }}' }" x-init="
+                        pageTitle = document.title.split(' | ')[0] || 'Dashboard';
+                        document.addEventListener('livewire:navigated', () => {
+                            pageTitle = document.title.split(' | ')[0] || 'Dashboard';
+                        });
+                    }">
+                        <span x-text="pageTitle"></span>
                     </h2>
 
                     <!-- Session Selector Removed -->
