@@ -364,7 +364,7 @@
                                             <td class="p-4">
                                                 <div class="flex flex-col">
                                                     <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $voucher->student->name }}</span>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Roll: {{ $voucher->student->roll_number ?? 'N/A' }} | Adm: {{ $voucher->student->admission_number ?? 'N/A' }}</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Roll: {{ $voucher->student->roll_no ?? 'N/A' }} | Adm: {{ $voucher->student->admission_no ?? 'N/A' }}</span>
                                                 </div>
                                             </td>
                                             <td class="p-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
@@ -485,7 +485,7 @@
                                             <td class="p-4">
                                                 <div class="flex flex-col">
                                                     <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $receipt->student->name }}</span>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Class: {{ $receipt->record->class->name }} | Roll: {{ $receipt->student->roll_number ?? 'N/A' }}</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Class: {{ $receipt->record->class->name }} | Roll: {{ $receipt->student->roll_no ?? 'N/A' }} | Adm: {{ $receipt->student->admission_no ?? 'N/A' }}</span>
                                                 </div>
                                             </td>
                                             <td class="p-4">
