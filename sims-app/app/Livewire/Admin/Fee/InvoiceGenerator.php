@@ -60,6 +60,11 @@ class InvoiceGenerator extends Component
 
     public function mount()
     {
+        $user = auth()->user();
+        if ($user->role !== 'admin' && !$user->hasRole('Super Admin')) {
+            abort_if(!$user->can('fees.manage'), 403);
+        }
+
         $this->billingMonth = date('Y-m');
         $this->viewMonth = date('Y-m');
         $this->receiptMonth = date('Y-m');
@@ -1167,8 +1172,12 @@ class InvoiceGenerator extends Component
         $sessionId = \App\Models\AcademicSession::getActiveSessionId();
         $classesList = $sessionId ? \App\Models\Classes::where('academic_session_id', $sessionId)->get() : collect();
 
+        $layout = request()->is('teacher/*') 
+            ? 'components.layouts.teacher' 
+            : 'components.layouts.admin';
+
         return view('livewire.admin.fee.invoice-generator', [
             'classes' => $classesList
-        ])->layout('components.layouts.admin', ['title' => 'Voucher Management']);
+        ])->layout($layout, ['title' => 'Voucher Management']);
     }
 }

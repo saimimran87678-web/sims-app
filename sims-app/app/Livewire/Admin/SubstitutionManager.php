@@ -24,6 +24,9 @@ class SubstitutionManager extends Component
     // Structure: [teacher_id => [period_no => substitute_teacher_id]]
     public $substitutions = [];
     
+    // Structure: [teacher_id => [period_no_1, period_no_2, ...]]
+    public $teacherAssignedSubs = [];
+
     // Toggles for "Show All Teachers" per period assignment
     // Structure: [teacher_id => [period_no => boolean]]
     public $showAllTeachersToggle = [];
@@ -33,14 +36,28 @@ class SubstitutionManager extends Component
 
     public function mount()
     {
-        $this->authorize('schedule.manage');
+        $user = auth()->user();
+        $isAdmin = $user->role === 'admin' || $user->hasRole('Super Admin');
+
+        if (!$isAdmin) {
+            // For non-admins coming via teacher routes: enforce substitutions.manage
+            if (request()->is('teacher/*')) {
+                $this->authorize('substitutions.manage');
+            } else {
+                $this->authorize('schedule.manage');
+            }
+        }
 
         $this->selectedDate = now()->format('Y-m-d');
         
         $this->academicSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
-        if (!auth()->user()->can('schedule.view-sessions') && !auth()->user()->hasRole('Super Admin')) {
+        $hasSessionAccess = $isAdmin ||
+                            $user->can('substitutions.view-sessions') || 
+                            $user->can('schedule.view-sessions');
+
+        if (!$hasSessionAccess) {
             $this->selectedSessionId = $activeSessionId;
             $this->academicSessions = $this->academicSessions->where('id', $activeSessionId);
         } else {
@@ -58,6 +75,28 @@ class SubstitutionManager extends Component
     public function updatedSelectedDate()
     {
         $this->loadData();
+    }
+
+    public function loadTeacherAssignedSubs()
+    {
+        $subs = DB::table('timetables')
+            ->join('classes', 'timetables.class_id', '=', 'classes.id')
+            ->where('timetables.substitute_date', $this->selectedDate)
+            ->where('timetables.is_substitute', true)
+            ->select('timetables.teacher_id', 'timetables.period_no', 'classes.name as class_name')
+            ->orderBy('timetables.period_no')
+            ->get();
+
+        $this->teacherAssignedSubs = [];
+        foreach ($subs as $sub) {
+            if (!isset($this->teacherAssignedSubs[$sub->teacher_id])) {
+                $this->teacherAssignedSubs[$sub->teacher_id] = [];
+            }
+            $this->teacherAssignedSubs[$sub->teacher_id][] = [
+                'period_no' => $sub->period_no,
+                'class_name' => $sub->class_name,
+            ];
+        }
     }
 
     public function loadData()
@@ -91,6 +130,8 @@ class SubstitutionManager extends Component
                 $this->loadExistingSubstitutions($teacher->id);
             }
         }
+
+        $this->loadTeacherAssignedSubs();
     }
 
     public function updatedTeacherStatuses($value, $teacherId)
@@ -197,6 +238,7 @@ class SubstitutionManager extends Component
                 ->delete();
             
             $this->substitutions[$absentTeacherId][$periodNo] = '';
+            $this->loadTeacherAssignedSubs();
             return;
         }
 
@@ -237,6 +279,7 @@ class SubstitutionManager extends Component
         ]);
 
         $this->substitutions[$absentTeacherId][$periodNo] = $substituteTeacherId;
+        $this->loadTeacherAssignedSubs();
         session()->flash('message', 'Substitute assigned successfully.');
     }
 
@@ -390,6 +433,11 @@ class SubstitutionManager extends Component
 
     public function render()
     {
-        return view('livewire.admin.substitution-manager')->layout('components.layouts.admin', ['title' => 'Daily Substitutions']);
+        $layout = request()->is('teacher/*') 
+            ? 'components.layouts.teacher' 
+            : 'components.layouts.admin';
+
+        return view('livewire.admin.substitution-manager')
+            ->layout($layout, ['title' => 'Daily Substitutions']);
     }
 }

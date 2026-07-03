@@ -25,7 +25,9 @@ class Classes extends Model
                 $user->can('students.view-sessions') ||
                 $user->can('exams.view-sessions') ||
                 $user->can('schedule.view-sessions') ||
-                $user->can('reports.view-sessions')
+                $user->can('reports.view-sessions') ||
+                $user->can('fees.view-sessions') ||
+                $user->can('substitutions.view-sessions')
             )) {
                 return;
             }

@@ -19,6 +19,34 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Enforce session/shift scoped permissions for shared admin features
+        \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
+            // Super Admins and Admins bypass session scoping (global access)
+            if ($user->hasRole('Super Admin') || $user->role === 'admin') {
+                return null;
+            }
+
+            // Check if the permission is a Spatie permission
+            $allSpatiePermissions = cache()->remember('spatie_permission_names', 3600, function () {
+                return \Spatie\Permission\Models\Permission::pluck('name')->toArray();
+            });
+
+            if (in_array($ability, $allSpatiePermissions)) {
+                $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+                if ($activeSessionId) {
+                    $hasPermission = \Illuminate\Support\Facades\DB::table('session_user_permissions')
+                        ->where('user_id', $user->id)
+                        ->where('academic_session_id', $activeSessionId)
+                        ->where('permission_name', $ability)
+                        ->exists();
+                    return $hasPermission;
+                }
+                return false;
+            }
+
+            return null;
+        });
+
         // Enforce global read-only database writes restriction when license is locked or expired
         // We use beforeExecuting to intercept and block the query BEFORE it hits the database.
         \Illuminate\Support\Facades\DB::connection()->beforeExecuting(function ($sql, $bindings, $connection) {

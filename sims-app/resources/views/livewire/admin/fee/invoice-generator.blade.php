@@ -8,28 +8,30 @@
             </div>
             
             <!-- Tab Shifter -->
-            <div class="flex bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700/60 self-start md:self-auto shrink-0 shadow-inner">
-                <button 
-                    wire:click="$set('activeTab', 'setup')" 
-                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 {{ $activeTab === 'setup' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                    Voucher Setup
-                </button>
-                <button 
-                    wire:click="$set('activeTab', 'vouchers')" 
-                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 {{ $activeTab === 'vouchers' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    View Vouchers
-                </button>
-                <button 
-                    wire:click="$set('activeTab', 'receipts')" 
-                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 {{ $activeTab === 'receipts' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2-2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                    View Receipts
-                </button>
+            <div class="overflow-x-auto max-w-full -mx-4 px-4 md:mx-0 md:px-0 self-start md:self-auto shrink-0 scrollbar-none">
+                <div class="flex bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700/60 shrink-0 shadow-inner min-w-[320px]">
+                    <button 
+                        wire:click="$set('activeTab', 'setup')" 
+                        class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'setup' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                        Voucher Setup
+                    </button>
+                    <button 
+                        wire:click="$set('activeTab', 'vouchers')" 
+                        class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'vouchers' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        View Vouchers
+                    </button>
+                    <button 
+                        wire:click="$set('activeTab', 'receipts')" 
+                        class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'receipts' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2-2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        View Receipts
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -84,11 +86,11 @@
 
                 @if($selectedClassId)
                 <!-- Data Entry Section -->
-                <div class="p-6">
+                <div class="p-4 sm:p-6">
                     
                     @if($selectedTarget !== 'all' && isset($students[$selectedTarget]))
                     <!-- Student Personal Info Panel -->
-                    <div class="mb-6 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="mb-6 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
                             <div class="bg-blue-100 dark:bg-blue-950 p-2.5 rounded-lg text-blue-600 dark:text-blue-400">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
@@ -99,29 +101,29 @@
                             </div>
                         </div>
                         
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-2 text-xs flex-1 md:justify-items-end">
-                            <div class="text-left md:text-right">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs flex-1 lg:justify-items-end">
+                            <div class="text-left lg:text-right">
                                 <span class="text-gray-500 dark:text-gray-400">Father's Name</span>
                                 <span class="font-semibold text-gray-900 dark:text-gray-200 block mt-0.5">{{ $students[$selectedTarget]['father_name'] }}</span>
                             </div>
-                            <div class="text-left md:text-right">
+                            <div class="text-left lg:text-right">
                                 <span class="text-gray-500 dark:text-gray-400">Adm. Number</span>
                                 <span class="font-semibold text-gray-900 dark:text-gray-200 block mt-0.5">{{ $students[$selectedTarget]['admission_no'] }}</span>
                             </div>
-                            <div class="text-left md:text-right">
+                            <div class="text-left lg:text-right">
                                 <span class="text-gray-500 dark:text-gray-400">Phone</span>
                                 <span class="font-semibold text-gray-900 dark:text-gray-200 block mt-0.5">{{ $students[$selectedTarget]['phone'] }}</span>
                             </div>
-                            <div class="text-left md:text-right">
+                            <div class="text-left lg:text-right">
                                 <span class="text-gray-500 dark:text-gray-400">Arrears</span>
                                 <span class="font-bold text-red-600 dark:text-red-400 block mt-0.5">Rs. {{ number_format($students[$selectedTarget]['arrears']) }}</span>
                             </div>
                         </div>
 
                         <!-- Assign Subjects Button -->
-                        <div class="flex-shrink-0 pt-2 md:pt-0">
+                        <div class="flex-shrink-0 pt-2 lg:pt-0 w-full lg:w-auto">
                             <button wire:click="openSubjectEnrollmentModal"
-                                class="inline-flex items-center gap-2 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg shadow shadow-violet-600/25 transition-all hover:scale-[1.02] active:scale-95"
+                                class="w-full lg:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg shadow shadow-violet-600/25 transition-all hover:scale-[1.02] active:scale-95"
                                 title="Manage which subjects this student is enrolled in">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
@@ -133,8 +135,8 @@
                     @endif
 
                     <!-- Table -->
-                    <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mb-8 shadow-sm">
-                        <table class="w-full text-sm text-left text-gray-600 dark:text-gray-400">
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm mb-8 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <table class="w-full text-sm text-left text-gray-600 dark:text-gray-400 min-w-[650px] sm:min-w-0">
                             <thead class="bg-gray-100 dark:bg-gray-700/80 text-xs uppercase font-bold text-gray-700 dark:text-gray-300">
                                 <tr>
                                     <th class="px-5 py-4">Fee Description</th>
@@ -182,7 +184,7 @@
                     </div>
 
                     <!-- Summary & Totals -->
-                    <div class="flex flex-col items-end space-y-4 text-sm bg-gray-50 dark:bg-gray-800/80 p-6 rounded-xl border border-gray-100 dark:border-gray-700 w-full md:w-96 ml-auto shadow-sm">
+                    <div class="flex flex-col items-end space-y-4 text-sm bg-gray-50 dark:bg-gray-800/80 p-4 sm:p-6 rounded-xl border border-gray-100 dark:border-gray-700 w-full md:w-96 ml-auto shadow-sm">
                         
                         <!-- Subtotal -->
                         <div class="flex justify-between items-center w-full text-gray-600 dark:text-gray-400">
@@ -262,10 +264,10 @@
                                 </label>
                             @endif
                         </div>
-                        <div class="flex justify-end">
-                            <button wire:click="generateInvoices" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100" wire:loading.attr="disabled">
+                        <div class="flex justify-end w-full sm:w-auto">
+                            <button wire:click="generateInvoices" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100" wire:loading.attr="disabled">
                                 <span wire:loading.remove wire:target="generateInvoices" class="flex items-center gap-2">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2-2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                                     Save Fee Data
                                 </span>
                                 <span wire:loading wire:target="generateInvoices" class="flex items-center gap-2">
@@ -346,41 +348,41 @@
                         </div>
                     @else
                         <!-- Vouchers Table -->
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
+                        <div class="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+                            <table class="w-full text-left border-collapse min-w-[850px] sm:min-w-0">
                                 <thead>
                                     <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-150 dark:border-gray-800">
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Student Details</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Billing Month</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Amounts</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">Actions</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Student Details</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Billing Month</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Amounts</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                                     @foreach($this->vouchers as $voucher)
                                         <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors">
-                                            <td class="p-4">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4">
                                                 <div class="flex flex-col">
                                                     <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $voucher->student->name }}</span>
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">Roll: {{ $voucher->student->roll_no ?? 'N/A' }} | Adm: {{ $voucher->student->admission_no ?? 'N/A' }}</span>
                                                 </div>
                                             </td>
-                                            <td class="p-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
                                                 {{ \Carbon\Carbon::parse($voucher->period . '-01')->format('F Y') }}
                                             </td>
-                                            <td class="p-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
                                                 {{ $voucher->due_date->format('d M, Y') }}
                                             </td>
-                                            <td class="p-4">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4">
                                                 <div class="flex flex-col text-xs font-semibold">
                                                     <span class="text-gray-600 dark:text-gray-400">Total: Rs. {{ number_format($voucher->total_amount, 2) }}</span>
                                                     <span class="text-green-600 dark:text-green-400">Paid: Rs. {{ number_format($voucher->paid_amount, 2) }}</span>
                                                     <span class="text-red-600 dark:text-red-400 font-bold">Balance: Rs. {{ number_format($voucher->balance, 2) }}</span>
                                                 </div>
                                             </td>
-                                            <td class="p-4">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4">
                                                 @if($voucher->status === 'paid')
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Paid</span>
                                                 @elseif($voucher->status === 'partial')
@@ -389,7 +391,7 @@
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400">Unpaid</span>
                                                 @endif
                                             </td>
-                                            <td class="p-4 text-right">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-right font-medium">
                                                 <div class="flex justify-end items-center gap-2">
                                                     <a href="{{ route('admin.fee.invoice.download', $voucher->id) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/45 dark:text-blue-400 text-xs font-bold rounded-lg transition-colors">
                                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
@@ -467,43 +469,43 @@
                         </div>
                     @else
                         <!-- Receipts Table -->
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
+                        <div class="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+                            <table class="w-full text-left border-collapse min-w-[850px] sm:min-w-0">
                                 <thead>
                                     <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-150 dark:border-gray-800">
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Student Details</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Receipt No / Date</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Payment Method</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Amount Paid</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Remarks / Notes</th>
-                                        <th class="p-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">Actions</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Student Details</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Receipt No / Date</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Payment Method</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Amount Paid</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Remarks / Notes</th>
+                                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                                     @foreach($this->receipts as $receipt)
                                         <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors">
-                                            <td class="p-4">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4">
                                                 <div class="flex flex-col">
                                                     <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $receipt->student->name }}</span>
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">Class: {{ $receipt->record->class->name }} | Roll: {{ $receipt->student->roll_no ?? 'N/A' }} | Adm: {{ $receipt->student->admission_no ?? 'N/A' }}</span>
                                                 </div>
                                             </td>
-                                            <td class="p-4">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4">
                                                 <div class="flex flex-col">
                                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">REC-{{ str_pad($receipt->id, 5, '0', STR_PAD_LEFT) }}</span>
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ $receipt->payment_date->format('d M, Y') }}</span>
                                                 </div>
                                             </td>
-                                            <td class="p-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
                                                 <span class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs font-bold uppercase">{{ $receipt->payment_method }}</span>
                                             </td>
-                                            <td class="p-4 text-sm text-emerald-600 dark:text-emerald-400 font-extrabold">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-sm text-emerald-600 dark:text-emerald-400 font-extrabold">
                                                 Rs. {{ number_format($receipt->amount_paid, 2) }}
                                             </td>
-                                            <td class="p-4 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-xs truncate">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-xs truncate">
                                                 {{ $receipt->notes ?: '-' }}
                                             </td>
-                                            <td class="p-4 text-right">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-right font-medium">
                                                 <div class="flex justify-end items-center gap-2">
                                                     <a href="{{ route('admin.fee.receipt.download', $receipt->id) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/45 dark:text-blue-400 text-xs font-bold rounded-lg transition-colors">
                                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
@@ -530,8 +532,8 @@
     <!-- Manage Payment Heads Modal -->
     @if($showManageHeadsModal)
     @teleport('body')
-    <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-xl border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-4 sm:p-6 shadow-xl border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
             
             <!-- Modal Header -->
             <div class="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
@@ -546,11 +548,11 @@
                 <!-- Add New Form -->
                 <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
                     <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2.5">Create New Head</h4>
-                    <form wire:submit.prevent="createFeeHead" class="flex gap-2 items-end">
+                    <form wire:submit.prevent="createFeeHead" class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
                         <div class="flex-1">
                             <input type="text" wire:model="newFeeHeadName" placeholder="E.g. Computer Lab Fee" class="w-full text-sm rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-950 dark:text-white px-3 py-2" required>
                         </div>
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-1.5 h-[38px] flex-shrink-0">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5 h-[38px] flex-shrink-0 w-full sm:w-auto">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add
                         </button>
@@ -569,14 +571,16 @@
                                 <div class="p-3.5 flex items-center justify-between gap-4 group/item hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                                     @if($editingFeeHeadId === $head['id'])
                                         <!-- Inline Edit Form -->
-                                        <div class="flex-1 flex gap-2 items-center">
+                                        <div class="flex-1 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                                             <input type="text" wire:model="editingFeeHeadName" class="flex-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-950 dark:text-white px-2.5 py-1.5" required>
-                                            <button wire:click="updateFeeHead" class="text-xs font-bold text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 px-2 py-1.5 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 dark:border-green-800">
-                                                Save
-                                            </button>
-                                            <button wire:click="$set('editingFeeHeadId', null)" class="text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                                                Cancel
-                                            </button>
+                                            <div class="flex gap-2 justify-end">
+                                                <button wire:click="updateFeeHead" class="text-xs font-bold text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 px-3 py-1.5 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 dark:border-green-800">
+                                                    Save
+                                                </button>
+                                                <button wire:click="$set('editingFeeHeadId', null)" class="text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                                                    Cancel
+                                                </button>
+                                            </div>
                                         </div>
                                     @else
                                         <!-- Normal List Item View -->
@@ -599,7 +603,7 @@
 
             <!-- Modal Footer -->
             <div class="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end flex-shrink-0">
-                <button wire:click="$set('showManageHeadsModal', false)" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-bold text-gray-800 dark:text-white rounded-lg transition-colors">
+                <button wire:click="$set('showManageHeadsModal', false)" class="w-full sm:w-auto px-5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-bold text-gray-800 dark:text-white rounded-lg transition-colors">
                     Close
                 </button>
             </div>
@@ -612,8 +616,8 @@
     <!-- Subject Enrollment Modal -->
     @if($showSubjectEnrollmentModal)
     @teleport('body')
-    <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" wire:click.self="$set('showSubjectEnrollmentModal', false)">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full mx-4 shadow-2xl border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[80vh]">
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" wire:click.self="$set('showSubjectEnrollmentModal', false)">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[80vh]">
 
             <!-- Modal Header -->
             <div class="flex justify-between items-center px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
@@ -703,11 +707,11 @@
             @endif
 
             <!-- Modal Footer -->
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 flex-shrink-0">
-                <button wire:click="$set('showSubjectEnrollmentModal', false)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-semibold text-gray-700 dark:text-gray-300 rounded-lg transition-colors">
+            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex flex-col-reverse sm:flex-row justify-end gap-3 flex-shrink-0">
+                <button wire:click="$set('showSubjectEnrollmentModal', false)" class="w-full sm:w-auto px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-semibold text-gray-700 dark:text-gray-300 rounded-lg transition-colors">
                     Cancel
                 </button>
-                <button wire:click="saveSubjectEnrollments" class="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-lg shadow shadow-violet-600/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2" wire:loading.attr="disabled" wire:target="saveSubjectEnrollments">
+                <button wire:click="saveSubjectEnrollments" class="w-full sm:w-auto px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-lg shadow shadow-violet-600/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2" wire:loading.attr="disabled" wire:target="saveSubjectEnrollments">
                     <span wire:loading.remove wire:target="saveSubjectEnrollments">Save Enrollment</span>
                     <span wire:loading wire:target="saveSubjectEnrollments" class="flex items-center gap-1.5">
                         <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>

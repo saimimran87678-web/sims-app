@@ -10,52 +10,52 @@
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Billed</p>
-            <p class="text-3xl font-bold text-gray-900 dark:text-white">Rs. {{ number_format($totalBilled, 2) }}</p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div class="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <p class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Billed</p>
+            <p class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Rs. {{ number_format($totalBilled, 2) }}</p>
         </div>
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Paid</p>
-            <p class="text-3xl font-bold text-green-600 dark:text-green-400">Rs. {{ number_format($totalPaid, 2) }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <p class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Paid</p>
+            <p class="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">Rs. {{ number_format($totalPaid, 2) }}</p>
         </div>
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-red-100 dark:border-red-900/30">
-            <p class="text-sm font-semibold text-red-500 uppercase tracking-wider mb-1">Current Balance</p>
-            <p class="text-3xl font-bold text-red-600 dark:text-red-400">Rs. {{ number_format($totalBalance, 2) }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-2xl shadow-sm border border-red-100 dark:border-red-900/30">
+            <p class="text-xs sm:text-sm font-semibold text-red-500 uppercase tracking-wider mb-1">Current Balance</p>
+            <p class="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">Rs. {{ number_format($totalBalance, 2) }}</p>
         </div>
     </div>
 
     <!-- Unified Fee Ledger & Transaction History -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-150 dark:border-gray-700 overflow-hidden mb-8">
-        <div class="p-6 border-b border-gray-150 dark:border-gray-700 flex items-center justify-between">
-            <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+        <div class="p-5 sm:p-6 border-b border-gray-150 dark:border-gray-700 flex items-center justify-between">
+            <h3 class="text-base sm:text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Fee Ledger & Transaction History
             </h3>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+        <div class="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+            <table class="w-full text-left border-collapse min-w-[850px] sm:min-w-0">
                 <thead>
                     <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-150 dark:border-gray-700">
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Billing Period</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Amount to Pay</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payments Received</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Remaining Balance</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Billing Period</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Amount to Pay</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payments Received</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Remaining Balance</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-150 dark:divide-gray-700">
                     @forelse($records as $rec)
                         <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">
                                 <div class="font-bold text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($rec->period . '-01')->format('F Y') }}</div>
                                 <div class="text-xs text-gray-500 capitalize">{{ str_replace('_', ' ', $rec->cycle) }}</div>
                             </td>
-                            <td class="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-right font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                                 Rs. {{ number_format($rec->total_amount, 2) }}
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-4 sm:px-6 py-3.5 sm:py-4">
                                 @if($rec->payments->isEmpty())
                                     <span class="text-gray-400 dark:text-gray-600 text-sm">—</span>
                                 @else
@@ -76,10 +76,10 @@
                                     </div>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-right font-extrabold whitespace-nowrap {{ $rec->balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400' }}">
+                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-right font-extrabold whitespace-nowrap {{ $rec->balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400' }}">
                                 Rs. {{ number_format($rec->balance, 2) }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">
                                 @if($rec->status === 'paid')
                                     <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">Paid</span>
                                 @elseif($rec->period > now()->format('Y-m'))
@@ -90,7 +90,7 @@
                                     <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">Unpaid</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-right whitespace-nowrap">
+                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-right whitespace-nowrap">
                                 <div class="flex justify-end items-center gap-3">
                                     <a href="{{ route('admin.fee.invoice.download', $rec->id) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/45 dark:text-blue-400 text-xs font-bold rounded-lg transition-colors" title="Download Invoice">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -111,7 +111,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No ledger records found for this student.</td>
+                            <td colspan="6" class="px-4 sm:px-6 py-8 text-center text-gray-500 dark:text-gray-400">No ledger records found for this student.</td>
                         </tr>
                     @endforelse
                 </tbody>

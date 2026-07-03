@@ -177,8 +177,8 @@
                             @forelse($students as $student)
                                 @php
                                     // Determine status from input strings
-                                    $absentArr = array_map('trim', explode(',', $absent_rolls));
-                                    $leaveArr = array_map('trim', explode(',', $leave_rolls));
+                                    $absentArr = empty(trim($absent_rolls)) ? [] : preg_split('/[\s,]+/', trim($absent_rolls));
+                                    $leaveArr = empty(trim($leave_rolls)) ? [] : preg_split('/[\s,]+/', trim($leave_rolls));
                                     $roll = (string)$student->roll_no;
                                     
                                     $status = 'P';

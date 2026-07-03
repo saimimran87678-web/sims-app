@@ -215,6 +215,9 @@ class UserManager extends Component
     {
         DB::beginTransaction();
         try {
+            $finalClassId = ($this->role === 'teacher' && !empty($this->class_id)) ? $this->class_id : null;
+            $finalClassSubject = ($this->role === 'teacher' && !empty($this->class_id) && !empty($this->class_subject)) ? $this->class_subject : null;
+
             if ($this->isEditMode) {
                 $user = User::findOrFail($this->userId);
                 $data = [
@@ -230,9 +233,6 @@ class UserManager extends Component
                 $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
                 // Update or Insert Session User class assignment
-                $finalClassId = ($this->role === 'teacher' && !empty($this->class_id)) ? $this->class_id : null;
-                $finalClassSubject = ($this->role === 'teacher' && !empty($this->class_id) && !empty($this->class_subject)) ? $this->class_subject : null;
-
                 DB::table('session_user')->updateOrInsert(
                     [
                         'user_id' => $user->id,

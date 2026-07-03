@@ -22,6 +22,11 @@ class StudentLedger extends Component
 
     public function mount($studentId)
     {
+        $user = auth()->user();
+        if ($user->role !== 'admin' && !$user->hasRole('Super Admin')) {
+            abort_if(!$user->can('fees.manage'), 403);
+        }
+
         $this->studentId = $studentId;
         $this->student = Student::with('class')->findOrFail($studentId);
     }
@@ -41,11 +46,15 @@ class StudentLedger extends Component
         $totalPaid = $records->sum('paid_amount');
         $totalBalance = $records->where('period', '<=', now()->format('Y-m'))->sum('balance');
 
+        $layout = request()->is('teacher/*') 
+            ? 'components.layouts.teacher' 
+            : 'components.layouts.admin';
+
         return view('livewire.admin.fee.student-ledger', [
             'records' => $records,
             'totalBilled' => $totalBilled,
             'totalPaid' => $totalPaid,
             'totalBalance' => $totalBalance,
-        ])->layout('components.layouts.admin');
+        ])->layout($layout);
     }
 }

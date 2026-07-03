@@ -12,6 +12,7 @@ class ClassManager extends Component
     // Session
     public $selectedSessionId;
     public $academicSessions = [];
+    public $canViewSessions = false;
 
     // Class list
     public $classes;
@@ -51,7 +52,17 @@ class ClassManager extends Component
         $this->authorize('classes.manage');
         $this->academicSessions = \Illuminate\Support\Facades\DB::table('academic_sessions')->orderBy('start_date', 'desc')->get();
         $this->selectedSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        
+        $this->canViewSessions = auth()->user()->hasRole('Super Admin') || 
+                                 auth()->user()->role === 'admin' || 
+                                 auth()->user()->can('classes.view-sessions');
+
         $this->loadClasses();
+
+        // Auto-focus add form when navigated from dashboard quick-action
+        if (request()->boolean('open_add_modal')) {
+            $this->dispatch('focus-class-input');
+        }
     }
 
     public function loadClasses()
@@ -61,8 +72,13 @@ class ClassManager extends Component
             return;
         }
 
+        // Update canViewSessions just in case the context changes
+        $this->canViewSessions = auth()->user()->hasRole('Super Admin') || 
+                                 auth()->user()->role === 'admin' || 
+                                 auth()->user()->can('classes.view-sessions');
+
         // Enforce scope for non-privileged users
-        if (!auth()->user()->can('classes.view-sessions') && !auth()->user()->hasRole('Super Admin')) {
+        if (!$this->canViewSessions) {
             $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
             if ($this->selectedSessionId != $activeSessionId) {
                 $this->selectedSessionId = $activeSessionId;

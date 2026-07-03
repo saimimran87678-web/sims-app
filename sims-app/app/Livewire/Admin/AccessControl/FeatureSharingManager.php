@@ -21,7 +21,13 @@ class FeatureSharingManager extends Component
 
     public function mount()
     {
-        $query = User::orderBy('name');
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        
+        $query = User::orderBy('name')
+            ->join('session_user', 'users.id', '=', 'session_user.user_id')
+            ->where('session_user.academic_session_id', $activeSessionId)
+            ->where('session_user.is_active', true)
+            ->select('users.*');
 
         // Security: Hide Super Admins and regular Admins from selection list
         // Only allow sharing with relevant staff (Teachers, etc.) if delegate
@@ -32,7 +38,6 @@ class FeatureSharingManager extends Component
         }
 
         $this->users = $query->get();
-        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $this->allClasses = DB::table('classes')
             ->where('academic_session_id', $activeSessionId)
             ->orderBy('numeric_value')
@@ -65,6 +70,16 @@ class FeatureSharingManager extends Component
                 'icon' => 'calendar',
                 'desc' => 'Timetable management and configuration.',
                 'perms' => ['schedule.manage', 'schedule.view', 'schedule.config', 'schedule.view-sessions']
+            ],
+            'Fee Management' => [
+                'icon' => 'credit-card',
+                'desc' => 'Manage invoices, fees collection, and defaulters.',
+                'perms' => ['fees.manage', 'fees.view-sessions']
+            ],
+            'Substitutions & Attendance' => [
+                'icon' => 'arrow-path-rounded-square',
+                'desc' => 'Daily substitutions and teacher attendance.',
+                'perms' => ['substitutions.manage', 'substitutions.view-sessions']
             ],
             'Reports' => [
                 'icon' => 'chart-bar',
@@ -105,15 +120,30 @@ class FeatureSharingManager extends Component
     {
         if (!$this->selectedUserId || !isset($this->permissionsGrouped[$groupName])) return;
 
-        $user = User::find($this->selectedUserId);
-        if (!$user) return;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        if (!$activeSessionId) return;
 
         $permissions = $this->permissionsGrouped[$groupName]['permissions'];
         
         if ($enable) {
-            $user->givePermissionTo($permissions);
+            foreach ($permissions as $permission) {
+                DB::table('session_user_permissions')->updateOrInsert([
+                    'user_id' => $this->selectedUserId,
+                    'academic_session_id' => $activeSessionId,
+                    'permission_name' => $permission->name,
+                ], [
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         } else {
-            $user->revokePermissionTo($permissions);
+            foreach ($permissions as $permission) {
+                DB::table('session_user_permissions')
+                    ->where('user_id', $this->selectedUserId)
+                    ->where('academic_session_id', $activeSessionId)
+                    ->where('permission_name', $permission->name)
+                    ->delete();
+            }
         }
         
         $this->loadUserPermissions();
@@ -209,10 +239,12 @@ class FeatureSharingManager extends Component
     public function loadUserPermissions()
     {
         if ($this->selectedUserId) {
-            $user = User::find($this->selectedUserId);
-            $this->userPermissions = $user ? $user->getDirectPermissions()->pluck('name')->toArray() : [];
-            
-            // Also optionally show roles, but we focus on direct permissions as per "Sharing" concept
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $this->userPermissions = DB::table('session_user_permissions')
+                ->where('user_id', $this->selectedUserId)
+                ->where('academic_session_id', $activeSessionId)
+                ->pluck('permission_name')
+                ->toArray();
         } else {
             $this->userPermissions = [];
         }
@@ -222,23 +254,158 @@ class FeatureSharingManager extends Component
     {
         if (!$this->selectedUserId) return;
 
-        $user = User::find($this->selectedUserId);
-        if (!$user) return;
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        if (!$activeSessionId) return;
 
-        if ($user->hasDirectPermission($permissionName)) {
-            $user->revokePermissionTo($permissionName);
+        if (in_array($permissionName, $this->userPermissions)) {
+            DB::table('session_user_permissions')
+                ->where('user_id', $this->selectedUserId)
+                ->where('academic_session_id', $activeSessionId)
+                ->where('permission_name', $permissionName)
+                ->delete();
         } else {
-            $user->givePermissionTo($permissionName);
+            DB::table('session_user_permissions')->updateOrInsert([
+                'user_id' => $this->selectedUserId,
+                'academic_session_id' => $activeSessionId,
+                'permission_name' => $permissionName,
+            ], [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
         $this->loadUserPermissions();
         session()->flash('message', 'Permission updated.');
     }
 
+    public function getOppositeShiftSession()
+    {
+        $currentSession = \App\Models\AcademicSession::find(\App\Models\AcademicSession::getActiveSessionId());
+        if (!$currentSession || !$currentSession->parent_id) {
+            return null;
+        }
+
+        $oppositeShiftType = $currentSession->shift_type === 'Morning' ? 'Evening' : 'Morning';
+
+        return \App\Models\AcademicSession::where('parent_id', $currentSession->parent_id)
+            ->where('shift_type', $oppositeShiftType)
+            ->first();
+    }
+
+    public function getIsActiveInOppositeShiftProperty()
+    {
+        if (!$this->selectedUserId) return false;
+        
+        $oppositeSession = $this->getOppositeShiftSession();
+        if (!$oppositeSession) return false;
+
+        return DB::table('session_user')
+            ->where('user_id', $this->selectedUserId)
+            ->where('academic_session_id', $oppositeSession->id)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public function syncToOppositeShift()
+    {
+        if (!$this->selectedUserId) return;
+        
+        $currentSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $oppositeSession = $this->getOppositeShiftSession();
+        if (!$oppositeSession) return;
+        
+        // Verify active in opposite
+        $isActiveInOpposite = DB::table('session_user')
+            ->where('user_id', $this->selectedUserId)
+            ->where('academic_session_id', $oppositeSession->id)
+            ->where('is_active', true)
+            ->exists();
+            
+        if (!$isActiveInOpposite) return;
+        
+        // Sync permissions
+        $currentPermissions = DB::table('session_user_permissions')
+            ->where('user_id', $this->selectedUserId)
+            ->where('academic_session_id', $currentSessionId)
+            ->pluck('permission_name')
+            ->toArray();
+            
+        DB::table('session_user_permissions')
+            ->where('user_id', $this->selectedUserId)
+            ->where('academic_session_id', $oppositeSession->id)
+            ->delete();
+            
+        $permissionData = [];
+        $now = now();
+        foreach ($currentPermissions as $permName) {
+            $permissionData[] = [
+                'user_id' => $this->selectedUserId,
+                'academic_session_id' => $oppositeSession->id,
+                'permission_name' => $permName,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+        if (!empty($permissionData)) {
+            DB::table('session_user_permissions')->insert($permissionData);
+        }
+        
+        // Sync class access (by matching class names)
+        $currentClassAccessIds = DB::table('user_class_access')
+            ->where('user_id', $this->selectedUserId)
+            ->whereIn('class_id', $this->allClasses->pluck('id')->toArray())
+            ->pluck('class_id')
+            ->toArray();
+            
+        if (!empty($currentClassAccessIds)) {
+            $currentClassNames = DB::table('classes')
+                ->whereIn('id', $currentClassAccessIds)
+                ->pluck('name')
+                ->toArray();
+                
+            $oppositeClassIds = DB::table('classes')
+                ->where('academic_session_id', $oppositeSession->id)
+                ->whereIn('name', $currentClassNames)
+                ->pluck('id')
+                ->toArray();
+                
+            $allOppositeClassIds = DB::table('classes')
+                ->where('academic_session_id', $oppositeSession->id)
+                ->pluck('id')
+                ->toArray();
+                
+            DB::table('user_class_access')
+                ->where('user_id', $this->selectedUserId)
+                ->whereIn('class_id', $allOppositeClassIds)
+                ->delete();
+                
+            $classAccessData = [];
+            foreach ($oppositeClassIds as $classId) {
+                $classAccessData[] = [
+                    'user_id' => $this->selectedUserId,
+                    'class_id' => $classId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+            if (!empty($classAccessData)) {
+                DB::table('user_class_access')->insert($classAccessData);
+            }
+        }
+        
+        session()->flash('message', 'Permissions and class access successfully synced to ' . $oppositeSession->shift_type . ' shift.');
+    }
+
     public function render()
     {
-        // Simple search filter for users
-        $query = User::query();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+
+        // Simple search filter for users - loading only active in active session
+        $query = User::query()
+            ->join('session_user', 'users.id', '=', 'session_user.user_id')
+            ->where('session_user.academic_session_id', $activeSessionId)
+            ->where('session_user.is_active', true)
+            ->select('users.*');
 
         // Security: Hide Super Admins if current user is not Super Admin
         if (!auth()->user()->hasRole('Super Admin')) {

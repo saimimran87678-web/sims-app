@@ -8,11 +8,10 @@
         <title>{{ $title ?? 'Login' }} | {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}</title>
 
         @php
-            $instName = \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-            $firstLetter = strtoupper(substr(trim($instName), 0, 1));
-            $faviconColor = '%231e3a8a'; // Dark Blue / Indigo
+            $faviconColor = '%231e3a8a'; // Deep Indigo
+            $svgPath = '%3Cpath d="M15 7a2 2 0 0 1 2 2m4 0a6 6 0 0 1-7.743 5.743L11 17H9v2H7v2H4a1 1 0 0 1-1-1v-2.586a1 1 0 0 1 .293-.707l5.964-5.964A6 6 0 1 1 21 9z"/%3E';
         @endphp
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='{{ $faviconColor }}'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='18' fill='%23ffffff'%3E{{ $firstLetter }}%3C/text%3E%3C/svg%3E">
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='{{ $faviconColor }}'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' transform='translate%284.2%2C%204.2%29%20scale%280.65%29'%3E{{ $svgPath }}%3C/g%3E%3C/svg%3E">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">

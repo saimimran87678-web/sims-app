@@ -31,7 +31,11 @@ class RecordPayment extends Component
 
     public function mount()
     {
-        $this->isPage = request()->routeIs('admin.fee.record-payment');
+        $user = auth()->user();
+        if ($user->role !== 'admin' && !$user->hasRole('Super Admin')) {
+            abort_if(!$user->can('fees.manage'), 403);
+        }
+        $this->isPage = request()->routeIs('admin.fee.record-payment') || request()->routeIs('teacher.shared.fee.record-payment');
     }
 
     public function render()
@@ -70,10 +74,14 @@ class RecordPayment extends Component
             }
         }
 
+        $layout = request()->is('teacher/*') 
+            ? 'components.layouts.teacher' 
+            : 'components.layouts.admin';
+
         return view('livewire.admin.fee.record-payment', [
             'studentsList' => $students,
             'classes' => \App\Models\Classes::where('academic_session_id', $sessionId)->get()
-        ])->layout('components.layouts.admin', ['title' => 'Collect Fees']);
+        ])->layout($layout, ['title' => 'Collect Fees']);
     }
 
     public function selectStudent($studentId)

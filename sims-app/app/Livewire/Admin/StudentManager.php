@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
+use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -15,6 +16,8 @@ class StudentManager extends Component
 {
     use WithPagination;
     use WithFileUploads;
+
+    public $onlyModal = false;
 
     // Search & Filter
     public $search = '';
@@ -177,6 +180,11 @@ class StudentManager extends Component
         }
         
         $this->loadClasses();
+
+        // Auto-open add modal when navigated from dashboard quick-action
+        if (request()->boolean('open_add_modal')) {
+            $this->openModal();
+        }
     }
 
     public function loadClasses()
@@ -223,6 +231,7 @@ class StudentManager extends Component
         $this->resetPage();
     }
 
+    #[On('open-add-student-modal')]
     public function openModal()
     {
         $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
@@ -311,6 +320,10 @@ class StudentManager extends Component
 
         $this->showModal = false;
         $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
+
+        if ($this->onlyModal) {
+            return redirect(request()->header('Referer'));
+        }
     }
 
     public function addOption($type)
@@ -442,6 +455,18 @@ class StudentManager extends Component
     public function render()
     {
         $viewClasses = $this->classes;
+
+        if ($this->onlyModal) {
+            $sportsOptions = \App\Models\DefinedOption::sports()->get();
+            $activityOptions = \App\Models\DefinedOption::activities()->get();
+
+            return view('livewire.admin.student-manager', [
+                'students' => collect(),
+                'classes' => $viewClasses,
+                'sportsOptions' => $sportsOptions,
+                'activityOptions' => $activityOptions
+            ]);
+        }
 
         $allowedClassIds = [];
         $isTeacher = auth()->user()->hasRole('Teacher');

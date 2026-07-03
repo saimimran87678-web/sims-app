@@ -13,10 +13,21 @@ class AcademicSessionManager extends Component
     public $sessionId;
     public $isModalOpen = false;
 
+    public $isTeacherContext = false;
+
+    public function mount()
+    {
+        $this->authorize('sessions.manage');
+        $this->isTeacherContext = request()->is('teacher/*');
+    }
+
     public function render()
     {
         $this->sessions = AcademicSession::orderBy('start_date', 'desc')->get();
-        return view('livewire.admin.academic-session-manager')->layout('components.layouts.admin', ['title' => 'Academic Sessions']);
+        $layout = $this->isTeacherContext
+            ? 'components.layouts.teacher'
+            : 'components.layouts.admin';
+        return view('livewire.admin.academic-session-manager')->layout($layout, ['title' => 'Academic Sessions']);
     }
 
     public function create()
@@ -113,6 +124,9 @@ class AcademicSessionManager extends Component
 
     public function delete($id)
     {
+        if ($this->isTeacherContext) {
+            abort(403, 'Unauthorized action.');
+        }
         AcademicSession::find($id)->delete();
         session()->flash('message', 'Session Deleted Successfully.');
     }

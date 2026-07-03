@@ -338,6 +338,7 @@ class FeeManagementTest extends TestCase
         // 2. Test Livewire filter view class logic for View Vouchers tab
         $test = Livewire::test(InvoiceGenerator::class)
             ->set('activeTab', 'vouchers')
+            ->set('viewMonth', '2026-06')
             ->set('viewClassId', $this->class->id);
 
         // Verify class students loaded
@@ -351,6 +352,7 @@ class FeeManagementTest extends TestCase
         // 3. Test Livewire filter view class logic for View Receipts tab
         $testReceipts = Livewire::test(InvoiceGenerator::class)
             ->set('activeTab', 'receipts')
+            ->set('receiptMonth', '2026-06')
             ->set('receiptClassId', $this->class->id);
 
         // Verify class students loaded

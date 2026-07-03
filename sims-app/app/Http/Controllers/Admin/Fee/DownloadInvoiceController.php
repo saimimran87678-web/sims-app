@@ -12,8 +12,9 @@ class DownloadInvoiceController extends Controller
     public function __invoke(Request $request, FeeRecord $record, InvoiceService $invoiceService)
     {
         // Ensure user has permission
-        if (!auth()->user()->can('classes.manage')) { // Assuming a general admin permission
-            abort(403);
+        $user = auth()->user();
+        if ($user->role !== 'admin' && !$user->hasRole('Super Admin')) {
+            abort_if(!$user->can('fees.manage'), 403);
         }
 
 

@@ -12,8 +12,9 @@ class DownloadReceiptController extends Controller
     public function __invoke(Request $request, FeePayment $payment)
     {
         // Ensure user has permission
-        if (!auth()->user()->can('classes.manage')) {
-            abort(403);
+        $user = auth()->user();
+        if ($user->role !== 'admin' && !$user->hasRole('Super Admin')) {
+            abort_if(!$user->can('fees.manage'), 403);
         }
 
         $payment->load(['student', 'record', 'record.class', 'record.items']);

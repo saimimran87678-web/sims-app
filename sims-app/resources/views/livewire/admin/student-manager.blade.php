@@ -1,6 +1,9 @@
 <div class="space-y-6">
+    @if(!$onlyModal)
     <x-slot name="header">Student Management</x-slot>
+    @endif
 
+    @if(!$onlyModal)
     <div class="glass-card p-6 rounded-2xl">
         {{-- Advanced Filter Section --}}
         <div x-data="{ showFilters: false }" class="mb-6">
@@ -345,6 +348,7 @@
             {{ $students->links() }}
         </div>
     </div>
+    @endif
 
     {{-- Modal --}}
     @if($showModal)
@@ -611,7 +615,7 @@
         </div>
     @endif
     {{-- View Profile Modal --}}
-    @if($showViewModal && $viewingStudent)
+    @if(!$onlyModal && $showViewModal && $viewingStudent)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto" x-transition>
             <div class="bg-gray-100 rounded-2xl w-full max-w-5xl shadow-2xl relative flex flex-col h-[90vh]" @click.away="$set('showViewModal', false)">
                 

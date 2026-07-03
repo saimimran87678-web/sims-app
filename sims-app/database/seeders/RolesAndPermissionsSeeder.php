@@ -13,6 +13,7 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        cache()->forget('spatie_permission_names');
 
         // 1. Define Granular Permissions
         $permissions = [
@@ -66,6 +67,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'schedule.view-sessions',
             'reports.view-sessions',
             'grades.view-sessions',
+
+            // Fee Management
+            'fees.manage',
+            'fees.view-sessions',
+
+            // Substitution Management
+            'substitutions.manage',
+            'substitutions.view-sessions',
         ];
 
         foreach ($permissions as $permission) {

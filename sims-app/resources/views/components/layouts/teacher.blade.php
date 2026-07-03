@@ -8,25 +8,52 @@
     <title>{{ $title ?? 'Dashboard' }} | {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}</title>
 
     @php
-        $instName = \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-        $firstLetter = strtoupper(substr(trim($instName), 0, 1));
-        
-        // Define page-specific green/emerald shades for teacher portal favicon
+        // Define page-specific colors and SVG icon paths for the tab favicon
         $pageTitleLower = strtolower($title ?? 'dashboard');
-        $faviconColor = '%23059669'; // Emerald default
-        if (str_contains($pageTitleLower, 'class')) {
-            $faviconColor = '%230d9488'; // Teal
+        
+        // Defaults: Indigo theme with Grid icon
+        $faviconColor = '%236366f1'; 
+        $svgPath = '%3Crect x="3" y="3" width="7" height="9" rx="1.5"/%3E%3Crect x="14" y="3" width="7" height="5" rx="1.5"/%3E%3Crect x="14" y="12" width="7" height="9" rx="1.5"/%3E%3Crect x="3" y="16" width="7" height="5" rx="1.5"/%3E';
+        
+        if (str_contains($pageTitleLower, 'user')) {
+            $faviconColor = '%238b5cf6'; // Violet
+            $svgPath = '%3Cpath d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/%3E%3Ccircle cx="9" cy="7" r="4"/%3E%3Cpath d="M22 21v-2a4 4 0 0 0-3-3.87"/%3E%3Cpath d="M16 3.13a4 4 0 0 1 0 7.75"/%3E';
+        } elseif (str_contains($pageTitleLower, 'class')) {
+            $faviconColor = '%2310b981'; // Emerald
+            $svgPath = '%3Cpath d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/%3E%3Cpath d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/%3E';
         } elseif (str_contains($pageTitleLower, 'student')) {
-            $faviconColor = '%2310b981'; // Mint
+            $faviconColor = '%23ec4899'; // Pink
+            $svgPath = '%3Cpath d="M22 10v6M2 10l10-5 10 5-10 5z"/%3E%3Cpath d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/%3E';
+        } elseif (str_contains($pageTitleLower, 'fee')) {
+            $faviconColor = '%23f59e0b'; // Amber
+            $svgPath = '%3Crect width="20" height="14" x="2" y="5" rx="2"/%3E%3Cline x1="2" x2="22" y1="10" y2="10"/%3E%3Cpath d="M12 14h.01"/%3E%3Cpath d="M16 14h.01"/%3E%3Cpath d="M8 14h.01"/%3E';
         } elseif (str_contains($pageTitleLower, 'attendance')) {
-            $faviconColor = '%2316a34a'; // Green
-        } elseif (str_contains($pageTitleLower, 'exam') || str_contains($pageTitleLower, 'grade') || str_contains($pageTitleLower, 'datesheet')) {
-            $faviconColor = '%23047857'; // Dark green
-        } elseif (str_contains($pageTitleLower, 'schedule') || str_contains($pageTitleLower, 'period')) {
-            $faviconColor = '%230891b2'; // Cyan/Teal
+            $faviconColor = '%2314b8a6'; // Teal
+            $svgPath = '%3Crect x="3" y="4" width="18" height="18" rx="2" ry="2"/%3E%3Cline x1="16" y1="2" x2="16" y2="6"/%3E%3Cline x1="8" y1="2" x2="8" y2="6"/%3E%3Cline x1="3" y1="10" x2="21" y2="10"/%3E%3Cpath d="m9 16 2 2 4-4"/%3E';
+        } elseif (str_contains($pageTitleLower, 'whatsapp')) {
+            $faviconColor = '%2310b981'; // Emerald
+            $svgPath = '%3Cpath d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/%3E';
+        } elseif (str_contains($pageTitleLower, 'communication') || str_contains($pageTitleLower, 'hub')) {
+            $faviconColor = '%23a855f7'; // Purple
+            $svgPath = '%3Cpath d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/%3E%3Cpath d="M13.73 21a2 2 0 0 1-3.46 0"/%3E';
+        } elseif (str_contains($pageTitleLower, 'report')) {
+            $faviconColor = '%23f43f5e'; // Rose
+            $svgPath = '%3Cpath d="M3 3v18h18"/%3E%3Cpath d="m19 9-5 5-4-4-3 3"/%3E';
+        } elseif (str_contains($pageTitleLower, 'exam')) {
+            $faviconColor = '%23ef4444'; // Red
+            $svgPath = '%3Cpath d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/%3E%3Cpolyline points="14 2 14 8 20 8"/%3E%3Cline x1="16" y1="13" x2="8" y2="13"/%3E%3Cline x1="16" y1="17" x2="8" y2="17"/%3E';
+        } elseif (str_contains($pageTitleLower, 'schedule')) {
+            $faviconColor = '%2306b6d4'; // Cyan
+            $svgPath = '%3Crect x="3" y="4" width="18" height="18" rx="2" ry="2"/%3E%3Cline x1="16" y1="2" x2="16" y2="6"/%3E%3Cline x1="8" y1="2" x2="8" y2="6"/%3E%3Cline x1="3" y1="10" x2="21" y2="10"/%3E';
+        } elseif (str_contains($pageTitleLower, 'substitution')) {
+            $faviconColor = '%23f97316'; // Orange
+            $svgPath = '%3Cpath d="m17 2 4 4-4 4"/%3E%3Cpath d="M3 11v-1a4 4 0 0 1 4-4h14"/%3E%3Cpath d="m7 22-4-4 4-4"/%3E%3Cpath d="M21 13v1a4 4 0 0 1-4 4H3"/%3E';
+        } elseif (str_contains($pageTitleLower, 'setting')) {
+            $faviconColor = '%2364748b'; // Slate
+            $svgPath = '%3Cpath d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/%3E%3Ccircle cx="12" cy="12" r="3"/%3E';
         }
     @endphp
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='{{ $faviconColor }}'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='18' fill='%23ffffff'%3E{{ $firstLetter }}%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='{{ $faviconColor }}'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' transform='translate%284.2%2C%204.2%29%20scale%280.65%29'%3E{{ $svgPath }}%3C/g%3E%3C/svg%3E">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -105,7 +132,14 @@
                     <span class="font-medium">Communication Hub</span>
                 </x-nav-link>
                 <!-- Shared Admin Features -->
-                @if(Auth::user()->getAllPermissions()->isNotEmpty())
+                @php
+                    $__activeSessionIdForNav = \App\Models\AcademicSession::getActiveSessionId();
+                    $__hasSharedFeatures = $__activeSessionIdForNav && \Illuminate\Support\Facades\DB::table('session_user_permissions')
+                        ->where('user_id', Auth::id())
+                        ->where('academic_session_id', $__activeSessionIdForNav)
+                        ->exists();
+                @endphp
+                @if($__hasSharedFeatures)
                     <div class="px-6 py-4 mt-2">
                         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
                             Shared Features
@@ -137,6 +171,31 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             <span class="font-medium">Schedule Manager</span>
                         </x-nav-link>
+                        @endcan
+
+                        @can('substitutions.manage')
+                        <x-nav-link :href="route('teacher.shared.substitutions')" :active="request()->routeIs('teacher.shared.substitutions*')" color="purple">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+                            <span class="font-medium">Substitutions</span>
+                        </x-nav-link>
+                        @endcan
+
+                        @can('fees.manage')
+                        <div x-data="{ feeOpen: {{ request()->routeIs('teacher.shared.fee.*') ? 'true' : 'false' }} }" class="space-y-1">
+                            <button @click="feeOpen = !feeOpen" class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-purple-700 hover:bg-purple-50 transition-colors {{ request()->routeIs('teacher.shared.fee.*') ? 'bg-purple-50 text-purple-700' : '' }}">
+                                <div class="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 14h.01"/></svg>
+                                    <span class="font-medium">Fee Management</span>
+                                </div>
+                                <svg :class="{'rotate-180': feeOpen}" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            
+                            <div x-show="feeOpen" x-transition class="pl-11 pr-3 py-2 space-y-1">
+                                <a href="{{ route('teacher.shared.fee.generator') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-purple-700 hover:bg-purple-50 {{ request()->routeIs('teacher.shared.fee.generator') ? 'text-purple-700 bg-purple-50 font-medium' : '' }}">Voucher Management</a>
+                                <a href="{{ route('teacher.shared.fee.record-payment') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-purple-700 hover:bg-purple-50 {{ request()->routeIs('teacher.shared.fee.record-payment') ? 'text-purple-700 bg-purple-50 font-medium' : '' }}">Collect Fees</a>
+                                <a href="{{ route('teacher.shared.fee.defaulters') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-purple-700 hover:bg-purple-50 {{ request()->routeIs('teacher.shared.fee.defaulters') ? 'text-purple-700 bg-purple-50 font-medium' : '' }}">Defaulter List</a>
+                            </div>
+                        </div>
                         @endcan
                         
                         @can('access-control.manage')
@@ -171,12 +230,10 @@
                     <button @click="sidebarOpen = !sidebarOpen" class="text-gray-600">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
                     </button>
-                    <h2 class="text-xl font-bold text-gray-800" x-data="{ pageTitle: '{{ $header ?? $title ?? 'Dashboard' }}' }" x-init="
-                        pageTitle = document.title.split(' | ')[0] || 'Dashboard';
-                        document.addEventListener('livewire:navigated', () => {
-                            pageTitle = document.title.split(' | ')[0] || 'Dashboard';
-                        });
-                    }">
+                    <h2 class="text-xl font-bold text-gray-800"
+                        x-data="{ pageTitle: '' }"
+                        x-init="pageTitle = document.title.split(' | ')[0] || 'Dashboard'"
+                        x-on:livewire:navigated.document="pageTitle = document.title.split(' | ')[0] || 'Dashboard'">
                         <span x-text="pageTitle"></span>
                     </h2>
 
@@ -220,7 +277,13 @@
                                 <p class="text-sm font-bold text-gray-800">{{ Auth::user()->name }}</p>
                                 <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
                             </div>
-                            
+                            @can('sessions.manage')
+                            <a href="{{ route('teacher.shared.academic-sessions') }}" class="flex items-center px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-green-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                                Manage Sessions
+                            </a>
+                            @endcan
+
                             <div class="h-px bg-gray-100 my-1"></div>
                             
                             <form method="POST" action="{{ route('logout') }}">

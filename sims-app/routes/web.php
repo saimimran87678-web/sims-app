@@ -61,7 +61,8 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::get('/schedule', \App\Livewire\Admin\ScheduleManager::class)->name('schedule');
     Route::get('/substitutions', \App\Livewire\Admin\SubstitutionManager::class)->name('substitutions');
     Route::get('/substitutions/print', function() {
-        abort_if(request()->user()->cannot('schedule.manage'), 403);
+        $user = request()->user();
+        abort_if($user->cannot('schedule.manage') && $user->cannot('substitutions.manage'), 403);
         $manager = new \App\Livewire\Admin\SubstitutionManager();
         $manager->selectedDate = request('date', now()->format('Y-m-d'));
         // Load the session requested by the user, fallback to active session
@@ -129,6 +130,10 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
     Route::middleware(['permission:classes.manage'])->group(function () {
         Route::get('/shared/classes', \App\Livewire\Admin\ClassManager::class)->name('shared.classes');
     });
+
+    Route::middleware(['permission:sessions.manage'])->group(function () {
+        Route::get('/shared/academic-sessions', \App\Livewire\Admin\AcademicSessionManager::class)->name('shared.academic-sessions');
+    });
     
     Route::middleware(['permission:reports.view'])->group(function () {
         Route::get('/shared/reports', \App\Livewire\Admin\Reports\ReportManager::class)->name('shared.reports');
@@ -142,6 +147,28 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
 
     Route::middleware(['permission:schedule.config'])->group(function () {
         Route::get('/shared/period-config', \App\Livewire\Admin\PeriodConfigManager::class)->name('shared.period-config');
+    });
+
+    Route::middleware(['permission:substitutions.manage'])->group(function () {
+        Route::get('/shared/substitutions', \App\Livewire\Admin\SubstitutionManager::class)->name('shared.substitutions');
+        Route::get('/shared/substitutions/print', function() {
+            $manager = new \App\Livewire\Admin\SubstitutionManager();
+            $manager->selectedDate = request('date', now()->format('Y-m-d'));
+            $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
+            $manager->loadData();
+            return view('pdf.daily-substitutions', ['date' => $manager->selectedDate, 'data' => $manager->prepareReportData()]);
+        })->name('shared.substitutions.print');
+    });
+
+    Route::middleware(['permission:fees.manage'])->group(function () {
+        Route::prefix('shared/fee')->name('shared.fee.')->group(function () {
+            Route::get('/invoice-generator', \App\Livewire\Admin\Fee\InvoiceGenerator::class)->name('generator');
+            Route::get('/collect', \App\Livewire\Admin\Fee\RecordPayment::class)->name('record-payment');
+            Route::get('/defaulters', \App\Livewire\Admin\Fee\DefaulterList::class)->name('defaulters');
+            Route::get('/ledger/{studentId}', \App\Livewire\Admin\Fee\StudentLedger::class)->name('ledger');
+            Route::get('/invoice/{record}/download', \App\Http\Controllers\Admin\Fee\DownloadInvoiceController::class)->name('invoice.download');
+            Route::get('/receipt/{payment}/download', \App\Http\Controllers\Admin\Fee\DownloadReceiptController::class)->name('receipt.download');
+        });
     });
 });
 

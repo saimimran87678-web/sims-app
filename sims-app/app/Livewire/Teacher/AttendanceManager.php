@@ -153,7 +153,7 @@ class AttendanceManager extends Component
     {
         if (empty(trim($string))) return [];
         
-        return collect(preg_split('/\s+/', $string))
+        return collect(preg_split('/[\s,]+/', $string))
             ->map(fn($s) => trim($s))
             ->filter(fn($s) => $s !== '')
             ->all();
@@ -265,11 +265,7 @@ class AttendanceManager extends Component
 
         try {
             $whatsapp = app(\App\Services\WhatsAppService::class);
-            
-            if (!$whatsapp->isConnected()) {
-                session()->flash('message', 'Attendance saved! WhatsApp notifications skipped (not connected).');
-                return;
-            }
+            $isConnected = $whatsapp->isConnected();
 
             $totalSent = 0;
             $totalFailed = 0;
@@ -288,7 +284,11 @@ class AttendanceManager extends Component
             }
 
             if ($totalSent > 0) {
-                session()->flash('message', "Attendance saved! $totalSent parent notification(s) sent via WhatsApp.");
+                if ($isConnected) {
+                    session()->flash('message', "Attendance saved! $totalSent parent notification(s) queued for WhatsApp delivery.");
+                } else {
+                    session()->flash('message', "Attendance saved! WhatsApp service is offline, but $totalSent notification(s) have been queued and will send once the service is connected.");
+                }
             } elseif ($totalFailed > 0) {
                 session()->flash('warning', "Attendance saved! Notifications failed ($totalFailed). Check WhatsApp connection.");
             } else {

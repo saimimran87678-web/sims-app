@@ -7,35 +7,52 @@
     <title>{{ $title ?? 'Dashboard' }} | {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}</title>
 
     @php
-        $instName = \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-        $firstLetter = strtoupper(substr(trim($instName), 0, 1));
-        
-        // Define page-specific colors for the monogram favicon
+        // Define page-specific colors and SVG icon paths for the tab favicon
         $pageTitleLower = strtolower($title ?? 'dashboard');
-        $faviconColor = '%232563eb'; // Blue default
+        
+        // Defaults: Indigo theme with Grid icon
+        $faviconColor = '%236366f1'; 
+        $svgPath = '%3Crect x="3" y="3" width="7" height="9" rx="1.5"/%3E%3Crect x="14" y="3" width="7" height="5" rx="1.5"/%3E%3Crect x="14" y="12" width="7" height="9" rx="1.5"/%3E%3Crect x="3" y="16" width="7" height="5" rx="1.5"/%3E';
+        
         if (str_contains($pageTitleLower, 'user')) {
-            $faviconColor = '%237c3aed'; // Purple
+            $faviconColor = '%238b5cf6'; // Violet
+            $svgPath = '%3Cpath d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/%3E%3Ccircle cx="9" cy="7" r="4"/%3E%3Cpath d="M22 21v-2a4 4 0 0 0-3-3.87"/%3E%3Cpath d="M16 3.13a4 4 0 0 1 0 7.75"/%3E';
         } elseif (str_contains($pageTitleLower, 'class')) {
-            $faviconColor = '%23059669'; // Emerald
+            $faviconColor = '%2310b981'; // Emerald
+            $svgPath = '%3Cpath d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/%3E%3Cpath d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/%3E';
         } elseif (str_contains($pageTitleLower, 'student')) {
-            $faviconColor = '%23db2777'; // Pink
+            $faviconColor = '%23ec4899'; // Pink
+            $svgPath = '%3Cpath d="M22 10v6M2 10l10-5 10 5-10 5z"/%3E%3Cpath d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/%3E';
         } elseif (str_contains($pageTitleLower, 'fee')) {
-            $faviconColor = '%23d97706'; // Amber
+            $faviconColor = '%23f59e0b'; // Amber
+            $svgPath = '%3Crect width="20" height="14" x="2" y="5" rx="2"/%3E%3Cline x1="2" x2="22" y1="10" y2="10"/%3E%3Cpath d="M12 14h.01"/%3E%3Cpath d="M16 14h.01"/%3E%3Cpath d="M8 14h.01"/%3E';
         } elseif (str_contains($pageTitleLower, 'attendance')) {
-            $faviconColor = '%23ca8a04'; // Yellow
+            $faviconColor = '%2314b8a6'; // Teal
+            $svgPath = '%3Crect x="3" y="4" width="18" height="18" rx="2" ry="2"/%3E%3Cline x1="16" y1="2" x2="16" y2="6"/%3E%3Cline x1="8" y1="2" x2="8" y2="6"/%3E%3Cline x1="3" y1="10" x2="21" y2="10"/%3E%3Cpath d="m9 16 2 2 4-4"/%3E';
         } elseif (str_contains($pageTitleLower, 'whatsapp')) {
-            $faviconColor = '%2316a34a'; // Green
+            $faviconColor = '%2310b981'; // Emerald
+            $svgPath = '%3Cpath d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/%3E';
+        } elseif (str_contains($pageTitleLower, 'communication') || str_contains($pageTitleLower, 'hub')) {
+            $faviconColor = '%23a855f7'; // Purple
+            $svgPath = '%3Cpath d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/%3E%3Cpath d="M13.73 21a2 2 0 0 1-3.46 0"/%3E';
         } elseif (str_contains($pageTitleLower, 'report')) {
-            $faviconColor = '%233b82f6'; // Light Blue
-        } elseif (str_contains($pageTitleLower, 'exam') || str_contains($pageTitleLower, 'datesheet')) {
-            $faviconColor = '%23dc2626'; // Red
-        } elseif (str_contains($pageTitleLower, 'schedule') || str_contains($pageTitleLower, 'substitution')) {
-            $faviconColor = '%230891b2'; // Cyan
+            $faviconColor = '%23f43f5e'; // Rose
+            $svgPath = '%3Cpath d="M3 3v18h18"/%3E%3Cpath d="m19 9-5 5-4-4-3 3"/%3E';
+        } elseif (str_contains($pageTitleLower, 'exam')) {
+            $faviconColor = '%23ef4444'; // Red
+            $svgPath = '%3Cpath d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/%3E%3Cpolyline points="14 2 14 8 20 8"/%3E%3Cline x1="16" y1="13" x2="8" y2="13"/%3E%3Cline x1="16" y1="17" x2="8" y2="17"/%3E';
+        } elseif (str_contains($pageTitleLower, 'schedule')) {
+            $faviconColor = '%2306b6d4'; // Cyan
+            $svgPath = '%3Crect x="3" y="4" width="18" height="18" rx="2" ry="2"/%3E%3Cline x1="16" y1="2" x2="16" y2="6"/%3E%3Cline x1="8" y1="2" x2="8" y2="6"/%3E%3Cline x1="3" y1="10" x2="21" y2="10"/%3E';
+        } elseif (str_contains($pageTitleLower, 'substitution')) {
+            $faviconColor = '%23f97316'; // Orange
+            $svgPath = '%3Cpath d="m17 2 4 4-4 4"/%3E%3Cpath d="M3 11v-1a4 4 0 0 1 4-4h14"/%3E%3Cpath d="m7 22-4-4 4-4"/%3E%3Cpath d="M21 13v1a4 4 0 0 1-4 4H3"/%3E';
         } elseif (str_contains($pageTitleLower, 'setting')) {
-            $faviconColor = '%234b5563'; // Gray
+            $faviconColor = '%2364748b'; // Slate
+            $svgPath = '%3Cpath d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/%3E%3Ccircle cx="12" cy="12" r="3"/%3E';
         }
     @endphp
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='{{ $faviconColor }}'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='18' fill='%23ffffff'%3E{{ $firstLetter }}%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='{{ $faviconColor }}'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' transform='translate%284.2%2C%204.2%29%20scale%280.65%29'%3E{{ $svgPath }}%3C/g%3E%3C/svg%3E">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,44 +77,44 @@
             class="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative md:translate-x-0 flex flex-col h-screen transform"
         >
             <div class="flex items-center gap-3 p-6 border-b border-gray-100 flex-shrink-0">
-                <div class="flex items-center justify-center w-10 h-10 text-white shadow-lg rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600">
-                    <!-- Shield Icon -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+                <div class="flex items-center justify-center w-10 h-10 text-white shadow-lg rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500">
+                    <!-- Graduation Cap + Shield hybrid icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 truncate max-w-[150px]" title="{{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}">
+                    <h1 class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 truncate max-w-[150px]" title="{{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}">
                         {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}
                     </h1>
-                    <p class="text-xs font-medium tracking-wide text-gray-500">ADMIN PORTAL</p>
+                    <p class="text-xs font-semibold tracking-wider text-gray-400">ADMIN PORTAL</p>
                 </div>
             </div>
 
             <nav class="flex-1 py-6 space-y-1 overflow-y-auto min-h-0">
-                <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" color="indigo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
                     <span class="font-medium">Dashboard</span>
                 </x-nav-link>
 
                 <!-- Users -->
                 @can('access-control.manage')
-                <x-nav-link :href="route('admin.users')" :active="request()->routeIs('admin.users')" color="blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <x-nav-link :href="route('admin.users')" :active="request()->routeIs('admin.users')" color="violet">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     <span class="font-medium">User Management</span>
                 </x-nav-link>
                 @endcan
 
                 <!-- Class Management -->
                 @can('classes.manage')
-                <x-nav-link :href="route('admin.classes')" :active="request()->routeIs('admin.classes')" color="blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m12 3-10 5L12 13l10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                <x-nav-link :href="route('admin.classes')" :active="request()->routeIs('admin.classes')" color="emerald">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                     <span class="font-medium">Class Management</span>
                 </x-nav-link>
                 @endcan
 
                 <!-- Student Management -->
                 @can('students.manage')
-                <x-nav-link :href="route('admin.students')" :active="request()->routeIs('admin.students')" color="blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M17 18a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2"/><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="12" cy="10" r="3"/></svg>
+                <x-nav-link :href="route('admin.students')" :active="request()->routeIs('admin.students')" color="pink">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
                     <span class="font-medium">Student Management</span>
                 </x-nav-link>
                 @endcan
@@ -105,77 +122,76 @@
                 <!-- Fee Management -->
                 @if((\App\Services\LicenseStatus::getStatus()['plan'] ?? 'basic') !== 'basic')
                 <div x-data="{ feeOpen: {{ request()->routeIs('admin.fee.*') ? 'true' : 'false' }} }" class="space-y-1">
-                    <button @click="feeOpen = !feeOpen" class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-blue-700 hover:bg-blue-50 transition-colors {{ request()->routeIs('admin.fee.*') ? 'bg-blue-50 text-blue-700' : '' }}">
+                    <button @click="feeOpen = !feeOpen" class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-amber-700 hover:bg-amber-50 transition-colors {{ request()->routeIs('admin.fee.*') ? 'bg-amber-50 text-amber-700' : '' }}">
                         <div class="flex items-center gap-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1"/><path d="M16 12h5"/><circle cx="18" cy="12" r="1"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 14h.01"/></svg>
                             <span>Fee Management</span>
                         </div>
                         <svg :class="{'rotate-180': feeOpen}" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     
                     <div x-show="feeOpen" x-transition class="pl-11 pr-3 py-2 space-y-1">
-                        <a href="{{ route('admin.fee.generator') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-blue-700 hover:bg-blue-50 {{ request()->routeIs('admin.fee.generator') ? 'text-blue-700 bg-blue-50 font-medium' : '' }}">Voucher Management</a>
-                        <a href="{{ route('admin.fee.record-payment') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-blue-700 hover:bg-blue-50 {{ request()->routeIs('admin.fee.record-payment') ? 'text-blue-700 bg-blue-50 font-medium' : '' }}">Collect Fees</a>
-                        <a href="{{ route('admin.fee.defaulters') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-blue-700 hover:bg-blue-50 {{ request()->routeIs('admin.fee.defaulters') ? 'text-blue-700 bg-blue-50 font-medium' : '' }}">Defaulter List</a>
+                        <a href="{{ route('admin.fee.generator') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.generator') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Voucher Management</a>
+                        <a href="{{ route('admin.fee.record-payment') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.record-payment') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Collect Fees</a>
+                        <a href="{{ route('admin.fee.defaulters') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.defaulters') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Defaulter List</a>
                     </div>
                 </div>
                 @endif
 
                 <!-- Gradebook -->
                 @can('classes.manage') <!-- Using classes.manage or grades.manage if existed -->
-                <x-nav-link :href="route('admin.grades')" :active="request()->routeIs('admin.grades')" color="blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                <x-nav-link :href="route('admin.grades')" :active="request()->routeIs('admin.grades')" color="indigo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
                     <span class="font-medium">Gradebook</span>
                 </x-nav-link>
                 @endcan
 
                 <!-- Attendance -->
                 @can('students.manage')
-                <x-nav-link :href="route('admin.attendance')" :active="request()->routeIs('admin.attendance')" color="blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+                <x-nav-link :href="route('admin.attendance')" :active="request()->routeIs('admin.attendance')" color="teal">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
                     <span class="font-medium">Attendance</span>
                 </x-nav-link>
                 
                 <!-- WhatsApp Setup -->
-                <x-nav-link :href="route('admin.whatsapp-setup')" :active="request()->routeIs('admin.whatsapp-setup') || request()->routeIs('admin.whatsapp-templates')" color="green">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                    </svg>
+                <!-- WhatsApp Setup -->
+                <x-nav-link :href="route('admin.whatsapp-setup')" :active="request()->routeIs('admin.whatsapp-setup') || request()->routeIs('admin.whatsapp-templates')" color="emerald">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                     <span class="font-medium">WhatsApp Setup</span>
                 </x-nav-link>
 
                 <!-- Communication Hub -->
                 <x-nav-link :href="route('admin.communication-hub')" :active="request()->routeIs('admin.communication-hub')" color="purple">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                    <span class="font-medium">Communication Hub</span>
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                     <span class="font-medium">Communication Hub</span>
                 </x-nav-link>
                 @endcan
 
                  <!-- Reports -->
                 @can('reports.view')
-                <x-nav-link :href="route('admin.reports')" :active="request()->routeIs('admin.reports')" color="blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <x-nav-link :href="route('admin.reports')" :active="request()->routeIs('admin.reports')" color="rose">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
                     <span class="font-medium">Reports</span>
                 </x-nav-link>
                 @endcan
 
                 <!-- Exams -->
                 @can('exams.manage')
-                <x-nav-link :href="route('admin.exams')" :active="request()->routeIs('admin.exams')" color="blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                <x-nav-link :href="route('admin.exams')" :active="request()->routeIs('admin.exams')" color="red">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                     <span class="font-medium">Exams</span>
                 </x-nav-link>
                 @endcan
 
                 <!-- Schedule Management Entry -->
                 @can('schedule.manage')
-                <x-nav-link :href="route('admin.schedule')" :active="request()->routeIs('admin.schedule') || request()->routeIs('admin.view-schedule') || request()->routeIs('admin.period-config')" color="blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                <x-nav-link :href="route('admin.schedule')" :active="request()->routeIs('admin.schedule') || request()->routeIs('admin.view-schedule') || request()->routeIs('admin.period-config')" color="cyan">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
                     <span class="font-medium">Schedule Management</span>
                 </x-nav-link>
                 
                 <x-nav-link :href="route('admin.substitutions')" :active="request()->routeIs('admin.substitutions')" color="orange">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
                     <span class="font-medium">Substitutions & Attendance</span>
                 </x-nav-link>
                 @endcan
@@ -189,13 +205,13 @@
                         Access Control
                     </div>
                     
-                    <x-nav-link :href="route('admin.feature-sharing')" :active="request()->routeIs('admin.feature-sharing')" color="blue">
+                    <x-nav-link :href="route('admin.feature-sharing')" :active="request()->routeIs('admin.feature-sharing')" color="fuchsia">
                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                           <span class="font-medium">Feature Sharing</span>
                     </x-nav-link>
 
-                    <x-nav-link :href="route('admin.allocations')" :active="request()->routeIs('admin.allocations')" color="blue">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <x-nav-link :href="route('admin.allocations')" :active="request()->routeIs('admin.allocations')" color="slate">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
                           <span class="font-medium">Data Scope</span>
                     </x-nav-link>
                 </div>
@@ -208,18 +224,16 @@
         <main class="relative flex flex-col flex-1 h-screen overflow-hidden">
             <livewire:license-banner />
             <!-- Header -->
-            <header class="flex items-center justify-between px-4 border-b border-gray-200 h-16 bg-white/50 backdrop-blur-sm md:px-8 z-10">
+            <header class="flex items-center justify-between px-4 border-b border-gray-200 h-16 bg-white/50 backdrop-blur-sm md:px-8 z-40">
                 <div class="flex items-center gap-4">
                     <button @click="sidebarOpen = !sidebarOpen" class="text-gray-600">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
                     </button>
 
-                    <h2 class="text-xl font-bold text-gray-800" x-data="{ pageTitle: '{{ $header ?? $title ?? 'Dashboard' }}' }" x-init="
-                        pageTitle = document.title.split(' | ')[0] || 'Dashboard';
-                        document.addEventListener('livewire:navigated', () => {
-                            pageTitle = document.title.split(' | ')[0] || 'Dashboard';
-                        });
-                    }">
+                    <h2 class="hidden sm:block text-xl font-bold text-gray-800"
+                        x-data="{ pageTitle: '' }"
+                        x-init="pageTitle = document.title.split(' | ')[0] || 'Dashboard'"
+                        x-on:livewire:navigated.document="pageTitle = document.title.split(' | ')[0] || 'Dashboard'">
                         <span x-text="pageTitle"></span>
                     </h2>
 
@@ -231,8 +245,8 @@
                     <form action="{{ route('change-session') }}" method="POST" id="session-switch-form" class="inline-flex items-center">
                         @csrf
                         <div class="relative flex items-center bg-blue-50 text-blue-700 border border-blue-100 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                            <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                            <span class="mr-1">Session:</span>
+                            <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-blue-500 animate-pulse hidden sm:inline-block"></span>
+                            <span class="mr-1 hidden sm:inline">Session:</span>
                             <select 
                                 name="academic_session_id" 
                                 onchange="this.form.submit()" 
@@ -268,7 +282,7 @@
 
                     <!-- Profile Dropdown -->
                     <div x-data="{ profileOpen: false }" class="relative">
-                        <button @click="profileOpen = !profileOpen" @click.away="profileOpen = false" class="flex items-center gap-2 focus:outline-none bg-white p-1 pr-3 rounded-full border border-gray-200 hover:border-blue-300 transition-all shadow-sm">
+                        <button @click="profileOpen = !profileOpen" @click.away="profileOpen = false" class="flex items-center gap-2 focus:outline-none bg-white p-1 md:pr-3 rounded-full border border-gray-200 hover:border-blue-300 transition-all shadow-sm">
                             <div class="flex items-center justify-center w-8 h-8 text-sm font-bold text-blue-600 bg-blue-50 rounded-full">
                                 {{ substr(Auth::user()->name, 0, 1) }}
                             </div>
@@ -307,7 +321,14 @@
             </header>
 
             <!-- Content Area -->
-            <div class="flex-1 p-4 overflow-y-auto md:p-8 scroll-smooth">
+            <div class="flex-1 p-4 overflow-y-auto md:p-8 scroll-smooth relative">
+                <!-- Modern color blending mesh background -->
+                <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10 select-none">
+                    <div class="absolute top-[-15%] left-[-15%] w-[60%] h-[60%] rounded-full bg-gradient-to-tr from-blue-200/20 to-sky-200/30 blur-[130px]"></div>
+                    <div class="absolute bottom-[-15%] right-[-15%] w-[70%] h-[70%] rounded-full bg-gradient-to-br from-indigo-200/25 to-violet-200/20 blur-[150px]"></div>
+                    <div class="absolute top-[30%] right-[20%] w-[40%] h-[40%] rounded-full bg-pink-100/15 blur-[120px]"></div>
+                </div>
+
                 {{ $slot }}
             </div>
 
@@ -505,18 +526,19 @@
             request()->is('admin/dashboard') || 
             request()->is('admin/classes')
         )
-            <div class="fixed bottom-6 right-6 z-[9999]">
-                <a 
-                    href="{{ route('admin.students', ['open_add_modal' => 1]) }}" 
-                    class="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full shadow-[0_4px_20px_rgba(37,99,235,0.4)] hover:shadow-[0_6px_25px_rgba(37,99,235,0.5)] transition-all duration-300 hover:-translate-y-1 group relative"
+            <div class="fixed bottom-6 right-6 z-[9999]" x-data>
+                <button 
+                    @click="$dispatch('open-add-student-modal')" 
+                    class="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-full shadow-[0_4px_20px_rgba(99,102,241,0.35)] hover:shadow-[0_6px_25px_rgba(99,102,241,0.45)] transition-all duration-300 hover:-translate-y-1 group relative"
                     title="Add New Student"
                 >
-                    <span class="absolute inset-0 rounded-full bg-blue-500/20 animate-ping scale-105 group-hover:duration-1000"></span>
+                    <span class="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping scale-105 group-hover:duration-1000"></span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
-                </a>
+                </button>
             </div>
+            <livewire:admin.student-manager :only-modal="true" />
         @endif
     @endcan
 

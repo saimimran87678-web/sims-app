@@ -16,6 +16,14 @@ class DefaulterList extends Component
     public $filter_class = '';
     public $min_due = 1;
 
+    public function mount()
+    {
+        $user = auth()->user();
+        if ($user->role !== 'admin' && !$user->hasRole('Super Admin')) {
+            abort_if(!$user->can('fees.manage'), 403);
+        }
+    }
+
     public function render()
     {
         $sessionId = AcademicSession::getActiveSessionId();
@@ -35,11 +43,15 @@ class DefaulterList extends Component
         // We paginate over the grouped results
         $defaulters = $query->orderBy('total_due', 'desc')->paginate(15);
 
+        $layout = request()->is('teacher/*') 
+            ? 'components.layouts.teacher' 
+            : 'components.layouts.admin';
+
         return view('livewire.admin.fee.defaulter-list', [
             'defaulters' => $defaulters,
             'classes' => Classes::where('academic_session_id', $sessionId)->get(),
             'totalDefaulters' => $defaulters->total(),
             'totalDueAggregate' => $query->get()->sum('total_due') // Sum across all pages for the current filter
-        ])->layout('components.layouts.admin');
+        ])->layout($layout);
     }
 }

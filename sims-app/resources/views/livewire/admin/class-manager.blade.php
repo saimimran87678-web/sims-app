@@ -1,4 +1,6 @@
-<div class="space-y-6">
+<div class="space-y-6"
+     x-data
+     @focus-class-input.window="() => { let el = document.getElementById('class-name-input'); if(el){ el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); } }">
     <x-slot name="header">Class Management</x-slot>
 
     {{-- Flash Message --}}
@@ -24,7 +26,9 @@
             <div class="flex flex-wrap gap-3 items-center">
                 {{-- Session Selector --}}
                 @if(count($academicSessions) > 1)
-                    <select wire:model.live="selectedSessionId" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <select wire:model.live="selectedSessionId" 
+                            @if(!$canViewSessions) disabled @endif
+                            class="pl-3 pr-10 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all {{ !$canViewSessions ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' : '' }}">
                         @foreach($academicSessions as $session)
                             <option value="{{ $session->id }}">{{ $session->name }}</option>
                         @endforeach
@@ -49,6 +53,7 @@
                             <div class="flex items-center">
                                 <span class="px-3 py-2 bg-gray-100 text-gray-600 rounded-l-xl border border-r-0 border-gray-200 text-sm font-medium">Class</span>
                                 <input
+                                    id="class-name-input"
                                     wire:model="name"
                                     wire:keydown.enter="save"
                                     type="text"
