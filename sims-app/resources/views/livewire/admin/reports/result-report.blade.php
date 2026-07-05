@@ -84,6 +84,9 @@
             data-maxmarks='@json($subjectMaxMarks)'
             data-examname="{{ $examName }}"
             data-classname="{{ $className }}"
+            data-formal-name="{{ \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS')) }}"
+            data-address="{{ \App\Models\Setting::getGlobal('institute_address', '') }}"
+            data-logo="{{ \App\Models\Setting::getGlobal('institute_logo') ? asset(\App\Models\Setting::getGlobal('institute_logo')) : '' }}"
         >
             <div class="p-6 border-b border-gray-100 flex justify-between items-center flex-wrap gap-4">
                 <h3 class="font-bold text-gray-800">
@@ -202,7 +205,10 @@
             columnHeaders: JSON.parse(container.dataset.headers || '{}'),
             subjectMaxMarks: JSON.parse(container.dataset.maxmarks || '{}'),
             examName: container.dataset.examname || '',
-            className: container.dataset.classname || ''
+            className: container.dataset.classname || '',
+            formalName: container.dataset.formalName || '',
+            address: container.dataset.address || '',
+            logo: container.dataset.logo || ''
         };
     }
 
@@ -254,8 +260,9 @@
 
         return '<div class="page" style="page-break-after: always; padding: 40px; font-family: sans-serif;">' +
             '<div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;">' +
-                '<div style="font-size: 24px; font-weight: bold; text-transform: uppercase;">ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)</div>' +
-                '<div style="font-size: 16px; margin-bottom: 10px;">G-6/2 ISLAMABAD</div>' +
+                (data.logo ? '<div style="margin-bottom: 10px;"><img src="' + data.logo + '" style="height: 60px; max-width: 150px; object-fit: contain;"></div>' : '') +
+                '<div style="font-size: 24px; font-weight: bold; text-transform: uppercase;">' + (data.formalName || 'SIMS') + '</div>' +
+                (data.address ? '<div style="font-size: 16px; margin-bottom: 10px;">' + data.address + '</div>' : '') +
                 '<div style="font-size: 18px; color: #555;">' + data.examName + '</div>' +
             '</div>' +
             '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">' +
@@ -373,8 +380,9 @@
             '<style>@page { size: auto; margin: 5mm; } body { font-family: sans-serif; padding: 10px; font-size: 11px; } @media print { body { -webkit-print-color-adjust: exact; } table { width: 100%; font-size: inherit; } }</style></head>' +
             '<body>' +
             '<div style="text-align: center; margin-bottom: 20px;">' +
-                '<div style="font-size: 20px; font-weight: bold; text-transform: uppercase;">ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)</div>' +
-                '<div style="font-size: 14px; margin-bottom: 5px;">G-6/2 ISLAMABAD</div>' +
+                (data.logo ? '<div style="margin-bottom: 10px;"><img src="' + data.logo + '" style="height: 50px; max-width: 120px; object-fit: contain;"></div>' : '') +
+                '<div style="font-size: 20px; font-weight: bold; text-transform: uppercase;">' + (data.formalName || 'SIMS') + '</div>' +
+                (data.address ? '<div style="font-size: 14px; margin-bottom: 5px;">' + data.address + '</div>' : '') +
                 '<div style="font-size: 16px; margin-top: 5px;">Result Gazette - ' + data.examName + ' - ' + data.className + '</div>' +
             '</div>' +
             '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">' +

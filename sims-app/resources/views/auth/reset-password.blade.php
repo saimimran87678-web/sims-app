@@ -2,10 +2,17 @@
     <div class="glass-card p-8">
         {{-- School Logo & Title --}}
         <div class="text-center mb-8">
-            <div class="school-logo">
-                <svg width="40" height="40" fill="white" viewBox="0 0 24 24">
-                    <path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM8.9 6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H8.9V6zM18 20H6V10h12v10z"/>
-                </svg>
+            <div class="school-logo" style="{{ \App\Models\Setting::getGlobal('institute_logo') ? 'background: #ffffff;' : '' }}">
+                @php
+                    $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+                @endphp
+                @if($logoPath && file_exists(public_path($logoPath)))
+                    <img src="{{ '/' . $logoPath }}" style="width: 100%; height: 100%; object-fit: contain; padding: 6px; border-radius: 20px;">
+                @else
+                    <svg width="40" height="40" fill="white" viewBox="0 0 24 24">
+                        <path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM8.9 6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H8.9V6zM18 20H6V10h12v10z"/>
+                    </svg>
+                @endif
             </div>
             <h1 style="font-size: 22px; font-weight: 700; color: #1e3a5f; margin: 0;">New Password</h1>
             <p style="font-size: 13px; color: #64748b; margin-top: 5px;">Set your new account password</p>

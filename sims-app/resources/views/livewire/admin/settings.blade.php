@@ -26,29 +26,129 @@
         <form wire:submit.prevent="save" class="space-y-8">
 
             {{-- ── Section: Branding ── --}}
-            <div>
-                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <div class="space-y-6">
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                    Branding
+                    Branding & Name Variations
                 </h2>
 
-                <label for="institute_name" class="block text-sm font-semibold text-gray-700 mb-2">
-                    Institute Name
-                </label>
-                <input
-                    type="text"
-                    id="institute_name"
-                    wire:model.defer="institute_name"
-                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-600 transition-colors bg-gray-50 focus:bg-white text-gray-800"
-                    placeholder="e.g. Islamabad Model College for Boys, G-6/2"
-                    required
-                >
-                <p class="text-xs text-gray-400 mt-2">
-                    This name appears on Sign In/Register page headings, OTP emails, WhatsApp notifications, and all system-wide references.
-                </p>
-                @error('institute_name')
-                    <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
-                @enderror
+                <div>
+                    <label for="institute_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                        Standard Institute Name
+                    </label>
+                    <input
+                        type="text"
+                        id="institute_name"
+                        wire:model.defer="institute_name"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-600 transition-colors bg-gray-50 focus:bg-white text-gray-800"
+                        placeholder="e.g. Islamabad Model College for Boys"
+                        required
+                    >
+                    <p class="text-xs text-gray-400 mt-2">
+                        Used for standard UI headings, sidebars, dashboard metrics, and general system references.
+                    </p>
+                    @error('institute_name')
+                        <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                    @enderror
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="institute_formal_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Formal/Full Name (for Prints)
+                        </label>
+                        <input
+                            type="text"
+                            id="institute_formal_name"
+                            wire:model.defer="institute_formal_name"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-600 transition-colors bg-gray-50 focus:bg-white text-gray-800"
+                            placeholder="e.g. Islamabad Model College for Boys (VI-X), G-6/2 Islamabad"
+                        >
+                        <p class="text-xs text-gray-400 mt-2">
+                            Used on formal printouts: Datesheets, Fee Invoices, Report Cards, and Gazettes.
+                        </p>
+                        @error('institute_formal_name')
+                            <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="institute_short_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Short Name / Abbreviation
+                        </label>
+                        <input
+                            type="text"
+                            id="institute_short_name"
+                            wire:model.defer="institute_short_name"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-600 transition-colors bg-gray-50 focus:bg-white text-gray-800"
+                            placeholder="e.g. IMCB"
+                        >
+                        <p class="text-xs text-gray-400 mt-2">
+                            Used for character-limited contexts: WhatsApp alerts, SMS notifications, and mobile views.
+                        </p>
+                        @error('institute_short_name')
+                            <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Institute Logo
+                        </label>
+                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                            @if ($logo)
+                                <img src="{{ $logo->temporaryUrl() }}" class="w-16 h-16 object-contain rounded-lg bg-white border border-gray-100 shadow-sm">
+                            @elseif ($institute_logo && file_exists(public_path($institute_logo)))
+                                <img src="{{ asset($institute_logo) }}" class="w-16 h-16 object-contain rounded-lg bg-white border border-gray-100 shadow-sm">
+                            @else
+                                <div class="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-semibold">
+                                    No Logo
+                                </div>
+                            @endif
+                            
+                            <div class="flex-1">
+                                <input 
+                                    type="file" 
+                                    id="logo" 
+                                    wire:model="logo" 
+                                    class="hidden" 
+                                    accept="image/*"
+                                >
+                                <label 
+                                    for="logo" 
+                                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none cursor-pointer transition-colors"
+                                >
+                                    Choose Logo
+                                </label>
+                                <p class="text-[10px] text-gray-400 mt-1">PNG, JPG or JPEG up to 1MB</p>
+                            </div>
+                        </div>
+                        @error('logo')
+                            <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="institute_phone" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Institute Phone Number
+                        </label>
+                        <input
+                            type="text"
+                            id="institute_phone"
+                            wire:model.defer="institute_phone"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-600 transition-colors bg-gray-50 focus:bg-white text-gray-800"
+                            placeholder="e.g. +92 51 9244482"
+                        >
+                        <p class="text-xs text-gray-400 mt-2">
+                            This phone number will be displayed on Fee Invoices, Fee Receipts, and other official templates.
+                        </p>
+                        @error('institute_phone')
+                            <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
             </div>
 
             <div class="border-t border-gray-100"></div>

@@ -21,10 +21,18 @@ class DownloadReceiptController extends Controller
 
 
 
-        $instituteName = \App\Models\Setting::get('institute_name', 'SIMS');
-        $instituteAddress = \App\Models\Setting::get('institute_address', '');
-        $institutePhone = \App\Models\Setting::get('institute_phone', '');
-        $instituteEmail = \App\Models\Setting::get('institute_email', '');
+        $instituteName = \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS'));
+        $instituteAddress = \App\Models\Setting::getGlobal('institute_address', '');
+        $institutePhone = \App\Models\Setting::getGlobal('institute_phone', '');
+        $instituteEmail = \App\Models\Setting::getGlobal('institute_email', '');
+
+        $logoPath = \App\Models\Setting::getGlobal('institute_logo', '');
+        $logoBase64 = null;
+        if ($logoPath && file_exists(public_path($logoPath)) && extension_loaded('gd')) {
+            $type = pathinfo(public_path($logoPath), PATHINFO_EXTENSION);
+            $data = file_get_contents(public_path($logoPath));
+            $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
 
         $pdf = Pdf::loadView('pdf.fee-receipt', [
             'payment' => $payment,
@@ -34,6 +42,7 @@ class DownloadReceiptController extends Controller
             'instituteAddress' => $instituteAddress,
             'institutePhone' => $institutePhone,
             'instituteEmail' => $instituteEmail,
+            'instituteLogo' => $logoBase64,
         ]);
 
         return response($pdf->output(), 200, [

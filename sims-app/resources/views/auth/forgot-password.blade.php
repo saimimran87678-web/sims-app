@@ -2,13 +2,20 @@
     <div class="glass-card p-8">
         {{-- School Logo & Title --}}
         <div class="text-center mb-8">
-            <div class="school-logo">
-                <svg width="40" height="40" fill="white" viewBox="0 0 24 24">
-                    <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
-                </svg>
+            <div class="school-logo" style="{{ \App\Models\Setting::getGlobal('institute_logo') ? 'background: #ffffff;' : '' }}">
+                @php
+                    $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+                @endphp
+                @if($logoPath && file_exists(public_path($logoPath)))
+                    <img src="{{ '/' . $logoPath }}" style="width: 100%; height: 100%; object-fit: contain; padding: 6px; border-radius: 20px;">
+                @else
+                    <svg width="40" height="40" fill="white" viewBox="0 0 24 24">
+                        <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                    </svg>
+                @endif
             </div>
             <h1 style="font-size: 22px; font-weight: 700; color: #1e3a5f; margin: 0;">Forgot Password</h1>
-            <p style="font-size: 13px; color: #64748b; margin-top: 5px;">Reset password for {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}</p>
+            <p style="font-size: 13px; color: #64748b; margin-top: 5px;">Reset password for {{ \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2') }}</p>
         </div>
 
         <div style="font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 24px; text-align: center;">

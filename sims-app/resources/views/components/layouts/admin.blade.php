@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'Dashboard' }} | {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}</title>
+    <title>{{ $title ?? 'Dashboard' }} | {{ \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2') }}</title>
 
     @php
         // Define page-specific colors and SVG icon paths for the tab favicon
@@ -82,8 +82,8 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
                 </div>
                 <div>
-                    <h1 class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 truncate max-w-[150px]" title="{{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}">
-                        {{ \App\Models\Setting::get('institute_name', 'IMCB G-6/2') }}
+                    <h1 class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 truncate max-w-[150px]" title="{{ \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2') }}">
+                        {{ \App\Models\Setting::getGlobal('institute_short_name', \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2')) }}
                     </h1>
                     <p class="text-xs font-semibold tracking-wider text-gray-400">ADMIN PORTAL</p>
                 </div>

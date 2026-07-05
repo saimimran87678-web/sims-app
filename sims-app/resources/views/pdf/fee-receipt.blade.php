@@ -136,6 +136,11 @@
 <body>
 
     <div class="header">
+        @if(!empty($instituteLogo))
+            <div style="margin-bottom: 10px;">
+                <img src="{{ $instituteLogo }}" style="height: 60px; max-width: 150px; object-fit: contain;">
+            </div>
+        @endif
         <h1>{{ $instituteName }}</h1>
         <p>{{ $instituteAddress }} | {{ $institutePhone }} | {{ $instituteEmail }}</p>
     </div>

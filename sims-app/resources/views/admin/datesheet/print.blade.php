@@ -80,8 +80,20 @@
 
     {{-- Formal Header --}}
     <div class="text-center mb-6">
-        <h1 class="text-2xl font-bold uppercase" style="font-size: 18pt; margin-bottom: 5px;">ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)</h1>
-        <h2 class="text-lg" style="font-size: 14pt; margin-top: 0;">G-6/2 ISLAMABAD</h2>
+        @php
+            $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+        @endphp
+        @if($logoPath && file_exists(public_path($logoPath)))
+            <div style="text-align: center; margin-bottom: 10px;">
+                <img src="{{ asset($logoPath) }}" style="height: 60px; max-width: 150px; object-fit: contain;">
+            </div>
+        @endif
+        <h1 class="text-2xl font-bold uppercase" style="font-size: 18pt; margin-bottom: 5px;">
+            {{ \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS')) }}
+        </h1>
+        @if($address = \App\Models\Setting::getGlobal('institute_address'))
+            <h2 class="text-lg" style="font-size: 14pt; margin-top: 0;">{{ $address }}</h2>
+        @endif
         <div class="text-xl font-bold mt-4 uppercase" style="font-size: 16pt; text-decoration: underline;">DATE SHEET {{ $exam->name }}</div>
     </div>
 

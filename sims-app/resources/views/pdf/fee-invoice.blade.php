@@ -205,6 +205,11 @@
 
                     <!-- Header -->
                     <div class="header-logo-text">
+                        @if(!empty($instituteLogo))
+                            <div style="margin-bottom: 4px;">
+                                <img src="{{ $instituteLogo }}" style="height: 35px; max-width: 100px; object-fit: contain;">
+                            </div>
+                        @endif
                         <h2 class="school-name">{{ $instituteName }}</h2>
                         <p class="school-info">{{ $instituteAddress }}</p>
                         <p class="school-info" style="font-weight: bold;">Ph: {{ $institutePhone }}</p>

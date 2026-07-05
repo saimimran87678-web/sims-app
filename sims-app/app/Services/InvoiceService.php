@@ -41,10 +41,10 @@ class InvoiceService
             'payments'
         ]);
 
-        $instituteName = Setting::get('institute_name', 'SIMS');
-        $instituteAddress = Setting::get('institute_address', '');
-        $institutePhone = Setting::get('institute_phone', '');
-        $instituteEmail = Setting::get('institute_email', '');
+        $instituteName = Setting::getGlobal('institute_formal_name', Setting::getGlobal('institute_name', 'SIMS'));
+        $instituteAddress = Setting::getGlobal('institute_address', '');
+        $institutePhone = Setting::getGlobal('institute_phone', '');
+        $instituteEmail = Setting::getGlobal('institute_email', '');
 
         // 1. Check if invoice already exists for this fee record
         $invoice = \App\Models\FeeInvoice::where('fee_record_id', $record->id)->first();
@@ -66,6 +66,14 @@ class InvoiceService
             $invoiceNumber = sprintf("%s-%s-%03d", $schoolCode, $periodCode, $nextSequence);
         }
 
+        $logoPath = Setting::getGlobal('institute_logo', '');
+        $logoBase64 = null;
+        if ($logoPath && file_exists(public_path($logoPath)) && extension_loaded('gd')) {
+            $type = pathinfo(public_path($logoPath), PATHINFO_EXTENSION);
+            $data = file_get_contents(public_path($logoPath));
+            $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
+
         // 2. Generate PDF
         $pdf = Pdf::loadView('pdf.fee-invoice', [
             'record' => $record,
@@ -74,6 +82,7 @@ class InvoiceService
             'instituteAddress' => $instituteAddress,
             'institutePhone' => $institutePhone,
             'instituteEmail' => $instituteEmail,
+            'instituteLogo' => $logoBase64,
             'invoiceNumber' => $invoiceNumber
         ])->setPaper('a4', 'landscape');
 
