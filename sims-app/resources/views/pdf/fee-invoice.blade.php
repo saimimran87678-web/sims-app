@@ -83,23 +83,30 @@
             position: relative;
             border: 1px solid #cbd5e1;
             border-radius: 4px;
-            padding: 5px 6px;
+            padding: 6px 8px;
             background: #f8fafc;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
         .student-table {
             width: 100%;
-            font-size: 8.5px;
             border-collapse: collapse;
-            line-height: 1.35;
+            line-height: 1.4;
         }
-        .student-table td.label {
+        .student-table td {
+            padding: 1px 0;
+            vertical-align: top;
+        }
+        .student-table .label {
             color: #64748b;
-            width: 32%;
+            font-size: 7px;
+            text-transform: uppercase;
+            letter-spacing: 0.15px;
+            font-weight: 500;
         }
-        .student-table td.value {
+        .student-table .value {
             font-weight: bold;
             color: #0f172a;
+            font-size: 8.5px;
         }
         .items-table {
             width: 100%;
@@ -180,6 +187,12 @@
             border-top: 1px solid #94a3b8;
             padding-top: 3px;
         }
+        .challan-container {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px 10px;
+            background-color: #ffffff;
+        }
     </style>
 </head>
 <body>
@@ -201,114 +214,141 @@
         <tr>
             @foreach($copies as $key => $title)
                 <!-- Challan Copy Column -->
-                <td class="challan-column" style="position: relative;">
+                <td class="challan-column" style="position: relative; padding: 2px;">
+                    <!-- Wrapper container with border-top accents -->
+                    <div class="challan-container" style="border-top: 3px solid {{ $key === 'bank' ? '#1e3a8a' : ($key === 'school' ? '#0f766e' : '#475569') }};">
 
-                    <!-- Header -->
-                    <div class="header-logo-text">
-                        @if(!empty($instituteLogo))
-                            <div style="margin-bottom: 4px;">
-                                <img src="{{ $instituteLogo }}" style="height: 35px; max-width: 100px; object-fit: contain;">
-                            </div>
-                        @endif
-                        <h2 class="school-name">{{ $instituteName }}</h2>
-                        <p class="school-info">{{ $instituteAddress }}</p>
-                        <p class="school-info" style="font-weight: bold;">Ph: {{ $institutePhone }}</p>
-                    </div>
-
-                    <!-- Copy Title Tag -->
-                    <div class="copy-tag" style="{{ $key === 'bank' ? 'background-color: #1e3a8a;' : ($key === 'school' ? 'background-color: #0f766e;' : 'background-color: #475569;') }}">
-                        {{ $title }}
-                    </div>
-
-                    <!-- Challan Metadata -->
-                    <table class="meta-table">
-                        <tr>
-                            <td><strong>Challan No:</strong> <span style="color: #b91c1c; font-weight: bold; font-size: 9px;">{{ $invoiceNumber }}</span></td>
-                            <td style="text-align: right;"><strong>Billing Month:</strong> {{ \Carbon\Carbon::parse($record->period . '-01')->format('M Y') }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Issue Date:</strong> {{ $record->created_at->format('d-M-Y') }}</td>
-                            <td style="text-align: right; color: #b91c1c;"><strong>Due Date:</strong> <strong>{{ $record->due_date->format('d-M-Y') }}</strong></td>
-                        </tr>
-                    </table>
-
-                    <!-- Student Info Box -->
-                    <div class="student-box">
-                        <table class="student-table">
+                        <!-- Header -->
+                        <table style="width: 100%; margin-bottom: 5px; border-collapse: collapse;">
                             <tr>
-                                <td class="label">Student Name:</td>
-                                <td class="value">{{ $student->name }}</td>
-                            </tr>
-                            <tr>
-                                <td class="label">Father Name:</td>
-                                <td class="value">{{ $student->father_name }}</td>
-                            </tr>
-                            <tr>
-                                <td class="label">Class / Roll No:</td>
-                                <td class="value">{{ $record->class->name }} / {{ $student->roll_no }}</td>
-                            </tr>
-                            <tr>
-                                <td class="label">Admission No:</td>
-                                <td class="value">{{ $student->admission_no }}</td>
+                                @if(!empty($instituteLogo))
+                                    <td style="width: 45px; vertical-align: middle; padding-right: 6px;">
+                                        <img src="{{ $instituteLogo }}" style="height: 38px; max-width: 45px; object-fit: contain;">
+                                    </td>
+                                @endif
+                                <td style="vertical-align: middle; text-align: {{ !empty($instituteLogo) ? 'left' : 'center' }};">
+                                    <h2 class="school-name" style="margin: 0; line-height: 1.1;">{{ $instituteName }}</h2>
+                                    @if($instituteAddress)
+                                        <p class="school-info" style="margin: 1px 0 0 0;">{{ $instituteAddress }}</p>
+                                    @endif
+                                    @if($institutePhone)
+                                        <p class="school-info" style="margin: 2px 0 0 0; font-weight: 700; color: #475569; font-size: 7.5px;">Phone: {{ $institutePhone }}</p>
+                                    @endif
+                                </td>
                             </tr>
                         </table>
-                        <!-- Paid stamp overlay -->
-                        @if($record->status === 'paid')
-                            <div class="stamp-paid">PAID</div>
-                        @endif
-                    </div>
 
-                    <!-- Fee Breakdown Table -->
-                    <table class="items-table">
-                        <thead>
-                            <tr>
-                                <th>Fee Heads</th>
-                                <th style="text-align: right;">Amount (Rs)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($record->items as $item)
-                                <tr>
-                                    <td>{{ $item->fee_head_name }}</td>
-                                    <td class="amount-col">{{ number_format($item->amount, 2) }}</td>
-                                </tr>
-                            @endforeach
-
-                            @if($previousArrears > 0)
-                                <tr style="background-color: #fffaf0;">
-                                    <td style="color: #b45309; font-weight: bold;">Previous Arrears</td>
-                                    <td class="amount-col" style="color: #b45309;">{{ number_format($previousArrears, 2) }}</td>
-                                </tr>
-                            @endif
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td style="font-size: 9px; color: #0f172a;">Total Payable:</td>
-                                <td class="amount-col" style="font-size: 9px; color: #b91c1c;">Rs. {{ number_format(($record->balance + $previousArrears), 2) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-
-                    <!-- Deposit Instructions -->
-                    <div class="bank-details">
-                        <p class="bank-title">Payment Instructions</p>
-                        <div style="margin-top: 1px;">
-                            &bull; Deposit fee in HBL (A/C: 1234-567890-01) or Bank Alfalah (A/C: 9876-543210-02).<br>
-                            &bull; Please verify challan details before depositing.<br>
-                            &bull; Retain your copy and ensure stamp is placed after payment.
+                        <!-- Copy Title Tag -->
+                        <div class="copy-tag" style="margin-bottom: 6px; {{ $key === 'bank' ? 'background-color: #1e3a8a;' : ($key === 'school' ? 'background-color: #0f766e;' : 'background-color: #475569;') }}">
+                            {{ $title }}
                         </div>
-                    </div>
 
-                    <!-- Signatures -->
-                    <table class="sig-table">
-                        <tr>
-                            <td style="width: 30%;" class="sig-line">Depositor</td>
-                            <td style="width: 5%;"></td>
-                            <td style="width: 30%;" class="sig-line">Cashier / Bank</td>
-                            <td style="width: 5%;"></td>
-                            <td style="width: 30%;" class="sig-line">Authorized Sign</td>
-                        </tr>
-                    </table>
+                        <!-- Challan Metadata Table -->
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 7.5px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px;">
+                            <tr>
+                                <td style="padding: 1.5px 0;">
+                                    <span style="color: #64748b;">Challan No:</span>
+                                    <strong style="color: #be123c; font-size: 8.5px;">{{ $invoiceNumber }}</strong>
+                                </td>
+                                <td style="text-align: right; padding: 1.5px 0;">
+                                    <span style="color: #64748b;">Billing Month:</span>
+                                    <strong style="color: #0f172a;">{{ \Carbon\Carbon::parse($record->period . '-01')->format('M Y') }}</strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 1.5px 0;">
+                                    <span style="color: #64748b;">Issue Date:</span>
+                                    <strong style="color: #0f172a;">{{ $record->created_at->format('d-M-Y') }}</strong>
+                                </td>
+                                <td style="text-align: right; padding: 1.5px 0;">
+                                    <span style="color: #e11d48; font-weight: bold;">Due Date:</span>
+                                    <strong style="color: #be123c;">{{ $record->due_date->format('d-M-Y') }}</strong>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Student Info Box with Left Border Accent -->
+                        <div class="student-box" style="border-left: 2.5px solid {{ $key === 'bank' ? '#1e3a8a' : ($key === 'school' ? '#0f766e' : '#475569') }}; margin-bottom: 8px; padding: 5px 6px;">
+                            <table class="student-table" style="width: 100%;">
+                                <tr>
+                                    <td style="width: 52%;">
+                                        <span class="label" style="display: block;">Student Name</span>
+                                        <span class="value" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">{{ $student->name }}</span>
+                                    </td>
+                                    <td style="width: 48%;">
+                                        <span class="label" style="display: block;">Class / Roll No</span>
+                                        <span class="value" style="display: block;">{{ $record->class->name }} / {{ $student->roll_no }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 52%; padding-top: 3px;">
+                                        <span class="label" style="display: block;">Father Name</span>
+                                        <span class="value" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">{{ $student->father_name }}</span>
+                                    </td>
+                                    <td style="width: 48%; padding-top: 3px;">
+                                        <span class="label" style="display: block;">Admission No</span>
+                                        <span class="value" style="display: block;">{{ $student->admission_no }}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                            <!-- Paid stamp overlay -->
+                            @if($record->status === 'paid')
+                                <div class="stamp-paid" style="font-size: 12px; padding: 1px 4px; top: 4px; left: 10px;">PAID</div>
+                            @endif
+                        </div>
+
+                        <!-- Fee Breakdown Table -->
+                        <table class="items-table" style="margin-bottom: 6px;">
+                            <thead>
+                                <tr>
+                                    <th>Fee Heads</th>
+                                    <th style="text-align: right;">Amount (Rs)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($record->items as $item)
+                                    <tr>
+                                        <td>{{ $item->fee_head_name }}</td>
+                                        <td class="amount-col">{{ number_format($item->amount, 2) }}</td>
+                                    </tr>
+                                @endforeach
+
+                                @if($previousArrears > 0)
+                                    <tr style="background-color: #fffaf0;">
+                                        <td style="color: #b45309; font-weight: bold;">Previous Arrears</td>
+                                        <td class="amount-col" style="color: #b45309;">{{ number_format($previousArrears, 2) }}</td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td style="font-size: 8px; color: #0f172a; padding: 3px 5px;">Total Payable:</td>
+                                    <td class="amount-col" style="font-size: 8px; color: #b91c1c; padding: 3px 5px;">Rs. {{ number_format(($record->balance + $previousArrears), 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <!-- Deposit Instructions -->
+                        <div class="bank-details" style="border-left: 2.5px solid #d97706; margin-bottom: 10px; padding: 3px 5px; background: #fffbeb;">
+                            <p class="bank-title" style="margin-bottom: 1px;">Payment Instructions</p>
+                            <div style="margin-top: 1px; font-size: 6.5px; line-height: 1.25; color: #78350f;">
+                                &bull; Deposit fee in HBL or Bank Alfalah.<br>
+                                &bull; Verify details before depositing.<br>
+                                &bull; Ensure stamp is placed after payment.
+                            </div>
+                        </div>
+
+                        <!-- Signatures -->
+                        <table class="sig-table" style="margin-top: 12px;">
+                            <tr>
+                                <td style="width: 30%;" class="sig-line">Depositor</td>
+                                <td style="width: 5%;"></td>
+                                <td style="width: 30%;" class="sig-line">Cashier / Bank</td>
+                                <td style="width: 5%;"></td>
+                                <td style="width: 30%;" class="sig-line">Authorized Sign</td>
+                            </tr>
+                        </table>
+                    </div>
                 </td>
 
                 <!-- Divider between columns -->
