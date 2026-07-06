@@ -25,6 +25,8 @@ class LicenseSystemTest extends TestCase
             'services.license.school_id'      => 'school_a',
         ]);
 
+        request()->headers->set('HOST', 'localhost');
+
         // Always start with a clean cache so tests don't bleed into each other
         Cache::forget(LicenseStatus::CACHE_KEY);
     }
@@ -32,6 +34,7 @@ class LicenseSystemTest extends TestCase
     protected function tearDown(): void
     {
         Cache::forget(LicenseStatus::CACHE_KEY);
+        request()->headers->set('HOST', 'localhost');
         parent::tearDown();
     }
 
@@ -44,7 +47,8 @@ class LicenseSystemTest extends TestCase
     private function generateSignedRecord(
         string  $licenseKey,
         ?string $expiresAtStr,
-        string  $statusStr
+        string  $statusStr,
+        string  $allowedDomains = ''
     ): array {
         $keys = openssl_pkey_new([
             'private_key_bits' => 2048,
@@ -62,7 +66,7 @@ class LicenseSystemTest extends TestCase
 
         return [
             'signature' => base64_encode($signature),
-            'hash'      => LicenseVerifier::computeIntegrityHash($licenseKey, $expiresAtStr, $statusStr, 'school_a'),
+            'hash'      => LicenseVerifier::computeIntegrityHash($licenseKey, $expiresAtStr, $statusStr, 'school_a', $allowedDomains),
         ];
     }
 
@@ -70,12 +74,13 @@ class LicenseSystemTest extends TestCase
         string  $licenseKey,
         ?Carbon $expiresAt,
         string  $statusStr,
-        ?Carbon $lastVerified = null
+        ?Carbon $lastVerified = null,
+        string  $allowedDomains = 'localhost'
     ): void {
         DB::table('software_licenses')->truncate();
 
         $expiresAtStr = $expiresAt?->utc()->format('Y-m-d H:i:s');
-        ['signature' => $sig, 'hash' => $hash] = $this->generateSignedRecord($licenseKey, $expiresAtStr, $statusStr);
+        ['signature' => $sig, 'hash' => $hash] = $this->generateSignedRecord($licenseKey, $expiresAtStr, $statusStr, $allowedDomains);
 
         DB::table('software_licenses')->insert([
             'license_key'             => encrypt($licenseKey),
@@ -83,6 +88,7 @@ class LicenseSystemTest extends TestCase
             'firebase_refresh_token'  => encrypt('dummy_token'),
             'status'                  => encrypt($statusStr),
             'plan'                    => encrypt('premium'),
+            'allowed_domains'         => encrypt($allowedDomains),
             'expires_at'              => $expiresAtStr,
             'rsa_signature'           => $sig,
             'integrity_hash'          => $hash,
@@ -110,7 +116,7 @@ class LicenseSystemTest extends TestCase
         $expiresAt  = Carbon::now()->addDays(30)->utc()->format('Y-m-d H:i:s');
         $statusStr  = 'active';
 
-        ['signature' => $sig] = $this->generateSignedRecord($licenseKey, $expiresAt, $statusStr);
+        ['signature' => $sig] = $this->generateSignedRecord($licenseKey, $expiresAt, $statusStr, 'localhost');
 
         DB::table('software_licenses')->insert([
             'license_key'             => encrypt($licenseKey),
@@ -118,6 +124,7 @@ class LicenseSystemTest extends TestCase
             'firebase_refresh_token'  => encrypt('dummy_refresh'),
             'status'                  => encrypt($statusStr),
             'plan'                    => encrypt('premium'),
+            'allowed_domains'         => encrypt('localhost'),
             'expires_at'              => $expiresAt,
             'rsa_signature'           => $sig,
             'integrity_hash'          => 'tampered_hash_that_will_never_match',
@@ -128,6 +135,30 @@ class LicenseSystemTest extends TestCase
 
         $this->assertEquals(LicenseStatus::STAGE_BLOCKED, $status['stage']);
         $this->assertEquals('tampered_hash', $status['reason']);
+    }
+
+    /** @test */
+    public function it_blocks_license_when_host_is_not_authorized()
+    {
+        // 1. Host is not in allowed domains list
+        $this->insertLicense('valid-key', Carbon::now()->addDays(5), 'active', null, 'license.sims-app.com, valid.sims-app.com');
+
+        // Mock current host to unauthorized domain
+        request()->headers->set('HOST', 'unauthorized.com');
+
+        $status = LicenseStatus::computeStatus();
+
+        $this->assertEquals(LicenseStatus::STAGE_BLOCKED, $status['stage']);
+        $this->assertEquals('invalid_domain', $status['reason']);
+        $this->assertStringContainsString('unauthorized.com', $status['message']);
+
+        // 2. Host is in allowed domains list
+        request()->headers->set('HOST', 'valid.sims-app.com');
+
+        $status = LicenseStatus::computeStatus();
+
+        $this->assertEquals(LicenseStatus::STAGE_ACTIVE, $status['stage']);
+        $this->assertEquals('active', $status['reason']);
     }
 
     /** @test */

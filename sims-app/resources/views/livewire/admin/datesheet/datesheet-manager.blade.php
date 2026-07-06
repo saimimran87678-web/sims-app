@@ -632,6 +632,53 @@
         @endif
     </div>
 
+    @if($viewMode === 'schedule')
+        {{-- Customize Instructions Section --}}
+        <div class="bg-white overflow-hidden shadow-md sm:rounded-xl border border-gray-200 p-4 sm:p-6 mt-6">
+            <div class="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
+                <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-gray-800">Customize Printed Instructions</h3>
+                    <p class="text-xs text-gray-500">Edit the heading and instructions details displayed at the bottom of the printed datesheet.</p>
+                </div>
+            </div>
+
+            <form wire:submit.prevent="saveInstructions" class="space-y-4">
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-xs uppercase font-bold text-gray-500 mb-1.5 tracking-wider">Instructions Heading</label>
+                        <input 
+                            type="text" 
+                            wire:model="instructionsHeading" 
+                            class="w-full border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 rounded-lg shadow-sm text-sm h-10 px-3"
+                            placeholder="e.g. Important Instructions"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase font-bold text-gray-500 mb-1.5 tracking-wider">Instructions (One per line)</label>
+                        <textarea 
+                            wire:model="instructionsText" 
+                            rows="4"
+                            class="w-full border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 rounded-lg shadow-sm text-sm p-3"
+                            placeholder="1. Instruction one&#10;2. Instruction two&#10;3. Instruction three"
+                        ></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button 
+                        type="submit" 
+                        class="h-10 inline-flex items-center px-6 rounded-lg font-bold text-xs uppercase tracking-widest shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400"
+                        style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white;"
+                    >
+                        Save Instructions
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
+
     {{-- ASSIGNMENT MODAL --}}
     @if($showAssignModal)
     <div 

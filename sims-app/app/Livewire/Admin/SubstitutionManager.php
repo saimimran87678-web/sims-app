@@ -380,9 +380,10 @@ class SubstitutionManager extends Component
             ->get();
     }
 
-    public function downloadPDF()
+    public function getPrintUrl()
     {
-        return redirect()->route('admin.substitutions.print', [
+        $routeName = request()->is('teacher/*') ? 'teacher.shared.substitutions.print' : 'admin.substitutions.print';
+        return route($routeName, [
             'date' => $this->selectedDate,
             'session_id' => $this->selectedSessionId
         ]);

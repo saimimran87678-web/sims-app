@@ -1,8 +1,10 @@
 <div class="space-y-6">
-    <div class="flex justify-between items-center">
+    <div class="flex justify-between items-center print:hidden">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">My Schedule</h1>
-            <p class="text-gray-500">Your teaching schedule for the week</p>
+            <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider mt-0.5">
+                {{ \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS')) }}
+            </p>
         </div>
     </div>
 
@@ -11,7 +13,7 @@
         @foreach($days as $day)
             <button
                 wire:click="$set('selectedDay', '{{ $day }}')"
-                class="px-4 py-2 rounded-lg font-medium transition-colors {{ $selectedDay === $day ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
+                class="px-4 py-2 rounded-lg font-semibold text-sm transition-all {{ $selectedDay === $day ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
             >
                 {{ $day }}
             </button>
@@ -19,10 +21,22 @@
     </div>
 
     {{-- Print Header --}}
-    <div class="hidden print:block text-center mb-4">
-        <h1 class="text-xl font-bold">ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)</h1>
-        <p class="text-sm">G-6/2 ISLAMABAD</p>
-        <h2 class="text-lg font-semibold mt-2">{{ Auth::user()->name }} - {{ $selectedDay }} Schedule</h2>
+    <div class="hidden print:block text-center mb-6">
+        @php
+            $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+            $formalName = \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS'));
+            $address = \App\Models\Setting::getGlobal('institute_address');
+        @endphp
+        @if($logoPath)
+            <div style="margin-bottom: 10px;">
+                <img src="{{ '/' . $logoPath }}" style="height: 50px; max-width: 150px; object-fit: contain; margin: 0 auto;">
+            </div>
+        @endif
+        <h1 class="text-xl font-bold uppercase">{{ $formalName }}</h1>
+        @if($address)
+            <p class="text-xs text-gray-500 font-medium">{{ $address }}</p>
+        @endif
+        <h2 class="text-sm font-bold text-blue-800 mt-2 uppercase tracking-wide">{{ Auth::user()->name }} - {{ $selectedDay }} Schedule</h2>
     </div>
 
     {{-- Schedule Grid --}}

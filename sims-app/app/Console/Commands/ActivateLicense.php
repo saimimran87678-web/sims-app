@@ -112,11 +112,13 @@ class ActivateLicense extends Command
         $this->info("✓ Cryptographic signature is valid.");
 
         // 5. Compute Integrity Hash
+        $allowedDomains = $firebaseLic['allowed_domain'] ?? 'localhost';
         $newHash = LicenseVerifier::computeIntegrityHash(
             $licenseKey,
             $firebaseLic['expires_at'],
             $firebaseLic['status'],
-            $firebaseLic['school_id']
+            $firebaseLic['school_id'],
+            $allowedDomains
         );
 
         // 6. Write to SQLite Cache
@@ -130,6 +132,7 @@ class ActivateLicense extends Command
                 'firebase_refresh_token' => encrypt($newRefreshToken),
                 'status' => encrypt($firebaseLic['status']),
                 'plan' => encrypt($firebaseLic['plan']),
+                'allowed_domains' => encrypt($allowedDomains),
                 'expires_at' => $firebaseLic['expires_at'] ? Carbon::parse($firebaseLic['expires_at']) : null,
                 'rsa_signature' => $firebaseLic['rsa_signature'],
                 'integrity_hash' => $newHash,

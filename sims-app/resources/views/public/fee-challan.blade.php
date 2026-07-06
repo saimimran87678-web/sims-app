@@ -258,7 +258,7 @@
 
         <!-- Footer Branding -->
         <div class="text-center text-xs text-slate-400">
-            Powered by {{ $instituteName }} Student Information Management System &copy; {{ date('Y') }}
+            Powered by Adminova &copy; {{ date('Y') }}
         </div>
 
     </div>

@@ -114,8 +114,8 @@
     </div>
 
     <div class="header">
-        <div class="college-name">ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)</div>
-        <div class="college-address">G-6/2 ISLAMABAD</div>
+        <div class="college-name">{{ strtoupper(\App\Models\Setting::getGlobal('institute_name', 'ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)')) }}</div>
+        <div class="college-address">{{ strtoupper(\App\Models\Setting::getGlobal('institute_address', 'G-6/2 ISLAMABAD')) }}</div>
         <br>
         <div class="exam-title">DATE SHEET {{ strtoupper($exam->name) }}</div>
     </div>

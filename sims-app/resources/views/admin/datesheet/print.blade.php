@@ -4,205 +4,374 @@
     <meta charset="UTF-8">
     <title>Datesheet - {{ $exam->name }}</title>
     <style>
+        /* Base page styling */
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #1e293b;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 30px 20px;
+        }
+
+        .screen-only {
+            display: block;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .btn-print {
+            padding: 12px 28px;
+            background: #1e3a8a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
+            transition: all 0.2s ease;
+        }
+        .btn-print:hover {
+            background: #1d4ed8;
+            box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);
+        }
+
+        /* Printable layout */
+        .datesheet-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e2e8f0;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .school-name {
+            font-size: 26px;
+            font-weight: 800;
+            color: #1e3a8a;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin: 0 0 6px 0;
+        }
+
+        .school-address {
+            font-size: 13px;
+            color: #64748b;
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .datesheet-title-badge {
+            border-top: 2px solid #1e3a8a;
+            border-bottom: 2px solid #1e3a8a;
+            padding: 10px 0;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .datesheet-title-text {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1e3a8a;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        /* Table design */
+        .datesheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .datesheet-table th {
+            background-color: #f1f5f9;
+            color: #1e3a8a;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 10px;
+            border: 1px solid #cbd5e1;
+            text-align: center;
+        }
+
+        .datesheet-table td {
+            padding: 12px 10px;
+            font-size: 11px;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            text-align: center;
+        }
+
+        .datesheet-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        .date-col {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .day-col {
+            text-transform: uppercase;
+            font-size: 10px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .bg-holiday {
+            background-color: #f1f5f9 !important;
+            color: #94a3b8;
+            font-style: italic;
+            font-weight: bold;
+        }
+
+        .empty-cell {
+            color: #cbd5e1;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .subject-text {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Note card */
+        .note-card {
+            background: #f8fafc;
+            border-left: 4px solid #1e3a8a;
+            padding: 12px 15px;
+            border-radius: 4px;
+            margin-top: 35px;
+            font-size: 11px;
+            line-height: 1.55;
+            color: #475569;
+            text-align: left;
+        }
+
+        .note-title {
+            color: #1e3a8a;
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Signatures block */
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            padding: 0 20px;
+        }
+
+        .sig-container {
+            text-align: center;
+        }
+
+        .sig-line {
+            border-top: 1.5px solid #cbd5e1;
+            width: 200px;
+            padding-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* Print overrides */
         @media print {
             @page {
-                /* Auto size - let user choose Portrait/Landscape */
-                margin: 5mm;
+                size: auto;
+                margin: 10mm;
             }
             body {
+                padding: 0;
+                background-color: #ffffff;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
-                font-family: "Times New Roman", Times, serif;
             }
-            .print-hidden {
+            .screen-only {
                 display: none !important;
             }
-            
-            /* Table Styling */
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                border: 2px solid black;
-                font-size: 10pt; /* Auto-scale base */
+            .datesheet-container {
+                max-width: 100%;
+                border: none;
+                box-shadow: none;
+                padding: 0;
+                background-color: #ffffff;
             }
-            th, td {
-                border: 1px solid black !important;
-                padding: 4px !important;
-                text-align: center;
-                height: auto !important;
+            .datesheet-table {
+                border: 1px solid #000;
+                box-shadow: none;
             }
-            th {
-                background-color: #d1d5db !important; /* bg-gray-300 */
-                font-weight: bold;
-                text-transform: uppercase;
+            .datesheet-table th, .datesheet-table td {
+                border: 1px solid #000 !important;
             }
-            
-            /* Header Styling */
-            .header-title { font-size: 16pt; font-weight: bold; text-transform: uppercase; text-align: center; }
-            .header-subtitle { font-size: 12pt; text-align: center; margin-bottom: 10px; }
-            .exam-title { font-size: 14pt; font-weight: bold; text-align: center; margin: 10px 0; text-transform: uppercase; }
-
-            /* Footer Styling */
-            .footer-note { font-size: 9pt; margin-top: 10px; }
-            .signature-line { border-top: 1px solid black; width: 200px; margin-top: 40px; }
-            
-            /* Landscape Adjustments */
-            @media (orientation: landscape) {
-                table { font-size: 11pt; }
+            .datesheet-table th {
+                background-color: #f1f5f9 !important;
+                color: #000 !important;
             }
-            /* Portrait Adjustments */
-            @media (orientation: portrait) {
-                table { font-size: 9pt; }
-                th, td { padding: 2px !important; }
+            .note-card {
+                border-left: 4px solid #000 !important;
+                background: #f8fafc !important;
             }
-            
-            /* Helpers */
-            .bg-holiday { background-color: #9ca3af !important; } /* darker gray */
+            .sig-line {
+                border-top: 1.5px solid #000 !important;
+            }
         }
-        
-        /* Screen Styles for preview */
-        body { font-family: sans-serif; padding: 20px; }
-        .screen-only { display: block; margin-bottom: 20px; }
-        @media print { .screen-only { display: none; } }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #333; padding: 5px; text-align: center; }
-        th { background: #eee; }
-        .bg-holiday { background-color: #ccc; }
     </style>
 </head>
-<body class="bg-white">
+<body>
 
-    <div class="screen-only text-center">
-        <button onclick="window.print()" style="padding: 10px 20px; background: #333; color: white; border: none; cursor: pointer;">
+    <div class="screen-only">
+        <button onclick="window.print()" class="btn-print">
             Print / Save as PDF
         </button>
     </div>
 
-    {{-- Formal Header --}}
-    <div class="text-center mb-6">
-        @php
-            $logoPath = \App\Models\Setting::getGlobal('institute_logo');
-        @endphp
-        @if($logoPath && file_exists(public_path($logoPath)))
-            <div style="text-align: center; margin-bottom: 10px;">
-                <img src="{{ asset($logoPath) }}" style="height: 60px; max-width: 150px; object-fit: contain;">
+    <div class="datesheet-container">
+        {{-- Formal Header --}}
+        <div class="header-section">
+            @php
+                $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+            @endphp
+            @if($logoPath && file_exists(public_path($logoPath)))
+                <div style="margin-bottom: 12px;">
+                    <img src="{{ '/' . $logoPath }}" style="height: 60px; max-width: 150px; object-fit: contain;">
+                </div>
+            @endif
+            
+            <h1 class="school-name">
+                {{ \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS')) }}
+            </h1>
+            
+            @if($address = \App\Models\Setting::getGlobal('institute_address'))
+                <h2 class="school-address">{{ $address }}</h2>
+            @endif
+            
+            <div class="datesheet-title-badge">
+                <span class="datesheet-title-text">DATE SHEET - {{ $exam->name }}</span>
             </div>
-        @endif
-        <h1 class="text-2xl font-bold uppercase" style="font-size: 18pt; margin-bottom: 5px;">
-            {{ \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS')) }}
-        </h1>
-        @if($address = \App\Models\Setting::getGlobal('institute_address'))
-            <h2 class="text-lg" style="font-size: 14pt; margin-top: 0;">{{ $address }}</h2>
-        @endif
-        <div class="text-xl font-bold mt-4 uppercase" style="font-size: 16pt; text-decoration: underline;">DATE SHEET {{ $exam->name }}</div>
-    </div>
+        </div>
 
-    {{-- Main Table --}}
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 15%">Date & Time</th>
-                <th style="width: 10%">Day</th>
-                @foreach($grades as $grade => $classes)
-                    {{-- Logic: If we want to show merged columns for whole Grade or split per Class --}}
-                    {{-- For simplest Print view, let's assume one column per Grade as requested by typical formats, 
-                         BUT if classes have diff papers, we might need split. 
-                         For this implementation: We check distinct subjects for the grade on dates.
-                         To keep it simple: We map 1 Column per Grade. If split, we show e.g. "10A: Math / 10B: Phy"
-                    --}}
-                    <th>Class {{ $grade }}th</th>
-                @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($schedules as $date => $entries)
+        {{-- Main Table --}}
+        <table class="datesheet-table">
+            <thead>
                 <tr>
-                    {{-- Date Column --}}
-                    <td class="font-bold bg-gray-100">
-                        {{ \Carbon\Carbon::parse($date)->format('d.m.Y') }}
-                    </td>
-                    
-                    {{-- Day Column --}}
-                    <td class="uppercase text-sm">
-                        {{ \Carbon\Carbon::parse($date)->format('l') }}
-                    </td>
-
-                    {{-- Grade Columns --}}
+                    <th style="width: 15%">Date & Time</th>
+                    <th style="width: 12%">Day</th>
                     @foreach($grades as $grade => $classes)
-                        @php
-                            // Aggregate subjects for this grade on this date
-                            $subjectsArr = [];
-                            $isHolidayAll = true;
-                            
-                            foreach ($classes as $class) {
-                                $entry = $entries->where('class_id', $class->id)->first();
-                                $sub = $entry ? $entry->subject : '-';
-                                
-                                if ($sub !== 'Holiday') $isHolidayAll = false;
-                                
-                                // Append Marks if available
-                                if ($sub && $sub !== '-' && $sub !== 'Holiday') {
-                                    $marks = $marksData[$class->id][$sub] ?? '';
-                                    if ($marks) $sub .= " ({$marks})";
-                                }
-                                
-                                $subjectsArr[$class->name] = $sub;
-                            }
-                            
-                            // Visualize Logic
-                            // 1. If all classes have same subject -> Show once
-                            // 2. If different -> Show "10A: Math / 10B: Phy"
-                            
-                            $uniqueSubjects = array_unique(array_values($subjectsArr));
-                            $finalText = '';
-                            
-                            if (count($uniqueSubjects) === 1) {
-                                $finalText = $uniqueSubjects[0];
-                            } else {
-                                // Split View
-                                $parts = [];
-                                foreach ($subjectsArr as $clsName => $s) {
-                                    if ($s !== '-') $parts[] = "$clsName: $s";
-                                }
-                                $finalText = implode(' / ', $parts);
-                                if (empty($finalText)) $finalText = '-';
-                            }
-                            
-                            $isHoliday = ($finalText === 'Holiday');
-                        @endphp
-                        
-                        <td class="{{ $isHoliday ? 'bg-holiday' : '' }}">
-                            @if($finalText == '-' || $finalText == '')
-                                <span class="text-xl font-bold">&mdash;</span>
-                            @elseif($isHoliday)
-                                <span style="display:none">Holiday</span>
-                            @else
-                                <span class="font-bold text-lg">{{ $finalText }}</span>
-                            @endif
-                        </td>
+                        <th>Class {{ $grade }}th</th>
                     @endforeach
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach($schedules as $date => $entries)
+                    <tr>
+                        {{-- Date Column --}}
+                        <td class="date-col">
+                            {{ \Carbon\Carbon::parse($date)->format('d.m.Y') }}
+                        </td>
+                        
+                        {{-- Day Column --}}
+                        <td class="day-col">
+                            {{ \Carbon\Carbon::parse($date)->format('l') }}
+                        </td>
 
-    {{-- Footer --}}
-    <div class="mt-4 text-sm font-sans" style="font-family: Arial, sans-serif; margin-top: 20px;">
-        <strong>NOTE:</strong>
-        <ol class="list-decimal list-inside" style="margin-top: 5px;">
-            <li>Students must arrive at least 15 minutes before the exam start time.</li>
-            <li>Examination will be conducted from the prescribed course.</li>
-            <li>Paper will start at 9:00 A.M. (Unless specified otherwise).</li>
-        </ol>
-    </div>
+                        {{-- Grade Columns --}}
+                        @foreach($grades as $grade => $classes)
+                            @php
+                                // Aggregate subjects for this grade on this date
+                                $subjectsArr = [];
+                                $isHoliday = false;
+                                
+                                foreach ($classes as $class) {
+                                    $entry = $entries->where('class_id', $class->id)->first();
+                                    $sub = $entry ? trim($entry->subject) : '-';
+                                    
+                                    if ($sub === 'Holiday') {
+                                        $isHoliday = true;
+                                        continue;
+                                    }
+                                    
+                                    if ($sub && $sub !== '-' && $sub !== '') {
+                                        // Split by comma or slash to get individual subjects
+                                        $parts = preg_split('/[\/,]+/', $sub);
+                                        foreach ($parts as $part) {
+                                            $partClean = trim($part);
+                                            if ($partClean && $partClean !== '-') {
+                                                $subjectsArr[] = $partClean;
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // De-duplicate clean subjects
+                                $uniqueCleanSubjects = array_unique($subjectsArr);
+                                
+                                if ($isHoliday && empty($uniqueCleanSubjects)) {
+                                    $finalText = 'Holiday';
+                                } else {
+                                    $finalText = implode(', ', $uniqueCleanSubjects);
+                                    if (empty($finalText)) $finalText = '-';
+                                }
+                                
+                                $isHoliday = ($finalText === 'Holiday');
+                            @endphp
+                            
+                            <td class="{{ $isHoliday ? 'bg-holiday' : '' }}">
+                                @if($finalText == '-' || $finalText == '')
+                                    <span class="empty-cell">&mdash;</span>
+                                @elseif($isHoliday)
+                                    <span>Holiday</span>
+                                @else
+                                    <span class="subject-text">{{ $finalText }}</span>
+                                @endif
+                            </td>
+                        @endforeach
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
 
-    {{-- Signatures --}}
-    <div class="flex justify-between mt-12 px-8" style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 40px;">
-        <div class="text-center">
-            <div style="border-top: 1px solid black; width: 200px; padding-top: 5px; text-align: center;">Controller of Examination</div>
+        {{-- Footer Note Card --}}
+        @php
+            $heading = $exam->datesheet_instructions_heading ?: 'Important Instructions';
+            $instructions = $exam->datesheet_instructions;
+        @endphp
+        <div class="note-card">
+            <span class="note-title">{{ $heading }}</span>
+            @if($instructions)
+                <div style="white-space: pre-line; line-height: 1.5;">{{ $instructions }}</div>
+            @else
+                <ol style="margin: 0; padding-left: 15px;">
+                    <li style="margin-bottom: 4px;">Students must arrive at least 15 minutes before the exam start time.</li>
+                    <li style="margin-bottom: 4px;">Examination will be conducted from the prescribed course.</li>
+                    <li>Paper will start at 9:00 A.M. (Unless specified otherwise).</li>
+                </ol>
+            @endif
         </div>
-        <div class="text-center">
-            <div style="border-top: 1px solid black; width: 200px; padding-top: 5px; text-align: center;">Principal</div>
+
+        {{-- Signatures --}}
+        <div class="signature-section">
+            <div class="sig-container">
+                <div class="sig-line">Controller of Examination</div>
+            </div>
+            <div class="sig-container">
+                <div class="sig-line">Principal</div>
+            </div>
         </div>
     </div>
 

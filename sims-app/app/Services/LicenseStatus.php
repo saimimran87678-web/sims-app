@@ -29,7 +29,7 @@ class LicenseStatus
         try {
             if (!Schema::hasTable('software_licenses')) {
                 Artisan::call('migrate', ['--force' => true]);
-            } else if (!Schema::hasColumn('software_licenses', 'plan')) {
+            } else if (!Schema::hasColumn('software_licenses', 'plan') || !Schema::hasColumn('software_licenses', 'allowed_domains')) {
                 Artisan::call('migrate', ['--force' => true]);
             }
             return DB::table('software_licenses')->first();
@@ -94,6 +94,30 @@ class LicenseStatus
                 'reason' => 'invalid_signature',
                 'message' => 'Cryptographic license signature is invalid. Re-activation required.',
             ]);
+        }
+
+        // Layer 6: Domain Verification Check
+        if ((!app()->runningInConsole() || app()->environment('testing')) && isset($record->allowed_domains)) {
+            try {
+                $allowedStr = decrypt($record->allowed_domains);
+                if (!empty($allowedStr)) {
+                    $allowedList = array_map(function ($domain) {
+                        return explode(':', trim($domain))[0];
+                    }, explode(',', strtolower($allowedStr)));
+                    
+                    $currentHost = explode(':', strtolower(request()->getHost()))[0];
+
+                    if (!in_array($currentHost, $allowedList)) {
+                        return array_merge($baseStatus, [
+                            'stage' => self::STAGE_BLOCKED,
+                            'reason' => 'invalid_domain',
+                            'message' => "This domain ({$currentHost}) is not authorized to host this SIMS license. Please contact support.",
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Domain decryption/validation failed: ' . $e->getMessage());
+            }
         }
 
         // Layer 3: System Time Travel Check (clock-tampering mitigation)

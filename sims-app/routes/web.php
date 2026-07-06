@@ -180,6 +180,14 @@ Route::get('/license-blocked', function () {
         ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT');
 })->name('license.blocked');
 
+Route::get('/domain-blocked', function () {
+    return response()
+        ->view('pages.domain-blocked')
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        ->header('Pragma', 'no-cache')
+        ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT');
+})->name('domain.blocked');
+
 Route::post('/license-blocked/activate', [\App\Http\Controllers\LicenseController::class, 'activate'])
     ->name('license.activate.post');
 

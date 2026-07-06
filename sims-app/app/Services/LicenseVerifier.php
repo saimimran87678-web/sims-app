@@ -53,7 +53,7 @@ class LicenseVerifier
      * @param string $schoolId
      * @return string
      */
-    public static function computeIntegrityHash(string $licenseKey, ?string $expiresAt, string $status, string $schoolId): string
+    public static function computeIntegrityHash(string $licenseKey, ?string $expiresAt, string $status, string $schoolId, string $allowedDomains = ''): string
     {
         $integrityKey = config('services.license.integrity_key') ?: config('app.key');
 
@@ -62,6 +62,7 @@ class LicenseVerifier
             self::normalizeExpiresAt($expiresAt),
             $status,
             $schoolId,
+            $allowedDomains,
         ]);
 
         return hash_hmac('sha256', $payload, $integrityKey);
@@ -82,6 +83,10 @@ class LicenseVerifier
         try {
             $licenseKey = decrypt($licenseRecord->license_key);
             $status     = decrypt($licenseRecord->status);
+            $allowedDomains = '';
+            if (isset($licenseRecord->allowed_domains) && !empty($licenseRecord->allowed_domains)) {
+                $allowedDomains = decrypt($licenseRecord->allowed_domains);
+            }
         } catch (\Exception $e) {
             return false;
         }
@@ -90,7 +95,8 @@ class LicenseVerifier
             $licenseKey,
             $licenseRecord->expires_at,
             $status,
-            $licenseRecord->school_id
+            $licenseRecord->school_id,
+            $allowedDomains
         );
 
         return hash_equals($licenseRecord->integrity_hash, $computed);

@@ -101,7 +101,7 @@
                             @if ($logo)
                                 <img src="{{ $logo->temporaryUrl() }}" class="w-16 h-16 object-contain rounded-lg bg-white border border-gray-100 shadow-sm">
                             @elseif ($institute_logo && file_exists(public_path($institute_logo)))
-                                <img src="{{ asset($institute_logo) }}" class="w-16 h-16 object-contain rounded-lg bg-white border border-gray-100 shadow-sm">
+                                <img src="{{ '/' . $institute_logo }}" class="w-16 h-16 object-contain rounded-lg bg-white border border-gray-100 shadow-sm">
                             @else
                                 <div class="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-semibold">
                                     No Logo
@@ -316,4 +316,92 @@
             This system runs on <strong>Adminova Information Management System</strong>. The brand/app name cannot be changed, but you can configure custom institute names above for tenant personalization.
         </p>
     </div>
+
+    {{-- Security Verification Modal --}}
+    @if($isSecurityVerificationModalOpen)
+    @teleport('body')
+    <div class="fixed inset-0 z-[1000] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm transition-opacity" aria-hidden="true" wire:click="closeSecurityVerificationModal"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-100">
+                <form wire:submit.prevent="verifySecurityAction">
+                    <div class="bg-white px-6 pt-6 pb-6 rounded-t-2xl">
+                        <div class="flex flex-col items-center justify-center text-center">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4 shadow-inner">
+                                <svg class="h-8 w-8 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl leading-6 font-bold text-gray-900">
+                                Disable Admin Security
+                            </h3>
+                            <p class="text-sm text-gray-500 mt-2">
+                                Please verify your identity to turn off the Admin Security PIN.
+                            </p>
+                        </div>
+                        
+                        {{-- Method Selector --}}
+                        <div class="mt-6 flex bg-gray-100 p-1 rounded-xl">
+                            <button type="button" wire:click="$set('verificationMethod', 'password')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition-colors {{ $verificationMethod === 'password' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-800' }}">
+                                Account Password
+                            </button>
+                            <button type="button" wire:click="$set('verificationMethod', 'otp')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition-colors {{ $verificationMethod === 'otp' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-800' }}">
+                                Email OTP Code
+                            </button>
+                        </div>
+
+                        <div class="mt-6">
+                            @if($verificationMethod === 'password')
+                                <label class="block text-sm font-medium text-gray-700 text-center">Enter Password</label>
+                                <div class="mt-2">
+                                    <input type="password" wire:model.defer="verificationInput" class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring focus:ring-red-200 focus:ring-opacity-50 text-center" placeholder="••••••••" autofocus />
+                                </div>
+                            @else
+                                {{-- OTP Method --}}
+                                @if(!$otpSent)
+                                    <div class="flex flex-col items-center gap-3">
+                                        <p class="text-xs text-gray-500 text-center">We will send a 6-digit OTP to your registered email ({{ auth()->user()->email }}).</p>
+                                        <button type="button" wire:click="sendVerificationOtp" wire:loading.attr="disabled" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold transition-colors">
+                                            Send OTP Code
+                                        </button>
+                                    </div>
+                                @else
+                                    <label class="block text-sm font-medium text-gray-700 text-center">Enter 6-Digit OTP</label>
+                                    <div class="mt-2 flex justify-center">
+                                        <input type="text" wire:model.defer="verificationInput" maxlength="6" class="block w-48 text-center text-2xl tracking-widest rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring focus:ring-red-200 focus:ring-opacity-50" placeholder="••••••" autofocus />
+                                    </div>
+                                    <div class="mt-3 text-center">
+                                        <button type="button" wire:click="sendVerificationOtp" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                            Resend OTP Code
+                                        </button>
+                                    </div>
+                                @endif
+                            @endif
+
+                            @if($verificationError)
+                                <span class="text-red-500 text-sm font-medium mt-3 block text-center">{{ $verificationError }}</span>
+                            @endif
+
+                            @if(session()->has('otp_status'))
+                                <span class="text-green-600 text-xs font-semibold mt-3 block text-center">{{ session('otp_status') }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 rounded-b-2xl flex justify-center gap-3">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-3 bg-red-600 text-base font-bold text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:w-auto sm:text-sm" {{ ($verificationMethod === 'otp' && !$otpSent) ? 'disabled' : '' }}>
+                            Verify & Disable
+                        </button>
+                        <button type="button" wire:click="closeSecurityVerificationModal" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endteleport
+    @endif
 </div>

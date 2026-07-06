@@ -3,8 +3,10 @@
         <div class="flex items-start gap-4">
             <x-schedule-menu />
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">Schedule View</h1>
-                <p class="text-gray-500">Read-only schedule overview</p>
+                <h1 class="text-2xl font-bold text-gray-800 animate-fade-in">Schedule View</h1>
+                <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider mt-0.5">
+                    {{ \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS')) }}
+                </p>
             </div>
         </div>
         <div class="flex gap-3 items-center">
@@ -21,8 +23,8 @@
                 </div>
             @endif
 
-            <a href="{{ route('admin.print-schedule', ['day' => $selectedDay, 'viewType' => $viewType, 'cardsPerPage' => $cardsPerPage]) }}" target="_blank" class="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <a href="{{ route('admin.print-schedule', ['day' => $selectedDay, 'viewType' => $viewType, 'cardsPerPage' => $cardsPerPage]) }}" target="_blank" class="px-5 py-2.5 text-white rounded-xl hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 flex items-center gap-2 font-semibold text-sm shadow-md cursor-pointer" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);">
+                <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                 Print Schedule
             </a>
         </div>
@@ -30,17 +32,17 @@
 
     {{-- View Type Tabs --}}
     <div class="flex flex-wrap gap-4 items-center print:hidden">
-        <div class="flex gap-1 bg-gray-100 p-1 rounded-xl">
-            <button wire:click="$set('viewType', 'class')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {{ $viewType === 'class' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200' }}">
+        <div class="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
+            <button wire:click="$set('viewType', 'class')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {{ $viewType === 'class' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900' }}">
                 By Class
             </button>
-            <button wire:click="$set('viewType', 'teacher')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {{ $viewType === 'teacher' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200' }}">
+            <button wire:click="$set('viewType', 'teacher')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {{ $viewType === 'teacher' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900' }}">
                 By Teacher
             </button>
-            <button wire:click="$set('viewType', 'room')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {{ $viewType === 'room' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200' }}">
+            <button wire:click="$set('viewType', 'room')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {{ $viewType === 'room' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900' }}">
                 By Room
             </button>
-            <button wire:click="$set('viewType', 'summary')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {{ $viewType === 'summary' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200' }}">
+            <button wire:click="$set('viewType', 'summary')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {{ $viewType === 'summary' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900' }}">
                 Summary
             </button>
         </div>
@@ -49,7 +51,7 @@
         <div class="flex gap-2 items-center">
             <button
                 wire:click="$set('selectedDay', 'Everyday')"
-                class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {{ $selectedDay === 'Everyday' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200' }}"
+                class="px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all {{ $selectedDay === 'Everyday' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }}"
             >
                 Everyday
             </button>
@@ -57,7 +59,7 @@
             @foreach($days as $day)
                 <button
                     wire:click="$set('selectedDay', '{{ $day }}')"
-                    class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {{ $selectedDay === $day ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
+                    class="px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all {{ $selectedDay === $day ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
                 >
                     {{ substr($day, 0, 3) }}
                 </button>

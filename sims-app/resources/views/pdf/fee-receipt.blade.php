@@ -135,15 +135,23 @@
 </head>
 <body>
 
-    <div class="header">
-        @if(!empty($instituteLogo))
-            <div style="margin-bottom: 10px;">
-                <img src="{{ $instituteLogo }}" style="height: 60px; max-width: 150px; object-fit: contain;">
-            </div>
-        @endif
-        <h1>{{ $instituteName }}</h1>
-        <p>{{ $instituteAddress }} | {{ $institutePhone }} | {{ $instituteEmail }}</p>
-    </div>
+    <table style="width: 100%; margin-bottom: 25px; border-bottom: 2px solid #059669; padding-bottom: 12px; border-collapse: collapse;">
+        <tr>
+            @if(!empty($instituteLogo))
+                <td style="width: 60px; vertical-align: middle; padding-right: 12px;">
+                    <img src="{{ $instituteLogo }}" style="height: 50px; max-width: 60px; object-fit: contain;">
+                </td>
+            @endif
+            <td style="vertical-align: middle; text-align: {{ !empty($instituteLogo) ? 'left' : 'center' }};">
+                <h1 style="margin: 0; color: #065f46; font-size: 22px; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">{{ $instituteName }}</h1>
+                <p style="margin: 3px 0 0 0; color: #64748b; font-size: 11px;">
+                    {{ $instituteAddress }} 
+                    @if($institutePhone) | {{ $institutePhone }} @endif 
+                    @if($instituteEmail) | {{ $instituteEmail }} @endif
+                </p>
+            </td>
+        </tr>
+    </table>
 
     <div class="stamp">RECEIVED</div>
 

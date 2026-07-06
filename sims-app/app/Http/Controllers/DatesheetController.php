@@ -14,8 +14,26 @@ class DatesheetController extends Controller
     {
         $exam = Exam::findOrFail($examId);
         
-        // 1. Fetch Classes Grouped
-        $allClasses = Classes::orderBy('numeric_value', 'desc')->get();
+        // 1. Fetch Classes Grouped (only those assigned or scheduled for this exam)
+        $assignedClassIds = \App\Models\ExamSchedule::where('exam_id', $examId)
+            ->pluck('class_id')
+            ->unique()
+            ->toArray();
+
+        if (empty($assignedClassIds)) {
+            $assignedClassIds = DatesheetSchedule::where('exam_id', $examId)
+                ->pluck('class_id')
+                ->unique()
+                ->toArray();
+        }
+
+        if (empty($assignedClassIds)) {
+            $allClasses = Classes::orderBy('numeric_value', 'desc')->get();
+        } else {
+            $allClasses = Classes::whereIn('id', $assignedClassIds)
+                ->orderBy('numeric_value', 'desc')
+                ->get();
+        }
         // Determine "Grades"
         $grades = $allClasses->groupBy(function ($class) {
              return $class->numeric_value ?? intval(preg_replace('/[^0-9]+/', '', $class->name), 10);

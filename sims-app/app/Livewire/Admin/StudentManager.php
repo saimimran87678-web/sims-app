@@ -96,6 +96,7 @@ class StudentManager extends Component
     // Form Data
     public $name = '';
     public $roll_no = '';
+    public $auto_roll_no = true;
     public $admission_no = '';
     public $father_name = '';
     public $phone = '';
@@ -142,15 +143,7 @@ class StudentManager extends Component
                 'string', 
                 Rule::unique('students', 'admission_no')->ignore($this->editingStudentId)
             ],
-            'roll_no' => [
-                'required',
-                'string',
-                Rule::unique('students', 'roll_no')
-                    ->where(function ($query) {
-                        return $query->where('class_id', $this->class_id);
-                    })
-                    ->ignore($this->editingStudentId)
-            ],
+            'roll_no' => 'required|string',
             'gender' => 'required|in:Male,Female,Other',
             'sports' => 'array',
             'extra_curriculars' => 'array',
@@ -209,6 +202,59 @@ class StudentManager extends Component
         $this->loadClasses();
     }
 
+    public function updatedClassId($value)
+    {
+        if ($this->auto_roll_no && !$this->isEditing) {
+            $this->autoAssignRollNo($value);
+        }
+    }
+
+    public function updatedAutoRollNo($value)
+    {
+        if ($value) {
+            $this->autoAssignRollNo($this->class_id);
+        }
+    }
+
+    protected function autoAssignRollNo($classId)
+    {
+        if ($classId) {
+            $maxRollNo = Student::where('class_id', $classId)
+                ->get()
+                ->map(fn($student) => (int)$student->roll_no)
+                ->max();
+            $this->roll_no = (string)($maxRollNo ? ($maxRollNo + 1) : 1);
+        } else {
+            $this->roll_no = '';
+        }
+    }
+
+    protected function adjustRollNumbers($classId, $targetRollNo)
+    {
+        $target = (int)$targetRollNo;
+        if ($target <= 0) return;
+
+        $students = Student::where('class_id', $classId)
+            ->when($this->editingStudentId, function ($query) {
+                $query->where('id', '!=', $this->editingStudentId);
+            })
+            ->get();
+
+        // Get all students with roll number >= target, and sort them numerically
+        $studentsToShift = $students->filter(function ($s) use ($target) {
+            return (int)$s->roll_no >= $target;
+        })->sortBy(function ($s) {
+            return (int)$s->roll_no;
+        });
+
+        // Reassign consecutive roll numbers starting from target + 1
+        $nextRollNo = $target + 1;
+        foreach ($studentsToShift as $student) {
+            $student->update(['roll_no' => (string)$nextRollNo]);
+            $nextRollNo++;
+        }
+    }
+
     // Reset pagination and selection when filtering
     public function updatedSearch() { $this->resetPage(); $this->selectedStudentIds = []; }
     public function updatedSelectedClassId() { $this->resetPage(); $this->selectedStudentIds = []; }
@@ -234,8 +280,11 @@ class StudentManager extends Component
     #[On('open-add-student-modal')]
     public function openModal()
     {
-        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
         $this->class_id = $this->selectedClassId; // Default to currently selected filter
+        if ($this->class_id) {
+            $this->autoAssignRollNo($this->class_id);
+        }
         $this->showModal = true;
     }
 
@@ -267,6 +316,7 @@ class StudentManager extends Component
         // Load assigned subjects
         $this->studentSubjects = $student->subjects()->pluck('subjects.id')->toArray();
 
+        $this->auto_roll_no = false;
         $this->isEditing = true;
         $this->showModal = true;
     }
@@ -279,6 +329,8 @@ class StudentManager extends Component
 
     public function save()
     {
+        $this->roll_no = trim($this->roll_no);
+        $this->admission_no = trim($this->admission_no);
         $validated = $this->validate();
 
         // Serialize arrays
@@ -307,19 +359,23 @@ class StudentManager extends Component
             $data['profile_photo_path'] = $path;
         }
 
-        if ($this->isEditing) {
-            Student::where('id', $this->editingStudentId)->update($data);
-            $student = Student::findOrFail($this->editingStudentId);
-            session()->flash('message', 'Student updated successfully.');
-        } else {
-            $student = Student::create($data);
-            session()->flash('message', 'Student added successfully.');
-        }
+        DB::transaction(function() use ($data) {
+            $this->adjustRollNumbers($this->class_id, $this->roll_no);
 
-        $student->subjects()->sync($this->studentSubjects);
+            if ($this->isEditing) {
+                Student::where('id', $this->editingStudentId)->update($data);
+                $student = Student::findOrFail($this->editingStudentId);
+                session()->flash('message', 'Student updated successfully.');
+            } else {
+                $student = Student::create($data);
+                session()->flash('message', 'Student added successfully.');
+            }
+
+            $student->subjects()->sync($this->studentSubjects);
+        });
 
         $this->showModal = false;
-        $this->reset(['name', 'roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
 
         if ($this->onlyModal) {
             return redirect(request()->header('Referer'));
@@ -530,6 +586,9 @@ class StudentManager extends Component
         if ($this->selectedClassId) {
             $studentsQuery->where('students.class_id', $this->selectedClassId);
         }
+
+        // Always sort class-wise first to avoid mixing students from different classes
+        $studentsQuery->orderBy('classes.name', 'asc');
 
         if ($this->sortBy === 'roll_no') {
             $studentsQuery->orderByRaw('CAST(students.roll_no AS INTEGER) ' . ($this->sortDir === 'desc' ? 'DESC' : 'ASC'));

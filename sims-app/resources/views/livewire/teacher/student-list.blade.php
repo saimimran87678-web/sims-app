@@ -359,10 +359,18 @@
                                     @error('admission_no') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Roll No *</label>
-                                    <input type="text" wire:model="roll_no" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" placeholder="001" />
-                                    @error('roll_no') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
+                                     <div class="flex justify-between items-center mb-1">
+                                         <label class="block text-sm font-medium text-gray-700">Roll No *</label>
+                                         @if(!$isEditMode)
+                                         <label class="flex items-center text-xs text-gray-500 cursor-pointer select-none">
+                                             <input type="checkbox" wire:model.live="auto_roll_no" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 mr-1" />
+                                             Auto-assign
+                                         </label>
+                                         @endif
+                                     </div>
+                                     <input type="text" wire:model="roll_no" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:text-gray-400" placeholder="001" @if($auto_roll_no && !$isEditMode) disabled @endif />
+                                     @error('roll_no') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
@@ -561,8 +569,8 @@
 
                         {{-- School Header --}}
                         <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); color: #fff; padding: 20px 30px; text-align: center;">
-                            <h1 style="font-size: 22px; font-weight: 700; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 3px;">Islamabad Model College for Boys</h1>
-                            <p style="font-size: 12px; margin: 0; opacity: 0.9;">G-6/2, Islamabad</p>
+                            <h1 style="font-size: 22px; font-weight: 700; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 3px;">{{ \App\Models\Setting::getGlobal('institute_name', 'Islamabad Model College for Boys') }}</h1>
+                            <p style="font-size: 12px; margin: 0; opacity: 0.9;">{{ \App\Models\Setting::getGlobal('institute_address', 'G-6/2, Islamabad') }}</p>
                         </div>
 
                         {{-- Photo Lightbox Modal --}}

@@ -18,6 +18,7 @@ class VerifyLicense
         'logout',
         'register',
         'license-blocked',
+        'domain-blocked',
         'license/sync',
         '_debugbar',
         'up', // Laravel health check
@@ -39,12 +40,17 @@ class VerifyLicense
 
         // ── 1. Check exempt paths BEFORE any DB/cache access ────────────────
         if ($this->isExempt($path)) {
-            // If the user manually visits /license-blocked while the license
-            // is actually valid, send them to the dashboard.
-            if ($path === 'license-blocked') {
+            // Prevent routing loop/bleed if they visit blocks manually
+            if ($path === 'license-blocked' || $path === 'domain-blocked') {
                 $status = LicenseStatus::getStatus();
                 if ($status['stage'] !== LicenseStatus::STAGE_BLOCKED) {
                     return redirect()->route('dashboard');
+                }
+                if ($path === 'domain-blocked' && $status['reason'] !== 'invalid_domain') {
+                    return redirect()->route('license.blocked');
+                }
+                if ($path === 'license-blocked' && $status['reason'] === 'invalid_domain') {
+                    return redirect()->route('domain.blocked');
                 }
             }
             return $next($request);
@@ -64,6 +70,9 @@ class VerifyLicense
 
         // ── 5. Block access if license is invalid ─────────────────────────
         if ($status['stage'] === LicenseStatus::STAGE_BLOCKED) {
+            if ($status['reason'] === 'invalid_domain') {
+                return redirect()->route('domain.blocked');
+            }
             return redirect()->route('license.blocked');
         }
 
@@ -95,7 +104,7 @@ class VerifyLicense
     public function terminate(Request $request, Response $response): void
     {
         // Don't trigger auto-sync on exempt paths (like assets, livewire polls)
-        if ($this->isExempt($request->path()) || $request->path() === 'license-blocked') {
+        if ($this->isExempt($request->path()) || $request->path() === 'license-blocked' || $request->path() === 'domain-blocked') {
             return;
         }
 

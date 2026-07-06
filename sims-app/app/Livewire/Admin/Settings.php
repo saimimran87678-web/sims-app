@@ -21,6 +21,14 @@ class Settings extends Component
     public $admin_action_pin = '';
     public $successMessage = '';
 
+    // Security Verification Modal Fields
+    public $isSecurityVerificationModalOpen = false;
+    public $verificationMethod = 'password'; // 'password' or 'otp'
+    public $verificationInput = '';
+    public $otpSent = false;
+    public $verificationOtp = '';
+    public $verificationError = '';
+
     protected function rules()
     {
         return [
@@ -43,8 +51,132 @@ class Settings extends Component
         $this->institute_phone = Setting::getGlobal('institute_phone', '');
         $this->institute_logo = Setting::getGlobal('institute_logo', '');
         $this->weekend_mode   = Setting::get('weekend_mode', 'sat_sun');
-        $this->admin_action_pin_enabled = Setting::get('admin_action_pin_enabled', false);
+        $this->admin_action_pin_enabled = (bool) Setting::get('admin_action_pin_enabled', false);
         $this->admin_action_pin = Setting::get('admin_action_pin', '');
+    }
+
+    public function updatedAdminActionPinEnabled($value)
+    {
+        if ($value === false) {
+            $currentlyEnabled = (bool) Setting::get('admin_action_pin_enabled', false);
+            if ($currentlyEnabled) {
+                // Instantly force it back to true in component state so the UI toggle doesn't turn off until verified
+                $this->admin_action_pin_enabled = true;
+
+                // Open the security confirmation modal
+                $this->isSecurityVerificationModalOpen = true;
+                $this->verificationMethod = 'password';
+                $this->verificationInput = '';
+                $this->otpSent = false;
+                $this->verificationError = '';
+            }
+        }
+    }
+
+    public function sendVerificationOtp()
+    {
+        $user = auth()->user();
+        if (!$user) return;
+
+        // Generate 6-digit OTP
+        $this->verificationOtp = (string) rand(100000, 999999);
+        $this->otpSent = true;
+        $this->verificationError = '';
+
+        // Store OTP in session with timestamp
+        session([
+            'admin_security_otp' => $this->verificationOtp,
+            'admin_security_otp_expires_at' => now()->addMinutes(10),
+        ]);
+
+        try {
+            $instituteName = Setting::get('institute_name', 'IMCB G-6/2');
+            \Illuminate\Support\Facades\Mail::send([], [], function ($message) use ($user, $instituteName) {
+                $message->to($user->email)
+                    ->subject('Security Toggle Disable Code - ' . $instituteName)
+                    ->html("
+                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>
+                            <div style='text-align: center; margin-bottom: 24px;'>
+                                <h2 style='color: #1e3a5f; margin: 0; font-size: 24px; font-weight: 800;'>{$instituteName}</h2>
+                                <p style='color: #64748b; margin: 4px 0 0 0; font-size: 13px;'>Security Action Verification</p>
+                            </div>
+                            <hr style='border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 24px;'>
+                            <p style='font-size: 15px; color: #334155; line-height: 1.5;'>Hello {$user->name},</p>
+                            <p style='font-size: 15px; color: #334155; line-height: 1.5;'>You requested to disable <strong>Require PIN for Admin Modifications</strong>. Use the following 6-digit OTP code to verify your identity and complete this action:</p>
+                            <div style='text-align: center; margin: 36px 0;'>
+                                <span style='font-size: 36px; font-weight: 800; letter-spacing: 6px; color: #b91c1c; padding: 12px 24px; background-color: #fef2f2; border-radius: 8px; border: 1px solid #fee2e2; display: inline-block;'>{$this->verificationOtp}</span>
+                            </div>
+                            <p style='color: #ef4444; font-size: 13px; line-height: 1.5; margin-bottom: 0;'><strong>Note:</strong> This verification code is valid for 10 minutes. If you did not make this request, please change your password immediately.</p>
+                            <hr style='border: 0; border-top: 1px solid #e2e8f0; margin-top: 24px; margin-bottom: 24px;'>
+                            <p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>© " . date('Y') . " Adminova. All rights reserved.</p>
+                        </div>
+                    ");
+            });
+            session()->flash('otp_status', 'Verification OTP has been sent to your email.');
+        } catch (\Exception $e) {
+            $this->verificationError = 'Failed to send OTP: ' . $e->getMessage();
+            $this->otpSent = false;
+        }
+    }
+
+    public function verifySecurityAction()
+    {
+        $this->verificationError = '';
+
+        if ($this->verificationMethod === 'password') {
+            if (empty($this->verificationInput)) {
+                $this->verificationError = 'Password is required.';
+                return;
+            }
+
+            if (!\Illuminate\Support\Facades\Hash::check($this->verificationInput, auth()->user()->password)) {
+                $this->verificationError = 'Incorrect password.';
+                return;
+            }
+        } else {
+            // OTP verification
+            if (empty($this->verificationInput)) {
+                $this->verificationError = 'OTP code is required.';
+                return;
+            }
+
+            $sessionOtp = session('admin_security_otp');
+            $expiresAt = session('admin_security_otp_expires_at');
+
+            if (!$sessionOtp || !$expiresAt || now()->greaterThan($expiresAt)) {
+                $this->verificationError = 'OTP code has expired or is invalid. Please request a new one.';
+                return;
+            }
+
+            if ($this->verificationInput !== $sessionOtp) {
+                $this->verificationError = 'Incorrect OTP code.';
+                return;
+            }
+
+            // Clear session OTP
+            session()->forget(['admin_security_otp', 'admin_security_otp_expires_at']);
+        }
+
+        // Verification successful! Disable the toggle and save it immediately to database.
+        $this->admin_action_pin_enabled = false;
+        Setting::set('admin_action_pin_enabled', false);
+        Setting::set('admin_action_pin', '');
+        
+        $this->isSecurityVerificationModalOpen = false;
+        $this->verificationInput = '';
+        $this->otpSent = false;
+        
+        session()->flash('status', 'Admin Action Security disabled successfully.');
+    }
+
+    public function closeSecurityVerificationModal()
+    {
+        $this->isSecurityVerificationModalOpen = false;
+        $this->verificationInput = '';
+        $this->otpSent = false;
+        $this->verificationError = '';
+        // Restore correct toggle status from database
+        $this->admin_action_pin_enabled = (bool) Setting::get('admin_action_pin_enabled', false);
     }
 
     public function save()

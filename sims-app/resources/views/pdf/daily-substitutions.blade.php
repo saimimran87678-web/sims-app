@@ -135,9 +135,32 @@
     </div>
 
     <div id="report-content" style="padding: 40px; background: white; max-width: 900px; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-    <div class="header">
-        <h1>Teacher Arrangement Report</h1>
-        <p>{{ \Carbon\Carbon::parse($date)->format('l, j M Y') }}</p>
+    {{-- Dynamic Institute Header --}}
+    <div style="margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; font-family: 'Helvetica', 'Arial', sans-serif;">
+        @php
+            $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+            $formalName = \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS'));
+            $address = \App\Models\Setting::getGlobal('institute_address');
+        @endphp
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                @if($logoPath)
+                    <td style="width: 65px; text-align: left; vertical-align: middle; padding-right: 15px;">
+                        <img src="{{ '/' . $logoPath }}" style="height: 55px; max-width: 65px; object-fit: contain;" crossorigin="anonymous">
+                    </td>
+                @endif
+                <td style="text-align: left; vertical-align: middle;">
+                    <div style="font-size: 20px; font-weight: bold; text-transform: uppercase; color: #0f172a; line-height: 1.2; letter-spacing: 0.5px;">{{ $formalName }}</div>
+                    @if($address)
+                        <div style="font-size: 11px; color: #475569; margin-top: 3px; font-weight: 500;">{{ $address }}</div>
+                    @endif
+                </td>
+                <td style="text-align: right; vertical-align: middle; width: 220px;">
+                    <div style="font-size: 11px; font-weight: bold; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px;">Teacher Arrangement Report</div>
+                    <div style="font-size: 12px; font-weight: bold; color: #0f172a; margin-top: 3px;">{{ \Carbon\Carbon::parse($date)->format('l, j M Y') }}</div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     @if(empty($data))
@@ -175,7 +198,7 @@
                                         @endif
                                     </div>
                                 </div>
-                            @endforeach
+                              @endforeach
                         </td>
                     </tr>
                 @endforeach
@@ -188,7 +211,12 @@
     </div>
     </div> <!-- end report-content -->
 
-    <script src="{{ asset('js/html2pdf.bundle.min.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        if (typeof html2pdf === 'undefined') {
+            document.write('<script src="{{ asset('js/html2pdf.bundle.min.js') }}"><\/script>');
+        }
+    </script>
     <script>
         function downloadPdf() {
             var element = document.getElementById('report-content');
@@ -196,19 +224,24 @@
                 margin:       [10, 10, 10, 10],
                 filename:     'Teacher_Arrangement_{{ $date }}.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true, allowTaint: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             
             // New Promise-based usage:
-            html2pdf().set(opt).from(element).save();
+            html2pdf().set(opt).from(element).save().then(function() {
+                // Auto close after downloading
+                setTimeout(function() {
+                    window.close();
+                }, 500);
+            });
         }
 
         // Auto-download on load
         window.onload = function() {
             setTimeout(function() {
                 downloadPdf();
-            }, 500);
+            }, 600);
         };
     </script>
 </body>

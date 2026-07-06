@@ -14,6 +14,8 @@ class Exam extends Model
         'start_date',
         'end_date',
         'is_active',
+        'datesheet_instructions_heading',
+        'datesheet_instructions',
     ];
 
     protected $casts = [

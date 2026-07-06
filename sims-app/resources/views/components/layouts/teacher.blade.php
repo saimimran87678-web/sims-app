@@ -78,10 +78,19 @@
             class="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative md:translate-x-0 flex flex-col h-screen transform"
         >
             <div class="flex items-center gap-3 p-6 border-b border-gray-100 flex-shrink-0">
-                <div class="flex items-center justify-center w-10 h-10 text-white shadow-lg rounded-xl bg-gradient-to-br from-green-500 to-emerald-600">
-                    <!-- Graduation Cap Icon -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-                </div>
+                @php
+                    $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+                @endphp
+                @if($logoPath && file_exists(public_path($logoPath)))
+                    <div class="flex items-center justify-center w-10 h-10 shadow-md rounded-xl bg-white border border-gray-100 overflow-hidden p-1">
+                        <img src="{{ '/' . $logoPath }}" class="w-full h-full object-contain">
+                    </div>
+                @else
+                    <div class="flex items-center justify-center w-10 h-10 text-white shadow-lg rounded-xl bg-gradient-to-br from-green-500 to-emerald-600">
+                        <!-- Graduation Cap Icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                    </div>
+                @endif
                 <div>
                     <h1 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600 truncate max-w-[150px]" title="{{ \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2') }}">
                         {{ \App\Models\Setting::getGlobal('institute_short_name', \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2')) }}

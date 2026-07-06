@@ -50,8 +50,16 @@
                 <button
                     type="submit"
                     wire:loading.attr="disabled"
-                    class="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 h-[42px]"
+                    class="px-6 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 disabled:opacity-50 h-[42px] cursor-pointer"
+                    style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);"
                 >
+                    <svg wire:loading.remove class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    
+                    <svg wire:loading class="animate-spin h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+
                     <span wire:loading.remove>Generate Report</span>
                     <span wire:loading>Processing...</span>
                 </button>
@@ -77,6 +85,9 @@
                 data-maxmarks='@json($subjectMaxMarks)'
                 data-examname="{{ $examName }}"
                 data-classname="{{ $className }}"
+                data-formal-name="{{ \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS')) }}"
+                data-address="{{ \App\Models\Setting::getGlobal('institute_address', '') }}"
+                data-logo="{{ \App\Models\Setting::getGlobal('institute_logo') ? '/' . \App\Models\Setting::getGlobal('institute_logo') : '' }}"
             >
                 <div class="p-6 border-b border-gray-100 flex justify-between items-center flex-wrap gap-4">
                     <h3 class="font-bold text-gray-800">
@@ -192,7 +203,10 @@
             columnHeaders: JSON.parse(container.dataset.headers || '{}'),
             subjectMaxMarks: JSON.parse(container.dataset.maxmarks || '{}'),
             examName: container.dataset.examname || '',
-            className: container.dataset.classname || ''
+            className: container.dataset.classname || '',
+            formalName: container.dataset.formalName || '',
+            address: container.dataset.address || '',
+            logo: container.dataset.logo || ''
         };
     }
 
@@ -213,7 +227,7 @@
             
             if (!isAbsent && score !== '-') {
                 const p = (parseFloat(score) / max) * 100;
-                if (p >= 0) { // Ensure percentage is calculated only if score is valid
+                if (p >= 0) { 
                     pct = p.toFixed(1) + '%';
                     if (p >= 90) grade = 'A+';
                     else if (p >= 80) grade = 'A';
@@ -226,7 +240,7 @@
                 grade = 'Absent';
             }
             
-            let cellStyle = '';
+            let cellStyle = 'color: #334155;';
             if (isAbsent) {
                 cellStyle = 'color: red; font-weight: bold;';
             } else if (isFailed) {
@@ -234,51 +248,52 @@
             }
             
             subjectRows += '<tr>' +
-                '<td style="text-align: left; padding: 8px; border: 1px solid #ddd;">' + subjectName + '</td>' +
-                '<td style="text-align: center; padding: 8px; border: 1px solid #ddd;">' + max + '</td>' +
-                '<td style="text-align: center; padding: 8px; border: 1px solid #ddd; ' + cellStyle + '">' + score + '</td>' +
-                '<td style="text-align: center; padding: 8px; border: 1px solid #ddd;">' + pct + '</td>' +
-                '<td style="text-align: center; padding: 8px; border: 1px solid #ddd;">' + grade + '</td>' +
+                '<td style="text-align: left; padding: 10px 12px; border: 1px solid #cbd5e1; font-size: 12px; color: #334155;">' + subjectName + '</td>' +
+                '<td style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; font-size: 12px; color: #334155; width: 20%;">' + max + '</td>' +
+                '<td style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; font-size: 12px; ' + cellStyle + ' width: 20%;">' + score + '</td>' +
+                '<td style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; font-size: 12px; color: #334155; width: 15%;">' + pct + '</td>' +
+                '<td style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; font-size: 12px; color: #334155; width: 15%;">' + grade + '</td>' +
             '</tr>';
         }
 
-        return '<div class="page" style="page-break-after: always; padding: 40px; font-family: sans-serif;">' +
-            '<div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;">' +
-                '<div style="font-size: 24px; font-weight: bold; text-transform: uppercase;">ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)</div>' +
-                '<div style="font-size: 16px; margin-bottom: 10px;">G-6/2 ISLAMABAD</div>' +
-                '<div style="font-size: 18px; color: #555;">' + data.examName + '</div>' +
+        return '<div class="page" style="page-break-after: always; padding: 30px 40px; font-family: \'Segoe UI\', system-ui, -apple-system, sans-serif; color: #1e293b; max-width: 850px; margin: 0 auto; box-sizing: border-box;">' +
+            '<div style="text-align: center; margin-bottom: 25px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 20px;">' +
+                (data.logo ? '<div style="margin-bottom: 12px;"><img src="' + data.logo + '" style="height: 55px; max-width: 150px; object-fit: contain;"></div>' : '') +
+                '<div style="font-size: 22px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.5px;">' + (data.formalName || 'SIMS') + '</div>' +
+                (data.address ? '<div style="font-size: 13px; color: #64748b; margin-top: 4px; font-weight: 500;">' + data.address + '</div>' : '') +
+                '<div style="font-size: 14px; font-weight: 700; color: #1e3a8a; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 10px;">' + data.examName + '</div>' +
             '</div>' +
-            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">' +
-                '<div><strong>Name:</strong> ' + student.name + '</div>' +
-                '<div><strong>Roll No:</strong> ' + (student.roll_no || '-') + '</div>' +
-                '<div><strong>Father Name:</strong> ' + (student.father_name || '-') + '</div>' +
-                '<div><strong>Admission No:</strong> ' + (student.admission_no || '-') + '</div>' +
-                '<div><strong>Class:</strong> ' + data.className + '</div>' +
-                '<div><strong>Position:</strong> ' + (student.position || '-') + '</div>' +
+            '<div style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 8px 16px; margin-bottom: 25px; font-size: 13px; color: #334155; padding: 12px 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">' +
+                '<div><span style="color: #64748b; font-weight: 600; display: inline-block; width: 110px;">Name:</span><strong style="color: #0f172a;">' + student.name + '</strong></div>' +
+                '<div><span style="color: #64748b; font-weight: 600; display: inline-block; width: 110px;">Roll No:</span><strong style="color: #0f172a;">' + (student.roll_no || '-') + '</strong></div>' +
+                '<div><span style="color: #64748b; font-weight: 600; display: inline-block; width: 110px;">Father Name:</span><strong style="color: #0f172a;">' + (student.father_name || '-') + '</strong></div>' +
+                '<div><span style="color: #64748b; font-weight: 600; display: inline-block; width: 110px;">Admission No:</span><strong style="color: #0f172a;">' + (student.admission_no || '-') + '</strong></div>' +
+                '<div><span style="color: #64748b; font-weight: 600; display: inline-block; width: 110px;">Class:</span><strong style="color: #0f172a;">' + data.className + '</strong></div>' +
+                '<div><span style="color: #64748b; font-weight: 600; display: inline-block; width: 110px;">Position:</span><strong style="color: #0f172a;">' + (student.position || '-') + '</strong></div>' +
             '</div>' +
-            '<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">' +
-                '<thead><tr style="background-color: #f5f5f5;">' +
-                    '<th style="text-align: left; padding: 10px; border: 1px solid #ddd;">Subject</th>' +
-                    '<th style="text-align: center; padding: 10px; border: 1px solid #ddd;">Max Marks</th>' +
-                    '<th style="text-align: center; padding: 10px; border: 1px solid #ddd;">Obtained</th>' +
-                    '<th style="text-align: center; padding: 10px; border: 1px solid #ddd;">%</th>' +
-                    '<th style="text-align: center; padding: 10px; border: 1px solid #ddd;">Grade</th>' +
+            '<table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">' +
+                '<thead><tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">' +
+                    '<th style="text-align: left; padding: 10px 12px; border: 1px solid #cbd5e1; color: #1e3a8a; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Subject</th>' +
+                    '<th style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; color: #1e3a8a; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; width: 20%;">Max Marks</th>' +
+                    '<th style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; color: #1e3a8a; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; width: 20%;">Obtained</th>' +
+                    '<th style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; color: #1e3a8a; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; width: 15%;">%</th>' +
+                    '<th style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; color: #1e3a8a; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; width: 15%;">Grade</th>' +
                 '</tr></thead>' +
                 '<tbody>' + subjectRows + '</tbody>' +
-                '<tfoot><tr style="font-weight: bold; background-color: #f9f9f9;">' +
-                    '<td style="text-align: left; padding: 10px; border: 1px solid #ddd;">Total</td>' +
-                    '<td style="text-align: center; padding: 10px; border: 1px solid #ddd;">' + student.max_total + '</td>' +
-                    '<td style="text-align: center; padding: 10px; border: 1px solid #ddd;">' + student.total_obtained + '</td>' +
-                    '<td style="text-align: center; padding: 10px; border: 1px solid #ddd;">' + student.percentage + '%</td>' +
-                    '<td style="text-align: center; padding: 10px; border: 1px solid #ddd;">' + student.grade + '</td>' +
+                '<tfoot><tr style="font-weight: bold; background-color: #f8fafc; border-top: 2px solid #cbd5e1;">' +
+                    '<td style="text-align: left; padding: 10px 12px; border: 1px solid #cbd5e1; color: #0f172a; font-size: 12px;">Total</td>' +
+                    '<td style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; color: #0f172a; font-size: 12px;">' + student.max_total + '</td>' +
+                    '<td style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; color: #0f172a; font-size: 12px;">' + student.total_obtained + '</td>' +
+                    '<td style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; color: #1e3a8a; font-size: 12px;">' + student.percentage + '%</td>' +
+                    '<td style="text-align: center; padding: 10px 12px; border: 1px solid #cbd5e1; font-size: 12px; color: #334155;">' + student.grade + '</td>' +
                 '</tr></tfoot>' +
             '</table>' +
-            '<div style="margin-top: 20px; padding: 10px; background-color: ' + (student.summary === 'Pass' ? '#d4edda' : '#f8d7da') + '; border-radius: 5px; text-align: center;">' +
-                '<strong>Result: ' + student.summary + '</strong>' +
+            '<div style="margin-top: 20px; padding: 10px; background-color: ' + (student.summary === 'Pass' ? '#ecfdf5' : '#fef2f2') + '; border: 1px solid ' + (student.summary === 'Pass' ? '#a7f3d0' : '#fecaca') + '; color: ' + (student.summary === 'Pass' ? '#065f46' : '#991b1b') + '; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">' +
+                'Result: ' + student.summary +
             '</div>' +
             '<div style="margin-top: 60px; display: flex; justify-content: space-between;">' +
-                '<div style="border-top: 1px solid #333; padding-top: 5px; width: 150px; text-align: center;">Class Teacher</div>' +
-                '<div style="border-top: 1px solid #333; padding-top: 5px; width: 150px; text-align: center;">Principal</div>' +
+                '<div style="border-top: 1.5px solid #cbd5e1; padding-top: 6px; width: 180px; text-align: center; font-size: 12px; font-weight: 600; color: #475569;">Class Teacher</div>' +
+                '<div style="border-top: 1.5px solid #cbd5e1; padding-top: 6px; width: 180px; text-align: center; font-size: 12px; font-weight: 600; color: #475569;">Principal</div>' +
             '</div>' +
         '</div>';
     }
@@ -363,8 +378,8 @@
             '<style>@page { size: auto; margin: 5mm; } body { font-family: sans-serif; padding: 10px; font-size: 11px; } @media print { body { -webkit-print-color-adjust: exact; } table { width: 100%; font-size: inherit; } }</style></head>' +
             '<body>' +
             '<div style="text-align: center; margin-bottom: 20px;">' +
-                '<div style="font-size: 20px; font-weight: bold; text-transform: uppercase;">ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)</div>' +
-                '<div style="font-size: 14px; margin-bottom: 5px;">G-6/2 ISLAMABAD</div>' +
+                '<div style="font-size: 20px; font-weight: bold; text-transform: uppercase;">' + {!! json_encode(strtoupper(\App\Models\Setting::getGlobal('institute_name', 'ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)'))) !!} + '</div>' +
+                '<div style="font-size: 14px; margin-bottom: 5px;">' + {!! json_encode(strtoupper(\App\Models\Setting::getGlobal('institute_address', 'G-6/2 ISLAMABAD'))) !!} + '</div>' +
                 '<div style="font-size: 16px; margin-top: 5px;">Result Gazette - ' + data.examName + ' - ' + data.className + '</div>' +
             '</div>' +
             '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">' +

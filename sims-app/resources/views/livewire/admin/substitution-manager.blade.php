@@ -5,7 +5,7 @@
             <p class="text-gray-500 text-sm">Manage daily teacher attendance and assign substitutes</p>
         </div>
         <div class="flex gap-3 w-full sm:w-auto">
-            <button wire:click="downloadPDF" class="w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium flex items-center gap-2 shadow-sm shadow-blue-200 transition-all">
+            <button onclick="downloadPdfDirectly(event, '{{ $this->getPrintUrl() }}', '{{ $selectedDate }}')" class="w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium flex items-center gap-2 shadow-sm shadow-blue-200 transition-all">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Download PDF
             </button>
@@ -35,7 +35,7 @@
 
         <div class="space-y-4">
             @foreach($teachers as $teacher)
-                <div class="border border-gray-150 rounded-xl overflow-hidden {{ $teacherStatuses[$teacher->id] !== 'Present' ? 'ring-2 ring-blue-100' : '' }}">
+                <div wire:key="teacher-row-{{ $teacher->id }}" class="border border-gray-150 rounded-xl overflow-hidden {{ $teacherStatuses[$teacher->id] !== 'Present' ? 'ring-2 ring-blue-100' : '' }}">
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between p-4 bg-gray-50/50 gap-3 border-b border-gray-100">
                         <div class="font-bold text-gray-800 text-base sm:text-lg">{{ $teacher->name }}</div>
                         <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full lg:w-auto">
@@ -67,7 +67,7 @@
                             @else
                                 <div class="space-y-3">
                                     @foreach($schedule as $period)
-                                        <div class="flex flex-col md:flex-row md:items-center md:justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 gap-4">
+                                        <div wire:key="period-row-{{ $teacher->id }}-{{ $period->period_no }}" class="flex flex-col md:flex-row md:items-center md:justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 gap-4">
                                             <div class="w-full md:w-1/3">
                                                 <div class="text-xs font-bold text-gray-500 uppercase tracking-wider">Period {{ $period->period_no }}</div>
                                                 <div class="font-extrabold text-gray-800 text-base mt-0.5">{{ $period->class_name }}</div>
@@ -124,3 +124,72 @@
         </div>
     </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+    if (typeof html2pdf === 'undefined') {
+        document.write('<script src="{{ asset('js/html2pdf.bundle.min.js') }}"><\/script>');
+    }
+</script>
+<script>
+    function downloadPdfDirectly(event, url, dateStr) {
+        event.preventDefault();
+        
+        const btn = event.currentTarget;
+        const originalContent = btn.innerHTML;
+        
+        // Show spinner/loading state
+        btn.disabled = true;
+        btn.innerHTML = `
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Generating PDF...
+        `;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error("Failed to fetch PDF template");
+                return response.text();
+            })
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const reportContent = doc.getElementById('report-content');
+                
+                if (!reportContent) throw new Error("Report content container not found in fetched HTML");
+                
+                // Create a temporary hidden container
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                tempDiv.style.top = '-9999px';
+                tempDiv.style.width = '900px';
+                tempDiv.innerHTML = reportContent.innerHTML;
+                document.body.appendChild(tempDiv);
+                
+                const opt = {
+                    margin:       [10, 10, 10, 10],
+                    filename:     'Teacher_Arrangement_' + dateStr + '.pdf',
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, allowTaint: true },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                
+                // Generate and save
+                return html2pdf().set(opt).from(tempDiv).save().then(() => {
+                    tempDiv.remove();
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error generating PDF. Please try again.");
+            })
+            .finally(() => {
+                // Restore button state
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            });
+    }
+</script>

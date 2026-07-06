@@ -26,6 +26,7 @@ class StudentList extends Component
     public $isModalOpen = false;
     public $isEditMode = false;
     public $editStudentId = null;
+    public $auto_roll_no = true;
     
     // View Modal State
     public $viewingStudent = null;
@@ -95,6 +96,8 @@ class StudentList extends Component
     {
         $this->resetForm();
         $this->isEditMode = false;
+        $this->auto_roll_no = true;
+        $this->autoAssignRollNo($this->classId);
         $this->isModalOpen = true;
     }
 
@@ -126,6 +129,7 @@ class StudentList extends Component
         $this->extra_curriculars = $student->extra_curriculars ? explode(',', $student->extra_curriculars) : [];
         
         $this->isEditMode = true;
+        $this->auto_roll_no = false;
         $this->isModalOpen = true;
     }
 
@@ -139,6 +143,9 @@ class StudentList extends Component
 
     public function store()
     {
+        $this->roll_no = trim($this->roll_no);
+        $this->admission_no = trim($this->admission_no);
+
         // Adjust validation for edit mode
         $rules = $this->rules;
         if ($this->isEditMode) {
@@ -156,7 +163,7 @@ class StudentList extends Component
             'father_name' => $this->father_name,
             'phone' => $this->phone,
             'email' => $this->email,
-            'gender' => $this->gender,
+            'gender' => strtolower($this->gender),
             'dob' => $this->dob ?: null,
             'admission_date' => $this->admission_date ?: null,
             'address' => $this->address,
@@ -172,14 +179,18 @@ class StudentList extends Component
              $data['profile_photo_path'] = $path;
         }
 
-        if ($this->isEditMode) {
-            $student = \App\Models\Student::find($this->editStudentId);
-            $student->update($data);
-            session()->flash('message', 'Student updated successfully.');
-        } else {
-            \App\Models\Student::create($data);
-            session()->flash('message', 'Student added successfully.');
-        }
+        DB::transaction(function() use ($data) {
+            $this->adjustRollNumbers($this->classId, $this->roll_no);
+
+            if ($this->isEditMode) {
+                $student = \App\Models\Student::find($this->editStudentId);
+                $student->update($data);
+                session()->flash('message', 'Student updated successfully.');
+            } else {
+                \App\Models\Student::create($data);
+                session()->flash('message', 'Student added successfully.');
+            }
+        });
 
         $this->closeModal();
     }
@@ -325,5 +336,49 @@ class StudentList extends Component
             'sportsOptions' => $sportsOptions,
             'activityOptions' => $activityOptions
         ])->layout('components.layouts.teacher', ['title' => 'My Students']);
+    }
+
+    public function updatedAutoRollNo($value)
+    {
+        if ($value) {
+            $this->autoAssignRollNo($this->classId);
+        }
+    }
+
+    protected function autoAssignRollNo($classId)
+    {
+        if ($classId) {
+            $maxRollNo = \App\Models\Student::where('class_id', $classId)
+                ->get()
+                ->map(fn($student) => (int)$student->roll_no)
+                ->max();
+            $this->roll_no = (string)($maxRollNo ? ($maxRollNo + 1) : 1);
+        } else {
+            $this->roll_no = '';
+        }
+    }
+
+    protected function adjustRollNumbers($classId, $targetRollNo)
+    {
+        $target = (int)$targetRollNo;
+        if ($target <= 0) return;
+
+        $students = \App\Models\Student::where('class_id', $classId)
+            ->when($this->editStudentId, function ($query) {
+                $query->where('id', '!=', $this->editStudentId);
+            })
+            ->get();
+
+        $studentsToShift = $students->filter(function ($s) use ($target) {
+            return (int)$s->roll_no >= $target;
+        })->sortBy(function ($s) {
+            return (int)$s->roll_no;
+        });
+
+        $nextRollNo = $target + 1;
+        foreach ($studentsToShift as $student) {
+            $student->update(['roll_no' => (string)$nextRollNo]);
+            $nextRollNo++;
+        }
     }
 }

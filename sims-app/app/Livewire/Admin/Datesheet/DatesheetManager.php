@@ -42,10 +42,18 @@ class DatesheetManager extends Component
     public $inlineEditGrade = null;
     public $gradeSubjects = []; // [grade => [subject1, subject2, ...]]
 
+    // Custom Instructions State
+    public $instructionsHeading = '';
+    public $instructionsText = '';
+
     public function mount($examId)
     {
         $this->examId = $examId;
         $this->exam = Exam::findOrFail($examId);
+        
+        $this->instructionsHeading = $this->exam->datesheet_instructions_heading ?? 'Important Instructions';
+        $this->instructionsText = $this->exam->datesheet_instructions ?? "1. Students must arrive at least 15 minutes before the exam start time.\n2. Examination will be conducted from the prescribed course.\n3. Paper will start at 9:00 A.M. (Unless specified otherwise).";
+        
         $this->loadData();
     }
 
@@ -585,6 +593,16 @@ class DatesheetManager extends Component
         }
 
         return array_unique($assigned);
+    }
+
+    public function saveInstructions()
+    {
+        $this->exam->update([
+            'datesheet_instructions_heading' => $this->instructionsHeading,
+            'datesheet_instructions' => $this->instructionsText,
+        ]);
+
+        session()->flash('message', 'Datesheet instructions updated successfully.');
     }
 
     public function render()

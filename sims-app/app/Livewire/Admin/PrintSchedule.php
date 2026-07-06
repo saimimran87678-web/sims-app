@@ -26,6 +26,8 @@ class PrintSchedule extends Component
     public $teachers = [];
     public $timetables = [];
 
+    public $rooms = [];
+
     public function mount()
     {
         $this->periods = PeriodConfig::orderBy('period_no')->get();
@@ -50,6 +52,10 @@ class PrintSchedule extends Component
             ->where('day', $dayToLoad)
             ->where('is_substitute', false)
             ->get();
+
+        if ($this->viewType === 'room') {
+            $this->rooms = $this->timetables->pluck('room')->filter()->unique()->sort()->values();
+        }
     }
 
     public function getScheduleByClass($classId, $periodNo)
