@@ -125,8 +125,12 @@
 
     {{-- Message Queue Manager --}}
     <div id="queue-manager" class="glass-card p-6 rounded-2xl border border-gray-100 mt-6 scroll-mt-6" wire:poll.10s>
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6">
             <h3 class="text-xl font-bold text-gray-800">Message Queue Manager</h3>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200 w-fit">
+                Context: {{ \App\Models\AcademicSession::find(\App\Models\AcademicSession::getActiveSessionId())->name ?? 'Active Session' }} 
+                ({{ ucfirst(session('selected_shift_type', 'morning')) }} Shift)
+            </span>
         </div>
         
         {{-- Queue Settings --}}

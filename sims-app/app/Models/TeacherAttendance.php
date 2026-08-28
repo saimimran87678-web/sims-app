@@ -14,6 +14,7 @@ class TeacherAttendance extends Model
         'date',
         'status',
         'academic_session_id',
+        'shift_type',
     ];
 
     public function teacher()

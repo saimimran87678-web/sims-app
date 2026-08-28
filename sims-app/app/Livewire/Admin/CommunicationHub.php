@@ -40,7 +40,17 @@ class CommunicationHub extends Component
     public function mount()
     {
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $this->classes = Classes::where('academic_session_id', $activeSessionId)->get();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+        $this->classes = Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $activeSessionId)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            })
+            ->orderBy('numeric_value')
+            ->get();
     }
 
     // When classes are checked/unchecked
@@ -48,41 +58,31 @@ class CommunicationHub extends Component
     {
         // 1. Fetch students for selected classes
         if (!empty($this->selectedClasses)) {
-            $students = Student::whereIn('class_id', $this->selectedClasses)
-                ->where('status', 'active')
-                ->orderBy('class_id')
-                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+            $students = Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->whereIn('enrollments.class_id', $this->selectedClasses)
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active')
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('enrollments.shift_type', $shiftType);
+                })
+                ->orderBy('enrollments.class_id')
+                ->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')
+                ->select('students.*', 'enrollments.class_id', 'enrollments.roll_number as roll_no')
                 ->get();
                 
             $this->availableStudents = $students->groupBy('class_id')->toArray();
             
             // 2. Intelligent Selection Logic
-            // If we just added a class, select its students by default
-            // If we removed a class, remove its students from selectedStudents
-            
             // Current valid student IDs based on selected classes
             $validStudentIds = $students->pluck('id')->toArray();
             
             // Filter selectedStudents to only include valid ones (removes students from unchecked classes)
             $this->selectedStudents = array_intersect($this->selectedStudents, $validStudentIds);
-            
-            // Add new students (if logic dictates auto-select). 
-            // Let's implement: If a class is in selectedClasses, ensure its students are selected 
-            // UNLESS explicitly unchecked? That's hard to track.
-            // Simple approach: When a class is checked, add all its students. User can uncheck.
-            // Problem: updatedSelectedClasses runs on every toggle. 
-            
-            // Better Approach for UX:
-            // Just load availableStudents. Let user check "Select All" for a class if they want, 
-            // or we pre-fill.
-            
-            // Let's pre-fill for now to match "Select Class -> Send to Class" ease of use.
-            // But we shouldn't re-select students if user manually unchecked them.
-            // Complexity: Livewire doesn't give us "old" value easily here.
-            
-            // simplified: We will rely on the View to have "Select All" buttons for each class group.
-            // But to make it "appear for selection", simply populate availableStudents is enough.
-            // The User requested: "which class got selected box checked its students will appear for selection"
             
         } else {
             $this->availableStudents = [];
@@ -92,8 +92,21 @@ class CommunicationHub extends Component
 
     public function toggleClassStudents($classId)
     {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
         // Helper to select/deselect all students of a specific class
-        $classStudents = Student::where('class_id', $classId)->where('status', 'active')->pluck('id')->toArray();
+        $classStudents = Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+            ->where('enrollments.class_id', $classId)
+            ->where('enrollments.academic_session_id', $activeSessionId)
+            ->where('enrollments.status', 'active')
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('enrollments.shift_type', $shiftType);
+            })
+            ->pluck('students.id')
+            ->toArray();
         
         // Check if all are currently selected
         $intersect = array_intersect($classStudents, $this->selectedStudents);
@@ -126,9 +139,20 @@ class CommunicationHub extends Component
 
             // 1. Gather Recipients
             // Fetch select students with phone numbers
-            $recipients = Student::whereIn('id', $this->selectedStudents)
-                ->where('status', 'active')
-                ->whereNotNull('phone')
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+            $recipients = Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->whereIn('students.id', $this->selectedStudents)
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active')
+                ->whereNotNull('students.phone')
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('enrollments.shift_type', $shiftType);
+                })
+                ->select('students.phone', 'students.name', 'students.id')
                 ->get()
                 ->map(function ($s) {
                     return [

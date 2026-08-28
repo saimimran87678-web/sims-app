@@ -127,11 +127,13 @@ class LicenseController extends Controller
         }
 
         // Step 5 — Compute integrity hash
+        $allowedDomains = $firebaseLic['allowed_domain'] ?? 'localhost';
         $newHash = LicenseVerifier::computeIntegrityHash(
             $licenseKey,
             $firebaseLic['expires_at'],
             $firebaseLic['status'],
-            $firebaseLic['school_id']
+            $firebaseLic['school_id'],
+            $allowedDomains
         );
 
         // Step 6 — Save to local SQLite + update .env + clear cache
@@ -143,6 +145,7 @@ class LicenseController extends Controller
                 'firebase_refresh_token'  => encrypt($newRefreshToken),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
+                'allowed_domains'         => encrypt($allowedDomains),
                 'expires_at'              => $firebaseLic['expires_at'] ? Carbon::parse($firebaseLic['expires_at']) : null,
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $newHash,

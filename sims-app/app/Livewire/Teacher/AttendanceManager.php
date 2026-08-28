@@ -25,24 +25,38 @@ class AttendanceManager extends Component
     public $is_holiday = false;
     public $holiday_reason = '';
     public $summary = ['present' => 0, 'absent' => 0, 'leave' => 0, 'total' => 0];
+    public $missedDates = [];
 
     public function mount()
     {
         $this->date = Carbon::now()->format('Y-m-d');
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $this->classId = Auth::user()->getSessionClassId($activeSessionId);
+        $classId = Auth::user()->getSessionClassId($activeSessionId);
 
-        if (!$this->classId) {
-            session()->flash('error', 'You are not assigned to any class.');
-            return;
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
         }
 
-        // Fetch class name
-        $this->className = DB::table('classes')->where('id', $this->classId)->value('name') ?? 'Unknown Class';
+        if ($classId) {
+            $class = \App\Models\Classes::withoutGlobalScope('active_session')->find($classId);
+            if ($class && ($shiftType === 'both' || $class->shift_type === $shiftType)) {
+                $this->classId = $classId;
+                $this->className = $class->name;
+            }
+        }
+
+        if (!$this->classId) {
+            session()->flash('error', 'You are not assigned to any class in this shift.');
+            return;
+        }
 
         $this->fetchStudents();
         $this->loadAttendance();
         $this->checkDateStatus();
+        $this->calculateMissedDates();
     }
 
     public function updatedDate()
@@ -65,9 +79,14 @@ class AttendanceManager extends Component
             : $d->isWeekend();         // Saturday + Sunday are weekends
 
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $holiday = Holiday::where('start_date', '<=', $this->date)
-            ->where('end_date', '>=', $this->date)
+        $activeSession = $activeSessionId ? \App\Models\AcademicSession::find($activeSessionId) : null;
+        $isRegular = ($activeSession && $activeSession->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+        $holiday = Holiday::whereDate('start_date', '<=', $this->date)
+            ->whereDate('end_date', '>=', $this->date)
             ->where('academic_session_id', $activeSessionId)
+            ->where('shift_type', $shiftType)
             ->first();
 
         if ($holiday) {
@@ -81,20 +100,27 @@ class AttendanceManager extends Component
 
     public function fetchStudents()
     {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $selectedClass = \App\Models\Classes::withoutGlobalScope('active_session')->find($this->classId);
+        $classShift = $selectedClass ? $selectedClass->shift_type : 'morning';
+
         $this->students = DB::table('students')
-            ->where('class_id', $this->classId)
-            ->where('status', 'active')
-            ->orderByRaw('CAST(roll_no AS INTEGER) ASC') // Ensure ordered by roll number for easier checking
+            ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+            ->where('enrollments.class_id', $this->classId)
+            ->where('enrollments.academic_session_id', $activeSessionId)
+            ->where('enrollments.shift_type', $classShift)
+            ->where('enrollments.status', 'active')
+            ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status')
             ->get();
             
-        $this->summary['total'] = $this->students->count();
+        $this->summary['total'] = collect($this->students)->count();
     }
 
     public function loadAttendance()
     {
         // Fetch existing records for this class and date
         $records = DB::table('attendances')
-            ->whereIn('student_id', $this->students->pluck('id'))
+            ->whereIn('student_id', collect($this->students)->pluck('id'))
             ->where('date', $this->date)
             ->get();
 
@@ -112,7 +138,7 @@ class AttendanceManager extends Component
         $leave = [];
 
         foreach ($records as $record) {
-            $student = $this->students->firstWhere('id', $record->student_id);
+            $student = collect($this->students)->firstWhere('id', $record->student_id);
             if (!$student) continue;
 
             if ($record->status === 'A') {
@@ -134,7 +160,7 @@ class AttendanceManager extends Component
         $leaveList = $this->parseRolls($this->leave_rolls);
         
         // Get valid class rolls
-        $validRolls = $this->students->pluck('roll_no')->map(fn($r) => (string)$r)->toArray();
+        $validRolls = collect($this->students)->pluck('roll_no')->map(fn($r) => (string)$r)->toArray();
 
         // Filter out invalid rolls
         $validAbsent = array_intersect($absentList, $validRolls);
@@ -175,7 +201,7 @@ class AttendanceManager extends Component
         $leaveRolls = $this->parseRolls($this->leave_rolls);
 
         // Validation: Check for invalid roll numbers
-        $validRolls = $this->students->pluck('roll_no')->map(fn($r) => (string)$r)->toArray();
+        $validRolls = collect($this->students)->pluck('roll_no')->map(fn($r) => (string)$r)->toArray();
         
         $invalidAbsent = array_diff($absentRolls, $validRolls);
         $invalidLeave = array_diff($leaveRolls, $validRolls);
@@ -216,12 +242,14 @@ class AttendanceManager extends Component
                     ];
                 }
 
+                $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
                 DB::table('attendances')->updateOrInsert(
                     [
                         'student_id' => $student->id,
                         'date' => $this->date,
                     ],
                     [
+                        'academic_session_id' => $activeSessionId,
                         'status' => $status,
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -231,6 +259,7 @@ class AttendanceManager extends Component
             DB::commit();
             
             $this->attendance_status = 'submitted';
+            $this->calculateMissedDates();
             
             // Send WhatsApp notifications
             $this->sendWhatsAppNotifications($absentStudents, $leaveStudents);
@@ -307,25 +336,43 @@ class AttendanceManager extends Component
             return collect();
         }
 
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         return DB::table('attendances')
             ->join('students', 'attendances.student_id', '=', 'students.id')
-            ->where('students.class_id', $this->classId)
+            ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+            ->where('enrollments.class_id', $this->classId)
+            ->where('enrollments.academic_session_id', $activeSessionId)
+            ->where('enrollments.shift_type', $shiftType)
             ->where('attendances.date', $this->date)
             ->whereIn('attendances.status', ['A', 'L'])
-            ->select('students.id', 'students.name', 'students.roll_no', 'students.phone', 'attendances.status')
-            ->orderByRaw('CAST(students.roll_no AS INTEGER) ASC')
+            ->select('students.id', 'students.name', 'enrollments.roll_number as roll_no', 'students.phone', 'attendances.status')
+            ->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')
             ->get();
     }
 
     public function markAsLate($studentId)
     {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         $attendance = DB::table('attendances')
             ->join('students', 'attendances.student_id', '=', 'students.id')
-            ->where('students.class_id', $this->classId)
+            ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+            ->where('enrollments.class_id', $this->classId)
+            ->where('enrollments.academic_session_id', $activeSessionId)
+            ->where('enrollments.shift_type', $shiftType)
             ->where('attendances.student_id', $studentId)
             ->where('attendances.date', $this->date)
             ->whereIn('attendances.status', ['A', 'L'])
-            ->select('attendances.*', 'students.name', 'students.roll_no', 'students.phone')
+            ->select('attendances.*', 'students.name', 'enrollments.roll_number as roll_no', 'students.phone')
             ->first();
 
         if (!$attendance) {
@@ -346,7 +393,7 @@ class AttendanceManager extends Component
                 $now = now();
                 $formattedTime = $now->format('h:i A');
                 
-                $messageText = \App\Helpers\PhoneHelper::getLateMessage($attendance->name, $attendance->roll_no, $formattedTime);
+                $messageText = \App\Helpers\PhoneHelper::getLateMessage($attendance->name, $attendance->roll_no, $formattedTime, null, null, $studentId);
 
                 DB::table('whatsapp_queue')->insert([
                     'phone' => $attendance->phone,
@@ -367,6 +414,107 @@ class AttendanceManager extends Component
             DB::rollBack();
             session()->flash('error', 'Error marking student as late: ' . $e->getMessage());
         }
+    }
+
+    public function selectDate($date)
+    {
+        $this->date = $date;
+        $this->checkDateStatus();
+        $this->loadAttendance();
+    }
+
+    public function calculateMissedDates()
+    {
+        if (!$this->classId || empty($this->students)) {
+            $this->missedDates = [];
+            return;
+        }
+
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        if (!$sessionObj) {
+            $this->missedDates = [];
+            return;
+        }
+
+        $sessionStart = Carbon::parse($sessionObj->start_date);
+        $today = Carbon::today();
+
+        if ($sessionStart->isFuture()) {
+            $this->missedDates = [];
+            return;
+        }
+
+        // Scan past 30 days
+        $startDate = Carbon::today()->subDays(30);
+        if ($startDate->lt($sessionStart)) {
+            $startDate = $sessionStart;
+        }
+        $endDate = Carbon::yesterday();
+
+        if ($startDate->gt($endDate)) {
+            $this->missedDates = [];
+            return;
+        }
+
+        // Fetch holidays
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+        $holidays = DB::table('holidays')
+            ->where('academic_session_id', $activeSessionId)
+            ->where('shift_type', $shiftType)
+            ->whereDate('start_date', '<=', $endDate->format('Y-m-d'))
+            ->whereDate('end_date', '>=', $startDate->format('Y-m-d'))
+            ->get();
+
+        // Fetch recorded attendance dates
+        $studentIds = collect($this->students)->pluck('id')->toArray();
+        $recordedDates = DB::table('attendances')
+            ->whereIn('student_id', $studentIds)
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->distinct()
+            ->pluck('date')
+            ->toArray();
+
+        $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
+
+        $missed = [];
+        $current = $startDate->copy();
+        while ($current->lte($endDate)) {
+            $dateStr = $current->format('Y-m-d');
+
+            // Check weekend
+            $isWeekend = $weekendMode === 'sun_only'
+                ? $current->isSunday()
+                : $current->isWeekend();
+
+            if ($isWeekend) {
+                $current->addDay();
+                continue;
+            }
+
+            // Check holiday
+            $isHoliday = $holidays->contains(function ($h) use ($dateStr) {
+                $start = substr($h->start_date, 0, 10);
+                $end = substr($h->end_date, 0, 10);
+                return $dateStr >= $start && $dateStr <= $end;
+            });
+
+            if ($isHoliday) {
+                $current->addDay();
+                continue;
+            }
+
+            // Check if recorded
+            if (!in_array($dateStr, $recordedDates)) {
+                $missed[] = $dateStr;
+            }
+
+            $current->addDay();
+        }
+
+        $this->missedDates = $missed;
     }
 
     public function render()

@@ -27,9 +27,18 @@ class DefaulterList extends Component
     public function render()
     {
         $sessionId = AcademicSession::getActiveSessionId();
+        $sessionObj = AcademicSession::find($sessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
 
         // Get aggregate balance per student
         $query = FeeRecord::with(['student', 'class'])
+            ->whereHas('class', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            })
             ->where('academic_session_id', $sessionId)
             ->where('balance', '>=', $this->min_due)
             ->where('period', '<=', now()->format('Y-m'))
@@ -49,7 +58,11 @@ class DefaulterList extends Component
 
         return view('livewire.admin.fee.defaulter-list', [
             'defaulters' => $defaulters,
-            'classes' => Classes::where('academic_session_id', $sessionId)->get(),
+            'classes' => Classes::withoutGlobalScope('active_session')
+                ->where('academic_session_id', $sessionId)
+                ->where('shift_type', $shiftType)
+                ->orderBy('numeric_value')
+                ->get(),
             'totalDefaulters' => $defaulters->total(),
             'totalDueAggregate' => $query->get()->sum('total_due') // Sum across all pages for the current filter
         ])->layout($layout);

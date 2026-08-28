@@ -266,7 +266,7 @@
                                     </button>
                                 </div>
                                 <div class="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                                   @foreach($allClasses as $class)
+                                    @foreach($allClasses as $class)
                                        @php $hasAccess = in_array($class->id, $userClassAccess); @endphp
                                        <button 
                                            wire:click="toggleClassAccess({{ $class->id }})"
@@ -278,7 +278,9 @@
                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                                @endif
                                            </div>
-                                           <span class="font-semibold text-xs truncate">{{ $class->name }}</span>
+                                           <span class="font-semibold text-xs truncate">
+                                               {{ $class->name }}{{ $class->shift_type && $class->shift_type !== 'regular' ? ' (' . ucfirst($class->shift_type) . ')' : '' }}
+                                           </span>
                                        </button>
                                    @endforeach
                                 </div>

@@ -13,6 +13,9 @@ class Student extends Model
     public const TRANSPORT_OPTIONS = ['none' => 'None', 'school_bus' => 'School Bus', 'private_van' => 'Private Van', 'car' => 'Car', 'bike' => 'Bike'];
     public const BUS_OPTIONS = ['135', '147'];
     
+    public $tempClassId;
+    public $tempRollNo;
+
     protected $fillable = [
         'name',
         'roll_no',
@@ -34,19 +37,102 @@ class Student extends Model
         'status',
     ];
 
+    public function setClassIdAttribute($value)
+    {
+        $this->tempClassId = $value;
+    }
+
+    public function setRollNoAttribute($value)
+    {
+        $this->tempRollNo = $value;
+    }
+
     protected $casts = [
         'dob' => 'date',
         'admission_date' => 'date',
     ];
 
-    public function class()
+    protected static function booted()
     {
-        return $this->belongsTo(Classes::class, 'class_id');
+        static::created(function ($student) {
+            $classId = $student->tempClassId ?? request('class_id') ?? null;
+            $rollNo = $student->tempRollNo ?? request('roll_no') ?? null;
+            $status = request('status') ?? $student->attributes['status'] ?? 'active';
+
+            if ($classId) {
+                $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+                $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+                $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+
+                $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+                if ($shiftType === 'both') {
+                    $shiftType = 'morning';
+                }
+
+                \App\Models\Enrollment::updateOrCreate(
+                    [
+                        'student_id' => $student->id,
+                        'academic_session_id' => $activeSessionId,
+                        'shift_type' => $shiftType,
+                    ],
+                    [
+                        'class_id' => $classId,
+                        'roll_number' => $rollNo,
+                        'status' => $status,
+                    ]
+                );
+            }
+        });
     }
 
-    public function section()
+    public function class()
     {
-        return $this->belongsTo(Section::class, 'section_id');
+        return $this->hasOneThrough(
+            Classes::class,
+            Enrollment::class,
+            'student_id', // Foreign key on enrollments table...
+            'id',         // Foreign key on classes table...
+            'id',         // Local key on students table...
+            'class_id'    // Local key on enrollments table...
+        )->where('enrollments.academic_session_id', \App\Models\AcademicSession::getActiveSessionId());
+    }
+
+    public function getRollNoAttribute()
+    {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
+        $enrollment = $this->enrollments()
+            ->where('academic_session_id', $activeSessionId)
+            ->where('shift_type', $shiftType)
+            ->first();
+
+        return $enrollment ? $enrollment->roll_number : null;
+    }
+
+    public function getClassIdAttribute()
+    {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
+        $enrollment = $this->enrollments()
+            ->where('academic_session_id', $activeSessionId)
+            ->where('shift_type', $shiftType)
+            ->first();
+
+        return $enrollment ? $enrollment->class_id : null;
     }
 
     public function subjects()
@@ -67,5 +153,40 @@ class Student extends Model
     public function feeOverrides()
     {
         return $this->hasMany(StudentFeeOverride::class);
+    }
+
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    public function currentEnrollments($sessionId)
+    {
+        return $this->enrollments()->forSession($sessionId)->active()->get();
+    }
+
+    public function isEnrolledInShift($sessionId, $shift): bool
+    {
+        return $this->enrollments()->forSession($sessionId)->forShift($shift)->active()->exists();
+    }
+
+    public function morningEnrollment($sessionId): ?Enrollment
+    {
+        return $this->enrollments()->forSession($sessionId)->morning()->active()->first();
+    }
+
+    public function eveningEnrollment($sessionId): ?Enrollment
+    {
+        return $this->enrollments()->forSession($sessionId)->evening()->active()->first();
+    }
+
+    public function enrollmentFor($sessionId, $shift): ?Enrollment
+    {
+        return $this->enrollments()->forSession($sessionId)->forShift($shift)->active()->first();
+    }
+
+    public function isDualShift($sessionId): bool
+    {
+        return $this->enrollments()->forSession($sessionId)->active()->count() > 1;
     }
 }

@@ -14,6 +14,10 @@ class Dashboard extends Component
 
         // 1. Get Active Session Correctly
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
         // 2. Count Allocated Subjects (Total teaching assignments)
         // Manual Allocations
@@ -21,6 +25,9 @@ class Dashboard extends Component
             ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
             ->where('subject_allocations.user_id', $user->id)
             ->where('classes.academic_session_id', $activeSessionId)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->select('subject_allocations.*')
             ->get();
             
@@ -33,7 +40,12 @@ class Dashboard extends Component
 
         $hasInherentSubject = false;
         if ($userClassId && !empty($userClassSubject)) {
-             $hasInherentSubject = true;
+             $ownClass = \App\Models\Classes::withoutGlobalScope('active_session')->find($userClassId);
+             if ($ownClass && ($shiftType === 'both' || $ownClass->shift_type === $shiftType)) {
+                 $hasInherentSubject = true;
+             } else {
+                 $userClassId = null; // Mismatched shift, ignore
+             }
         }
         
         $totalSubjects = $allocatedCount + ($hasInherentSubject ? 1 : 0);
@@ -50,16 +62,13 @@ class Dashboard extends Component
 
         $studentsCount = 0;
         if (!empty($classIds)) {
-             // Only count students in the ACTIVE session or all? 
-             // Usually "My Students" implies current context.
-             // Students table has `class_id`, assuming students belong to classes in current session context usually.
-             // But if we want to be strict about session:
-             // Classes table has `academic_session_id`.
-             $studentsCount = DB::table('students')
-                ->join('classes', 'students.class_id', '=', 'classes.id')
-                ->whereIn('students.class_id', $classIds)
-                ->where('classes.academic_session_id', $activeSessionId)
-                ->where('students.status', 'active')
+             $studentsCount = DB::table('enrollments')
+                ->whereIn('class_id', $classIds)
+                ->where('academic_session_id', $activeSessionId)
+                ->where('status', 'active')
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('shift_type', $shiftType);
+                })
                 ->count();
         }
 
@@ -68,7 +77,12 @@ class Dashboard extends Component
         $now = now(); 
         $day = $now->format('l'); // Monday, Tuesday...
 
-        $periods = DB::table('period_configs')->orderBy('period_no')->get();
+        $periods = DB::table('period_configs')
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            })
+            ->orderBy('period_no')
+            ->get();
         
         $todaySchedule = collect();
         if ($activeSessionId) {
@@ -79,6 +93,9 @@ class Dashboard extends Component
                 ->where('classes.academic_session_id', $activeSessionId)
                 ->where('day', $day)
                 ->where('is_substitute', 0) // What about substitutes?
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('classes.shift_type', $shiftType);
+                })
                 ->select('timetables.*', 'classes.name as class_name', 'subjects.name as subject_name')
                 ->get();
                 
@@ -90,6 +107,9 @@ class Dashboard extends Component
                 ->where('classes.academic_session_id', $activeSessionId)
                 ->where('is_substitute', 1)
                 ->where('substitute_date', $now->format('Y-m-d'))
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('classes.shift_type', $shiftType);
+                })
                 ->select('timetables.*', 'classes.name as class_name', 'subjects.name as subject_name')
                 ->get();
                 

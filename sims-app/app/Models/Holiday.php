@@ -11,6 +11,7 @@ class Holiday extends Model
 
     protected $fillable = [
         'academic_session_id',
+        'shift_type',
         'start_date',
         'end_date',
         'reason',

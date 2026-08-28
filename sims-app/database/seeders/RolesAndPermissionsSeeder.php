@@ -38,7 +38,12 @@ class RolesAndPermissionsSeeder extends Seeder
             
             // Classes & Subjects
             'classes.manage',
+            'class.create',
+            'class.edit',
+            'class.delete',
             'subjects.manage',
+            'subject.create',
+            'subject.delete',
             
             // Schedule
             'schedule.manage',

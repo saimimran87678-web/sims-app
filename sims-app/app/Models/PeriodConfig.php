@@ -13,6 +13,7 @@ class PeriodConfig extends Model
         'is_break',
         'is_assembly',
         'label',
+        'shift_type',
     ];
 
     protected $casts = [

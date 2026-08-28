@@ -12,7 +12,7 @@
             </p>
         </div>
 
-        <div class="flex items-center gap-3 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
+        <div class="flex items-center gap-3 bg-white p-2 rounded-xl border border-gray-200 shadow-sm relative">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-gray-500 ml-2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
             <input
                 wire:model.live="date"
@@ -20,8 +20,40 @@
                 max="{{ date('Y-m-d') }}"
                 class="border-none focus:ring-0 text-gray-700 font-medium bg-transparent"
             />
+            @if(!empty($missedDates))
+                <span class="absolute -top-1.5 -right-1.5 flex h-5 w-5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-[10px] text-white font-bold items-center justify-center">{{ count($missedDates) }}</span>
+                </span>
+            @endif
         </div>
     </div>
+
+    {{-- Missed Attendance Warning Banner --}}
+    @if(!empty($missedDates))
+        <div class="bg-red-50 border border-red-100 p-4 rounded-xl text-red-800">
+            <div class="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-red-600 mt-0.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                <div>
+                    <h4 class="font-bold text-red-900">Missed Attendance Alert</h4>
+                    <p class="text-sm text-red-700 mt-0.5">
+                        Attendance was not marked for the following working days in the last 30 days. Click a date to mark it:
+                    </p>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        @foreach($missedDates as $mDate)
+                            <button 
+                                type="button" 
+                                wire:click="selectDate('{{ $mDate }}')"
+                                class="px-2.5 py-1 bg-white hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                            >
+                                {{ \Carbon\Carbon::parse($mDate)->format('d M (D)') }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- Alert Messages --}}
     @if (session()->has('message'))

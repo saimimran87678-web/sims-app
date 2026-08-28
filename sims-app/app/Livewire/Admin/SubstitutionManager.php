@@ -79,10 +79,21 @@ class SubstitutionManager extends Component
 
     public function loadTeacherAssignedSubs()
     {
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         $subs = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
+            ->where('classes.academic_session_id', $this->selectedSessionId)
             ->where('timetables.substitute_date', $this->selectedDate)
             ->where('timetables.is_substitute', true)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->select('timetables.teacher_id', 'timetables.period_no', 'classes.name as class_name')
             ->orderBy('timetables.period_no')
             ->get();
@@ -101,20 +112,34 @@ class SubstitutionManager extends Component
 
     public function loadData()
     {
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         $this->teachers = User::where('role', 'teacher')
-            ->whereExists(function ($query) {
+            ->whereExists(function ($query) use ($shiftType) {
                 $query->select(DB::raw(1))
                       ->from('session_user')
                       ->whereColumn('session_user.user_id', 'users.id')
                       ->where('session_user.academic_session_id', $this->selectedSessionId)
-                      ->where('session_user.is_active', true);
+                      ->where('session_user.is_active', true)
+                      ->when($shiftType !== 'regular', function ($q) use ($shiftType) {
+                          $q->where(function ($sq) use ($shiftType) {
+                              $sq->where('session_user.allowed_shifts', 'both')
+                                 ->orWhere('session_user.allowed_shifts', $shiftType);
+                          });
+                      });
             })
             ->orderBy('name')
             ->get();
         
-        // Load attendances for the selected date and session
+        // Load attendances for the selected date, session, and shift
         $attendances = TeacherAttendance::where('date', $this->selectedDate)
             ->where('academic_session_id', $this->selectedSessionId)
+            ->where('shift_type', $shiftType)
             ->get()->keyBy('teacher_id');
         
         $this->teacherStatuses = [];
@@ -136,12 +161,20 @@ class SubstitutionManager extends Component
 
     public function updatedTeacherStatuses($value, $teacherId)
     {
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         // Save to DB immediately
         TeacherAttendance::updateOrCreate(
             [
                 'teacher_id' => $teacherId, 
                 'date' => $this->selectedDate,
-                'academic_session_id' => $this->selectedSessionId
+                'academic_session_id' => $this->selectedSessionId,
+                'shift_type' => $shiftType,
             ],
             ['status' => $value]
         );
@@ -162,6 +195,13 @@ class SubstitutionManager extends Component
     {
         $dayOfWeek = Carbon::parse($this->selectedDate)->format('l');
 
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         // Find regular classes for this teacher
         $regularClasses = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
@@ -169,6 +209,10 @@ class SubstitutionManager extends Component
             ->where('timetables.teacher_id', $teacherId)
             ->where('timetables.day', $dayOfWeek)
             ->where('timetables.is_substitute', false)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
+            ->select('timetables.*')
             ->get();
 
         foreach ($regularClasses as $regClass) {
@@ -185,6 +229,13 @@ class SubstitutionManager extends Component
     {
         $dayOfWeek = Carbon::parse($this->selectedDate)->format('l');
 
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         // Fetch regular schedule for this teacher
         $regularSchedule = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
@@ -192,6 +243,10 @@ class SubstitutionManager extends Component
             ->where('timetables.teacher_id', $teacherId)
             ->where('timetables.day', $dayOfWeek)
             ->where('timetables.is_substitute', false)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
+            ->select('timetables.*')
             ->get();
 
         if (!isset($this->substitutions[$teacherId])) {
@@ -287,6 +342,13 @@ class SubstitutionManager extends Component
     {
         $dayOfWeek = Carbon::parse($this->selectedDate)->format('l');
 
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         // Check regular classes (ignore if it's the exact same class - e.g. co-teacher in divided class)
         $hasRegular = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
@@ -295,6 +357,9 @@ class SubstitutionManager extends Component
             ->where('timetables.day', $dayOfWeek)
             ->where('timetables.period_no', $periodNo)
             ->where('timetables.is_substitute', false)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->when($classId, function($q) use ($classId) {
                 return $q->where('timetables.class_id', '!=', $classId);
             })
@@ -304,10 +369,14 @@ class SubstitutionManager extends Component
 
         // Check other substitutions
         $hasSubstitute = DB::table('timetables')
-            ->where('teacher_id', $teacherId)
-            ->where('period_no', $periodNo)
-            ->where('substitute_date', $this->selectedDate)
-            ->where('is_substitute', true)
+            ->join('classes', 'timetables.class_id', '=', 'classes.id')
+            ->where('timetables.teacher_id', $teacherId)
+            ->where('timetables.period_no', $periodNo)
+            ->where('timetables.substitute_date', $this->selectedDate)
+            ->where('timetables.is_substitute', true)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->exists();
 
         return $hasSubstitute;
@@ -318,6 +387,13 @@ class SubstitutionManager extends Component
         $busyTeacherIds = [];
         $dayOfWeek = Carbon::parse($this->selectedDate)->format('l');
 
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         // 1. Teachers with regular classes (exclude if they are teaching the same class i.e., shared teacher)
         $regularBusy = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
@@ -325,6 +401,9 @@ class SubstitutionManager extends Component
             ->where('timetables.day', $dayOfWeek)
             ->where('timetables.period_no', $periodNo)
             ->where('timetables.is_substitute', false)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->when($classId, function($q) use ($classId) {
                 return $q->where('timetables.class_id', '!=', $classId);
             })
@@ -335,10 +414,14 @@ class SubstitutionManager extends Component
 
         // 2. Teachers already assigned as substitutes
         $subBusy = DB::table('timetables')
-            ->where('substitute_date', $this->selectedDate)
-            ->where('period_no', $periodNo)
-            ->where('is_substitute', true)
-            ->pluck('teacher_id')
+            ->join('classes', 'timetables.class_id', '=', 'classes.id')
+            ->where('timetables.substitute_date', $this->selectedDate)
+            ->where('timetables.period_no', $periodNo)
+            ->where('timetables.is_substitute', true)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
+            ->pluck('timetables.teacher_id')
             ->toArray();
 
         $busyTeacherIds = array_merge($busyTeacherIds, $subBusy);
@@ -368,6 +451,13 @@ class SubstitutionManager extends Component
     {
         $dayOfWeek = Carbon::parse($this->selectedDate)->format('l');
 
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         return DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->join('subjects', 'timetables.subject_id', '=', 'subjects.id')
@@ -375,6 +465,9 @@ class SubstitutionManager extends Component
             ->where('timetables.teacher_id', $teacherId)
             ->where('timetables.day', $dayOfWeek)
             ->where('timetables.is_substitute', false)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->select('timetables.*', 'classes.name as class_name', 'subjects.name as subject_name')
             ->orderBy('timetables.period_no')
             ->get();

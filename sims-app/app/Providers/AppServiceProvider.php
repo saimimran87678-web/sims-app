@@ -21,8 +21,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Enforce session/shift scoped permissions for shared admin features
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
-            // Super Admins and Admins bypass session scoping (global access)
-            if ($user->hasRole('Super Admin') || $user->role === 'admin') {
+            // Super Admins bypass session scoping (global access)
+            if ($user->hasRole('Super Admin')) {
                 return null;
             }
 
@@ -34,11 +34,21 @@ class AppServiceProvider extends ServiceProvider
             if (in_array($ability, $allSpatiePermissions)) {
                 $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
                 if ($activeSessionId) {
-                    $hasPermission = \Illuminate\Support\Facades\DB::table('session_user_permissions')
+                    $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+                    $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+                    $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+                    $query = \Illuminate\Support\Facades\DB::table('session_user_permissions')
                         ->where('user_id', $user->id)
                         ->where('academic_session_id', $activeSessionId)
-                        ->where('permission_name', $ability)
-                        ->exists();
+                        ->where('permission_name', $ability);
+
+                    if ($shiftType === 'both') {
+                        $hasPermission = $query->whereIn('shift_type', ['morning', 'evening', 'both'])->exists();
+                    } else {
+                        $hasPermission = $query->where('shift_type', $shiftType)->exists();
+                    }
+
                     return $hasPermission;
                 }
                 return false;

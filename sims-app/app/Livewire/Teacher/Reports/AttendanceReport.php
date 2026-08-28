@@ -35,32 +35,41 @@ class AttendanceReport extends Component
         $user = Auth::user();
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $userClassId = $user->getSessionClassId($activeSessionId);
+
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
         
         // 1. View All Classes Permission
         if ($user->can('reports.view-all-classes') || $user->can('reports.view')) {
-           // Check if manual restriction exists FIRST
-           $restrictedIds = DB::table('user_class_access')
+            // Check if manual restriction exists FIRST
+            $restrictedIds = DB::table('user_class_access')
                 ->where('user_id', $user->id)
                 ->pluck('class_id')
                 ->toArray();
            
-           if (!empty($restrictedIds)) {
-               $this->classes = Classes::whereIn('id', $restrictedIds)
-                   ->where('academic_session_id', $activeSessionId)
-                   ->orderBy('numeric_value')
-                   ->get();
-           } elseif ($user->can('reports.view-all-classes')) {
-               $this->classes = Classes::where('academic_session_id', $activeSessionId)
-                   ->orderBy('numeric_value')
-                   ->get();
-           } else {
-               // Fallback for simple 'reports.view' if no explicit allow-all (behaves like own class only unless otherwise specified)
-               $this->classes = $userClassId ? Classes::where('id', $userClassId)->get() : collect();
-           }
+            if (!empty($restrictedIds)) {
+                $this->classes = Classes::whereIn('classes.id', $restrictedIds)
+                    ->where('classes.academic_session_id', $activeSessionId)
+                    ->where('classes.shift_type', $shiftType)
+                    ->orderBy('classes.numeric_value')
+                    ->get();
+            } elseif ($user->can('reports.view-all-classes')) {
+                $this->classes = Classes::where('classes.academic_session_id', $activeSessionId)
+                    ->where('classes.shift_type', $shiftType)
+                    ->orderBy('classes.numeric_value')
+                    ->get();
+            } else {
+                // Fallback for simple 'reports.view' if no explicit allow-all (behaves like own class only unless otherwise specified)
+                $this->classes = $userClassId ? Classes::where('id', $userClassId)->where('shift_type', $shiftType)->get() : collect();
+            }
         } 
         // 2. Default: Own Class
         elseif ($userClassId) {
-            $this->classes = Classes::where('id', $userClassId)->get();
+            $this->classes = Classes::where('id', $userClassId)->where('shift_type', $shiftType)->get();
         } else {
             $this->classes = collect();
         }
@@ -105,14 +114,24 @@ class AttendanceReport extends Component
             $startOfMonth = Carbon::parse($this->selectedMonth)->startOfMonth()->format('Y-m-d');
             $endOfMonth = Carbon::parse($this->selectedMonth)->endOfMonth()->format('Y-m-d');
 
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $shiftType = session('selected_shift_type', 'morning');
+            if ($shiftType === 'both') {
+                $shiftType = 'morning';
+            }
+
             // 1. Fetch Students
             $studentsQuery = DB::table('students')
-                ->where('class_id', $this->selectedClass);
+                ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->where('enrollments.class_id', $this->selectedClass)
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.shift_type', $shiftType)
+                ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status');
 
             if ($this->filterStatus === 'active') {
-                $studentsQuery->where('status', 'active');
+                $studentsQuery->where('enrollments.status', 'active');
             } elseif ($this->filterStatus === 'inactive') {
-                $studentsQuery->where('status', 'inactive')
+                $studentsQuery->where('enrollments.status', 'inactive')
                     ->whereExists(function ($q) use ($startOfMonth, $endOfMonth) {
                         $q->select(DB::raw(1))
                           ->from('attendances')
@@ -121,9 +140,9 @@ class AttendanceReport extends Component
                     });
             } else {
                 $studentsQuery->where(function ($q) use ($startOfMonth, $endOfMonth) {
-                    $q->where('status', 'active')
+                    $q->where('enrollments.status', 'active')
                       ->orWhere(function ($sq) use ($startOfMonth, $endOfMonth) {
-                          $sq->where('status', 'inactive')
+                          $sq->where('enrollments.status', 'inactive')
                             ->whereExists(function ($eq) use ($startOfMonth, $endOfMonth) {
                                 $eq->select(DB::raw(1))
                                   ->from('attendances')
@@ -134,7 +153,7 @@ class AttendanceReport extends Component
                 });
             }
 
-            $students = $studentsQuery->orderByRaw('CAST(roll_no AS INTEGER) ASC')->get();
+            $students = $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')->get();
 
             if ($students->isEmpty()) {
                 $this->isLoading = false;
@@ -158,15 +177,16 @@ class AttendanceReport extends Component
             $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
             $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
-            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode, $activeSessionId) {
+            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode, $activeSessionId, $shiftType) {
                 $d = \Carbon\Carbon::parse($date);
                 $isWeekend = $weekendMode === 'sun_only'
                     ? $d->isSunday()
                     : $d->isWeekend();
 
-                $isHoliday = \App\Models\Holiday::where('start_date', '<=', $date)
-                    ->where('end_date', '>=', $date)
+                $isHoliday = \App\Models\Holiday::whereDate('start_date', '<=', $date)
+                    ->whereDate('end_date', '>=', $date)
                     ->where('academic_session_id', $activeSessionId)
+                    ->where('shift_type', $shiftType)
                     ->exists();
 
                 return !$isWeekend && !$isHoliday;

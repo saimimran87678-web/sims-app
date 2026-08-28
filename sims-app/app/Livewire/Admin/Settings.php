@@ -17,6 +17,7 @@ class Settings extends Component
     public $institute_logo;
     public $logo; // Temporary uploaded logo file
     public $weekend_mode;
+    public $default_session_shift_mode;
     public $admin_action_pin_enabled = false;
     public $admin_action_pin = '';
     public $successMessage = '';
@@ -38,6 +39,7 @@ class Settings extends Component
             'institute_phone' => 'nullable|string|max:50',
             'logo' => 'nullable|image|max:1024', // Max 1MB logo image
             'weekend_mode'   => 'required|in:sun_only,sat_sun',
+            'default_session_shift_mode' => 'required|in:Regular,Dual',
             'admin_action_pin_enabled' => 'boolean',
             'admin_action_pin' => $this->admin_action_pin_enabled ? 'required|string|min:4|max:6' : 'nullable|string',
         ];
@@ -51,6 +53,7 @@ class Settings extends Component
         $this->institute_phone = Setting::getGlobal('institute_phone', '');
         $this->institute_logo = Setting::getGlobal('institute_logo', '');
         $this->weekend_mode   = Setting::get('weekend_mode', 'sat_sun');
+        $this->default_session_shift_mode = Setting::getGlobal('default_session_shift_mode', 'Regular');
         $this->admin_action_pin_enabled = (bool) Setting::get('admin_action_pin_enabled', false);
         $this->admin_action_pin = Setting::get('admin_action_pin', '');
     }
@@ -204,10 +207,24 @@ class Settings extends Component
         Setting::setGlobal('institute_short_name', $this->institute_short_name ?? '');
         Setting::setGlobal('institute_phone', $this->institute_phone ?? '');
         Setting::set('weekend_mode',   $this->weekend_mode);
+        Setting::setGlobal('default_session_shift_mode', $this->default_session_shift_mode);
         Setting::set('admin_action_pin_enabled', $this->admin_action_pin_enabled);
         Setting::set('admin_action_pin', $this->admin_action_pin_enabled ? $this->admin_action_pin : '');
 
         session()->flash('status', 'Settings updated successfully!');
+    }
+
+    public function removeLogo()
+    {
+        if ($this->institute_logo) {
+            if (file_exists(public_path($this->institute_logo))) {
+                @unlink(public_path($this->institute_logo));
+            }
+            Setting::setGlobal('institute_logo', '');
+            $this->institute_logo = '';
+        }
+        $this->logo = null;
+        session()->flash('status', 'Logo removed successfully.');
     }
 
     public function render()

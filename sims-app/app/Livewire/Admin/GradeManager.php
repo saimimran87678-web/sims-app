@@ -63,7 +63,17 @@ class GradeManager extends Component
     public function loadExams()
     {
         if ($this->selectedSessionId) {
+            $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
             $this->exams = Exam::where('academic_session_id', $this->selectedSessionId)
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->whereHas('schedules.class', function ($query) use ($shiftType) {
+                        $query->withoutGlobalScope('active_session')
+                              ->where('classes.shift_type', $shiftType);
+                    });
+                })
                 ->orderBy('created_at', 'desc')
                 ->get();
         } else {
@@ -102,8 +112,15 @@ class GradeManager extends Component
             ->unique()
             ->toArray();
 
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
         $this->availableClasses = Classes::withoutGlobalScope('active_session')
             ->whereIn('id', $examClassIds)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            })
             ->orderBy('numeric_value')
             ->get();
 
@@ -169,9 +186,12 @@ class GradeManager extends Component
         $this->passingScore = ($this->maxMarks * $this->passingMarks) / 100;
 
         // Fetch Students (Admins see all active students in the class)
-        $this->students = \App\Models\Student::where('class_id', $this->selectedClassId)
-            ->where('status', 'active')
-            ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
+        $this->students = \App\Models\Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+            ->where('enrollments.class_id', $this->selectedClassId)
+            ->where('enrollments.academic_session_id', $this->selectedSessionId)
+            ->where('enrollments.status', 'active')
+            ->select('students.*', 'enrollments.roll_number as roll_no')
+            ->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')
             ->get();
 
         // Fetch Existing Marks

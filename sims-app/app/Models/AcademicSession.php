@@ -32,6 +32,11 @@ class AcademicSession extends Model
             ->withTimestamps();
     }
 
+    public function classes()
+    {
+        return $this->hasMany(Classes::class, 'academic_session_id');
+    }
+
     public function feeHeads()
     {
         return $this->hasMany(FeeHead::class);
@@ -69,13 +74,18 @@ class AcademicSession extends Model
         });
     }
 
+    public function scopeActive($query)
+    {
+        return $query->where('is_archived', false);
+    }
+
     public static function getActiveSessionId()
     {
         // 1. If a specific session context is explicitly set for the user (via login or session shifter), use it.
         if (session()->has('current_session_id')) {
             $id = session('current_session_id');
-            // Validate the stored ID still exists in the database
-            if (static::where('id', $id)->exists()) {
+            // Validate the stored ID still exists in the database and is not archived
+            if (static::active()->where('id', $id)->exists()) {
                 return $id;
             }
             // Stale reference — clear it and fall through
@@ -85,25 +95,24 @@ class AcademicSession extends Model
         // Admin overrides for viewing other sessions
         if (session()->has('selected_academic_session_id') && auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->hasRole('Super Admin'))) {
             $id = session('selected_academic_session_id');
-            if (static::where('id', $id)->exists()) {
+            if (static::active()->where('id', $id)->exists()) {
                 return $id;
             }
             session()->forget('selected_academic_session_id');
         }
 
-        // 2. Default: Find the currently active parent session (or Morning shift)
-        $activeSession = static::where('is_active', true)
-                               ->where(function($query) {
-                                   $query->whereNull('parent_id')->orWhere('shift_type', 'Morning');
-                               })
+        // 2. Default: Find the currently active parent session
+        $activeSession = static::active()
+                               ->where('is_active', true)
+                               ->whereNull('parent_id')
                                ->first();
 
         if (!$activeSession) {
-            $activeSession = static::where('is_active', true)->first();
+            $activeSession = static::active()->where('is_active', true)->first();
         }
 
         if (!$activeSession) {
-            $activeSession = static::orderBy('start_date', 'desc')->first();
+            $activeSession = static::active()->orderBy('start_date', 'desc')->first();
         }
 
         return $activeSession ? $activeSession->id : null;

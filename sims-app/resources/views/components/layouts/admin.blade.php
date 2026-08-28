@@ -246,32 +246,108 @@
                         <span x-text="pageTitle"></span>
                     </h2>
 
-                    <!-- Session Selector -->
+                    <!-- Session & Shift Selector -->
                     @php
-                        $allSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
+                        $allSessions = \App\Models\AcademicSession::active()->orderBy('start_date', 'desc')->get();
                         $currentSessionId = \App\Models\AcademicSession::getActiveSessionId();
+                        
+                        $routeName = request()->route() ? request()->route()->getName() : '';
+                        $allowedToSeeBoth = in_array($routeName, [
+                            'admin.dashboard',
+                            'teacher.dashboard',
+                            'admin.students',
+                            'teacher.students',
+                            'teacher.shared.students'
+                        ]);
+                        
+                        if (session('selected_shift_type') === 'both' && !$allowedToSeeBoth && $routeName) {
+                            session(['selected_shift_type' => 'morning']);
+                        }
+                        
+                        $currentShift = session('selected_shift_type', 'morning');
+                        $currentSessionObj = \App\Models\AcademicSession::find($currentSessionId);
+                        $currentSessionIsRegular = ($currentSessionObj && $currentSessionObj->shift_type === 'Regular');
                     @endphp
-                    <form action="{{ route('change-session') }}" method="POST" id="session-switch-form" class="inline-flex items-center">
+                    <form action="{{ route('change-session') }}" method="POST" id="session-switch-form" class="inline-flex items-center gap-3">
                         @csrf
-                        <div class="relative flex items-center bg-blue-50 text-blue-700 border border-blue-100 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                            <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-blue-500 animate-pulse hidden sm:inline-block"></span>
-                            <span class="mr-1 hidden sm:inline">Session:</span>
-                            <select 
-                                name="academic_session_id" 
-                                onchange="this.form.submit()" 
-                                class="bg-transparent border-none p-0 pr-6 text-xs font-semibold focus:ring-0 focus:outline-none cursor-pointer text-blue-700"
-                            >
+                        <input type="hidden" name="academic_session_id" id="nav-session-id-input" value="{{ $currentSessionId }}">
+                        <input type="hidden" name="shift_type" id="nav-shift-type-input" value="{{ $currentShift }}">
+
+                        <!-- Session Selector Custom Dropdown -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button type="button" @click="open = !open" class="relative flex items-center bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-indigo-700 border border-indigo-100 hover:border-indigo-300 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 group">
+                                <!-- Calendar Icon -->
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 mr-2 text-indigo-500 group-hover:scale-110 transition-transform">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                </svg>
+                                <span class="mr-1 hidden md:inline text-indigo-800">Session:</span>
+                                @php
+                                    $selectedSessionObj = $allSessions->firstWhere('id', $currentSessionId);
+                                @endphp
+                                <span class="font-extrabold pr-4">{{ $selectedSessionObj ? $selectedSessionObj->name : 'Choose Session' }}</span>
+                                <svg class="w-3 h-3 text-indigo-500 absolute right-2 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+
+                            <!-- Custom Dropdown Menu -->
+                            <div x-show="open" @click.away="open = false" style="display: none;" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] py-1.5 border border-gray-100 z-50">
                                 @foreach($allSessions as $session)
-                                    <option value="{{ $session->id }}" @selected($session->id == $currentSessionId) class="text-gray-800">
-                                        {{ $session->name }} 
-                                        @if($session->shift_type && !str_contains(strtolower($session->name), strtolower($session->shift_type)))
-                                            ({{ $session->shift_type }}) 
+                                    <button type="button" @click="document.getElementById('nav-session-id-input').value = '{{ $session->id }}'; document.getElementById('session-switch-form').submit();" class="w-full text-left px-4 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 {{ $session->id == $currentSessionId ? 'bg-indigo-50 text-indigo-700 font-extrabold' : 'text-gray-700 font-medium' }}">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $session->is_active ? 'bg-green-500' : 'bg-gray-300' }}"></span>
+                                        <span class="flex-1">{{ $session->name }}</span>
+                                        @if($session->is_active)
+                                            <span class="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-100">Active</span>
                                         @endif
-                                        {{ $session->is_active ? '- Active' : '' }}
-                                    </option>
+                                    </button>
                                 @endforeach
-                            </select>
+                            </div>
                         </div>
+
+                        @if(!$currentSessionIsRegular)
+                        <!-- Shift Selector Custom Dropdown -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button type="button" @click="open = !open" class="relative flex items-center bg-gradient-to-r from-purple-50 to-fuchsia-50 hover:from-purple-100 hover:to-fuchsia-100 text-purple-700 border border-purple-100 hover:border-purple-300 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 group">
+                                <!-- Sun/Moon/Clock Icon based on active shift -->
+                                @if($currentShift === 'morning')
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 mr-2 text-amber-500 group-hover:rotate-45 transition-transform duration-300">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m0 13.5V21M4.978 4.978l1.59 1.59m10.862 10.862 1.59 1.59M3 12h2.25m13.5 0H21M4.978 19.022l1.59-1.59m10.862-10.862 1.59-1.59M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" />
+                                    </svg>
+                                @elseif($currentShift === 'evening')
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 mr-2 text-indigo-500 group-hover:-translate-y-0.5 transition-transform">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998z" />
+                                    </svg>
+                                @else
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 mr-2 text-purple-500 group-hover:scale-110 transition-transform">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                                    </svg>
+                                @endif
+                                <span class="mr-1 hidden md:inline text-purple-800">Shift:</span>
+                                <span class="font-extrabold pr-4 capitalize">{{ $currentShift === 'both' ? 'Both Shifts' : $currentShift }}</span>
+                                <svg class="w-3 h-3 text-purple-500 absolute right-2 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+
+                            <!-- Custom Dropdown Menu -->
+                            <div x-show="open" @click.away="open = false" style="display: none;" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] py-1.5 border border-gray-100 z-50">
+                                <button type="button" @click="document.getElementById('nav-shift-type-input').value = 'morning'; document.getElementById('session-switch-form').submit();" class="w-full text-left px-4 py-2 text-xs hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 {{ $currentShift === 'morning' ? 'bg-purple-50 text-purple-700 font-extrabold' : 'text-gray-700 font-medium' }}">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    <span>Morning</span>
+                                </button>
+                                <button type="button" @click="document.getElementById('nav-shift-type-input').value = 'evening'; document.getElementById('session-switch-form').submit();" class="w-full text-left px-4 py-2 text-xs hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 {{ $currentShift === 'evening' ? 'bg-purple-50 text-purple-700 font-extrabold' : 'text-gray-700 font-medium' }}">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                    <span>Evening</span>
+                                </button>
+                                @if($allowedToSeeBoth)
+                                <button type="button" @click="document.getElementById('nav-shift-type-input').value = 'both'; document.getElementById('session-switch-form').submit();" class="w-full text-left px-4 py-2 text-xs hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 {{ $currentShift === 'both' ? 'bg-purple-50 text-purple-700 font-extrabold' : 'text-gray-700 font-medium' }}">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                    <span>Both Shifts</span>
+                                </button>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
                     </form>
                 </div>
 

@@ -71,6 +71,14 @@ class ResultReport extends Component
 
         $userClassId = $user->getSessionClassId($this->selectedSession);
 
+        // Determine current shift type
+        $sessionObj = AcademicSession::find($this->selectedSession);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         // 1. View All / Restricted Permission
         if ($user->can('reports.view') || $user->can('reports.view-all-classes')) {
              // Check if manual restriction exists FIRST
@@ -80,22 +88,24 @@ class ResultReport extends Component
                 ->toArray();
            
            if (!empty($restrictedIds)) {
-               $this->classes = Classes::whereIn('id', $restrictedIds)
-                   ->where('academic_session_id', $this->selectedSession)
-                   ->orderBy('numeric_value')
+               $this->classes = Classes::whereIn('classes.id', $restrictedIds)
+                   ->where('classes.academic_session_id', $this->selectedSession)
+                   ->where('classes.shift_type', $shiftType)
+                   ->orderBy('classes.numeric_value')
                    ->get();
            } elseif ($user->can('reports.view-all-classes')) {
-               $this->classes = Classes::where('academic_session_id', $this->selectedSession)
-                   ->orderBy('numeric_value')
+               $this->classes = Classes::where('classes.academic_session_id', $this->selectedSession)
+                   ->where('classes.shift_type', $shiftType)
+                   ->orderBy('classes.numeric_value')
                    ->get();
            } else {
                // Fallback if just 'reports.view' but no restricted list (Own class only)
-                $this->classes = $userClassId ? Classes::where('id', $userClassId)->get() : collect();
+                 $this->classes = $userClassId ? Classes::where('id', $userClassId)->where('shift_type', $shiftType)->get() : collect();
            }
         } 
         // 2. Class Teacher Check: Only own class
         elseif ($userClassId) {
-            $this->classes = Classes::where('id', $userClassId)->get();
+            $this->classes = Classes::where('id', $userClassId)->where('shift_type', $shiftType)->get();
         } 
         // 3. Fallback: No access
         else {
@@ -155,14 +165,24 @@ class ResultReport extends Component
                 $this->subjectPassingMarks[$subject->id] = $config ? (int)$config->passing_marks : 33;
             }
 
+            $activeSessionId = $this->selectedSession;
+            $shiftType = session('selected_shift_type', 'morning');
+            if ($shiftType === 'both') {
+                $shiftType = 'morning';
+            }
+
             // Fetch Students with all needed fields
             $studentsQuery = \App\Models\Student::with('subjects')
-                ->where('class_id', $this->classId);
+                ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->where('enrollments.class_id', $this->classId)
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.shift_type', $shiftType)
+                ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status');
 
             if ($this->filterStatus === 'active') {
-                $studentsQuery->where('status', 'active');
+                $studentsQuery->where('enrollments.status', 'active');
             } elseif ($this->filterStatus === 'inactive') {
-                $studentsQuery->where('status', 'inactive')
+                $studentsQuery->where('enrollments.status', 'inactive')
                     ->whereExists(function ($q) {
                         $q->select(DB::raw(1))
                           ->from('exam_marks')
@@ -171,9 +191,9 @@ class ResultReport extends Component
                     });
             } else {
                 $studentsQuery->where(function ($q) {
-                    $q->where('status', 'active')
+                    $q->where('enrollments.status', 'active')
                       ->orWhere(function ($sq) {
-                          $sq->where('status', 'inactive')
+                          $sq->where('enrollments.status', 'inactive')
                             ->whereExists(function ($eq) {
                                 $eq->select(DB::raw(1))
                                   ->from('exam_marks')
@@ -184,7 +204,7 @@ class ResultReport extends Component
                 });
             }
 
-            $students = $studentsQuery->orderByRaw('CAST(roll_no AS INTEGER) ASC')->get();
+            $students = $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')->get();
 
             // Fetch All Marks for this Exam/Class
             $marks = DB::table('exam_marks')

@@ -45,6 +45,19 @@
                     {{ $showTrash ? 'Back to Active' : 'View Trash' }}
                 </button>
 
+                {{-- Import Classes Button --}}
+                @if(!$showTrash)
+                    @can('class.create')
+                    <button
+                        wire:click="openImportModal"
+                        class="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2 shadow-lg shadow-emerald-200"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                        Import Classes
+                    </button>
+                    @endcan
+                @endif
+
                 {{-- Add Class --}}
                 @if(!$showTrash)
                     @can('class.create')
@@ -75,6 +88,33 @@
 
         {{-- CLASS GRID --}}
         @if(!$showTrash)
+        
+        @if($hasFinalExam)
+        <div class="mb-6 p-4 bg-gradient-to-r {{ $hasNextSession ? 'from-blue-50 to-indigo-50 border-blue-200/60' : 'from-yellow-50 to-orange-50 border-yellow-200/60' }} border rounded-2xl flex gap-3 shadow-sm">
+            <div class="w-10 h-10 rounded-xl {{ $hasNextSession ? 'bg-blue-600 shadow-blue-200' : 'bg-yellow-600 shadow-yellow-200' }} text-white flex items-center justify-center shrink-0 shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    @if($hasNextSession)
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    @else
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    @endif
+                </svg>
+            </div>
+            <div>
+                <h4 class="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                    {{ $hasNextSession ? '🎓 Class Promotion Setup Active' : '⚠️ Academic Session Required for Promotion' }}
+                </h4>
+                <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                    @if($hasNextSession)
+                        A <strong>Final-Term</strong> exam has been created for this session. You can now define which target class students in each class will advance to when promoted. Setting these pathways ensures the end-of-session promotion wizard executes correctly.
+                    @else
+                        A <strong>Final-Term</strong> exam is configured, but <strong>no next academic session is created yet</strong>. Please create a new academic session first in Settings > Academic Sessions before configuring class promotion pathways.
+                    @endif
+                </p>
+            </div>
+        </div>
+        @endif
+
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             @forelse($classes as $class)
                 <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3">
@@ -104,6 +144,30 @@
                                 <div>
                                     <span class="font-medium text-gray-700 block">{{ $class->name }}</span>
                                     <span class="text-xs text-gray-500">{{ $class->subjects_count }} Subjects</span>
+                                    
+                                    @if($hasFinalExam)
+                                    <div class="mt-2 flex flex-col gap-0.5">
+                                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Promotes To</label>
+                                        <select
+                                            @disabled(!$hasNextSession)
+                                            wire:change="updateNextClass({{ $class->id }}, $event.target.value)"
+                                            class="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg py-1 px-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none font-semibold text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            @if(!$hasNextSession)
+                                                <option value="">First create the New academic session</option>
+                                            @else
+                                                <option value="">Passed Out / None</option>
+                                                @foreach($allClasses as $optClass)
+                                                    @if($optClass->id !== $class->id)
+                                                        <option value="{{ $optClass->id }}" @selected($class->next_class_id === $optClass->id)>
+                                                            {{ $optClass->name }}
+                                                        </option>
+                                                    @endif
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                    </div>
+                                    @endif
                                 </div>
                             </div>
 
@@ -407,6 +471,89 @@
 
                 </div>{{-- end scrollable body --}}
             </div>{{-- end modal panel --}}
+        </div>
+    @endteleport
+    @endif
+    {{-- IMPORT CLASSES MODAL --}}
+    @if($showImportModal)
+    @teleport('body')
+        <div class="fixed inset-0 z-[999] overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" wire:click="closeImportModal"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 z-10 space-y-5 animate-modal">
+                    <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+                        <h3 class="text-lg font-bold text-gray-800">Import Classes</h3>
+                        <button wire:click="closeImportModal" class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Select Source Session</label>
+                            <select wire:model.live="importSourceSessionId" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white">
+                                <option value="">-- Choose Session --</option>
+                                @foreach($academicSessions as $session)
+                                    @if($session->id != $selectedSessionId)
+                                        <option value="{{ $session->id }}">{{ $session->name }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            @error('importSourceSessionId') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+
+                        @if($importSourceSessionId)
+                            <div>
+                                @php
+                                    $sourceClasses = $this->getSourceClasses();
+                                @endphp
+                                @if($sourceClasses->isNotEmpty())
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Select Classes to Import</label>
+                                        <button type="button" wire:click="toggleSelectAllSourceClasses" class="text-xs text-blue-600 font-bold hover:underline select-none">
+                                            {{ count($selectedSourceClassIds) === $sourceClasses->count() ? 'Deselect All' : 'Select All' }}
+                                        </button>
+                                    </div>
+                                    <div class="max-h-48 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/50 space-y-2">
+                                        @foreach($sourceClasses as $sc)
+                                            <label class="flex items-center gap-2.5 cursor-pointer select-none py-1 hover:bg-gray-100/50 rounded-lg px-2 transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    wire:model="selectedSourceClassIds"
+                                                    value="{{ $sc->id }}"
+                                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                />
+                                                <span class="text-sm text-gray-700 font-semibold">{{ $sc->name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    @error('selectedSourceClassIds') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                @else
+                                    <p class="text-sm text-red-500 italic mt-2">No classes found in the selected source session.</p>
+                                @endif
+                            </div>
+                        @endif
+
+                        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                wire:model="importSubjects"
+                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span class="text-sm font-semibold text-gray-700">Also copy all subjects for these classes</span>
+                        </label>
+                    </div>
+
+                    <div class="flex gap-3 pt-3">
+                        <button wire:click="closeImportModal" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl text-sm font-medium transition-colors">
+                            Cancel
+                        </button>
+                        <button wire:click="importClasses" class="flex-1 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-emerald-200">
+                            Import Now
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     @endteleport
     @endif

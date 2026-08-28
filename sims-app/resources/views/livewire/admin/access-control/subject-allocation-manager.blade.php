@@ -82,7 +82,7 @@
                                 <select wire:model.live="selectedClassId" class="w-full border-gray-300 rounded-md shadow-sm bg-gray-50 focus:bg-white transition-colors">
                                     <option value="">-- Select Class --</option>
                                     @foreach($classes as $class)
-                                        <option value="{{ $class->id }}">{{ $class->name }}</option>
+                                        <option value="{{ $class->id }}">{{ $class->name }} ({{ ucfirst($class->shift_type) }})</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -130,7 +130,12 @@
                                     <tbody class="bg-white divide-y divide-gray-200">
                                         @foreach($allocations as $alloc)
                                             <tr class="hover:bg-gray-50 transition-colors">
-                                                <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $alloc->class_name }}</td>
+                                                <td class="px-6 py-4 text-sm font-medium text-gray-900">
+                                                    {{ $alloc->class_name }}
+                                                    @if(isset($alloc->class_shift))
+                                                        <span class="text-xs text-gray-500 font-normal">({{ ucfirst($alloc->class_shift) }})</span>
+                                                    @endif
+                                                </td>
                                                 <td class="px-6 py-4 text-sm text-gray-900">
                                                     <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                                                         <span class="font-medium text-gray-800">{{ $alloc->subject_name }}</span>

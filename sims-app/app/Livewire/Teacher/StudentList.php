@@ -78,13 +78,35 @@ class StudentList extends Component
     public function mount()
     {
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $this->classId = Auth::user()->getSessionClassId($activeSessionId);
+        $classId = Auth::user()->getSessionClassId($activeSessionId);
         
-        if ($this->classId) {
-            $this->className = DB::table('classes')
-                ->where('id', $this->classId)
-                ->value('name') ?? 'Unknown Class';
+        $shiftType = $this->getShiftType();
+        if ($classId) {
+            $class = \App\Models\Classes::withoutGlobalScope('active_session')->find($classId);
+            if ($class && ($shiftType === 'both' || $class->shift_type === $shiftType)) {
+                $this->classId = $classId;
+                $this->className = $class->name;
+            } else {
+                $this->classId = null;
+                $this->className = 'No Class Assigned';
+            }
+        } else {
+            $this->classId = null;
+            $this->className = 'No Class Assigned';
         }
+    }
+
+    protected function getShiftType()
+    {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+        return $shiftType;
     }
 
     public function updatedFilterBus()
@@ -103,16 +125,28 @@ class StudentList extends Component
 
     public function edit($id)
     {
-        $student = \App\Models\Student::find($id);
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = $this->getShiftType();
+
+        $student = \App\Models\Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+            $q->where('class_id', $this->classId)
+              ->where('academic_session_id', $activeSessionId)
+              ->where('shift_type', $shiftType);
+        })->find($id);
         
-        if (!$student || $student->class_id != $this->classId) {
+        if (!$student) {
             session()->flash('error', 'Student not found.');
             return;
         }
+
+        $enrollment = $student->enrollments()
+            ->where('academic_session_id', $activeSessionId)
+            ->where('shift_type', $shiftType)
+            ->first();
         
         $this->editStudentId = $student->id;
         $this->name = $student->name;
-        $this->roll_no = $student->roll_no;
+        $this->roll_no = $enrollment->roll_number;
         $this->admission_no = $student->admission_no;
         $this->father_name = $student->father_name;
         $this->phone = $student->phone;
@@ -135,8 +169,22 @@ class StudentList extends Component
 
     public function view($id)
     {
-        $this->viewingStudent = \App\Models\Student::with('class')->find($id);
-        if ($this->viewingStudent && $this->viewingStudent->class_id == $this->classId) {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = $this->getShiftType();
+
+        $this->viewingStudent = \App\Models\Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+            $q->where('class_id', $this->classId)
+              ->where('academic_session_id', $activeSessionId)
+              ->where('shift_type', $shiftType);
+        })->find($id);
+
+        if ($this->viewingStudent) {
+            $enrollment = $this->viewingStudent->enrollments()
+                ->where('academic_session_id', $activeSessionId)
+                ->where('shift_type', $shiftType)
+                ->first();
+            $this->viewingStudent->class_name = $this->className;
+            $this->viewingStudent->roll_no = $enrollment->roll_number;
             $this->showViewModal = true;
         }
     }
@@ -187,9 +235,22 @@ class StudentList extends Component
                 $student->update($data);
                 session()->flash('message', 'Student updated successfully.');
             } else {
-                \App\Models\Student::create($data);
+                $student = \App\Models\Student::create($data);
                 session()->flash('message', 'Student added successfully.');
             }
+
+            \App\Models\Enrollment::updateOrCreate(
+                [
+                    'student_id' => $student->id,
+                    'academic_session_id' => \App\Models\AcademicSession::getActiveSessionId(),
+                    'shift_type' => $this->getShiftType(),
+                ],
+                [
+                    'class_id' => $this->classId,
+                    'roll_number' => $this->roll_no,
+                    'status' => 'active',
+                ]
+            );
         });
 
         $this->closeModal();
@@ -197,9 +258,16 @@ class StudentList extends Component
 
     public function delete($id)
     {
-        $student = \App\Models\Student::find($id);
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = $this->getShiftType();
+
+        $student = \App\Models\Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+            $q->where('class_id', $this->classId)
+              ->where('academic_session_id', $activeSessionId)
+              ->where('shift_type', $shiftType);
+        })->find($id);
         
-        if (!$student || $student->class_id != $this->classId) {
+        if (!$student) {
             session()->flash('error', 'Cannot delete this student.');
             return;
         }
@@ -299,36 +367,60 @@ class StudentList extends Component
             ])->layout('components.layouts.teacher', ['title' => 'My Students']);
         }
 
-        $query = \App\Models\Student::where('class_id', $this->classId);
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = $this->getShiftType();
+
+        $query = \App\Models\Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+            $q->where('class_id', $this->classId)
+              ->where('academic_session_id', $activeSessionId)
+              ->where('shift_type', $shiftType);
+        });
 
         if ($this->filterStatus) {
-            $query->where('status', $this->filterStatus);
+            $query->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                $q->where('academic_session_id', $activeSessionId)
+                  ->where('shift_type', $shiftType)
+                  ->where('status', $this->filterStatus);
+            });
         }
 
+        $students = $query->get()
+            ->map(function($student) use ($activeSessionId, $shiftType) {
+                $enrollment = $student->enrollments()
+                    ->where('academic_session_id', $activeSessionId)
+                    ->where('shift_type', $shiftType)
+                    ->first();
+                $student->roll_no = $enrollment ? $enrollment->roll_number : '';
+                $student->status = $enrollment ? $enrollment->status : 'active';
+                return $student;
+            });
+
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('roll_no', 'like', '%' . $this->search . '%')
-                  ->orWhere('admission_no', 'like', '%' . $this->search . '%');
+            $searchTerm = strtolower($this->search);
+            $students = $students->filter(function($student) use ($searchTerm) {
+                return str_contains(strtolower($student->name), $searchTerm)
+                    || str_contains(strtolower($student->roll_no), $searchTerm)
+                    || str_contains(strtolower($student->admission_no), $searchTerm);
             });
         }
         
         if ($this->filterSport) {
-            $query->where('sports', 'like', '%' . $this->filterSport . '%');
+            $students = $students->filter(fn($student) => str_contains($student->sports, $this->filterSport));
         }
         
         if ($this->filterActivity) {
-            $query->where('extra_curriculars', 'like', '%' . $this->filterActivity . '%');
+            $students = $students->filter(fn($student) => str_contains($student->extra_curriculars, $this->filterActivity));
         }
         
         if ($this->filterTransport) {
-            $query->where('transport_mode', $this->filterTransport);
-             if ($this->filterTransport === 'school_bus' && $this->filterBus) {
-                $query->where('vehicle_number', $this->filterBus);
+            $students = $students->filter(fn($student) => $student->transport_mode === $this->filterTransport);
+            if ($this->filterTransport === 'school_bus' && $this->filterBus) {
+                $students = $students->filter(fn($student) => $student->vehicle_number === $this->filterBus);
             }
         }
 
-        $students = $query->orderByRaw('CAST(roll_no AS INTEGER) ' . $this->sortOrder)->get();
+        $sortOrder = $this->sortOrder;
+        $students = $students->sortBy(fn($student) => (int)$student->roll_no, SORT_REGULAR, $sortOrder === 'desc')->values();
 
         return view('livewire.teacher.student-list', [
             'students' => $students,
@@ -348,9 +440,14 @@ class StudentList extends Component
     protected function autoAssignRollNo($classId)
     {
         if ($classId) {
-            $maxRollNo = \App\Models\Student::where('class_id', $classId)
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $shiftType = $this->getShiftType();
+
+            $maxRollNo = \App\Models\Enrollment::where('class_id', $classId)
+                ->where('academic_session_id', $activeSessionId)
+                ->where('shift_type', $shiftType)
                 ->get()
-                ->map(fn($student) => (int)$student->roll_no)
+                ->map(fn($e) => (int)$e->roll_number)
                 ->max();
             $this->roll_no = (string)($maxRollNo ? ($maxRollNo + 1) : 1);
         } else {
@@ -363,21 +460,26 @@ class StudentList extends Component
         $target = (int)$targetRollNo;
         if ($target <= 0) return;
 
-        $students = \App\Models\Student::where('class_id', $classId)
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = $this->getShiftType();
+
+        $enrollments = \App\Models\Enrollment::where('class_id', $classId)
+            ->where('academic_session_id', $activeSessionId)
+            ->where('shift_type', $shiftType)
             ->when($this->editStudentId, function ($query) {
-                $query->where('id', '!=', $this->editStudentId);
+                $query->where('student_id', '!=', $this->editStudentId);
             })
             ->get();
 
-        $studentsToShift = $students->filter(function ($s) use ($target) {
-            return (int)$s->roll_no >= $target;
-        })->sortBy(function ($s) {
-            return (int)$s->roll_no;
+        $enrollmentsToShift = $enrollments->filter(function ($e) use ($target) {
+            return (int)$e->roll_number >= $target;
+        })->sortBy(function ($e) {
+            return (int)$e->roll_number;
         });
 
         $nextRollNo = $target + 1;
-        foreach ($studentsToShift as $student) {
-            $student->update(['roll_no' => (string)$nextRollNo]);
+        foreach ($enrollmentsToShift as $enrollment) {
+            $enrollment->update(['roll_number' => (string)$nextRollNo]);
             $nextRollNo++;
         }
     }

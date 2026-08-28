@@ -159,12 +159,27 @@ class LicenseSystemTest extends TestCase
 
         $this->assertEquals(LicenseStatus::STAGE_ACTIVE, $status['stage']);
         $this->assertEquals('active', $status['reason']);
+
+        // 3. Local/tunnel host (like ngrok or trycloudflare) is bypassed even if not in allowed list
+        request()->headers->set('HOST', 'my-school.ngrok-free.dev');
+        $status = LicenseStatus::computeStatus();
+        $this->assertEquals(LicenseStatus::STAGE_ACTIVE, $status['stage']);
+
+        request()->headers->set('HOST', 'school.trycloudflare.com');
+        $status = LicenseStatus::computeStatus();
+        $this->assertEquals(LicenseStatus::STAGE_ACTIVE, $status['stage']);
+
+        request()->headers->set('HOST', 'localhost');
+        $status = LicenseStatus::computeStatus();
+        $this->assertEquals(LicenseStatus::STAGE_ACTIVE, $status['stage']);
     }
 
     /** @test */
     public function it_gathers_timeline_stages_correctly()
     {
         $licenseKey = 'valid-key';
+
+        // --- Test with status = 'active' ---
         $statusStr  = 'active';
 
         // Case A: Expiry > 3 days → ACTIVE
@@ -184,6 +199,21 @@ class LicenseSystemTest extends TestCase
         $this->assertEquals(LicenseStatus::STAGE_LOCKED, LicenseStatus::computeStatus()['stage']);
 
         // Case E: Expired by > 10 days → BLOCKED
+        $this->insertLicense($licenseKey, Carbon::now()->subDays(12), $statusStr);
+        $this->assertEquals(LicenseStatus::STAGE_BLOCKED, LicenseStatus::computeStatus()['stage']);
+
+        // --- Test with status = 'expired' (should follow the timeline check when expires_at is set) ---
+        $statusStr = 'expired';
+
+        // Case F: Expired by ≤ 3 days → GRACE
+        $this->insertLicense($licenseKey, Carbon::now()->subDays(1), $statusStr);
+        $this->assertEquals(LicenseStatus::STAGE_GRACE, LicenseStatus::computeStatus()['stage']);
+
+        // Case G: Expired by 4–10 days → LOCKED (read-only mode)
+        $this->insertLicense($licenseKey, Carbon::now()->subDays(5), $statusStr);
+        $this->assertEquals(LicenseStatus::STAGE_LOCKED, LicenseStatus::computeStatus()['stage']);
+
+        // Case H: Expired by > 10 days → BLOCKED
         $this->insertLicense($licenseKey, Carbon::now()->subDays(12), $statusStr);
         $this->assertEquals(LicenseStatus::STAGE_BLOCKED, LicenseStatus::computeStatus()['stage']);
     }
@@ -226,6 +256,12 @@ class LicenseSystemTest extends TestCase
     /** @test */
     public function it_returns_error_for_invalid_license_key_format()
     {
+        \Illuminate\Support\Facades\Http::fake([
+            'identitytoolkit.googleapis.com/*' => \Illuminate\Support\Facades\Http::response(['refreshToken' => 'mock-refresh-token'], 200),
+            'securetoken.googleapis.com/*' => \Illuminate\Support\Facades\Http::response(['id_token' => 'mock-id-token', 'refresh_token' => 'mock-refresh-token'], 200),
+            'firestore.googleapis.com/*' => \Illuminate\Support\Facades\Http::response([], 404),
+        ]);
+
         $response = $this->postJson(route('license.activate.post'), [
             'license_key' => 'INVALID-KEY-123',
         ]);

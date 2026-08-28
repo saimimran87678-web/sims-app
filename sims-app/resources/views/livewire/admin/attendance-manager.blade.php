@@ -14,7 +14,7 @@
             <select wire:model.live="selectedClassId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                 <option value="">Select Class</option>
                 @foreach($classes as $c)
-                    <option value="{{ $c->id }}">{{ $c->name }}</option>
+                    <option value="{{ $c->id }}">{{ $c->name }} ({{ ucfirst($c->shift_type) }})</option>
                 @endforeach
             </select>
         </div>
@@ -56,6 +56,74 @@
         
         {{-- Inputs Column --}}
         <div class="lg:col-span-1 space-y-6">
+            {{-- Monthly Attendance Calendar --}}
+            @if($selectedClassId && !empty($calendarDays))
+            <div class="glass-card p-6 rounded-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-gray-800">{{ $currentMonthYearLabel }}</h3>
+                    <div class="flex items-center gap-4 text-xs font-semibold">
+                        <span class="flex items-center gap-1.5 text-green-700">
+                            <span class="h-2 w-2 rounded-full bg-green-500"></span>
+                            Done
+                        </span>
+                        <span class="flex items-center gap-1.5 text-red-700">
+                            <span class="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                            Missed
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500 mb-2">
+                    <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+                </div>
+
+                <div class="grid grid-cols-7 gap-1 text-center text-sm">
+                    @foreach($calendarDays as $dayInfo)
+                        @if($dayInfo['status'] === 'empty')
+                            <div class="p-2"></div>
+                        @else
+                            @php
+                                $cellClasses = "p-2 rounded-xl transition-all relative flex flex-col items-center justify-center font-medium h-9 w-9 mx-auto ";
+                                $dotColor = null;
+
+                                if ($dayInfo['is_active']) {
+                                    $cellClasses .= "bg-blue-600 text-white font-bold shadow-md shadow-blue-100 cursor-pointer ";
+                                } else {
+                                    if ($dayInfo['status'] === 'future') {
+                                        $cellClasses .= "text-gray-300 cursor-not-allowed ";
+                                    } elseif ($dayInfo['status'] === 'outside_session') {
+                                        $cellClasses .= "text-gray-300 cursor-not-allowed ";
+                                    } elseif ($dayInfo['status'] === 'weekend') {
+                                        $cellClasses .= "text-gray-400 bg-gray-50 rounded-xl ";
+                                    } elseif ($dayInfo['status'] === 'holiday') {
+                                        $cellClasses .= "text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl cursor-pointer ";
+                                    } elseif ($dayInfo['status'] === 'submitted') {
+                                        $cellClasses .= "text-gray-800 hover:bg-gray-100 rounded-xl cursor-pointer ";
+                                        $dotColor = 'bg-green-500';
+                                    } elseif ($dayInfo['status'] === 'missed') {
+                                        $cellClasses .= "text-gray-800 hover:bg-gray-100 rounded-xl cursor-pointer ";
+                                        $dotColor = 'bg-red-500';
+                                    }
+                                }
+                            @endphp
+
+                            <button 
+                                type="button"
+                                @if($dayInfo['date']) wire:click="selectDate('{{ $dayInfo['date'] }}')" @endif
+                                @if(in_array($dayInfo['status'], ['future', 'outside_session'])) disabled @endif
+                                class="{{ $cellClasses }}"
+                            >
+                                <span>{{ $dayInfo['day'] }}</span>
+                                @if($dotColor)
+                                    <span class="absolute bottom-1 h-1 w-1 rounded-full {{ $dotColor }} {{ $dayInfo['is_active'] ? 'bg-white' : '' }}"></span>
+                                @endif
+                            </button>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             <div class="glass-card p-6 rounded-2xl space-y-6">
                 <h3 class="font-bold text-gray-800">Quick Entry</h3>
                 

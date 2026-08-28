@@ -55,12 +55,25 @@ class ResultReport extends Component
     public function loadDropdowns()
     {
         if ($this->selectedSessionId) {
+            $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
             $this->exams = Exam::where('academic_session_id', $this->selectedSessionId)
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->whereHas('schedules.class', function ($query) use ($shiftType) {
+                        $query->withoutGlobalScope('active_session')
+                              ->where('classes.shift_type', $shiftType);
+                    });
+                })
                 ->orderBy('created_at', 'desc')
                 ->get();
-                
+
             $this->classes = Classes::withoutGlobalScope('active_session')
                 ->where('academic_session_id', $this->selectedSessionId)
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('shift_type', $shiftType);
+                })
                 ->orderBy('numeric_value')
                 ->get();
         } else {
@@ -120,12 +133,15 @@ class ResultReport extends Component
 
             // Fetch Students
             $studentsQuery = \App\Models\Student::with('subjects')
-                ->where('class_id', $this->selectedClassId);
+                ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->where('enrollments.class_id', $this->selectedClassId)
+                ->where('enrollments.academic_session_id', $this->selectedSessionId)
+                ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status');
 
             if ($this->filterStatus === 'active') {
-                $studentsQuery->where('status', 'active');
+                $studentsQuery->where('enrollments.status', 'active');
             } elseif ($this->filterStatus === 'inactive') {
-                $studentsQuery->where('status', 'inactive')
+                $studentsQuery->where('enrollments.status', 'inactive')
                     ->whereExists(function ($q) {
                         $q->select(DB::raw(1))
                           ->from('exam_marks')
@@ -134,9 +150,9 @@ class ResultReport extends Component
                     });
             } else {
                 $studentsQuery->where(function ($q) {
-                    $q->where('status', 'active')
+                    $q->where('enrollments.status', 'active')
                       ->orWhere(function ($sq) {
-                          $sq->where('status', 'inactive')
+                          $sq->where('enrollments.status', 'inactive')
                             ->whereExists(function ($eq) {
                                 $eq->select(DB::raw(1))
                                   ->from('exam_marks')
@@ -147,7 +163,7 @@ class ResultReport extends Component
                 });
             }
 
-            $students = $studentsQuery->orderByRaw('CAST(roll_no AS INTEGER) ASC')->get();
+            $students = $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')->get();
 
             // Fetch Marks
             $marks = DB::table('exam_marks')

@@ -32,7 +32,15 @@ class SubjectAllocationManager extends Component
         $this->users = User::orderBy('name')->get();
         
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $this->classes = Classes::where('academic_session_id', $activeSessionId)
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+        $this->classes = Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $activeSessionId)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            })
             ->orderBy('numeric_value')
             ->get();
     }
@@ -65,17 +73,24 @@ class SubjectAllocationManager extends Component
         }
 
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
         $this->allocations = DB::table('subject_allocations')
             ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
             ->join('subjects', 'subject_allocations.subject_id', '=', 'subjects.id')
             ->where('subject_allocations.user_id', $this->selectedUserId)
             ->where('classes.academic_session_id', $activeSessionId)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->select(
                 'subject_allocations.id',
                 'subject_allocations.class_id',
                 'subject_allocations.subject_id',
                 'classes.name as class_name',
+                'classes.shift_type as class_shift',
                 'subjects.name as subject_name'
             )
             ->orderBy('classes.numeric_value')
@@ -102,27 +117,32 @@ class SubjectAllocationManager extends Component
             $userClassId = $user->getSessionClassId($activeSessionId);
             $userClassSubject = $user->getSessionClassSubject($activeSessionId);
             if ($userClassId && $userClassSubject) {
-                $class = Classes::find($userClassId);
-                // Try to find subject ID by name in that class
-                $subject = Subject::where('class_id', $userClassId)
-                    ->where('name', $userClassSubject)
-                    ->first();
+                $class = Classes::withoutGlobalScope('active_session')->find($userClassId);
+                
+                // Only include if it matches active shift context
+                if ($class && ($shiftType === 'both' || $class->shift_type === $shiftType)) {
+                    // Try to find subject ID by name in that class
+                    $subject = Subject::where('class_id', $userClassId)
+                        ->where('name', $userClassSubject)
+                        ->first();
 
-                if ($class && $subject) {
-                    // Create a synthetic object matching query structure
-                    $inherent = new \stdClass();
-                    $inherent->id = null; // No allocation ID
-                    $inherent->class_id = $class->id;
-                    $inherent->subject_id = $subject->id;
-                    $inherent->class_name = $class->name;
-                    $inherent->subject_name = $userClassSubject;
-                    $inherent->is_inherent = true; // Flag for UI
-                    
-                    $key = $class->id . '-' . $subject->id;
-                    $inherent->is_locked = in_array($key, $locks);
-                    
-                    // Prepend or push
-                    $this->allocations->prepend($inherent);
+                    if ($class && $subject) {
+                        // Create a synthetic object matching query structure
+                        $inherent = new \stdClass();
+                        $inherent->id = null; // No allocation ID
+                        $inherent->class_id = $class->id;
+                        $inherent->subject_id = $subject->id;
+                        $inherent->class_name = $class->name;
+                        $inherent->class_shift = $class->shift_type;
+                        $inherent->subject_name = $userClassSubject;
+                        $inherent->is_inherent = true; // Flag for UI
+                        
+                        $key = $class->id . '-' . $subject->id;
+                        $inherent->is_locked = in_array($key, $locks);
+                        
+                        // Prepend or push
+                        $this->allocations->prepend($inherent);
+                    }
                 }
             }
         }

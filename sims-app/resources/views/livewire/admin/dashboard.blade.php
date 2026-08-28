@@ -220,6 +220,7 @@
         </div>
 
         {{-- Paid This Month --}}
+        @can('fees.manage')
         <div class="stat-card col-span-1">
             <div class="flex items-start justify-between mb-3">
                 <div class="p-2 rounded-xl bg-teal-50 text-teal-600">
@@ -229,8 +230,10 @@
             <p class="text-2xl font-bold text-teal-700">{{ $stats['paid_this_month'] }}</p>
             <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Paid / Month</p>
         </div>
+        @endcan
 
         {{-- Unpaid --}}
+        @can('fees.manage')
         <div class="stat-card col-span-1">
             <div class="flex items-start justify-between mb-3">
                 <div class="p-2 rounded-xl bg-rose-50 text-rose-500">
@@ -247,9 +250,11 @@
             <p class="text-2xl font-bold text-rose-500">{{ $stats['unpaid'] }}</p>
             <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Unpaid</p>
         </div>
+        @endcan
     </div>
 
     {{-- ═══ FINANCIALS ══════════════════════════════════════════════════════════ --}}
+    @can('fees.manage')
     <div class="dash-card">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <div>
@@ -293,6 +298,7 @@
             </div>
         </div>
     </div>
+    @endcan
 
     {{-- ═══ MAIN GRID ═══════════════════════════════════════════════════════════ --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -301,6 +307,7 @@
         <div class="lg:col-span-2 space-y-6">
 
             {{-- Attendance Chart --}}
+            @can('students.manage')
             <div class="dash-card">
                 <div class="flex items-center justify-between mb-5">
                     <div>
@@ -451,8 +458,10 @@
                     </div>
                 @endif
             </div>
+            @endcan
 
             {{-- Class Distribution --}}
+            @can('classes.manage')
             <div class="dash-card">
                 <div class="flex items-center justify-between mb-5">
                     <h3 class="text-sm font-bold text-slate-700">Class Enrolment Strength</h3>
@@ -479,56 +488,72 @@
                     <p class="text-xs text-slate-400 text-center py-4">No class enrollment data yet.</p>
                 @endif
             </div>
+            @endcan
         </div>
 
         {{-- RIGHT: Quick Actions + Activity --}}
         <div class="space-y-6">
 
             {{-- Quick Actions --}}
+            @if(auth()->user()->hasRole('Super Admin') || auth()->user()->can('students.manage') || auth()->user()->can('classes.manage') || auth()->user()->can('fees.manage') || auth()->user()->can('reports.view'))
             <div class="dash-card">
                 <h3 class="text-sm font-bold text-slate-700 mb-1">Quick Actions</h3>
                 <p class="text-[11px] text-slate-400 mb-5">Immediate management shortcuts</p>
                 <div class="grid grid-cols-2 gap-3">
+                    @can('students.manage')
                     <a href="{{ route('admin.students', ['open_add_modal' => 1]) }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="16" x2="22" y1="11" y2="11"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Admit Student</span>
                     </a>
+                    @endcan
+                    @can('classes.manage')
                     <a href="{{ route('admin.classes', ['open_add_modal' => 1]) }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Classes</span>
                     </a>
+                    @endcan
+                    @can('students.manage')
                     <a href="{{ route('admin.attendance') }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Attendance</span>
                     </a>
+                    @endcan
+                    @can('fees.manage')
                     <a href="{{ route('admin.fee.record-payment') }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Record Fee</span>
                     </a>
+                    @endcan
+                    @can('students.manage')
                     <a href="{{ route('admin.whatsapp-setup') }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">WhatsApp</span>
                     </a>
+                    @endcan
+                    @can('reports.view')
                     <a href="{{ route('admin.reports') }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Reports</span>
                     </a>
+                    @endcan
                 </div>
             </div>
+            @endif
 
             {{-- Activity Feed --}}
+            @if(auth()->user()->hasRole('Super Admin') || auth()->user()->can('students.manage') || auth()->user()->can('fees.manage'))
             <div class="dash-card">
                 <div class="flex items-center justify-between mb-5">
                     <h3 class="text-sm font-bold text-slate-700">Recent Activity</h3>
@@ -561,6 +586,7 @@
                     </div>
                 @endif
             </div>
+            @endif
         </div>
     </div>
 

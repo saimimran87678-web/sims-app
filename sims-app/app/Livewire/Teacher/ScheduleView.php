@@ -25,10 +25,21 @@ class ScheduleView extends Component
         $dayNames = [0 => 'Monday', 1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday', 5 => 'Friday', 6 => 'Monday'];
         $this->selectedDay = $dayNames[$dayOfWeek] ?? 'Monday';
         
-        $this->periods = PeriodConfig::orderBy('period_no')->get();
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
+        $this->periods = PeriodConfig::where('shift_type', $shiftType)->orderBy('period_no')->get();
+
         $this->classes = Classes::withoutGlobalScope('active_session')
             ->where('academic_session_id', $activeSessionId)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            })
             ->orderBy('numeric_value')
             ->get();
         $this->loadTimetables();
@@ -39,6 +50,12 @@ class ScheduleView extends Component
         $teacherId = Auth::id();
         
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
 
         $this->timetables = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
@@ -46,6 +63,9 @@ class ScheduleView extends Component
             ->where('timetables.teacher_id', $teacherId)
             ->where('timetables.day', $this->selectedDay)
             ->where('timetables.is_substitute', false)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->select('timetables.*')
             ->get();
     }

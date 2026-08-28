@@ -73,11 +73,26 @@ class DatesheetManager extends Component
                 ->toArray();
         }
 
+        $sessionObj = \App\Models\AcademicSession::find($this->exam->academic_session_id);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
         // If still no classes, load all (for new exams)
         if (empty($assignedClassIds)) {
-            $allClasses = Classes::orderBy('numeric_value', 'desc')->get();
+            $allClasses = Classes::withoutGlobalScope('active_session')
+                ->where('academic_session_id', $this->exam->academic_session_id)
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('shift_type', $shiftType);
+                })
+                ->orderBy('numeric_value', 'desc')
+                ->get();
         } else {
-            $allClasses = Classes::whereIn('id', $assignedClassIds)
+            $allClasses = Classes::withoutGlobalScope('active_session')
+                ->whereIn('id', $assignedClassIds)
+                ->where('academic_session_id', $this->exam->academic_session_id)
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('shift_type', $shiftType);
+                })
                 ->orderBy('numeric_value', 'desc')
                 ->get();
         }

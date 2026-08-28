@@ -72,6 +72,7 @@ class SubstitutionManagerTest extends TestCase
             'name' => 'Class 10A',
             'numeric_value' => 10,
             'academic_session_id' => $this->session->id,
+            'shift_type' => 'regular',
         ]);
 
         // Create Subject
@@ -114,6 +115,7 @@ class SubstitutionManagerTest extends TestCase
             'date' => $today,
             'status' => 'Absent',
             'academic_session_id' => $this->session->id,
+            'shift_type' => 'regular',
             'created_at' => now(),
             'updated_at' => now(),
         ]);

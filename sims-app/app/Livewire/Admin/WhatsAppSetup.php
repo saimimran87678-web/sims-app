@@ -22,13 +22,19 @@ class WhatsAppSetup extends Component
     public function mount()
     {
         $this->authorize('students.manage'); // Reuse existing permission
+
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $scopedShift = ($shiftType === 'both') ? 'morning' : $shiftType;
         
-        // Load Queue Settings (global — not session-scoped)
-        $this->queueDelay = \App\Models\Setting::getGlobal('whatsapp_queue_delay', 5);
-        $this->autoSendEnabled = \App\Models\Setting::getGlobal('whatsapp_auto_send_enabled', 'false') === 'true';
-        $this->autoSendStart = \App\Models\Setting::getGlobal('whatsapp_auto_send_start', '09:00');
-        $this->autoSendEnd = \App\Models\Setting::getGlobal('whatsapp_auto_send_end', '22:00');
-        $this->forceSendNow = \App\Models\Setting::getGlobal('whatsapp_force_send_now', 'false') === 'true';
+        // Load Queue Settings scoped to session and shift
+        $this->queueDelay = \App\Models\Setting::get("whatsapp_queue_delay_{$scopedShift}", 5);
+        $this->autoSendEnabled = \App\Models\Setting::get("whatsapp_auto_send_enabled_{$scopedShift}", 'false') === 'true';
+        $this->autoSendStart = \App\Models\Setting::get("whatsapp_auto_send_start_{$scopedShift}", '09:00');
+        $this->autoSendEnd = \App\Models\Setting::get("whatsapp_auto_send_end_{$scopedShift}", '22:00');
+        $this->forceSendNow = \App\Models\Setting::get("whatsapp_force_send_now_{$scopedShift}", 'false') === 'true';
 
         $this->refreshStatus();
     }
@@ -67,11 +73,17 @@ class WhatsAppSetup extends Component
 
     public function saveSettings()
     {
-        \App\Models\Setting::setGlobal('whatsapp_queue_delay', $this->queueDelay);
-        \App\Models\Setting::setGlobal('whatsapp_auto_send_enabled', $this->autoSendEnabled ? 'true' : 'false');
-        \App\Models\Setting::setGlobal('whatsapp_auto_send_start', $this->autoSendStart);
-        \App\Models\Setting::setGlobal('whatsapp_auto_send_end', $this->autoSendEnd);
-        \App\Models\Setting::setGlobal('whatsapp_force_send_now', $this->forceSendNow ? 'true' : 'false');
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $scopedShift = ($shiftType === 'both') ? 'morning' : $shiftType;
+
+        \App\Models\Setting::set("whatsapp_queue_delay_{$scopedShift}", $this->queueDelay);
+        \App\Models\Setting::set("whatsapp_auto_send_enabled_{$scopedShift}", $this->autoSendEnabled ? 'true' : 'false');
+        \App\Models\Setting::set("whatsapp_auto_send_start_{$scopedShift}", $this->autoSendStart);
+        \App\Models\Setting::set("whatsapp_auto_send_end_{$scopedShift}", $this->autoSendEnd);
+        \App\Models\Setting::set("whatsapp_force_send_now_{$scopedShift}", $this->forceSendNow ? 'true' : 'false');
 
         session()->flash('message', 'Settings saved. Queue processor updated.');
 
@@ -115,8 +127,26 @@ class WhatsAppSetup extends Component
 
     public function render()
     {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
         $queue = \Illuminate\Support\Facades\DB::table('whatsapp_queue')
             ->leftJoin('students', 'whatsapp_queue.student_id', '=', 'students.id')
+            ->leftJoin('enrollments', function($join) use ($activeSessionId) {
+                $join->on('students.id', '=', 'enrollments.student_id')
+                     ->where('enrollments.academic_session_id', '=', $activeSessionId);
+            })
+            ->where(function($query) use ($shiftType) {
+                $query->where(function($sub) use ($shiftType) {
+                    $sub->whereNotNull('whatsapp_queue.student_id')
+                        ->whereNotNull('enrollments.id')
+                        ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                            $q->where('enrollments.shift_type', $shiftType);
+                        });
+                })->orWhereNull('whatsapp_queue.student_id');
+            })
             ->select('whatsapp_queue.*', 'students.name as student_name')
             ->orderBy('whatsapp_queue.id', 'desc')
             ->paginate(10);

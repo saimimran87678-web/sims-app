@@ -37,11 +37,26 @@ Route::middleware('auth')->group(function () {
     
     Route::post('/change-session', function (\Illuminate\Http\Request $request) {
         $sessionId = $request->input('academic_session_id');
-        if (\App\Models\AcademicSession::where('id', $sessionId)->exists()) {
+        if ($sessionId && \App\Models\AcademicSession::where('id', $sessionId)->exists()) {
             session(['selected_academic_session_id' => $sessionId]);
             // Clear current_session_id to ensure the admin override takes precedence
             session()->forget('current_session_id');
         }
+
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        if ($sessionObj && $sessionObj->shift_type === 'Regular') {
+            session(['selected_shift_type' => 'regular']);
+        } else {
+            $shiftType = $request->input('shift_type');
+            if ($shiftType && in_array($shiftType, ['morning', 'evening', 'both'])) {
+                session(['selected_shift_type' => $shiftType]);
+            }
+            if (session('selected_shift_type') === 'regular') {
+                session(['selected_shift_type' => 'morning']);
+            }
+        }
+
         return redirect()->back();
     })->name('change-session');
 });
@@ -72,6 +87,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     })->name('substitutions.print');
     Route::get('/classes', \App\Livewire\Admin\ClassManager::class)->name('classes');
     Route::get('/students', \App\Livewire\Admin\StudentManager::class)->name('students');
+    Route::get('/students/import', \App\Livewire\Admin\StudentImportManager::class)->name('students.import');
     Route::get('/academic-sessions', \App\Livewire\Admin\AcademicSessionManager::class)->name('academic-sessions');
     Route::get('/reports', \App\Livewire\Admin\Reports\ReportManager::class)->name('reports');
     
@@ -125,6 +141,7 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
     
     Route::middleware(['permission:students.manage'])->group(function () {
         Route::get('/shared/students-manage', \App\Livewire\Admin\StudentManager::class)->name('shared.students');
+        Route::get('/shared/students-import', \App\Livewire\Admin\StudentImportManager::class)->name('shared.students.import');
     });
 
     Route::middleware(['permission:classes.manage'])->group(function () {

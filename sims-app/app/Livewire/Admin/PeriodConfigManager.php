@@ -33,9 +33,22 @@ class PeriodConfigManager extends Component
         $this->loadPeriods();
     }
 
+    public function getShiftType()
+    {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+        return $shiftType;
+    }
+
     public function loadPeriods()
     {
-        $this->periods = PeriodConfig::orderBy('period_no')->get();
+        $shiftType = $this->getShiftType();
+        $this->periods = PeriodConfig::where('shift_type', $shiftType)->orderBy('period_no')->get();
     }
 
     public function openModal($id = null)
@@ -55,7 +68,8 @@ class PeriodConfigManager extends Component
             }
         } else {
             // New period - auto-increment period_no
-            $maxPeriod = PeriodConfig::max('period_no') ?? 0;
+            $shiftType = $this->getShiftType();
+            $maxPeriod = PeriodConfig::where('shift_type', $shiftType)->max('period_no') ?? 0;
             $this->period_no = $maxPeriod + 1;
         }
         
@@ -84,6 +98,7 @@ class PeriodConfigManager extends Component
         $this->validate();
 
         $defaultLabel = $this->is_assembly ? 'Assembly' : ($this->is_break ? 'Break' : 'Period ' . $this->period_no);
+        $shiftType = $this->getShiftType();
         $data = [
             'period_no' => $this->period_no,
             'start_time' => $this->start_time,
@@ -91,6 +106,7 @@ class PeriodConfigManager extends Component
             'is_break' => $this->is_break,
             'is_assembly' => $this->is_assembly,
             'label' => $this->label ?: $defaultLabel,
+            'shift_type' => $shiftType,
         ];
 
         if ($this->editingId) {

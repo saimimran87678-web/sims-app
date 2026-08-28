@@ -73,10 +73,22 @@ class ExamManager extends Component
 
     public function render()
     {
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
         $exams = Exam::query()
             ->with('academicSession')
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('name', 'like', '%' . $this->search . '%')
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where(function ($sub) use ($shiftType) {
+                    $sub->whereHas('schedules.class', function ($query) use ($shiftType) {
+                        $query->withoutGlobalScope('active_session')
+                              ->where('classes.shift_type', $shiftType);
+                    })->orWhereDoesntHave('schedules');
+                });
+            })
             ->orderBy('start_date', 'desc')
             ->paginate(10);
 
@@ -93,6 +105,19 @@ class ExamManager extends Component
         ])->layout($layout, ['title' => 'Exams']);
     }
 
+    public function getActiveClassesQuery($sessionId)
+    {
+        $sessionObj = \App\Models\AcademicSession::find($sessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+        return \App\Models\Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $sessionId)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            });
+    }
+
     public function create()
     {
         $this->authorize('exam.create');
@@ -106,7 +131,7 @@ class ExamManager extends Component
             $this->academic_session_id = $firstSession->id;
         }
 
-        $this->availableClasses = \App\Models\Classes::where('academic_session_id', $this->academic_session_id)
+        $this->availableClasses = $this->getActiveClassesQuery($this->academic_session_id)
             ->orderBy('numeric_value')
             ->get();
 
@@ -128,7 +153,7 @@ class ExamManager extends Component
         $this->end_date = $exam->end_date;
         $this->is_active = $exam->is_active;
 
-        $this->availableClasses = \App\Models\Classes::where('academic_session_id', $exam->academic_session_id)
+        $this->availableClasses = $this->getActiveClassesQuery($exam->academic_session_id)
             ->orderBy('numeric_value')
             ->get();
         // Load selected classes from existing schedules
@@ -270,7 +295,7 @@ class ExamManager extends Component
         $exam = Exam::findOrFail($id);
         $this->manageExamName = $exam->name;
         
-        $this->availableClasses = \App\Models\Classes::where('academic_session_id', $exam->academic_session_id)
+        $this->availableClasses = $this->getActiveClassesQuery($exam->academic_session_id)
             ->orderBy('numeric_value')
             ->get();
         // Load selected classes based on existing schedules or defaults
@@ -430,7 +455,7 @@ class ExamManager extends Component
         $exam = Exam::findOrFail($examId);
         $this->configureExamName = $exam->name;
         
-        $this->availableClasses = \App\Models\Classes::where('academic_session_id', $exam->academic_session_id)
+        $this->availableClasses = $this->getActiveClassesQuery($exam->academic_session_id)
             ->orderBy('numeric_value')
             ->get();
         
@@ -446,6 +471,9 @@ class ExamManager extends Component
                 ->unique()
                 ->toArray();
         }
+
+        $availableClassIds = $this->availableClasses->pluck('id')->toArray();
+        $configClassIds = array_values(array_intersect($configClassIds, $availableClassIds));
         $this->selectedClasses = array_map('strval', $configClassIds);
 
         // Load marks config data

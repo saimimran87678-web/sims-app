@@ -353,9 +353,20 @@ class InvoiceGenerator extends Component
         }
 
         $sessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $studentRecords = \App\Models\Student::where('class_id', $this->selectedClassId)
-            ->where('status', 'active')
-            ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
+        $sessionObj = \App\Models\AcademicSession::find($sessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
+        $studentRecords = \App\Models\Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+            ->where('enrollments.class_id', $this->selectedClassId)
+            ->where('enrollments.academic_session_id', $sessionId)
+            ->where('enrollments.shift_type', $shiftType)
+            ->where('enrollments.status', 'active')
+            ->select('students.*', 'enrollments.roll_number as roll_no')
+            ->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')
             ->get();
         
         $this->students = [];
@@ -886,9 +897,21 @@ class InvoiceGenerator extends Component
     {
         $this->viewStudentId = 'all';
         if ($value) {
-            $this->viewStudents = \App\Models\Student::where('class_id', $value)
-                ->where('status', 'active')
-                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
+            $sessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $sessionObj = \App\Models\AcademicSession::find($sessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+            if ($shiftType === 'both') {
+                $shiftType = 'morning';
+            }
+
+            $this->viewStudents = \App\Models\Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->where('enrollments.class_id', $value)
+                ->where('enrollments.academic_session_id', $sessionId)
+                ->where('enrollments.shift_type', $shiftType)
+                ->where('enrollments.status', 'active')
+                ->select('students.*', 'enrollments.roll_number as roll_no')
+                ->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')
                 ->get()
                 ->mapWithKeys(function ($std) {
                     return [$std->id => $std->name . ' (' . ($std->roll_no ?? 'N/A') . ')'];
@@ -902,9 +925,21 @@ class InvoiceGenerator extends Component
     {
         $this->receiptStudentId = 'all';
         if ($value) {
-            $this->receiptStudents = \App\Models\Student::where('class_id', $value)
-                ->where('status', 'active')
-                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
+            $sessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $sessionObj = \App\Models\AcademicSession::find($sessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+            if ($shiftType === 'both') {
+                $shiftType = 'morning';
+            }
+
+            $this->receiptStudents = \App\Models\Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->where('enrollments.class_id', $value)
+                ->where('enrollments.academic_session_id', $sessionId)
+                ->where('enrollments.shift_type', $shiftType)
+                ->where('enrollments.status', 'active')
+                ->select('students.*', 'enrollments.roll_number as roll_no')
+                ->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')
                 ->get()
                 ->mapWithKeys(function ($std) {
                     return [$std->id => $std->name . ' (' . ($std->roll_no ?? 'N/A') . ')'];
@@ -1170,7 +1205,18 @@ class InvoiceGenerator extends Component
     public function render()
     {
         $sessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $classesList = $sessionId ? \App\Models\Classes::where('academic_session_id', $sessionId)->get() : collect();
+        $sessionObj = \App\Models\AcademicSession::find($sessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
+        $classesList = $sessionId ? \App\Models\Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $sessionId)
+            ->where('shift_type', $shiftType)
+            ->orderBy('numeric_value')
+            ->get() : collect();
 
         $layout = request()->is('teacher/*') 
             ? 'components.layouts.teacher' 

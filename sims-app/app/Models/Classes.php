@@ -11,10 +11,23 @@ class Classes extends Model
 
     protected $table = 'classes';
     
-    protected $fillable = ['name', 'numeric_value', 'academic_session_id'];
+    protected $fillable = ['name', 'numeric_value', 'academic_session_id', 'next_class_id', 'shift_type'];
+
+
 
     protected static function booted()
     {
+        static::creating(function ($class) {
+            if (empty($class->shift_type)) {
+                $session = \App\Models\AcademicSession::find($class->academic_session_id);
+                if ($session) {
+                    $class->shift_type = ($session->shift_type === 'Regular') ? 'regular' : 'morning';
+                } else {
+                    $class->shift_type = 'morning';
+                }
+            }
+        });
+
         static::addGlobalScope('active_session', function ($builder) {
             // Skip restriction if User is Super Admin OR has ANY session view permission
             $user = auth()->user();
@@ -36,14 +49,24 @@ class Classes extends Model
             $activeId = \App\Models\AcademicSession::getActiveSessionId();
                 
             if ($activeId) {
-                $builder->where('academic_session_id', $activeId);
+                $builder->where('classes.academic_session_id', $activeId);
+                
+                // Filter by active shift type
+                $sessionObj = \App\Models\AcademicSession::find($activeId);
+                $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+                $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+                if ($shiftType === 'both') {
+                    $shiftType = 'morning';
+                }
+                
+                $builder->where('classes.shift_type', $shiftType);
             }
         });
     }
 
-    public function academicSession()
+    public function session()
     {
-        return $this->belongsTo(AcademicSession::class);
+        return $this->belongsTo(AcademicSession::class, 'academic_session_id');
     }
 
     public function subjects()
@@ -53,7 +76,14 @@ class Classes extends Model
 
     public function students()
     {
-        return $this->hasMany(Student::class, 'class_id');
+        return $this->hasManyThrough(
+            Student::class,
+            Enrollment::class,
+            'class_id',   // Foreign key on enrollments table...
+            'id',         // Foreign key on students table...
+            'id',         // Local key on classes table...
+            'student_id'  // Local key on enrollments table...
+        );
     }
 
     public function timetables()
@@ -69,5 +99,10 @@ class Classes extends Model
     public function feeRecords()
     {
         return $this->hasMany(FeeRecord::class, 'class_id');
+    }
+
+    public function nextClass()
+    {
+        return $this->belongsTo(self::class, 'next_class_id');
     }
 }

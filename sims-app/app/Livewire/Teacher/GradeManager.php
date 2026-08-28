@@ -77,18 +77,32 @@ class GradeManager extends Component
         $user = Auth::user();
         $classIds = [];
 
-        // Class Teacher's own class
+        // Determine current shift type
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $userClassId = $user->getSessionClassId($activeSessionId);
-        if ($userClassId) {
-            $classIds[] = $userClassId;
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
         }
 
-        // Subject allocations (filtered by active session)
+        // Class Teacher's own class (only if it matches the current shift type)
+        $userClassId = $user->getSessionClassId($activeSessionId);
+        if ($userClassId) {
+            $ownClass = Classes::withoutGlobalScope('active_session')->find($userClassId);
+            if ($ownClass && ($shiftType === 'both' || $ownClass->shift_type === $shiftType)) {
+                $classIds[] = $userClassId;
+            }
+        }
+
+        // Subject allocations (filtered by active session and shift type)
         $allocatedClassIds = DB::table('subject_allocations')
             ->join('classes', 'subject_allocations.class_id', '=', 'classes.id')
             ->where('subject_allocations.user_id', $user->id)
             ->where('classes.academic_session_id', $activeSessionId)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->pluck('subject_allocations.class_id')
             ->toArray();
 
@@ -264,16 +278,27 @@ class GradeManager extends Component
         $this->isLocked = $isExamLocked || $isAdminLocked;
 
         // Fetch Students
-        $this->students = \App\Models\Student::where('class_id', $this->selectedClassId)
-            ->where('status', 'active')
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
+        $this->students = \App\Models\Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                $q->where('academic_session_id', $activeSessionId)
+                  ->where('shift_type', $shiftType)
+                  ->where('class_id', $this->selectedClassId)
+                  ->active();
+            })
             ->where(function($query) {
                 $query->whereDoesntHave('subjects')
                       ->orWhereHas('subjects', function($q) {
                           $q->where('subjects.id', $this->selectedSubjectId);
                       });
             })
-            ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
-            ->get();
+            ->get()
+            ->sortBy(fn($s) => (int)$s->roll_no)
+            ->values();
 
         // Fetch Existing Marks
         $existingMarks = DB::table('exam_marks')

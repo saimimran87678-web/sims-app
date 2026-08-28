@@ -74,18 +74,45 @@ class ScheduleManager extends Component
 
     public function loadData()
     {
-        $this->periods = PeriodConfig::orderBy('period_no')->get();
-        
         if ($this->selectedSessionId) {
+            $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+            if ($shiftType === 'both') {
+                $shiftType = 'morning';
+            }
+
+            $this->periods = PeriodConfig::where('shift_type', $shiftType)->orderBy('period_no')->get();
+
             $this->classes = Classes::withoutGlobalScope('active_session')
                 ->where('academic_session_id', $this->selectedSessionId)
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('shift_type', $shiftType);
+                })
                 ->orderBy('numeric_value')
                 ->get();
+            $this->teachers = \App\Models\User::where('role', 'teacher')
+                ->whereExists(function ($query) use ($shiftType) {
+                    $query->select(DB::raw(1))
+                          ->from('session_user')
+                          ->whereColumn('session_user.user_id', 'users.id')
+                          ->where('session_user.academic_session_id', $this->selectedSessionId)
+                          ->where('session_user.is_active', true)
+                          ->when($shiftType !== 'regular', function ($q) use ($shiftType) {
+                              $q->where(function ($sq) use ($shiftType) {
+                                  $sq->where('session_user.allowed_shifts', 'both')
+                                     ->orWhere('session_user.allowed_shifts', $shiftType);
+                              });
+                          });
+                })
+                ->orderBy('name')
+                ->get();
         } else {
+            $this->periods = collect();
             $this->classes = collect();
+            $this->teachers = collect();
         }
 
-        $this->teachers = DB::table('users')->where('role', 'teacher')->orderBy('name')->get();
         $this->loadTimetables();
     }
     
@@ -99,11 +126,21 @@ class ScheduleManager extends Component
         // For "Everyday" mode, load Monday's schedule as the unified template
         $dayToLoad = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
         
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
         $this->timetables = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->where('classes.academic_session_id', $this->selectedSessionId)
             ->where('timetables.day', $dayToLoad)
             ->where('timetables.is_substitute', false)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
             ->select('timetables.*')
             ->get()
             ->groupBy(fn($t) => $t->class_id . '_' . $t->period_no);

@@ -75,6 +75,29 @@ class PhoneHelper
         return str_replace(array_keys($replacements), array_values($replacements), $template);
     }
 
+    private static function getStudentShift($studentId)
+    {
+        if (!$studentId) {
+            return 'morning';
+        }
+
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $enrollment = \Illuminate\Support\Facades\DB::table('enrollments')
+            ->where('student_id', $studentId)
+            ->where('academic_session_id', $activeSessionId)
+            ->first();
+
+        if ($enrollment) {
+            $shiftType = $enrollment->shift_type;
+            if ($shiftType === 'Regular' || $shiftType === 'regular') {
+                return 'regular';
+            }
+            return $shiftType ?: 'morning';
+        }
+
+        return 'morning';
+    }
+
     /**
      * Generate an absence notification message.
      * 
@@ -83,13 +106,15 @@ class PhoneHelper
      * @param string $date (format: Y-m-d or any readable format)
      * @param string $schoolName
      * @param string|null $gender
+     * @param int|null $studentId
      * @return string
      */
-    public static function getAbsentMessage(string $studentName, $rollNo, string $date, string $schoolName = null, string $gender = null): string
+    public static function getAbsentMessage(string $studentName, $rollNo, string $date, string $schoolName = null, string $gender = null, $studentId = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        $shift = self::getStudentShift($studentId);
         $defaultTemplate = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is ABSENT from school today ({date}).\nPlease contact the Class Teacher and give a valid reason.\n\n- {school_name} Administration";
-        $template = \App\Models\Setting::get('whatsapp_template_absent', $defaultTemplate);
+        $template = \App\Models\Setting::get("whatsapp_template_absent_{$shift}", \App\Models\Setting::get('whatsapp_template_absent', $defaultTemplate));
 
         return self::processTemplate($template, [
             'student_name' => $studentName,
@@ -108,13 +133,15 @@ class PhoneHelper
      * @param string $date (format: Y-m-d or any readable format)
      * @param string $schoolName
      * @param string|null $gender
+     * @param int|null $studentId
      * @return string
      */
-    public static function getLeaveMessage(string $studentName, $rollNo, string $date, string $schoolName = null, string $gender = null): string
+    public static function getLeaveMessage(string $studentName, $rollNo, string $date, string $schoolName = null, string $gender = null, $studentId = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        $shift = self::getStudentShift($studentId);
         $defaultTemplate = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is on LEAVE today ({date}).\n\n- {school_name} Administration";
-        $template = \App\Models\Setting::get('whatsapp_template_leave', $defaultTemplate);
+        $template = \App\Models\Setting::get("whatsapp_template_leave_{$shift}", \App\Models\Setting::get('whatsapp_template_leave', $defaultTemplate));
 
         return self::processTemplate($template, [
             'student_name' => $studentName,
@@ -125,11 +152,15 @@ class PhoneHelper
         ]);
     }
 
-    public static function getLateMessage(string $studentName, $rollNo, string $time, string $schoolName = null, string $gender = null): string
+    /**
+     * Generate a late notification message.
+     */
+    public static function getLateMessage(string $studentName, $rollNo, string $time, string $schoolName = null, string $gender = null, $studentId = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        $shift = self::getStudentShift($studentId);
         $defaultTemplate = "*Urgent Message*\n\nDear Parents,\nWe noticed that your {relation} {student_name} (Roll No: {roll_no}) was marked absent/leave, but has now arrived late at school today at {time}.\nPlease ensure they arrive on time in the future to avoid any warning.\n\n- {school_name} Administration";
-        $template = \App\Models\Setting::get('whatsapp_template_late', $defaultTemplate);
+        $template = \App\Models\Setting::get("whatsapp_template_late_{$shift}", \App\Models\Setting::get('whatsapp_template_late', $defaultTemplate));
 
         return self::processTemplate($template, [
             'student_name' => $studentName,
@@ -143,11 +174,12 @@ class PhoneHelper
     /**
      * Generate a fee payment confirmation message.
      */
-    public static function getPaymentMessage(string $studentName, $amount, string $period, string $balance, string $schoolName = null, string $link = null): string
+    public static function getPaymentMessage(string $studentName, $amount, string $period, string $balance, string $schoolName = null, string $link = null, $studentId = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        $shift = self::getStudentShift($studentId);
         $defaultTemplate = "*Payment Confirmation*\n\nDear Parents,\nWe have received a payment of Rs. {amount} for {student_name} for the period {period}.\nRemaining Balance: Rs. {balance}\n\nView updated receipt:\n{challan_link}\n\nThank you.\n- {school_name} Administration";
-        $template = \App\Models\Setting::get('whatsapp_template_payment', $defaultTemplate);
+        $template = \App\Models\Setting::get("whatsapp_template_payment_{$shift}", \App\Models\Setting::get('whatsapp_template_payment', $defaultTemplate));
 
         $linkStr = $link ? $link : '';
 
@@ -161,11 +193,12 @@ class PhoneHelper
     /**
      * Generate a fee reminder message.
      */
-    public static function getFeeReminderMessage(string $studentName, $balance, string $period, string $dueDate, string $schoolName = null, string $link = null): string
+    public static function getFeeReminderMessage(string $studentName, $balance, string $period, string $dueDate, string $schoolName = null, string $link = null, $studentId = null): string
     {
         $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        $shift = self::getStudentShift($studentId);
         $defaultTemplate = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher:\n{challan_link}\n\n- {school_name} Administration";
-        $template = \App\Models\Setting::get('whatsapp_template_reminder', $defaultTemplate);
+        $template = \App\Models\Setting::get("whatsapp_template_reminder_{$shift}", \App\Models\Setting::get('whatsapp_template_reminder', $defaultTemplate));
 
         $linkStr = $link ? $link : '';
 

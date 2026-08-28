@@ -116,12 +116,23 @@
                                     class="hidden" 
                                     accept="image/*"
                                 >
-                                <label 
-                                    for="logo" 
-                                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none cursor-pointer transition-colors"
-                                >
-                                    Choose Logo
-                                </label>
+                                <div class="flex flex-wrap gap-2">
+                                    <label 
+                                        for="logo" 
+                                        class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none cursor-pointer transition-colors"
+                                    >
+                                        Choose Logo
+                                    </label>
+                                    @if ($logo || ($institute_logo && file_exists(public_path($institute_logo))))
+                                        <button 
+                                            type="button"
+                                            wire:click="removeLogo"
+                                            class="inline-flex items-center px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm font-medium text-red-700 shadow-sm hover:bg-red-100 focus:outline-none transition-colors"
+                                        >
+                                            Remove Logo
+                                        </button>
+                                    @endif
+                                </div>
                                 <p class="text-[10px] text-gray-400 mt-1">PNG, JPG or JPEG up to 1MB</p>
                             </div>
                         </div>
@@ -154,20 +165,41 @@
             <div class="border-t border-gray-100"></div>
 
             {{-- ── Section: Academic Sessions ── --}}
-            <div>
-                <div class="flex justify-between items-center mb-4">
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
                     <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         Academic Sessions
                     </h2>
                 </div>
-                <p class="text-sm text-gray-600 mb-4">
+                <p class="text-sm text-gray-600">
                     Manage school years, terms, or semesters. You can define start/end dates and set the active session.
                 </p>
-                <a href="{{ route('admin.academic-sessions') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors font-medium border border-indigo-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-                    Manage Sessions
-                </a>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div>
+                        <label for="default_session_shift_mode" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Default Session Shift Mode
+                        </label>
+                        <select
+                            id="default_session_shift_mode"
+                            wire:model.defer="default_session_shift_mode"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-600 transition-colors bg-gray-50 focus:bg-white text-gray-800 text-sm"
+                        >
+                            <option value="Regular">Regular (Single Shift)</option>
+                            <option value="Dual">Dual Shift (Morning & Evening)</option>
+                        </select>
+                        <p class="text-[10px] text-gray-400 mt-1">
+                            New academic sessions will be generated using this shift mode by default.
+                        </p>
+                    </div>
+                    <div class="md:text-right">
+                        <a href="{{ route('admin.academic-sessions') }}" class="inline-flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors font-medium border border-indigo-200 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                            Manage Sessions
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <div class="border-t border-gray-100"></div>

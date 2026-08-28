@@ -21,10 +21,16 @@ class AttendanceReport extends Component
     public function mount()
     {
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $this->classes = DB::table('classes')
-            ->where('academic_session_id', $activeSessionId)
-            ->orderBy('numeric_value')
-            ->get();
+        $activeSession = $activeSessionId ? \App\Models\AcademicSession::find($activeSessionId) : null;
+        $isRegular = ($activeSession && $activeSession->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+        $query = \App\Models\Classes::where('academic_session_id', $activeSessionId);
+        if ($shiftType !== 'both') {
+            $query->where('shift_type', $shiftType);
+        }
+
+        $this->classes = $query->orderBy('numeric_value')->get();
         $this->selectedMonth = Carbon::now()->format('Y-m');
     }
 
@@ -43,36 +49,46 @@ class AttendanceReport extends Component
             $startOfMonth = Carbon::parse($this->selectedMonth)->startOfMonth()->format('Y-m-d');
             $endOfMonth = Carbon::parse($this->selectedMonth)->endOfMonth()->format('Y-m-d');
 
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $selectedClass = \App\Models\Classes::withoutGlobalScope('active_session')->find($this->selectedClassId);
+            $classShift = $selectedClass ? $selectedClass->shift_type : 'morning';
+
             // 1. Fetch Students
             $studentsQuery = DB::table('students')
-                ->where('class_id', $this->selectedClassId);
+                ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->where('enrollments.class_id', $this->selectedClassId)
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.shift_type', $classShift)
+                ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status');
 
             if ($this->filterStatus === 'active') {
-                $studentsQuery->where('status', 'active');
+                $studentsQuery->where('enrollments.status', 'active');
             } elseif ($this->filterStatus === 'inactive') {
-                $studentsQuery->where('status', 'inactive')
-                    ->whereExists(function ($q) use ($startOfMonth, $endOfMonth) {
+                $studentsQuery->where('enrollments.status', 'inactive')
+                    ->whereExists(function ($q) use ($startOfMonth, $endOfMonth, $activeSessionId) {
                         $q->select(DB::raw(1))
                           ->from('attendances')
                           ->whereColumn('attendances.student_id', 'students.id')
+                          ->where('attendances.academic_session_id', $activeSessionId)
                           ->whereBetween('attendances.date', [$startOfMonth, $endOfMonth]);
                     });
             } else {
-                $studentsQuery->where(function ($q) use ($startOfMonth, $endOfMonth) {
-                    $q->where('status', 'active')
-                      ->orWhere(function ($sq) use ($startOfMonth, $endOfMonth) {
-                          $sq->where('status', 'inactive')
-                            ->whereExists(function ($eq) use ($startOfMonth, $endOfMonth) {
+                $studentsQuery->where(function ($q) use ($startOfMonth, $endOfMonth, $activeSessionId) {
+                    $q->where('enrollments.status', 'active')
+                      ->orWhere(function ($sq) use ($startOfMonth, $endOfMonth, $activeSessionId) {
+                          $sq->where('enrollments.status', 'inactive')
+                            ->whereExists(function ($eq) use ($startOfMonth, $endOfMonth, $activeSessionId) {
                                 $eq->select(DB::raw(1))
                                   ->from('attendances')
                                   ->whereColumn('attendances.student_id', 'students.id')
+                                  ->where('attendances.academic_session_id', $activeSessionId)
                                   ->whereBetween('attendances.date', [$startOfMonth, $endOfMonth]);
                             });
                       });
                 });
             }
 
-            $students = $studentsQuery->orderByRaw('CAST(roll_no AS INTEGER) ASC')->get();
+            $students = $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')->get();
 
             if ($students->isEmpty()) {
                 $this->reportData = [];
@@ -86,6 +102,7 @@ class AttendanceReport extends Component
 
             $records = DB::table('attendances')
                 ->whereIn('student_id', $studentIds)
+                ->where('academic_session_id', $activeSessionId)
                 ->whereBetween('date', [$startOfMonth, $endOfMonth])
                 ->get();
 
@@ -102,9 +119,10 @@ class AttendanceReport extends Component
                     ? $d->isSunday()
                     : $d->isWeekend();
 
-                $isHoliday = \App\Models\Holiday::where('start_date', '<=', $date)
-                    ->where('end_date', '>=', $date)
+                $isHoliday = \App\Models\Holiday::whereDate('start_date', '<=', $date)
+                    ->whereDate('end_date', '>=', $date)
                     ->where('academic_session_id', $activeSessionId)
+                    ->where('shift_type', $classShift)
                     ->exists();
 
                 return !$isWeekend && !$isHoliday;

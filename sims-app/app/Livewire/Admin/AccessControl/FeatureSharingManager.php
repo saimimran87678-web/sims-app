@@ -22,12 +22,22 @@ class FeatureSharingManager extends Component
     public function mount()
     {
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
         
         $query = User::orderBy('name')
             ->join('session_user', 'users.id', '=', 'session_user.user_id')
             ->where('session_user.academic_session_id', $activeSessionId)
             ->where('session_user.is_active', true)
             ->select('users.*');
+
+        if ($shiftType !== 'both' && $shiftType !== 'regular') {
+            $query->where(function($q) use ($shiftType) {
+                $q->where('session_user.allowed_shifts', 'both')
+                  ->orWhere('session_user.allowed_shifts', $shiftType);
+            });
+        }
 
         // Security: Hide Super Admins and regular Admins from selection list
         // Only allow sharing with relevant staff (Teachers, etc.) if delegate
@@ -38,10 +48,15 @@ class FeatureSharingManager extends Component
         }
 
         $this->users = $query->get();
-        $this->allClasses = DB::table('classes')
-            ->where('academic_session_id', $activeSessionId)
-            ->orderBy('numeric_value')
-            ->get();
+
+        $classQuery = DB::table('classes')
+            ->where('academic_session_id', $activeSessionId);
+
+        if ($shiftType !== 'both' && $shiftType !== 'regular') {
+            $classQuery->where('shift_type', $shiftType);
+        }
+
+        $this->allClasses = $classQuery->orderBy('numeric_value')->get();
         $this->loadPermissions();
     }
 
@@ -123,26 +138,37 @@ class FeatureSharingManager extends Component
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         if (!$activeSessionId) return;
 
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $shiftsToToggle = $shiftType === 'both' ? ['morning', 'evening'] : [$shiftType];
+
         $permissions = $this->permissionsGrouped[$groupName]['permissions'];
         
         if ($enable) {
-            foreach ($permissions as $permission) {
-                DB::table('session_user_permissions')->updateOrInsert([
-                    'user_id' => $this->selectedUserId,
-                    'academic_session_id' => $activeSessionId,
-                    'permission_name' => $permission->name,
-                ], [
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            foreach ($shiftsToToggle as $st) {
+                foreach ($permissions as $permission) {
+                    DB::table('session_user_permissions')->updateOrInsert([
+                        'user_id' => $this->selectedUserId,
+                        'academic_session_id' => $activeSessionId,
+                        'permission_name' => $permission->name,
+                        'shift_type' => $st,
+                    ], [
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
         } else {
-            foreach ($permissions as $permission) {
-                DB::table('session_user_permissions')
-                    ->where('user_id', $this->selectedUserId)
-                    ->where('academic_session_id', $activeSessionId)
-                    ->where('permission_name', $permission->name)
-                    ->delete();
+            foreach ($shiftsToToggle as $st) {
+                foreach ($permissions as $permission) {
+                    DB::table('session_user_permissions')
+                        ->where('user_id', $this->selectedUserId)
+                        ->where('academic_session_id', $activeSessionId)
+                        ->where('permission_name', $permission->name)
+                        ->where('shift_type', $st)
+                        ->delete();
+                }
             }
         }
         
@@ -240,11 +266,21 @@ class FeatureSharingManager extends Component
     {
         if ($this->selectedUserId) {
             $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-            $this->userPermissions = DB::table('session_user_permissions')
+            $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+            $query = DB::table('session_user_permissions')
                 ->where('user_id', $this->selectedUserId)
-                ->where('academic_session_id', $activeSessionId)
-                ->pluck('permission_name')
-                ->toArray();
+                ->where('academic_session_id', $activeSessionId);
+
+            if ($shiftType === 'both') {
+                $this->userPermissions = $query->pluck('permission_name')->unique()->toArray();
+            } else {
+                $this->userPermissions = $query->where('shift_type', $shiftType)
+                    ->pluck('permission_name')
+                    ->toArray();
+            }
         } else {
             $this->userPermissions = [];
         }
@@ -257,21 +293,30 @@ class FeatureSharingManager extends Component
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         if (!$activeSessionId) return;
 
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $shiftsToToggle = $shiftType === 'both' ? ['morning', 'evening'] : [$shiftType];
+
         if (in_array($permissionName, $this->userPermissions)) {
             DB::table('session_user_permissions')
                 ->where('user_id', $this->selectedUserId)
                 ->where('academic_session_id', $activeSessionId)
                 ->where('permission_name', $permissionName)
+                ->whereIn('shift_type', $shiftsToToggle)
                 ->delete();
         } else {
-            DB::table('session_user_permissions')->updateOrInsert([
-                'user_id' => $this->selectedUserId,
-                'academic_session_id' => $activeSessionId,
-                'permission_name' => $permissionName,
-            ], [
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            foreach ($shiftsToToggle as $st) {
+                DB::table('session_user_permissions')->updateOrInsert([
+                    'user_id' => $this->selectedUserId,
+                    'academic_session_id' => $activeSessionId,
+                    'permission_name' => $permissionName,
+                    'shift_type' => $st,
+                ], [
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         $this->loadUserPermissions();
@@ -399,6 +444,9 @@ class FeatureSharingManager extends Component
     public function render()
     {
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
         // Simple search filter for users - loading only active in active session
         $query = User::query()
@@ -406,6 +454,13 @@ class FeatureSharingManager extends Component
             ->where('session_user.academic_session_id', $activeSessionId)
             ->where('session_user.is_active', true)
             ->select('users.*');
+
+        if ($shiftType !== 'both' && $shiftType !== 'regular') {
+            $query->where(function($q) use ($shiftType) {
+                $q->where('session_user.allowed_shifts', 'both')
+                  ->orWhere('session_user.allowed_shifts', $shiftType);
+            });
+        }
 
         // Security: Hide Super Admins if current user is not Super Admin
         if (!auth()->user()->hasRole('Super Admin')) {

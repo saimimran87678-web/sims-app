@@ -60,11 +60,13 @@ class LicenseSyncService
             }
 
             // Step 4 - Compute new integrity hash
+            $allowedDomains = $firebaseLic['allowed_domain'] ?? '';
             $newHash = LicenseVerifier::computeIntegrityHash(
                 $licenseKey,
                 $firebaseLic['expires_at'],
                 $firebaseLic['status'],
-                $firebaseLic['school_id']
+                $firebaseLic['school_id'],
+                $allowedDomains
             );
 
             // Step 5 - Save to local SQLite
@@ -75,6 +77,7 @@ class LicenseSyncService
                 'firebase_refresh_token'  => encrypt($newRefreshToken),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
+                'allowed_domains'         => encrypt($allowedDomains),
                 'expires_at'              => LicenseVerifier::normalizeExpiresAt($firebaseLic['expires_at']),
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $newHash,

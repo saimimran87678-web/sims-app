@@ -29,12 +29,24 @@ class ViewSchedule extends Component
 
     public function mount()
     {
-        $this->periods = PeriodConfig::orderBy('period_no')->get();
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
+        $this->periods = PeriodConfig::where('shift_type', $shiftType)->orderBy('period_no')->get();
+
         $this->classes = Classes::withoutGlobalScope('active_session')
             ->where('academic_session_id', $activeSessionId)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            })
             ->orderBy('numeric_value')
             ->get();
+
         $this->teachers = DB::table('users')->where('role', 'teacher')->orderBy('name')->get();
         $this->loadTimetables();
     }

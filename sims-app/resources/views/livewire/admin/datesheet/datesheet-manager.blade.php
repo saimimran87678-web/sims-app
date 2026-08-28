@@ -16,6 +16,17 @@
         </div>
     @endsection
 
+    {{-- Content Header (Always visible back button) --}}
+    @php
+        $backRoute = request()->is('teacher/*') ? route('teacher.shared.exams') : route('admin.exams');
+    @endphp
+    <div class="flex items-center justify-between">
+        <a href="{{ $backRoute }}" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm hover:shadow active:scale-95">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Exams
+        </a>
+    </div>
+
     {{-- Controls & Stats --}}
     <div class="bg-white overflow-hidden shadow-md sm:rounded-xl p-4 sm:p-6 flex flex-col lg:flex-row justify-between items-center gap-4 border border-gray-100">
         

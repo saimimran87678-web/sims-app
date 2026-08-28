@@ -52,6 +52,7 @@ class VerifyLicense
                 if ($path === 'license-blocked' && $status['reason'] === 'invalid_domain') {
                     return redirect()->route('domain.blocked');
                 }
+                view()->share('licenseStatus', $status);
             }
             return $next($request);
         }

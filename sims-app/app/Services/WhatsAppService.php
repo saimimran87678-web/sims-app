@@ -190,8 +190,8 @@ class WhatsAppService
 
             $gender = $student['gender'] ?? null;
             $message = $status === 'A'
-                ? PhoneHelper::getAbsentMessage($student['name'], $student['roll_no'], $date, null, $gender)
-                : PhoneHelper::getLeaveMessage($student['name'], $student['roll_no'], $date, null, $gender);
+                ? PhoneHelper::getAbsentMessage($student['name'], $student['roll_no'], $date, null, $gender, $student['id'])
+                : PhoneHelper::getLeaveMessage($student['name'], $student['roll_no'], $date, null, $gender, $student['id']);
 
             $messages[] = [
                 'phone' => $student['phone'],
@@ -263,7 +263,8 @@ class WhatsAppService
             $formattedPeriod,
             $payment->record->balance,
             null,
-            $link
+            $link,
+            $student->id
         );
 
         $now = now();
@@ -302,7 +303,8 @@ class WhatsAppService
                 $formattedPeriod,
                 $dueDate,
                 null,
-                $link
+                $link,
+                $student->id
             );
 
             $queueRecords[] = [

@@ -43,6 +43,31 @@ class RegisteredUserController extends Controller
             'role' => $request->role,
         ]);
 
+        // Assign Spatie roles based on the user's role field
+        if ($user->role === 'admin') {
+            if (User::count() === 1) {
+                $superAdminRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Super Admin']);
+                $user->assignRole($superAdminRole);
+            }
+        } elseif ($user->role === 'teacher') {
+            $teacherRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Teacher']);
+            $user->assignRole($teacherRole);
+        }
+
+        // Attach newly registered user to the active session so they can log in and have session context
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        if ($activeSessionId) {
+            \Illuminate\Support\Facades\DB::table('session_user')->insert([
+                'user_id'             => $user->id,
+                'academic_session_id' => $activeSessionId,
+                'is_active'           => true,
+                'is_primary'          => true,
+                'allowed_shifts'      => $user->role === 'admin' ? 'both' : 'morning',
+                'created_at'          => now(),
+                'updated_at'          => now(),
+            ]);
+        }
+
         event(new Registered($user));
 
         Auth::login($user);

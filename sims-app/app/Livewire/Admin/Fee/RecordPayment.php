@@ -42,13 +42,20 @@ class RecordPayment extends Component
     {
         $students = [];
         $sessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($sessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
 
         if (!empty(trim($this->search)) || $this->filter_class) {
             $studentsQuery = \App\Models\Student::with('class')
-                ->whereHas('class', function ($q) use ($sessionId) {
-                    $q->where('academic_session_id', $sessionId);
+                ->whereHas('enrollments', function ($q) use ($sessionId, $shiftType) {
+                    $q->where('academic_session_id', $sessionId)
+                      ->where('shift_type', $shiftType);
                     if ($this->filter_class) {
-                        $q->where('id', $this->filter_class);
+                        $q->where('class_id', $this->filter_class);
                     }
                 });
 
@@ -59,8 +66,11 @@ class RecordPayment extends Component
             if (!empty(trim($this->search))) {
                 $studentsQuery->where(function ($q) {
                     $q->where('name', 'like', '%' . $this->search . '%')
-                      ->orWhere('roll_no', 'like', '%' . $this->search . '%')
-                      ->orWhere('admission_no', 'like', '%' . $this->search . '%');
+                      ->orWhere('admission_no', 'like', '%' . $this->search . '%')
+                      ->orWhereHas('enrollments', function($eq) {
+                          $eq->where('roll_number', 'like', '%' . $this->search . '%')
+                             ->where('academic_session_id', \App\Models\AcademicSession::getActiveSessionId());
+                      });
                 });
             }
 
@@ -80,7 +90,11 @@ class RecordPayment extends Component
 
         return view('livewire.admin.fee.record-payment', [
             'studentsList' => $students,
-            'classes' => \App\Models\Classes::where('academic_session_id', $sessionId)->get()
+            'classes' => \App\Models\Classes::withoutGlobalScope('active_session')
+                ->where('academic_session_id', $sessionId)
+                ->where('shift_type', $shiftType)
+                ->orderBy('numeric_value')
+                ->get()
         ])->layout($layout, ['title' => 'Collect Fees']);
     }
 

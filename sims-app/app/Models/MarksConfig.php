@@ -12,6 +12,18 @@ class MarksConfig extends Model
         'subject',
         'total_marks',
         'passing_marks',
+        'academic_session_id',
+        'subject_id',
+        'program_id',
+        'theory_marks',
+        'practical_marks',
+        'is_board_exam',
+        'effective_from',
+    ];
+
+    protected $casts = [
+        'is_board_exam' => 'boolean',
+        'effective_from' => 'date',
     ];
 
     public function exam()
@@ -24,12 +36,28 @@ class MarksConfig extends Model
         return $this->belongsTo(Classes::class, 'class_id');
     }
 
-    /**
-     * Get the actual passing score (not percentage)
-     * Example: total_marks=75, passing_marks=33 => returns 24.75
-     */
+    public function subjectModel()
+    {
+        return $this->belongsTo(Subject::class, 'subject_id');
+    }
+
+    public function program()
+    {
+        return $this->belongsTo(Program::class);
+    }
+
     public function getPassingScore(): float
     {
         return ($this->total_marks * $this->passing_marks) / 100;
+    }
+
+    public static function effectiveFor($sessionId, $examId, $subjectId, $date)
+    {
+        return static::where('academic_session_id', $sessionId)
+            ->where('exam_id', $examId)
+            ->where('subject_id', $subjectId)
+            ->where('effective_from', '<=', $date)
+            ->orderBy('effective_from', 'desc')
+            ->first();
     }
 }

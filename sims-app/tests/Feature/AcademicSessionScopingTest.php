@@ -107,4 +107,72 @@ class AcademicSessionScopingTest extends TestCase
         // Verify getActiveSessionId returns session 1 (from session store) for admin
         $this->assertEquals($session1->id, AcademicSession::getActiveSessionId());
     }
+    public function test_shift_type_change_updates_enrollments(): void
+    {
+        $session = AcademicSession::create([
+            'name' => '2025-2026',
+            'start_date' => '2025-04-01',
+            'end_date' => '2026-03-31',
+            'is_active' => true,
+            'shift_type' => 'Regular',
+        ]);
+
+        $student = \App\Models\Student::create([
+            'name' => 'Test Student',
+            'admission_no' => 'ADM-X',
+            'status' => 'active',
+        ]);
+
+        $class = Classes::create([
+            'name' => 'Class 9',
+            'numeric_value' => 9,
+            'academic_session_id' => $session->id,
+        ]);
+
+        $enrollmentId = \DB::table('enrollments')->insertGetId([
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'academic_session_id' => $session->id,
+            'shift_type' => 'regular',
+            'roll_number' => '1',
+            'status' => 'active',
+        ]);
+
+        // Mock being logged in as admin to modify the session
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('Super Admin');
+        $this->actingAs($admin);
+
+        // Edit session to Dual shift type
+        \Livewire\Livewire::test(\App\Livewire\Admin\AcademicSessionManager::class)
+            ->call('edit', $session->id)
+            ->set('shift_type', 'Dual')
+            ->call('store')
+            ->assertHasNoErrors();
+
+        // Verify session was updated to Dual
+        $session->refresh();
+        $this->assertEquals('Dual', $session->shift_type);
+
+        // Verify enrollment shift_type was migrated from regular to morning
+        $enrollment = \DB::table('enrollments')->where('id', $enrollmentId)->first();
+        $this->assertEquals('morning', $enrollment->shift_type);
+
+        // Edit session back to Regular shift type
+        \Livewire\Livewire::test(\App\Livewire\Admin\AcademicSessionManager::class)
+            ->call('edit', $session->id)
+            ->set('shift_type', 'Regular')
+            ->call('store')
+            ->assertHasNoErrors();
+
+        // Verify session was updated back to Regular
+        $session->refresh();
+        $this->assertEquals('Regular', $session->shift_type);
+
+        // Verify enrollment shift_type was migrated back to regular
+        $enrollment = \DB::table('enrollments')->where('id', $enrollmentId)->first();
+        $this->assertEquals('regular', $enrollment->shift_type);
+    }
 }
+

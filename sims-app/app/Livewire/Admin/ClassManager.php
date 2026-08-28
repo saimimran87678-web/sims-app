@@ -14,8 +14,7 @@ class ClassManager extends Component
     public $academicSessions = [];
     public $canViewSessions = false;
 
-    // Class list
-    public $classes;
+    // Class list settings (not storing collection in public property)
     public $showTrash = false;
 
     // Add new class
@@ -47,6 +46,12 @@ class ClassManager extends Component
     public $copyTargetClassIds = [];
     public $showCopyPanel = false;
 
+    // Import classes
+    public $showImportModal = false;
+    public $importSourceSessionId = '';
+    public $importSubjects = true;
+    public $selectedSourceClassIds = [];
+
     public function mount()
     {
         $this->authorize('classes.manage');
@@ -57,19 +62,16 @@ class ClassManager extends Component
                                  auth()->user()->role === 'admin' || 
                                  auth()->user()->can('classes.view-sessions');
 
-        $this->loadClasses();
-
         // Auto-focus add form when navigated from dashboard quick-action
         if (request()->boolean('open_add_modal')) {
             $this->dispatch('focus-class-input');
         }
     }
 
-    public function loadClasses()
+    public function getClassesList()
     {
         if (!$this->selectedSessionId) {
-            $this->classes = collect();
-            return;
+            return collect();
         }
 
         // Update canViewSessions just in case the context changes
@@ -87,25 +89,51 @@ class ClassManager extends Component
 
         $query = Classes::withoutGlobalScope('active_session')
             ->where('academic_session_id', $this->selectedSessionId)
+            ->where('shift_type', $this->getCurrentShift())
+            ->with(['nextClass'])
             ->withCount('subjects');
 
         if ($this->showTrash) {
             $query->onlyTrashed();
         }
 
-        $this->classes = $query->orderBy('numeric_value')->get();
+        return $query->orderBy('numeric_value')->get();
+    }
+
+    public function getCurrentShift()
+    {
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+        return $shiftType;
+    }
+
+    public function getSourceShift()
+    {
+        if (!$this->importSourceSessionId) {
+            return 'morning';
+        }
+        $sourceSession = \App\Models\AcademicSession::find($this->importSourceSessionId);
+        $isSourceRegular = ($sourceSession && $sourceSession->shift_type === 'Regular');
+        if ($isSourceRegular) {
+            return 'regular';
+        }
+        $targetShift = $this->getCurrentShift();
+        return ($targetShift === 'regular') ? 'morning' : $targetShift;
     }
 
     public function updatedSelectedSessionId()
     {
-        $this->loadClasses();
+        // Handled automatically via reactivity
     }
 
     public function toggleTrash()
     {
         $this->showTrash = !$this->showTrash;
         $this->renamingClassId = null;
-        $this->loadClasses();
     }
 
     // -----------------------------------------------------------------------
@@ -120,26 +148,27 @@ class ClassManager extends Component
             $className = 'Class ' . $className;
         }
 
-        $exists = Classes::withoutGlobalScope('active_session')
+        $shiftType = $this->getCurrentShift();
+        $classExists = Classes::withoutGlobalScope('active_session')
             ->where('name', $className)
             ->where('academic_session_id', $this->selectedSessionId)
+            ->where('shift_type', $shiftType)
             ->exists();
 
-        if ($exists) {
-            $this->addError('name', 'This class already exists in the selected session.');
+        if ($classExists) {
+            $this->addError('name', 'This class already exists in the selected session and shift.');
             return;
         }
 
         $numericValue = (int) filter_var($className, FILTER_SANITIZE_NUMBER_INT);
-
         Classes::create([
             'name' => $className,
             'numeric_value' => $numericValue ?: 0,
             'academic_session_id' => $this->selectedSessionId,
+            'shift_type' => $shiftType,
         ]);
 
         $this->name = '';
-        $this->loadClasses();
         session()->flash('message', 'Class "' . $className . '" added successfully.');
     }
 
@@ -167,15 +196,18 @@ class ClassManager extends Component
             $newName = 'Class ' . $newName;
         }
 
-        // Check duplicate in session (exclude current)
+        $class = Classes::withoutGlobalScope('active_session')->findOrFail($this->renamingClassId);
+
+        // Check duplicate within the same session and shift
         $exists = Classes::withoutGlobalScope('active_session')
             ->where('name', $newName)
-            ->where('academic_session_id', $this->selectedSessionId)
+            ->where('academic_session_id', $class->academic_session_id)
+            ->where('shift_type', $class->shift_type)
             ->where('id', '!=', $this->renamingClassId)
             ->exists();
 
         if ($exists) {
-            $this->addError('renamingClassName', 'A class with this name already exists.');
+            $this->addError('renamingClassName', 'A class with this name already exists in this session.');
             return;
         }
 
@@ -190,7 +222,6 @@ class ClassManager extends Component
 
         $this->renamingClassId = null;
         $this->renamingClassName = '';
-        $this->loadClasses();
         session()->flash('message', 'Class renamed successfully.');
     }
 
@@ -228,7 +259,6 @@ class ClassManager extends Component
         $this->deletingStudentCount = 0;
         $this->deletingTimetableCount = 0;
         $this->manageClassId = null;
-        $this->loadClasses();
         session()->flash('message', 'Class moved to Trash.');
     }
 
@@ -244,7 +274,6 @@ class ClassManager extends Component
     public function restore($id)
     {
         Classes::withoutGlobalScope('active_session')->onlyTrashed()->where('id', $id)->restore();
-        $this->loadClasses();
         session()->flash('message', 'Class restored successfully.');
     }
 
@@ -252,11 +281,17 @@ class ClassManager extends Component
     {
         $class = Classes::withoutGlobalScope('active_session')->onlyTrashed()->where('id', $id)->first();
         if ($class) {
+            // Check if there are any enrollments linked to this class
+            $hasEnrollments = DB::table('enrollments')->where('class_id', $id)->exists();
+            if ($hasEnrollments) {
+                session()->flash('message', 'Cannot permanently delete class because it has associated student enrollments.');
+                return;
+            }
+
             // Hard-delete subjects too
             DB::table('subjects')->where('class_id', $id)->delete();
             $class->forceDelete();
         }
-        $this->loadClasses();
         session()->flash('message', 'Class permanently deleted.');
     }
 
@@ -301,7 +336,6 @@ class ClassManager extends Component
 
         $this->newSubjectName = '';
         $this->loadSubjects($this->manageClassId);
-        $this->loadClasses();
     }
 
     // -----------------------------------------------------------------------
@@ -345,7 +379,6 @@ class ClassManager extends Component
         // Remove from selection if it was selected
         $this->selectedSubjectIds = array_diff($this->selectedSubjectIds, [$subjectId]);
         $this->loadSubjects($this->manageClassId);
-        $this->loadClasses();
     }
 
     public function updatedSelectedSubjectIds()
@@ -396,7 +429,6 @@ class ClassManager extends Component
         $this->selectedSubjectIds = [];
         $this->copyTargetClassIds = [];
         $this->showCopyPanel = false;
-        $this->loadClasses();
         session()->flash('message', $msg);
     }
 
@@ -412,14 +444,203 @@ class ClassManager extends Component
         $this->showCopyPanel = false;
     }
 
+    public function updateNextClass($classId, $nextClassId)
+    {
+        $this->authorize('classes.manage');
+        Classes::withoutGlobalScope('active_session')
+            ->where('id', $classId)
+            ->update([
+                'next_class_id' => $nextClassId ?: null,
+            ]);
+
+        session()->flash('message', 'Next class configuration updated successfully.');
+    }
+
+    public function openImportModal()
+    {
+        $this->showImportModal = true;
+        $this->importSourceSessionId = '';
+        $this->importSubjects = true;
+        $this->selectedSourceClassIds = [];
+    }
+
+    public function closeImportModal()
+    {
+        $this->showImportModal = false;
+    }
+
+    public function updatedImportSourceSessionId($value)
+    {
+        $this->selectedSourceClassIds = [];
+    }
+
+    public function getSourceClasses()
+    {
+        if (!$this->importSourceSessionId) {
+            return collect();
+        }
+        return Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $this->importSourceSessionId)
+            ->where('shift_type', $this->getSourceShift())
+            ->orderBy('numeric_value')
+            ->get();
+    }
+
+    public function toggleSelectAllSourceClasses()
+    {
+        $allIds = Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $this->importSourceSessionId)
+            ->where('shift_type', $this->getSourceShift())
+            ->pluck('id')
+            ->map(fn($id) => (string)$id)
+            ->toArray();
+
+        if (count($this->selectedSourceClassIds) === count($allIds)) {
+            $this->selectedSourceClassIds = [];
+        } else {
+            $this->selectedSourceClassIds = $allIds;
+        }
+    }
+
+    public function importClasses()
+    {
+        $this->validate([
+            'importSourceSessionId' => 'required|exists:academic_sessions,id',
+        ]);
+
+        if ($this->importSourceSessionId == $this->selectedSessionId) {
+            $this->addError('importSourceSessionId', 'Source and target sessions cannot be the same.');
+            return;
+        }
+
+        if (empty($this->selectedSourceClassIds)) {
+            $this->addError('selectedSourceClassIds', 'Please select at least one class to import.');
+            return;
+        }
+
+        $sourceClasses = Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $this->importSourceSessionId)
+            ->where('shift_type', $this->getSourceShift())
+            ->whereIn('id', $this->selectedSourceClassIds)
+            ->get();
+
+        if ($sourceClasses->isEmpty()) {
+            $this->addError('selectedSourceClassIds', 'No valid classes selected for import.');
+            return;
+        }
+
+        $copiedCount = 0;
+        $skippedCount = 0;
+        $classMap = [];
+
+        foreach ($sourceClasses as $sc) {
+            // Check if class with same name already exists in target session and shift
+            $existingClass = Classes::withoutGlobalScope('active_session')
+                ->where('academic_session_id', $this->selectedSessionId)
+                ->where('shift_type', $this->getCurrentShift())
+                ->where('name', $sc->name)
+                ->first();
+
+            if (!$existingClass) {
+                $newClass = Classes::create([
+                    'academic_session_id' => $this->selectedSessionId,
+                    'name' => $sc->name,
+                    'numeric_value' => $sc->numeric_value,
+                    'shift_type' => $this->getCurrentShift(),
+                ]);
+                $classMap[$sc->id] = $newClass->id;
+                $copiedCount++;
+
+                if ($this->importSubjects) {
+                    $sourceSubjects = Subject::where('class_id', $sc->id)->get();
+                    foreach ($sourceSubjects as $subj) {
+                        Subject::create([
+                            'class_id' => $newClass->id,
+                            'name'     => $subj->name,
+                            'code'     => $subj->code,
+                        ]);
+                    }
+                }
+            } else {
+                $classMap[$sc->id] = $existingClass->id;
+                $skippedCount++;
+
+                if ($this->importSubjects) {
+                    $sourceSubjects = Subject::where('class_id', $sc->id)->get();
+                    foreach ($sourceSubjects as $subj) {
+                        $exists = Subject::where('class_id', $existingClass->id)
+                            ->where('name', $subj->name)
+                            ->exists();
+                        if (!$exists) {
+                             Subject::create([
+                                 'class_id' => $existingClass->id,
+                                 'name'     => $subj->name,
+                                 'code'     => $subj->code,
+                             ]);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Map next_class_ids for newly created classes
+        foreach ($sourceClasses as $sc) {
+            if ($sc->next_class_id && isset($classMap[$sc->next_class_id]) && isset($classMap[$sc->id])) {
+                $targetClassId = $classMap[$sc->id];
+                Classes::withoutGlobalScope('active_session')
+                    ->where('id', $targetClassId)
+                    ->update([
+                        'next_class_id' => $classMap[$sc->next_class_id]
+                    ]);
+            }
+        }
+
+        $msg = "Successfully imported {$copiedCount} class(es).";
+        if ($skippedCount > 0) {
+            $msg .= " {$skippedCount} class(es) already existed and were merged/skipped.";
+        }
+
+        $this->showImportModal = false;
+        $this->importSourceSessionId = '';
+        $this->selectedSourceClassIds = [];
+        session()->flash('message', $msg);
+    }
+
     public function render()
     {
-        $this->loadClasses();
-
         $layout = request()->is('teacher/*')
             ? 'components.layouts.teacher'
             : 'components.layouts.admin';
 
-        return view('livewire.admin.class-manager')->layout($layout, ['title' => 'Class Management']);
+        $currentSession = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $nextSession = null;
+        if ($currentSession) {
+            $nextSession = \App\Models\AcademicSession::where('start_date', '>', $currentSession->start_date)
+                ->orderBy('start_date', 'asc')
+                ->first();
+        }
+
+        $hasNextSession = !is_null($nextSession);
+
+        $allClasses = collect();
+        if ($hasNextSession) {
+            $allClasses = Classes::withoutGlobalScope('active_session')
+                ->where('academic_session_id', $nextSession->id)
+                ->where('shift_type', $this->getCurrentShift())
+                ->whereNull('deleted_at')
+                ->orderBy('numeric_value')
+                ->get();
+        }
+
+        $hasFinalExam = \App\Models\Exam::where('academic_session_id', $this->selectedSessionId)
+            ->where('type', 'Final-Term')
+            ->exists();
+
+        return view('livewire.admin.class-manager', [
+            'classes' => $this->getClassesList(),
+            'allClasses' => $allClasses,
+            'hasFinalExam' => $hasFinalExam,
+            'hasNextSession' => $hasNextSession,
+        ])->layout($layout, ['title' => 'Class Management']);
     }
 }

@@ -16,29 +16,42 @@ class Dashboard extends Component
     public function render()
     {
         $activeSessionId = AcademicSession::getActiveSessionId();
-        $activeSession   = $activeSessionId
-            ? AcademicSession::find($activeSessionId)
-            : null;
+        $activeSession = $activeSessionId ? AcademicSession::find($activeSessionId) : null;
+        $isRegular = ($activeSession && $activeSession->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
         // ─── Core Stats ────────────────────────────────────────────
         $classesCount = $activeSessionId
-            ? Classes::where('academic_session_id', $activeSessionId)->count()
+            ? Classes::withoutGlobalScope('active_session')
+                ->where('academic_session_id', $activeSessionId)
+                ->when($shiftType !== 'both', fn($q) => $q->where('shift_type', $shiftType))
+                ->count()
             : 0;
 
         $studentsCount = $activeSessionId
-            ? Student::whereHas('class', fn($q) => $q->where('academic_session_id', $activeSessionId))
-                     ->where('status', 'active')
-                     ->count()
+            ? Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                    $q->where('academic_session_id', $activeSessionId)->active();
+                    if ($shiftType !== 'both') {
+                        $q->where('shift_type', $shiftType);
+                    }
+              })
+              ->count()
             : 0;
 
         // ─── Attendance (single query) ─────────────────────────────
         $attendanceStat = 0;
-        if ($activeSessionId) {
-            $row = DB::table('attendances')
-                ->join('students', 'attendances.student_id', '=', 'students.id')
-                ->join('classes',  'students.class_id',      '=', 'classes.id')
-                ->where('classes.academic_session_id', $activeSessionId)
-                ->selectRaw('COUNT(*) as total, SUM(attendances.status = "P") as present')
+        if ($activeSessionId && $activeSession) {
+            $rowQuery = DB::table('attendances')
+                ->join('enrollments', 'attendances.student_id', '=', 'enrollments.student_id')
+                ->where('attendances.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active')
+                ->whereBetween('attendances.date', [$activeSession->start_date, $activeSession->end_date]);
+
+            if ($shiftType !== 'both') {
+                $rowQuery->where('enrollments.shift_type', $shiftType);
+            }
+
+            $row = $rowQuery->selectRaw('COUNT(*) as total, SUM(attendances.status = "P") as present')
                 ->first();
 
             $attendanceStat = ($row && $row->total > 0)
@@ -49,8 +62,16 @@ class Dashboard extends Component
         // ─── Financial Overview ────────────────────────────────────
         $financials = ['generated' => 0, 'collected' => 0, 'pending' => 0, 'collection_rate' => 0];
         if ($activeSessionId) {
-            $fin = FeeRecord::where('academic_session_id', $activeSessionId)
-                ->selectRaw('SUM(total_amount) as generated, SUM(paid_amount) as collected, SUM(balance) as pending')
+            $finQuery = FeeRecord::where('fee_records.academic_session_id', $activeSessionId)
+                ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active');
+
+            if ($shiftType !== 'both') {
+                $finQuery->where('enrollments.shift_type', $shiftType);
+            }
+
+            $fin = $finQuery->selectRaw('SUM(fee_records.total_amount) as generated, SUM(fee_records.paid_amount) as collected, SUM(fee_records.balance) as pending')
                 ->first();
 
             $financials['generated']       = $fin->generated ?? 0;
@@ -65,15 +86,45 @@ class Dashboard extends Component
         $currentMonth = date('Y-m');
         $paidCount    = 0;
         if ($activeSessionId) {
-            $paidCount = DB::table('fee_records')
-                ->where('academic_session_id', $activeSessionId)
-                ->where('period', $currentMonth)
-                ->where('status', 'paid')
-                ->count();
+            $paidQuery = DB::table('fee_records')
+                ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
+                ->where('fee_records.academic_session_id', $activeSessionId)
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active')
+                ->where('fee_records.period', $currentMonth)
+                ->where('fee_records.status', 'paid');
+
+            if ($shiftType !== 'both') {
+                $paidQuery->where('enrollments.shift_type', $shiftType);
+            }
+
+            $paidCount = $paidQuery->count();
+        }
+
+        $usersCount = 0;
+        if ($activeSessionId) {
+            $usersCount = User::where(function($query) use ($activeSessionId, $shiftType) {
+                $query->where('role', 'admin')
+                    ->orWhere(function($q) use ($activeSessionId, $shiftType) {
+                        $q->where('role', '!=', 'admin')
+                          ->whereHas('academicSessions', function($sq) use ($activeSessionId, $shiftType) {
+                              $sq->where('session_user.academic_session_id', $activeSessionId)
+                                 ->where('session_user.is_active', true);
+                              if ($shiftType !== 'both') {
+                                  $sq->where(function($ssq) use ($shiftType) {
+                                      $ssq->where('session_user.allowed_shifts', 'both')
+                                          ->orWhere('session_user.allowed_shifts', $shiftType);
+                                  });
+                              }
+                          });
+                    });
+            })->count();
+        } else {
+            $usersCount = User::count();
         }
 
         $stats = [
-            'users'           => User::count(),
+            'users'           => $usersCount,
             'classes'         => $classesCount,
             'students'        => $studentsCount,
             'attendance'      => $attendanceStat,
@@ -87,12 +138,18 @@ class Dashboard extends Component
         $svgPath         = '';
         $svgFillPath     = '';
 
-        if ($activeSessionId) {
-            $rows = DB::table('attendances')
-                ->join('students', 'attendances.student_id', '=', 'students.id')
-                ->join('classes',  'students.class_id',      '=', 'classes.id')
-                ->where('classes.academic_session_id', $activeSessionId)
-                ->groupBy('attendances.date')
+        if ($activeSessionId && $activeSession) {
+            $trendQuery = DB::table('attendances')
+                ->join('enrollments', 'attendances.student_id', '=', 'enrollments.student_id')
+                ->where('attendances.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active')
+                ->whereBetween('attendances.date', [$activeSession->start_date, $activeSession->end_date]);
+
+            if ($shiftType !== 'both') {
+                $trendQuery->where('enrollments.shift_type', $shiftType);
+            }
+
+            $rows = $trendQuery->groupBy('attendances.date')
                 ->selectRaw('attendances.date, COUNT(*) as total, SUM(attendances.status = "P") as present')
                 ->orderByDesc('attendances.date')
                 ->limit(5)
@@ -133,9 +190,17 @@ class Dashboard extends Component
         // ─── Activity Feed ─────────────────────────────────────────
         $activityFeed = [];
         if ($activeSessionId) {
-            $payments = FeePayment::with(['student', 'record.class'])
-                ->whereHas('record', fn($q) => $q->where('academic_session_id', $activeSessionId))
-                ->latest()->limit(5)->get();
+            $paymentsQuery = FeePayment::with(['student', 'record.class'])
+                ->join('enrollments', 'fee_payments.student_id', '=', 'enrollments.student_id')
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active')
+                ->select('fee_payments.*');
+
+            if ($shiftType !== 'both') {
+                $paymentsQuery->where('enrollments.shift_type', $shiftType);
+            }
+
+            $payments = $paymentsQuery->latest('fee_payments.created_at')->limit(5)->get();
 
             foreach ($payments as $p) {
                 $activityFeed[] = [
@@ -149,9 +214,14 @@ class Dashboard extends Component
                 ];
             }
 
-            $admissions = Student::with('class')
-                ->whereHas('class', fn($q) => $q->where('academic_session_id', $activeSessionId))
-                ->latest()->limit(5)->get();
+            $admissionsQuery = Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                $q->where('academic_session_id', $activeSessionId)->active();
+                if ($shiftType !== 'both') {
+                    $q->where('shift_type', $shiftType);
+                }
+            });
+
+            $admissions = $admissionsQuery->latest()->limit(5)->get();
 
             foreach ($admissions as $s) {
                 $activityFeed[] = [
@@ -172,8 +242,22 @@ class Dashboard extends Component
         // ─── Class Distribution ────────────────────────────────────
         $classDistribution = [];
         if ($activeSessionId) {
-            $classDistribution = Classes::where('academic_session_id', $activeSessionId)
-                ->withCount(['students' => fn($q) => $q->where('status', 'active')])
+            $classDistributionQuery = Classes::withoutGlobalScope('active_session')
+                ->where('academic_session_id', $activeSessionId);
+
+            if ($shiftType !== 'both') {
+                $classDistributionQuery->where('shift_type', $shiftType);
+            }
+
+            $classDistribution = $classDistributionQuery
+                ->withCount(['students' => function($q) use ($activeSessionId, $shiftType) {
+                    $q->whereHas('enrollments', function($eq) use ($activeSessionId, $shiftType) {
+                        $eq->where('academic_session_id', $activeSessionId)->active();
+                        if ($shiftType !== 'both') {
+                            $eq->where('shift_type', $shiftType);
+                        }
+                    });
+                }])
                 ->orderByDesc('students_count')
                 ->limit(6)
                 ->get();
@@ -183,15 +267,28 @@ class Dashboard extends Component
         $unpaidStudents = collect();
         if ($activeSessionId) {
             $currentMonth = date('Y-m');
-            $paidStudentIds = DB::table('fee_records')
-                ->where('academic_session_id', $activeSessionId)
-                ->where('period', $currentMonth)
-                ->where('status', 'paid')
-                ->pluck('student_id');
+
+            $paidStudentIdsQuery = DB::table('fee_records')
+                ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
+                ->where('fee_records.academic_session_id', $activeSessionId)
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active')
+                ->where('fee_records.period', $currentMonth)
+                ->where('fee_records.status', 'paid');
+
+            if ($shiftType !== 'both') {
+                $paidStudentIdsQuery->where('enrollments.shift_type', $shiftType);
+            }
+
+            $paidStudentIds = $paidStudentIdsQuery->pluck('fee_records.student_id');
 
             $unpaidStudents = Student::with('class')
-                ->whereHas('class', fn($q) => $q->where('academic_session_id', $activeSessionId))
-                ->where('status', 'active')
+                ->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                    $q->where('academic_session_id', $activeSessionId)->active();
+                    if ($shiftType !== 'both') {
+                        $q->where('shift_type', $shiftType);
+                    }
+                })
                 ->whereNotIn('id', $paidStudentIds)
                 ->get()
                 ->groupBy(fn($student) => $student->class->name ?? 'Unallocated')

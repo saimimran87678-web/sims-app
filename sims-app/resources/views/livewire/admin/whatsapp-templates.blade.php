@@ -9,7 +9,13 @@
                 </a>
                 WhatsApp Message Templates
             </h1>
-            <p class="text-gray-500 mt-1">Customize the messages sent to parents. Use the variables below to insert dynamic data.</p>
+            <p class="text-gray-500 mt-1 flex flex-wrap items-center gap-2">
+                Customize the messages sent to parents for the current context: 
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                    {{ \App\Models\AcademicSession::find(\App\Models\AcademicSession::getActiveSessionId())->name ?? 'Active Session' }} 
+                    ({{ ucfirst(session('selected_shift_type', 'morning')) }} Shift)
+                </span>
+            </p>
         </div>
     </div>
 

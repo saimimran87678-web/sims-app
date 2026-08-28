@@ -443,4 +443,77 @@ class FeeManagementTest extends TestCase
         $response404 = $this->get(route('public.voucher.show', 'invalid-uuid'));
         $response404->assertStatus(404);
     }
+
+    public function test_fee_management_components_respect_active_shift(): void
+    {
+        // 1. Create a Dual-shift Academic Session
+        $dualSession = AcademicSession::create([
+            'name' => '2027-2028 Dual',
+            'start_date' => '2027-04-01',
+            'end_date' => '2028-03-31',
+            'shift_type' => 'Dual',
+            'is_active' => true,
+        ]);
+
+        // Explicitly set the active session ID in the session context
+        session(['selected_academic_session_id' => $dualSession->id]);
+
+        // 2. Create class for morning shift
+        $morningClass = Classes::create([
+            'name' => 'Class 9 Morning',
+            'numeric_value' => 9,
+            'academic_session_id' => $dualSession->id,
+            'shift_type' => 'morning',
+        ]);
+
+        // 3. Create class for evening shift
+        $eveningClass = Classes::create([
+            'name' => 'Class 9 Evening',
+            'numeric_value' => 9,
+            'academic_session_id' => $dualSession->id,
+            'shift_type' => 'evening',
+        ]);
+
+        // 4. Case A: Active shift is Morning
+        session(['selected_shift_type' => 'morning']);
+
+        // Check InvoiceGenerator lists morningClass but not eveningClass
+        $testGeneratorMorning = Livewire::test(InvoiceGenerator::class);
+        $classesMorning = $testGeneratorMorning->viewData('classes');
+        $this->assertTrue($classesMorning->contains('id', $morningClass->id));
+        $this->assertFalse($classesMorning->contains('id', $eveningClass->id));
+
+        // Check RecordPayment lists morningClass but not eveningClass
+        $testCollectMorning = Livewire::test(\App\Livewire\Admin\Fee\RecordPayment::class);
+        $classesCollectMorning = $testCollectMorning->viewData('classes');
+        $this->assertTrue($classesCollectMorning->contains('id', $morningClass->id));
+        $this->assertFalse($classesCollectMorning->contains('id', $eveningClass->id));
+
+        // Check DefaulterList lists morningClass but not eveningClass
+        $testDefaulterMorning = Livewire::test(\App\Livewire\Admin\Fee\DefaulterList::class);
+        $classesDefaulterMorning = $testDefaulterMorning->viewData('classes');
+        $this->assertTrue($classesDefaulterMorning->contains('id', $morningClass->id));
+        $this->assertFalse($classesDefaulterMorning->contains('id', $eveningClass->id));
+
+        // 5. Case B: Active shift is Evening
+        session(['selected_shift_type' => 'evening']);
+
+        // Check InvoiceGenerator lists eveningClass but not morningClass
+        $testGeneratorEvening = Livewire::test(InvoiceGenerator::class);
+        $classesEvening = $testGeneratorEvening->viewData('classes');
+        $this->assertTrue($classesEvening->contains('id', $eveningClass->id));
+        $this->assertFalse($classesEvening->contains('id', $morningClass->id));
+
+        // Check RecordPayment lists eveningClass but not morningClass
+        $testCollectEvening = Livewire::test(\App\Livewire\Admin\Fee\RecordPayment::class);
+        $classesCollectEvening = $testCollectEvening->viewData('classes');
+        $this->assertTrue($classesCollectEvening->contains('id', $eveningClass->id));
+        $this->assertFalse($classesCollectEvening->contains('id', $morningClass->id));
+
+        // Check DefaulterList lists eveningClass but not morningClass
+        $testDefaulterEvening = Livewire::test(\App\Livewire\Admin\Fee\DefaulterList::class);
+        $classesDefaulterEvening = $testDefaulterEvening->viewData('classes');
+        $this->assertTrue($classesDefaulterEvening->contains('id', $eveningClass->id));
+        $this->assertFalse($classesDefaulterEvening->contains('id', $morningClass->id));
+    }
 }

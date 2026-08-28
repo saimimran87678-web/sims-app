@@ -29,3 +29,6 @@ Thumbs.db
 /private.pem
 /public.pem
 /debug_plan.md
+/tests_output.txt
+/scratch
+/storage/framework/whatsapp_queue.lock

@@ -62,11 +62,30 @@ class CommunicationHub extends Component
     public function updatedSelectedClasses()
     {
         if (!empty($this->selectedClasses)) {
-            $students = Student::whereIn('class_id', $this->selectedClasses)
-                ->where('status', 'active')
-                ->orderBy('class_id')
-                ->orderByRaw('CAST(roll_no AS INTEGER) ASC')
-                ->get();
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $shiftType = session('selected_shift_type', 'morning');
+            if ($shiftType === 'both') {
+                $shiftType = 'morning';
+            }
+
+            $students = Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                    $q->whereIn('class_id', $this->selectedClasses)
+                      ->where('academic_session_id', $activeSessionId)
+                      ->where('shift_type', $shiftType)
+                      ->active();
+                })
+                ->get()
+                ->map(function($student) use ($activeSessionId, $shiftType) {
+                    $enrollment = $student->enrollments()
+                        ->where('academic_session_id', $activeSessionId)
+                        ->where('shift_type', $shiftType)
+                        ->first();
+                    $student->class_id = $enrollment->class_id;
+                    $student->roll_no = $enrollment->roll_no;
+                    return $student;
+                })
+                ->sortBy(fn($s) => [(int)$s->class_id, (int)$s->roll_no])
+                ->values();
                 
             $this->availableStudents = $students->groupBy('class_id')->toArray();
             
@@ -82,7 +101,20 @@ class CommunicationHub extends Component
 
     public function toggleClassStudents($classId)
     {
-        $classStudents = Student::where('class_id', $classId)->where('status', 'active')->pluck('id')->toArray();
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $shiftType = session('selected_shift_type', 'morning');
+        if ($shiftType === 'both') {
+            $shiftType = 'morning';
+        }
+
+        $classStudents = Student::whereHas('enrollments', function($q) use ($classId, $activeSessionId, $shiftType) {
+                $q->where('class_id', $classId)
+                  ->where('academic_session_id', $activeSessionId)
+                  ->where('shift_type', $shiftType)
+                  ->active();
+            })
+            ->pluck('id')
+            ->toArray();
         $intersect = array_intersect($classStudents, $this->selectedStudents);
         $allSelected = count($intersect) === count($classStudents);
         
@@ -110,8 +142,18 @@ class CommunicationHub extends Component
             }
 
             // 1. Gather Recipients
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $shiftType = session('selected_shift_type', 'morning');
+            if ($shiftType === 'both') {
+                $shiftType = 'morning';
+            }
+
             $recipients = Student::whereIn('id', $this->selectedStudents)
-                ->where('status', 'active')
+                ->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                    $q->where('academic_session_id', $activeSessionId)
+                      ->where('shift_type', $shiftType)
+                      ->active();
+                })
                 ->whereNotNull('phone')
                 ->get()
                 ->map(function ($s) {

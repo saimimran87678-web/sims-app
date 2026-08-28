@@ -102,12 +102,30 @@ class LicenseStatus
                 $allowedStr = decrypt($record->allowed_domains);
                 if (!empty($allowedStr)) {
                     $allowedList = array_map(function ($domain) {
-                        return explode(':', trim($domain))[0];
-                    }, explode(',', strtolower($allowedStr)));
+                        $domain = trim($domain);
+                        // Strip scheme if present
+                        if (str_starts_with(strtolower($domain), 'http://')) {
+                            $domain = substr($domain, 7);
+                        } elseif (str_starts_with(strtolower($domain), 'https://')) {
+                            $domain = substr($domain, 8);
+                        }
+                        // Strip trailing path/slash
+                        $domain = explode('/', $domain)[0];
+                        // Strip port
+                        $domain = explode(':', $domain)[0];
+                        return strtolower(trim($domain));
+                    }, explode(',', $allowedStr));
                     
                     $currentHost = explode(':', strtolower(request()->getHost()))[0];
 
-                    if (!in_array($currentHost, $allowedList)) {
+                    $isLocalOrTunnel = $currentHost === 'localhost' || 
+                                       $currentHost === '127.0.0.1' || 
+                                       str_ends_with($currentHost, '.ngrok-free.dev') ||
+                                       str_ends_with($currentHost, '.ngrok.io') ||
+                                       str_ends_with($currentHost, '.trycloudflare.com') ||
+                                       str_ends_with($currentHost, '.local');
+
+                    if (!$isLocalOrTunnel && !in_array($currentHost, $allowedList)) {
                         return array_merge($baseStatus, [
                             'stage' => self::STAGE_BLOCKED,
                             'reason' => 'invalid_domain',
@@ -163,6 +181,38 @@ class LicenseStatus
             ]);
         }
 
+        if ($record->expires_at) {
+            $expiry = Carbon::parse($record->expires_at)->startOfDay();
+            $today = $now->copy()->startOfDay();
+
+            if ($today->gt($expiry)) {
+                $overdueDays = (int) abs($today->diffInDays($expiry));
+
+                if ($overdueDays <= 3) {
+                    return array_merge($baseStatus, [
+                        'stage' => self::STAGE_GRACE,
+                        'reason' => 'expiry_grace',
+                        'days_past' => $overdueDays,
+                        'message' => 'Your subscription has expired. You are in a 3-day grace period. Please renew.',
+                    ]);
+                } elseif ($overdueDays <= 10) {
+                    return array_merge($baseStatus, [
+                        'stage' => self::STAGE_LOCKED,
+                        'reason' => 'expired_locked',
+                        'days_past' => $overdueDays,
+                        'message' => 'Your account status is suspended. The system is now in READ-ONLY mode. Please renew.',
+                    ]);
+                } else {
+                    return array_merge($baseStatus, [
+                        'stage' => self::STAGE_BLOCKED,
+                        'reason' => 'expired_blocked',
+                        'days_past' => $overdueDays,
+                        'message' => 'Your subscription has expired. Full access is blocked. Please renew.',
+                    ]);
+                }
+            }
+        }
+
         if ($status === 'expired') {
             return array_merge($baseStatus, [
                 'stage' => self::STAGE_BLOCKED,
@@ -179,35 +229,6 @@ class LicenseStatus
             ]);
         }
 
-        $expiry = Carbon::parse($record->expires_at)->startOfDay();
-        $today = $now->copy()->startOfDay();
-
-        if ($today->gt($expiry)) {
-            $overdueDays = (int) abs($today->diffInDays($expiry));
-
-            if ($overdueDays <= 3) {
-                return array_merge($baseStatus, [
-                    'stage' => self::STAGE_GRACE,
-                    'reason' => 'expiry_grace',
-                    'days_past' => $overdueDays,
-                    'message' => 'Your subscription has expired. You are in a 3-day grace period. Please renew.',
-                ]);
-            } elseif ($overdueDays <= 10) {
-                return array_merge($baseStatus, [
-                    'stage' => self::STAGE_LOCKED,
-                    'reason' => 'expired_locked',
-                    'days_past' => $overdueDays,
-                    'message' => 'Your account status is suspended. The system is now in READ-ONLY mode. Please renew.',
-                ]);
-            } else {
-                return array_merge($baseStatus, [
-                    'stage' => self::STAGE_BLOCKED,
-                    'reason' => 'expired_blocked',
-                    'days_past' => $overdueDays,
-                    'message' => 'Your subscription has expired. Full access is blocked. Please renew.',
-                ]);
-            }
-        }
 
         // Active checks (expires_at is today or in the future)
         // Use precise signed difference in whole days by comparing startOfDay boundaries
