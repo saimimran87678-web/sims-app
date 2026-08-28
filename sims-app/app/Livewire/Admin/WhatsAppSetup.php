@@ -3,10 +3,15 @@
 namespace App\Livewire\Admin;
 
 use Livewire\Component;
+use Livewire\WithPagination;
 use App\Services\WhatsAppService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class WhatsAppSetup extends Component
 {
+    use WithPagination;
+
     public $status = [];
     public $qrData = null;
     public $isConnected = false;
@@ -18,6 +23,22 @@ class WhatsAppSetup extends Component
     public $autoSendStart;
     public $autoSendEnd;
     public $forceSendNow;
+
+    // Filters for Queue Table
+    public $filterStatus = '';
+    public $search = '';
+
+    protected $paginationTheme = 'tailwind';
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterStatus()
+    {
+        $this->resetPage();
+    }
 
     public function mount()
     {
@@ -87,40 +108,41 @@ class WhatsAppSetup extends Component
 
         session()->flash('message', 'Settings saved. Queue processor updated.');
 
-        // Start the daemon in the background. The daemon itself checks the toggles
-        // and time window on each loop iteration, so it self-manages start/stop.
         try {
             $artisanPath = base_path('artisan');
             shell_exec("php {$artisanPath} whatsapp:process-queue > /dev/null 2>&1 &");
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to launch queue daemon: ' . $e->getMessage());
+            Log::error('Failed to launch queue daemon: ' . $e->getMessage());
         }
     }
 
     public function toggleMessageStatus($id)
     {
-        $msg = \Illuminate\Support\Facades\DB::table('whatsapp_queue')->find($id);
+        $msg = DB::table('whatsapp_queue')->find($id);
         if ($msg) {
             $newStatus = $msg->status === 'paused' ? 'pending' : 'paused';
-            \Illuminate\Support\Facades\DB::table('whatsapp_queue')->where('id', $id)->update(['status' => $newStatus]);
+            DB::table('whatsapp_queue')->where('id', $id)->update(['status' => $newStatus]);
         }
     }
 
     public function deleteMessage($id)
     {
-        \Illuminate\Support\Facades\DB::table('whatsapp_queue')->where('id', $id)->delete();
+        DB::table('whatsapp_queue')->where('id', $id)->delete();
+        session()->flash('message', 'Message deleted from queue.');
     }
 
     public function sendManual($id)
     {
-        $msg = \Illuminate\Support\Facades\DB::table('whatsapp_queue')->find($id);
+        $msg = DB::table('whatsapp_queue')->find($id);
         if ($msg) {
             $whatsapp = app(WhatsAppService::class);
             $result = $whatsapp->sendMessage($msg->phone, $msg->message);
             if ($result['success'] ?? false) {
-                \Illuminate\Support\Facades\DB::table('whatsapp_queue')->where('id', $id)->update(['status' => 'sent', 'updated_at' => now()]);
+                DB::table('whatsapp_queue')->where('id', $id)->update(['status' => 'sent', 'updated_at' => now()]);
+                session()->flash('message', 'Message sent successfully!');
             } else {
-                \Illuminate\Support\Facades\DB::table('whatsapp_queue')->where('id', $id)->update(['status' => 'failed', 'error_message' => $result['error'] ?? 'Unknown error', 'updated_at' => now()]);
+                DB::table('whatsapp_queue')->where('id', $id)->update(['status' => 'failed', 'error_message' => $result['error'] ?? 'Unknown error', 'updated_at' => now()]);
+                session()->flash('error', 'Failed to send message: ' . ($result['error'] ?? 'Service offline'));
             }
         }
     }
@@ -132,24 +154,47 @@ class WhatsAppSetup extends Component
         $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
         $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
-        $queue = \Illuminate\Support\Facades\DB::table('whatsapp_queue')
+        $query = DB::table('whatsapp_queue')
             ->leftJoin('students', 'whatsapp_queue.student_id', '=', 'students.id')
             ->leftJoin('enrollments', function($join) use ($activeSessionId) {
                 $join->on('students.id', '=', 'enrollments.student_id')
                      ->where('enrollments.academic_session_id', '=', $activeSessionId);
             })
-            ->where(function($query) use ($shiftType) {
-                $query->where(function($sub) use ($shiftType) {
+            ->leftJoin('classes', 'enrollments.class_id', '=', 'classes.id')
+            ->where(function($q) use ($shiftType) {
+                $q->where(function($sub) use ($shiftType) {
                     $sub->whereNotNull('whatsapp_queue.student_id')
                         ->whereNotNull('enrollments.id')
-                        ->when($shiftType !== 'both', function ($q) use ($shiftType) {
-                            $q->where('enrollments.shift_type', $shiftType);
+                        ->when($shiftType !== 'both', function ($s) use ($shiftType) {
+                            $s->where('enrollments.shift_type', $shiftType);
                         });
                 })->orWhereNull('whatsapp_queue.student_id');
-            })
-            ->select('whatsapp_queue.*', 'students.name as student_name')
+            });
+
+        if ($this->filterStatus) {
+            $query->where('whatsapp_queue.status', $this->filterStatus);
+        }
+
+        if ($this->search) {
+            $search = '%' . $this->search . '%';
+            $query->where(function($q) use ($search) {
+                $q->where('students.name', 'like', $search)
+                  ->orWhere('students.admission_no', 'like', $search)
+                  ->orWhere('enrollments.roll_number', 'like', $search)
+                  ->orWhere('whatsapp_queue.phone', 'like', $search)
+                  ->orWhere('whatsapp_queue.message', 'like', $search);
+            });
+        }
+
+        $queue = $query->select(
+                'whatsapp_queue.*',
+                'students.name as student_name',
+                'students.admission_no',
+                'enrollments.roll_number as roll_no',
+                'classes.name as class_name'
+            )
             ->orderBy('whatsapp_queue.id', 'desc')
-            ->paginate(10);
+            ->paginate(15);
 
         return view('livewire.admin.whatsapp-setup', [
             'queue' => $queue

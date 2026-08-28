@@ -516,4 +516,49 @@ class FeeManagementTest extends TestCase
         $this->assertTrue($classesDefaulterEvening->contains('id', $eveningClass->id));
         $this->assertFalse($classesDefaulterEvening->contains('id', $morningClass->id));
     }
+
+    public function test_defaulter_list_export_excel_and_csv(): void
+    {
+        // 1. Create a fee record with balance > 0
+        FeeRecord::create([
+            'student_id' => $this->student->id,
+            'class_id' => $this->class->id,
+            'academic_session_id' => $this->session->id,
+            'period' => '2026-06',
+            'cycle' => 'monthly',
+            'total_amount' => 5000.00,
+            'paid_amount' => 1000.00,
+            'balance' => 4000.00,
+            'status' => 'partial',
+            'due_date' => '2026-06-10',
+        ]);
+
+        // 2. Test Excel export (.xls)
+        $testExcel = Livewire::test(\App\Livewire\Admin\Fee\DefaulterList::class)
+            ->call('exportExcel');
+            
+        $testExcel->assertFileDownloaded();
+
+        // 3. Test CSV export (.csv)
+        $testCsv = Livewire::test(\App\Livewire\Admin\Fee\DefaulterList::class)
+            ->call('exportCsv');
+
+        $testCsv->assertFileDownloaded();
+
+        // 4. Test Single Student Fee Reminder Notification
+        $this->student->update(['phone' => '03001234567']);
+        Livewire::test(\App\Livewire\Admin\Fee\DefaulterList::class)
+            ->call('sendSingleReminder', $this->student->id)
+            ->assertSee('Friendly fee reminder queued');
+
+        $this->assertDatabaseHas('whatsapp_queue', [
+            'student_id' => $this->student->id,
+            'phone' => '03001234567',
+        ]);
+
+        // 5. Test Bulk Student Fee Reminders Notification
+        Livewire::test(\App\Livewire\Admin\Fee\DefaulterList::class)
+            ->call('sendBulkReminders')
+            ->assertSee('Bulk fee reminders successfully queued');
+    }
 }
