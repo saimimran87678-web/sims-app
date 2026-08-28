@@ -175,16 +175,16 @@
                             </td>
                             <td class="px-5 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
-                                    <!-- Notification Bell Icon Button to queue reminder -->
+                                    <!-- WhatsApp Reminder Button (matching View Voucher style) -->
                                     <button 
                                         wire:click="sendSingleReminder({{ $def->student_id }})"
                                         wire:loading.attr="disabled"
+                                        wire:target="sendSingleReminder({{ $def->student_id }})"
                                         title="Send friendly fee reminder to parent via WhatsApp"
-                                        class="p-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-300 transition-colors border border-amber-200 dark:border-amber-800/40 disabled:opacity-50"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/45 dark:text-green-400 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
                                     >
-                                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                                        </svg>
+                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.377 3.469 2.235 2.235 3.466 5.21 3.466 8.377-.003 6.534-5.328 11.859-11.859 11.859-1.996-.001-3.957-.503-5.707-1.46L0 24zm5.835-4.265c1.62.962 3.218 1.488 4.931 1.49 5.373 0 9.742-4.369 9.745-9.743 0-2.602-1.012-5.05-2.849-6.888C15.83 2.756 13.38 1.745 10.781 1.745c-5.372 0-9.742 4.37-9.745 9.743-.001 1.83.491 3.58 1.42 5.176l-.991 3.616 3.7-.971zm13.14-8.122c-.27-.135-1.597-.787-1.845-.877-.247-.09-.427-.135-.607.135-.18.27-.697.877-.855 1.057-.158.18-.315.202-.585.067-.27-.135-1.139-.42-2.17-1.34-.801-.715-1.343-1.6-1.5-1.871-.158-.27-.017-.417.118-.552.122-.122.27-.315.405-.472.135-.158.18-.27.27-.45.09-.18.045-.337-.022-.472-.067-.135-.607-1.462-.832-2.002-.22-.53-.442-.457-.607-.466-.158-.008-.338-.01-.518-.01-.18 0-.472.067-.72.338-.247.27-.945.922-.945 2.25s.967 2.61 1.102 2.79c.135.18 1.902 2.904 4.609 4.073.644.279 1.147.445 1.54.57.647.206 1.236.177 1.701.108.518-.077 1.598-.652 1.823-1.282.225-.63.225-1.17.157-1.282-.068-.113-.248-.18-.518-.315z"/></svg>
+                                        <span>WhatsApp</span>
                                     </button>
 
                                     <!-- View Ledger Action Button -->
