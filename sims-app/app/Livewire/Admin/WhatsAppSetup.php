@@ -12,6 +12,10 @@ class WhatsAppSetup extends Component
 {
     use WithPagination;
 
+    // Active Tab Navigation
+    public $activeTab = 'setup'; // 'setup', 'queue', 'templates'
+
+    // Connection Status
     public $status = [];
     public $qrData = null;
     public $isConnected = false;
@@ -28,6 +32,19 @@ class WhatsAppSetup extends Component
     public $filterStatus = '';
     public $search = '';
 
+    // Message Templates
+    public $templateAbsent;
+    public $templateLeave;
+    public $templateLate;
+    public $templatePayment;
+    public $templateReminder;
+
+    protected $queryString = [
+        'activeTab' => ['except' => 'setup', 'as' => 'tab'],
+        'search' => ['except' => ''],
+        'filterStatus' => ['except' => ''],
+    ];
+
     protected $paginationTheme = 'tailwind';
 
     public function updatingSearch()
@@ -42,7 +59,14 @@ class WhatsAppSetup extends Component
 
     public function mount()
     {
-        $this->authorize('students.manage'); // Reuse existing permission
+        $this->authorize('students.manage');
+
+        // Allow tab switching via query parameter or route name
+        if (request()->has('tab')) {
+            $this->activeTab = request('tab');
+        } elseif (request()->routeIs('admin.whatsapp-templates')) {
+            $this->activeTab = 'templates';
+        }
 
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
@@ -56,6 +80,22 @@ class WhatsAppSetup extends Component
         $this->autoSendStart = \App\Models\Setting::get("whatsapp_auto_send_start_{$scopedShift}", '09:00');
         $this->autoSendEnd = \App\Models\Setting::get("whatsapp_auto_send_end_{$scopedShift}", '22:00');
         $this->forceSendNow = \App\Models\Setting::get("whatsapp_force_send_now_{$scopedShift}", 'false') === 'true';
+
+        // Load Templates
+        $defaultAbsent = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is ABSENT from school today ({date}).\nPlease contact the Class Teacher and give a valid reason.\n\n- {school_name} Administration";
+        $this->templateAbsent = \App\Models\Setting::get("whatsapp_template_absent_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_absent', $defaultAbsent));
+
+        $defaultLeave = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is on LEAVE today ({date}).\n\n- {school_name} Administration";
+        $this->templateLeave = \App\Models\Setting::get("whatsapp_template_leave_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_leave', $defaultLeave));
+
+        $defaultLate = "*Urgent Message*\n\nDear Parents,\nWe noticed that your {relation} {student_name} (Roll No: {roll_no}) was marked absent/leave, but has now arrived late at school today at {time}.\nPlease ensure they arrive on time in the future to avoid any warning.\n\n- {school_name} Administration";
+        $this->templateLate = \App\Models\Setting::get("whatsapp_template_late_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_late', $defaultLate));
+
+        $defaultPayment = "*Payment Confirmation*\n\nDear Parents,\nWe have received a payment of Rs. {amount} for {student_name} for the period {period}.\nRemaining Balance: Rs. {balance}\n\nView updated receipt:\n{challan_link}\n\nThank you.\n- {school_name} Administration";
+        $this->templatePayment = \App\Models\Setting::get("whatsapp_template_payment_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_payment', $defaultPayment));
+
+        $defaultReminder = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher:\n{challan_link}\n\n- {school_name} Administration";
+        $this->templateReminder = \App\Models\Setting::get("whatsapp_template_reminder_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_reminder', $defaultReminder));
 
         $this->refreshStatus();
     }
@@ -106,7 +146,7 @@ class WhatsAppSetup extends Component
         \App\Models\Setting::set("whatsapp_auto_send_end_{$scopedShift}", $this->autoSendEnd);
         \App\Models\Setting::set("whatsapp_force_send_now_{$scopedShift}", $this->forceSendNow ? 'true' : 'false');
 
-        session()->flash('message', 'Settings saved. Queue processor updated.');
+        session()->flash('message', 'Auto-send settings saved successfully.');
 
         try {
             $artisanPath = base_path('artisan');
@@ -114,6 +154,23 @@ class WhatsAppSetup extends Component
         } catch (\Exception $e) {
             Log::error('Failed to launch queue daemon: ' . $e->getMessage());
         }
+    }
+
+    public function saveTemplates()
+    {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $scopedShift = ($shiftType === 'both') ? 'morning' : $shiftType;
+
+        \App\Models\Setting::set("whatsapp_template_absent_{$scopedShift}", $this->templateAbsent);
+        \App\Models\Setting::set("whatsapp_template_leave_{$scopedShift}", $this->templateLeave);
+        \App\Models\Setting::set("whatsapp_template_late_{$scopedShift}", $this->templateLate);
+        \App\Models\Setting::set("whatsapp_template_payment_{$scopedShift}", $this->templatePayment);
+        \App\Models\Setting::set("whatsapp_template_reminder_{$scopedShift}", $this->templateReminder);
+
+        session()->flash('message', 'All WhatsApp message templates saved successfully.');
     }
 
     public function toggleMessageStatus($id)
@@ -198,6 +255,6 @@ class WhatsAppSetup extends Component
 
         return view('livewire.admin.whatsapp-setup', [
             'queue' => $queue
-        ])->layout('components.layouts.admin', ['title' => 'WhatsApp Setup']);
+        ])->layout('components.layouts.admin', ['title' => 'WhatsApp Manager']);
     }
 }

@@ -95,7 +95,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::get('/grades', \App\Livewire\Admin\GradeManager::class)->name('grades');
     Route::get('/attendance', \App\Livewire\Admin\AttendanceManager::class)->name('attendance');
     Route::get('/whatsapp-setup', \App\Livewire\Admin\WhatsAppSetup::class)->name('whatsapp-setup');
-    Route::get('/whatsapp-templates', \App\Livewire\Admin\WhatsAppTemplates::class)->name('whatsapp-templates');
+    Route::get('/whatsapp-templates', \App\Livewire\Admin\WhatsAppSetup::class)->name('whatsapp-templates');
     Route::get('/communication-hub', \App\Livewire\Admin\CommunicationHub::class)->name('communication-hub');
     Route::get('/settings', \App\Livewire\Admin\Settings::class)->name('settings');
 
