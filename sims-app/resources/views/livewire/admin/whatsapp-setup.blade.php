@@ -501,8 +501,23 @@
                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched when a payment receipt is generated or sent to parent.</p>
                 </div>
 
+                {{-- Fee Voucher Issuance Template --}}
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                Fee Voucher Issuance Notification
+                            </label>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded">Fee Module</span>
+                        </div>
+                        <textarea wire:model="templateIssuance" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono"></textarea>
+                    </div>
+                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched when new fee vouchers are generated for students with digital voucher links.</p>
+                </div>
+
                 {{-- Fee Reminder Template --}}
-                <div class="md:col-span-2 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="block text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -513,7 +528,7 @@
                         </div>
                         <textarea wire:model="templateReminder" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono"></textarea>
                     </div>
-                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched for single and bulk fee reminders with digital voucher links.</p>
+                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched for single and bulk fee reminders to defaulters with digital voucher links.</p>
                 </div>
             </div>
 

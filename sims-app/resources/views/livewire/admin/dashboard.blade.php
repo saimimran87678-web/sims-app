@@ -245,9 +245,24 @@
                             title="Show Names">
                         <span>Show Names</span>
                     </button>
+                @elseif(!$stats['vouchers_issued'])
+                    <button type="button" @click="showUnpaidModal = true"
+                            class="text-[9px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 px-2 py-0.5 rounded-full transition-colors focus:outline-none"
+                            title="Click to view info">
+                        <span>No Vouchers</span>
+                    </button>
+                @else
+                    <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                        All Clear
+                    </span>
                 @endif
             </div>
-            <p class="text-2xl font-bold text-rose-500">{{ $stats['unpaid'] }}</p>
+            <div class="flex items-baseline gap-1.5">
+                <p class="text-2xl font-bold {{ $stats['unpaid'] > 0 ? 'text-rose-500' : 'text-slate-700' }}">{{ $stats['unpaid'] }}</p>
+                @if(!$stats['vouchers_issued'] && $stats['unpaid'] === 0)
+                    <span class="text-[10px] font-medium text-amber-600" title="No fee vouchers issued for {{ date('F Y') }}">Pending Issue</span>
+                @endif
+            </div>
             <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Unpaid</p>
         </div>
         @endcan
@@ -647,13 +662,28 @@
                     </div>
                 @empty
                     <div class="flex flex-col items-center justify-center py-8 gap-3">
-                        <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-sm font-bold text-slate-700">All Fees Collected!</p>
-                            <p class="text-xs text-slate-400 mt-0.5">No students are currently unpaid for this month.</p>
-                        </div>
+                        @if(!$stats['vouchers_issued'])
+                            <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center border border-amber-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </div>
+                            <div class="text-center max-w-xs">
+                                <p class="text-sm font-bold text-slate-700">No Vouchers Generated Yet</p>
+                                <p class="text-xs text-slate-400 mt-1 leading-relaxed">Fee vouchers for <span class="font-semibold text-slate-600">{{ date('F Y') }}</span> have not been issued yet. Generate vouchers to track monthly dues.</p>
+                            </div>
+                            <a href="{{ route('admin.fee.generator') }}" 
+                               class="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                Generate Vouchers
+                            </a>
+                        @else
+                            <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-sm font-bold text-slate-700">All Fees Collected!</p>
+                                <p class="text-xs text-slate-400 mt-0.5">No students currently have an outstanding unpaid balance.</p>
+                            </div>
+                        @endif
                     </div>
                 @endforelse
             </div>

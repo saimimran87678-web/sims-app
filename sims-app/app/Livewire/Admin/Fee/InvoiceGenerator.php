@@ -857,30 +857,30 @@ class InvoiceGenerator extends Component
 
                 if ($plan !== 'basic') {
                     $student = \App\Models\Student::find($studentId);
-                    if ($student && $student->phone) {
-                        if ($isNew) {
-                            $msg = "Dear Parent, fee voucher for {$this->billingMonth} of Rs. {$recordTotal} has been issued. Due on {$dueDate->format('d M')}.";
-                            \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert([
-                                'phone' => $student->phone,
-                                'message' => $msg,
-                                'status' => 'pending',
-                                'student_id' => $student->id,
-                                'priority' => 2,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]);
-                        } elseif ($amountChanged) {
-                            $msg = "Dear Parent, fee voucher for {$this->billingMonth} has been updated to Rs. {$recordTotal}. Due on {$dueDate->format('d M')}.";
-                            \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert([
-                                'phone' => $student->phone,
-                                'message' => $msg,
-                                'status' => 'pending',
-                                'student_id' => $student->id,
-                                'priority' => 2,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]);
-                        }
+                    if ($student && $student->phone && ($isNew || $amountChanged)) {
+                        $link = url('/v/' . $record->access_token);
+                        $formattedPeriod = \Carbon\Carbon::parse($this->billingMonth . '-01')->format('F Y');
+                        $formattedDueDate = $dueDate->format('d M, Y');
+
+                        $msg = \App\Helpers\PhoneHelper::getFeeIssuanceMessage(
+                            $student->name,
+                            number_format($recordTotal),
+                            $formattedPeriod,
+                            $formattedDueDate,
+                            null,
+                            $link,
+                            $student->id
+                        );
+
+                        \Illuminate\Support\Facades\DB::table('whatsapp_queue')->insert([
+                            'phone' => $student->phone,
+                            'message' => $msg,
+                            'status' => 'pending',
+                            'student_id' => $student->id,
+                            'priority' => 2,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
                     }
                 }
 

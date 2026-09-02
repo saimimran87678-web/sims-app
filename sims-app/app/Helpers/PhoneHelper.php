@@ -199,12 +199,37 @@ class PhoneHelper
         $shift = self::getStudentShift($studentId);
         $defaultTemplate = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher:\n{challan_link}\n\n- {school_name} Administration";
         $template = \App\Models\Setting::get("whatsapp_template_reminder_{$shift}", \App\Models\Setting::get('whatsapp_template_reminder', $defaultTemplate));
+        if (empty(trim($template ?? ''))) {
+            $template = $defaultTemplate;
+        }
 
         $linkStr = $link ? $link : '';
 
         return str_replace(
             ['{student_name}', '{balance}', '{period}', '{due_date}', '{school_name}', '{challan_link}'],
             [$studentName, $balance, $period, $dueDate, $schoolName, $linkStr],
+            $template
+        );
+    }
+
+    /**
+     * Generate a fee voucher issuance/update notification message.
+     */
+    public static function getFeeIssuanceMessage(string $studentName, $amount, string $period, string $dueDate, string $schoolName = null, string $link = null, $studentId = null): string
+    {
+        $schoolName = $schoolName ?: \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
+        $shift = self::getStudentShift($studentId);
+        $defaultTemplate = "*Fee Voucher Issued*\n\nDear Parents,\nFee voucher of Rs. {amount} for {student_name} for the period {period} has been issued. Due date: {due_date}.\n\nView digital voucher:\n{challan_link}\n\n- {school_name} Administration";
+        $template = \App\Models\Setting::get("whatsapp_template_issuance_{$shift}", \App\Models\Setting::get('whatsapp_template_issuance', $defaultTemplate));
+        if (empty(trim($template ?? ''))) {
+            $template = $defaultTemplate;
+        }
+
+        $linkStr = $link ? $link : '';
+
+        return str_replace(
+            ['{student_name}', '{amount}', '{period}', '{due_date}', '{school_name}', '{challan_link}'],
+            [$studentName, $amount, $period, $dueDate, $schoolName, $linkStr],
             $template
         );
     }

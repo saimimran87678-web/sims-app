@@ -37,6 +37,7 @@ class WhatsAppSetup extends Component
     public $templateLeave;
     public $templateLate;
     public $templatePayment;
+    public $templateIssuance;
     public $templateReminder;
 
     protected $queryString = [
@@ -83,19 +84,28 @@ class WhatsAppSetup extends Component
 
         // Load Templates
         $defaultAbsent = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is ABSENT from school today ({date}).\nPlease contact the Class Teacher and give a valid reason.\n\n- {school_name} Administration";
-        $this->templateAbsent = \App\Models\Setting::get("whatsapp_template_absent_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_absent', $defaultAbsent));
+        $valAbsent = \App\Models\Setting::get("whatsapp_template_absent_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_absent', $defaultAbsent));
+        $this->templateAbsent = !empty(trim($valAbsent)) ? $valAbsent : $defaultAbsent;
 
         $defaultLeave = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is on LEAVE today ({date}).\n\n- {school_name} Administration";
-        $this->templateLeave = \App\Models\Setting::get("whatsapp_template_leave_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_leave', $defaultLeave));
+        $valLeave = \App\Models\Setting::get("whatsapp_template_leave_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_leave', $defaultLeave));
+        $this->templateLeave = !empty(trim($valLeave)) ? $valLeave : $defaultLeave;
 
         $defaultLate = "*Urgent Message*\n\nDear Parents,\nWe noticed that your {relation} {student_name} (Roll No: {roll_no}) was marked absent/leave, but has now arrived late at school today at {time}.\nPlease ensure they arrive on time in the future to avoid any warning.\n\n- {school_name} Administration";
-        $this->templateLate = \App\Models\Setting::get("whatsapp_template_late_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_late', $defaultLate));
+        $valLate = \App\Models\Setting::get("whatsapp_template_late_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_late', $defaultLate));
+        $this->templateLate = !empty(trim($valLate)) ? $valLate : $defaultLate;
 
         $defaultPayment = "*Payment Confirmation*\n\nDear Parents,\nWe have received a payment of Rs. {amount} for {student_name} for the period {period}.\nRemaining Balance: Rs. {balance}\n\nView updated receipt:\n{challan_link}\n\nThank you.\n- {school_name} Administration";
-        $this->templatePayment = \App\Models\Setting::get("whatsapp_template_payment_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_payment', $defaultPayment));
+        $valPayment = \App\Models\Setting::get("whatsapp_template_payment_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_payment', $defaultPayment));
+        $this->templatePayment = !empty(trim($valPayment)) ? $valPayment : $defaultPayment;
+
+        $defaultIssuance = "*Fee Voucher Issued*\n\nDear Parents,\nFee voucher of Rs. {amount} for {student_name} for the period {period} has been issued. Due date: {due_date}.\n\nView digital voucher:\n{challan_link}\n\n- {school_name} Administration";
+        $valIssuance = \App\Models\Setting::get("whatsapp_template_issuance_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_issuance', $defaultIssuance));
+        $this->templateIssuance = !empty(trim($valIssuance)) ? $valIssuance : $defaultIssuance;
 
         $defaultReminder = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher:\n{challan_link}\n\n- {school_name} Administration";
-        $this->templateReminder = \App\Models\Setting::get("whatsapp_template_reminder_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_reminder', $defaultReminder));
+        $valReminder = \App\Models\Setting::get("whatsapp_template_reminder_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_reminder', $defaultReminder));
+        $this->templateReminder = !empty(trim($valReminder)) ? $valReminder : $defaultReminder;
 
         $this->refreshStatus();
     }
@@ -168,6 +178,7 @@ class WhatsAppSetup extends Component
         \App\Models\Setting::set("whatsapp_template_leave_{$scopedShift}", $this->templateLeave);
         \App\Models\Setting::set("whatsapp_template_late_{$scopedShift}", $this->templateLate);
         \App\Models\Setting::set("whatsapp_template_payment_{$scopedShift}", $this->templatePayment);
+        \App\Models\Setting::set("whatsapp_template_issuance_{$scopedShift}", $this->templateIssuance);
         \App\Models\Setting::set("whatsapp_template_reminder_{$scopedShift}", $this->templateReminder);
 
         session()->flash('message', 'All WhatsApp message templates saved successfully.');

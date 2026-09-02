@@ -82,10 +82,17 @@ class Dashboard extends Component
                 : 0;
         }
 
-        // ─── This-Month Fee Stats ──────────────────────────────────
-        $currentMonth = date('Y-m');
-        $paidCount    = 0;
+        // ─── This-Month Fee Stats & Unpaid Balance ──────────────────
+        $currentMonth       = date('Y-m');
+        $paidCount          = 0;
+        $unpaidCount        = 0;
+        $vouchersIssued     = false;
         if ($activeSessionId) {
+            $vouchersIssued = DB::table('fee_records')
+                ->where('academic_session_id', $activeSessionId)
+                ->where('period', $currentMonth)
+                ->exists();
+
             $paidQuery = DB::table('fee_records')
                 ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
                 ->where('fee_records.academic_session_id', $activeSessionId)
@@ -99,6 +106,20 @@ class Dashboard extends Component
             }
 
             $paidCount = $paidQuery->count();
+
+            // Count distinct active students who have an issued fee record with balance > 0
+            $unpaidQuery = DB::table('fee_records')
+                ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
+                ->where('fee_records.academic_session_id', $activeSessionId)
+                ->where('enrollments.academic_session_id', $activeSessionId)
+                ->where('enrollments.status', 'active')
+                ->where('fee_records.balance', '>', 0);
+
+            if ($shiftType !== 'both') {
+                $unpaidQuery->where('enrollments.shift_type', $shiftType);
+            }
+
+            $unpaidCount = $unpaidQuery->distinct('fee_records.student_id')->count('fee_records.student_id');
         }
 
         $usersCount = 0;
@@ -129,7 +150,8 @@ class Dashboard extends Component
             'students'        => $studentsCount,
             'attendance'      => $attendanceStat,
             'paid_this_month' => $paidCount,
-            'unpaid'          => max(0, $studentsCount - $paidCount),
+            'unpaid'          => $unpaidCount,
+            'vouchers_issued' => $vouchersIssued,
         ];
 
         // ─── Attendance Trend (grouped single query) ───────────────
@@ -266,21 +288,18 @@ class Dashboard extends Component
         // ─── Unpaid Students List (accessibility modal) ────────────
         $unpaidStudents = collect();
         if ($activeSessionId) {
-            $currentMonth = date('Y-m');
-
-            $paidStudentIdsQuery = DB::table('fee_records')
+            $unpaidStudentIdsQuery = DB::table('fee_records')
                 ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
                 ->where('fee_records.academic_session_id', $activeSessionId)
                 ->where('enrollments.academic_session_id', $activeSessionId)
                 ->where('enrollments.status', 'active')
-                ->where('fee_records.period', $currentMonth)
-                ->where('fee_records.status', 'paid');
+                ->where('fee_records.balance', '>', 0);
 
             if ($shiftType !== 'both') {
-                $paidStudentIdsQuery->where('enrollments.shift_type', $shiftType);
+                $unpaidStudentIdsQuery->where('enrollments.shift_type', $shiftType);
             }
 
-            $paidStudentIds = $paidStudentIdsQuery->pluck('fee_records.student_id');
+            $unpaidStudentIds = $unpaidStudentIdsQuery->pluck('fee_records.student_id');
 
             $unpaidStudents = Student::with('class')
                 ->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
@@ -289,7 +308,7 @@ class Dashboard extends Component
                         $q->where('shift_type', $shiftType);
                     }
                 })
-                ->whereNotIn('id', $paidStudentIds)
+                ->whereIn('id', $unpaidStudentIds)
                 ->get()
                 ->groupBy(fn($student) => $student->class->name ?? 'Unallocated')
                 ->map(fn($students) => $students->sortBy(fn($s) => (int) $s->roll_no))
