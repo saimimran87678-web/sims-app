@@ -24,21 +24,24 @@
         <div class="overflow-x-auto max-w-full -mx-4 px-4 md:mx-0 md:px-0 self-start md:self-auto shrink-0 scrollbar-none">
             <div class="flex bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700/60 shrink-0 shadow-inner min-w-[350px]">
                 <button 
-                    wire:click="$set('activeTab', 'setup')" 
+                    wire:click="setTab('setup')" 
+                    type="button"
                     class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'setup' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                     WhatsApp Setup
                 </button>
                 <button 
-                    wire:click="$set('activeTab', 'queue')" 
+                    wire:click="setTab('queue')" 
+                    type="button"
                     class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'queue' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                     Queue Manager
                 </button>
                 <button 
-                    wire:click="$set('activeTab', 'templates')" 
+                    wire:click="setTab('templates')" 
+                    type="button"
                     class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'templates' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>

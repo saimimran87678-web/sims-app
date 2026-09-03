@@ -13,6 +13,7 @@ class WhatsAppSetup extends Component
     use WithPagination;
 
     // Active Tab Navigation
+    #[\Livewire\Attributes\Url(as: 'tab', except: 'setup')]
     public $activeTab = 'setup'; // 'setup', 'queue', 'templates'
 
     // Connection Status
@@ -29,7 +30,10 @@ class WhatsAppSetup extends Component
     public $forceSendNow;
 
     // Filters for Queue Table
+    #[\Livewire\Attributes\Url(except: '')]
     public $filterStatus = '';
+
+    #[\Livewire\Attributes\Url(except: '')]
     public $search = '';
 
     // Message Templates
@@ -40,13 +44,13 @@ class WhatsAppSetup extends Component
     public $templateIssuance;
     public $templateReminder;
 
-    protected $queryString = [
-        'activeTab' => ['except' => 'setup', 'as' => 'tab'],
-        'search' => ['except' => ''],
-        'filterStatus' => ['except' => ''],
-    ];
+    public $paginationTheme = 'tailwind';
 
-    protected $paginationTheme = 'tailwind';
+    public function setTab($tab)
+    {
+        $this->activeTab = $tab;
+        $this->resetPage();
+    }
 
     public function updatingSearch()
     {

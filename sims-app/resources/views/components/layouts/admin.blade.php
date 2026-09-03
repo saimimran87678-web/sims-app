@@ -61,20 +61,22 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 <body class="font-sans antialiased text-gray-900 bg-gray-50">
-<div x-data="{ sidebarOpen: window.innerWidth >= 768 }" class="flex h-screen overflow-hidden bg-gray-50">
+<div x-data="{ sidebarOpen: true }" class="flex h-screen overflow-hidden bg-gray-50">
         
         <!-- Sidebar -->
         <aside 
             x-show="sidebarOpen" 
+            :class="sidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full hidden'"
             x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="-translate-x-full"
-            x-transition:enter-end="translate-x-0"
+            x-transition:enter-start="-translate-x-full opacity-0"
+            x-transition:enter-end="translate-x-0 opacity-100"
             x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="translate-x-0"
-            x-transition:leave-end="-translate-x-full"
-            class="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative md:translate-x-0 flex flex-col h-screen transform"
+            x-transition:leave-start="translate-x-0 opacity-100"
+            x-transition:leave-end="-translate-x-full opacity-0"
+            class="fixed inset-y-0 left-0 z-50 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative flex flex-col h-screen shrink-0 overflow-hidden transition-all duration-300"
         >
             <div class="flex items-center gap-3 p-6 border-b border-gray-100 flex-shrink-0">
                 @php
@@ -131,7 +133,7 @@
                 <!-- Fee Management -->
                 @if((\App\Services\LicenseStatus::getStatus()['plan'] ?? 'basic') !== 'basic')
                 <div x-data="{ feeOpen: {{ request()->routeIs('admin.fee.*') ? 'true' : 'false' }} }" class="space-y-1">
-                    <button @click="feeOpen = !feeOpen" class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-amber-700 hover:bg-amber-50 transition-colors {{ request()->routeIs('admin.fee.*') ? 'bg-amber-50 text-amber-700' : '' }}">
+                    <button type="button" @click="feeOpen = !feeOpen" class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-amber-700 hover:bg-amber-50 transition-colors {{ request()->routeIs('admin.fee.*') ? 'bg-amber-50 text-amber-700' : '' }}">
                         <div class="flex items-center gap-3">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 14h.01"/></svg>
                             <span>Fee Management</span>
@@ -235,7 +237,7 @@
             <!-- Header -->
             <header class="flex items-center justify-between px-4 border-b border-gray-200 h-16 bg-white/50 backdrop-blur-sm md:px-8 z-40">
                 <div class="flex items-center gap-4">
-                    <button @click="sidebarOpen = !sidebarOpen" class="text-gray-600">
+                    <button type="button" @click="sidebarOpen = !sidebarOpen" class="p-1.5 rounded-lg text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition-colors focus:outline-none" title="Toggle Sidebar">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
                     </button>
 
@@ -627,6 +629,7 @@
         @endif
     @endcan
 
+    @livewireScripts
     <x-security-scripts />
 </body>
 </html>
