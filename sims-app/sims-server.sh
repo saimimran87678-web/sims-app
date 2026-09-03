@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
-# SIMS Server Control Manager (Unified Start/Stop/Status)
+# SIMS Server Control Manager (Location-Agnostic Script)
+
+# Determine SIMS project root directory automatically
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+if [ -f "$SCRIPT_DIR/artisan" ]; then
+    APP_DIR="$SCRIPT_DIR"
+else
+    APP_DIR="/home/saim/SIMS/sims-app"
+fi
+
+cd "$APP_DIR" || exit 1
 
 ACTION="${1:-status}"
 
@@ -8,7 +18,7 @@ case "$ACTION" in
     start)
         echo "🚀 Starting SIMS Production Services..."
         sudo systemctl start redis-server nginx
-        pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart all
+        pm2 start "$APP_DIR/ecosystem.config.cjs" 2>/dev/null || pm2 restart all
         echo "✅ All SIMS services (Nginx, Redis, PM2) are ONLINE!"
         echo "🌐 App URL: http://localhost"
         ;;
@@ -40,7 +50,7 @@ case "$ACTION" in
         ;;
         
     *)
-        echo "Usage: ./sims-server.sh {start|stop|restart|status}"
+        echo "Usage: $0 {start|stop|restart|status}"
         exit 1
         ;;
 esac
