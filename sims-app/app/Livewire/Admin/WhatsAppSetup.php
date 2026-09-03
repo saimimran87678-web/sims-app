@@ -217,52 +217,56 @@ class WhatsAppSetup extends Component
 
     public function render()
     {
-        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $queue = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
 
-        $query = DB::table('whatsapp_queue')
-            ->leftJoin('students', 'whatsapp_queue.student_id', '=', 'students.id')
-            ->leftJoin('enrollments', function($join) use ($activeSessionId) {
-                $join->on('students.id', '=', 'enrollments.student_id')
-                     ->where('enrollments.academic_session_id', '=', $activeSessionId);
-            })
-            ->leftJoin('classes', 'enrollments.class_id', '=', 'classes.id')
-            ->where(function($q) use ($shiftType) {
-                $q->where(function($sub) use ($shiftType) {
-                    $sub->whereNotNull('whatsapp_queue.student_id')
-                        ->whereNotNull('enrollments.id')
-                        ->when($shiftType !== 'both', function ($s) use ($shiftType) {
-                            $s->where('enrollments.shift_type', $shiftType);
-                        });
-                })->orWhereNull('whatsapp_queue.student_id');
-            });
+        if ($this->activeTab === 'queue') {
+            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
-        if ($this->filterStatus) {
-            $query->where('whatsapp_queue.status', $this->filterStatus);
+            $query = DB::table('whatsapp_queue')
+                ->leftJoin('students', 'whatsapp_queue.student_id', '=', 'students.id')
+                ->leftJoin('enrollments', function($join) use ($activeSessionId) {
+                    $join->on('students.id', '=', 'enrollments.student_id')
+                         ->where('enrollments.academic_session_id', '=', $activeSessionId);
+                })
+                ->leftJoin('classes', 'enrollments.class_id', '=', 'classes.id')
+                ->where(function($q) use ($shiftType) {
+                    $q->where(function($sub) use ($shiftType) {
+                        $sub->whereNotNull('whatsapp_queue.student_id')
+                            ->whereNotNull('enrollments.id')
+                            ->when($shiftType !== 'both', function ($s) use ($shiftType) {
+                                $s->where('enrollments.shift_type', $shiftType);
+                            });
+                    })->orWhereNull('whatsapp_queue.student_id');
+                });
+
+            if ($this->filterStatus) {
+                $query->where('whatsapp_queue.status', $this->filterStatus);
+            }
+
+            if ($this->search) {
+                $search = '%' . $this->search . '%';
+                $query->where(function($q) use ($search) {
+                    $q->where('students.name', 'like', $search)
+                      ->orWhere('students.admission_no', 'like', $search)
+                      ->orWhere('enrollments.roll_number', 'like', $search)
+                      ->orWhere('whatsapp_queue.phone', 'like', $search)
+                      ->orWhere('whatsapp_queue.message', 'like', $search);
+                });
+            }
+
+            $queue = $query->select(
+                    'whatsapp_queue.*',
+                    'students.name as student_name',
+                    'students.admission_no',
+                    'enrollments.roll_number as roll_no',
+                    'classes.name as class_name'
+                )
+                ->orderBy('whatsapp_queue.id', 'desc')
+                ->paginate(15);
         }
-
-        if ($this->search) {
-            $search = '%' . $this->search . '%';
-            $query->where(function($q) use ($search) {
-                $q->where('students.name', 'like', $search)
-                  ->orWhere('students.admission_no', 'like', $search)
-                  ->orWhere('enrollments.roll_number', 'like', $search)
-                  ->orWhere('whatsapp_queue.phone', 'like', $search)
-                  ->orWhere('whatsapp_queue.message', 'like', $search);
-            });
-        }
-
-        $queue = $query->select(
-                'whatsapp_queue.*',
-                'students.name as student_name',
-                'students.admission_no',
-                'enrollments.roll_number as roll_no',
-                'classes.name as class_name'
-            )
-            ->orderBy('whatsapp_queue.id', 'desc')
-            ->paginate(15);
 
         return view('livewire.admin.whatsapp-setup', [
             'queue' => $queue

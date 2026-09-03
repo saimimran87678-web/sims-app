@@ -32,26 +32,39 @@ class AppServiceProvider extends ServiceProvider
             });
 
             if (in_array($ability, $allSpatiePermissions)) {
+                static $requestPermissionCache = [];
+
                 $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-                if ($activeSessionId) {
+                if (!$activeSessionId) {
+                    return false;
+                }
+
+                $shiftType = session('selected_shift_type', 'morning');
+                $cacheKey = "{$user->id}_{$activeSessionId}_{$shiftType}";
+
+                if (!isset($requestPermissionCache[$cacheKey])) {
                     $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
                     $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-                    $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+                    $effectiveShift = $isRegular ? 'regular' : $shiftType;
 
                     $query = \Illuminate\Support\Facades\DB::table('session_user_permissions')
                         ->where('user_id', $user->id)
-                        ->where('academic_session_id', $activeSessionId)
-                        ->where('permission_name', $ability);
+                        ->where('academic_session_id', $activeSessionId);
 
-                    if ($shiftType === 'both') {
-                        $hasPermission = $query->whereIn('shift_type', ['morning', 'evening', 'both'])->exists();
+                    if ($effectiveShift === 'both') {
+                        $requestPermissionCache[$cacheKey] = $query->whereIn('shift_type', ['morning', 'evening', 'both'])
+                            ->pluck('permission_name')
+                            ->flip()
+                            ->toArray();
                     } else {
-                        $hasPermission = $query->where('shift_type', $shiftType)->exists();
+                        $requestPermissionCache[$cacheKey] = $query->where('shift_type', $effectiveShift)
+                            ->pluck('permission_name')
+                            ->flip()
+                            ->toArray();
                     }
-
-                    return $hasPermission;
                 }
-                return false;
+
+                return isset($requestPermissionCache[$cacheKey][$ability]);
             }
 
             return null;
@@ -60,27 +73,30 @@ class AppServiceProvider extends ServiceProvider
         // Enforce global read-only database writes restriction when license is locked or expired
         // We use beforeExecuting to intercept and block the query BEFORE it hits the database.
         \Illuminate\Support\Facades\DB::connection()->beforeExecuting(function ($sql, $bindings, $connection) {
-            // Exempt artisan commands from write-blocking. 
-            // During tests, we explicitly enable it via config to verify the logic.
+            // Fast exit: Exempt console commands unless test configuration is set
             if (app()->runningInConsole() && !config('services.license.test_write_block', false)) {
                 return;
             }
 
-            $sql = trim(strtolower($sql));
+            // Fast exit: Read queries (SELECT, PRAGMA, EXPLAIN) bypass license check immediately
+            $firstWord = strtoupper(substr(ltrim($sql), 0, 6));
+            if (in_array($firstWord, ['SELECT', 'EXPLAI', 'PRAGMA', 'SHOW  '])) {
+                return;
+            }
+
+            $sqlLower = trim(strtolower($sql));
             
             // Check if query is a state-modifying statement
-            $isWrite = str_starts_with($sql, 'insert') || 
-                       str_starts_with($sql, 'update') || 
-                       str_starts_with($sql, 'delete') || 
-                       str_starts_with($sql, 'replace');
+            $isWrite = str_starts_with($sqlLower, 'insert') || 
+                       str_starts_with($sqlLower, 'update') || 
+                       str_starts_with($sqlLower, 'delete') || 
+                       str_starts_with($sqlLower, 'replace');
 
             if ($isWrite) {
                 // Allow write operations to session, cache, and licensing tables
-                // Also explicitly exempt the login and logout routes so users can log back in 
-                // to see the dashboard and access the Renew button if their session expires.
-                $isExempt = str_contains($sql, 'software_licenses') || 
-                            str_contains($sql, 'sessions') ||
-                            str_contains($sql, 'cache') ||
+                $isExempt = str_contains($sqlLower, 'software_licenses') || 
+                            str_contains($sqlLower, 'sessions') ||
+                            str_contains($sqlLower, 'cache') ||
                             request()->is('login') || 
                             request()->is('logout') ||
                             request()->is('license/sync') ||

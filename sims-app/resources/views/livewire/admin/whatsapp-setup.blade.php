@@ -158,7 +158,7 @@
 
     {{-- TAB 2: QUEUE MANAGER --}}
     @if($activeTab === 'queue')
-        <div class="glass-card p-6 sm:p-7 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm animate-in fade-in duration-200" wire:poll.10s>
+        <div class="glass-card p-6 sm:p-7 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm animate-in fade-in duration-200" wire:poll.15s>
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6">
                 <div>
                     <h3 class="text-lg font-extrabold text-gray-900 dark:text-white">Message Queue Dispatcher</h3>
