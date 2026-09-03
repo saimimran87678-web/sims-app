@@ -1,4 +1,3 @@
-module = module || {};
 module.exports = {
   apps: [
     {
