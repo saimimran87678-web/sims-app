@@ -309,7 +309,7 @@
             </header>
 
             <!-- Content Area -->
-            <div class="flex-1 p-4 overflow-y-auto md:p-8 scroll-smooth">
+            <div class="flex-1 p-4 overflow-y-auto md:p-8 relative custom-scrollbar smooth-scroll-container">
                 {{ $slot }}
             </div>
 

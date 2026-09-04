@@ -9,12 +9,87 @@ use App\Helpers\PhoneHelper;
 class WhatsAppService
 {
     protected string $baseUrl;
+    protected string $apiKey;
     protected int $timeout;
 
     public function __construct()
     {
-        $this->baseUrl = config('services.whatsapp.url', 'http://localhost:3000');
+        $this->baseUrl = \App\Models\Setting::get('whatsapp_service_url', config('services.whatsapp.url', 'http://localhost:3000'));
+        $this->apiKey = \App\Models\Setting::get('whatsapp_api_key', config('services.whatsapp.key', 'whatsapp12345'));
         $this->timeout = config('services.whatsapp.timeout', 30);
+    }
+
+    /**
+     * Get pre-configured HTTP client with API Key headers.
+     */
+    protected function client(int $timeoutMultiplier = 1)
+    {
+        return Http::timeout($this->timeout * $timeoutMultiplier)
+            ->withHeaders([
+                'x-api-key' => $this->apiKey,
+                'Accept' => 'application/json'
+            ]);
+    }
+
+    /**
+     * Test connection to a WhatsApp service URL with API Key.
+     */
+    public function testConnection(?string $url = null, ?string $apiKey = null): array
+    {
+        $targetUrl = rtrim($url ?: $this->baseUrl, '/');
+        $targetKey = $apiKey !== null ? $apiKey : $this->apiKey;
+
+        try {
+            $response = Http::timeout(8)
+                ->withHeaders([
+                    'x-api-key' => $targetKey,
+                    'Accept' => 'application/json'
+                ])->get("{$targetUrl}/status");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $isReady = $data['ready'] ?? $data['isReady'] ?? false;
+                $user = $data['user'] ?? null;
+                $userFormatted = $user ? ' (' . preg_replace('/[^0-9]/', '', explode('@', $user)[0]) . ')' : '';
+
+                return [
+                    'success' => true,
+                    'message' => $isReady 
+                        ? "Gateway connected successfully! Engine is active and ready to send messages{$userFormatted}."
+                        : 'Gateway connected successfully! Engine is online, waiting for device linkage via QR code or pairing code.',
+                    'data' => $data
+                ];
+            }
+
+            if ($response->status() === 401) {
+                return [
+                    'success' => false,
+                    'error' => 'Authentication failed. The security key entered does not match your system configuration.'
+                ];
+            }
+
+            if ($response->status() === 404) {
+                return [
+                    'success' => false,
+                    'error' => 'Gateway endpoint not found at this address. Please verify the URL.'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => 'Gateway response error. Unable to verify engine status.'
+            ];
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return [
+                'success' => false,
+                'error' => 'Unable to establish connection with the gateway. Please check if the engine is started and reachable.'
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Unable to establish connection with the gateway. Please check if the engine is started and reachable.'
+            ];
+        }
     }
 
     /**
@@ -25,16 +100,16 @@ class WhatsAppService
     public function getStatus(): array
     {
         try {
-            $response = Http::timeout($this->timeout)->get("{$this->baseUrl}/status");
+            $response = $this->client()->get("{$this->baseUrl}/status");
             
             if ($response->successful()) {
                 return $response->json();
             }
             
-            return ['ready' => false, 'hasQr' => false, 'error' => 'Service unavailable'];
+            return ['ready' => false, 'hasQr' => false, 'error' => 'Messaging engine is unresponsive.'];
         } catch (\Exception $e) {
             Log::error('WhatsApp Status Check Failed: ' . $e->getMessage());
-            return ['ready' => false, 'hasQr' => false, 'error' => 'WhatsApp service server is offline. Please make sure the service is running.'];
+            return ['ready' => false, 'hasQr' => false, 'error' => 'Messaging engine is currently offline. Please ensure the gateway application is running.'];
         }
     }
 
@@ -46,7 +121,7 @@ class WhatsAppService
     public function getQrCode(): array
     {
         try {
-            $response = Http::timeout($this->timeout)->get("{$this->baseUrl}/qr");
+            $response = $this->client()->get("{$this->baseUrl}/qr");
             
             if ($response->successful()) {
                 return $response->json();
@@ -56,6 +131,34 @@ class WhatsAppService
         } catch (\Exception $e) {
             Log::error('WhatsApp QR Fetch Failed: ' . $e->getMessage());
             return ['success' => false, 'message' => 'WhatsApp service server is offline. Could not fetch QR code.'];
+        }
+    }
+
+    /**
+     * Request 8-Digit Pairing Code for phone linking.
+     *
+     * @param string $phone
+     * @return array{success: bool, pairingCode?: string, rawCode?: string, error?: string, message?: string}
+     */
+    public function requestPairingCode(string $phone): array
+    {
+        try {
+            $formattedPhone = PhoneHelper::formatForWhatsApp($phone);
+            $response = $this->client()->post("{$this->baseUrl}/pairing-code", [
+                'phone' => $formattedPhone
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json('error') ?? $response->json('message') ?? ('HTTP ' . $response->status())
+            ];
+        } catch (\Exception $e) {
+            Log::error('WhatsApp Pairing Code Request Failed: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'Failed to request pairing code: ' . $e->getMessage()];
         }
     }
 
@@ -80,11 +183,10 @@ class WhatsAppService
     public function sendMessage(string $phone, string $message): array
     {
         try {
-            $response = Http::timeout($this->timeout)
-                ->post("{$this->baseUrl}/send", [
-                    'phone' => PhoneHelper::formatForWhatsApp($phone),
-                    'message' => $message
-                ]);
+            $response = $this->client()->post("{$this->baseUrl}/send", [
+                'phone' => PhoneHelper::formatForWhatsApp($phone),
+                'message' => $message
+            ]);
             
             return $response->json();
         } catch (\Exception $e) {
@@ -110,10 +212,9 @@ class WhatsAppService
                 ];
             }, $messages);
 
-            $response = Http::timeout($this->timeout * 2) // Longer timeout for bulk
-                ->post("{$this->baseUrl}/send-bulk", [
-                    'messages' => $formattedMessages
-                ]);
+            $response = $this->client(2)->post("{$this->baseUrl}/send-bulk", [
+                'messages' => $formattedMessages
+            ]);
             
             return $response->json();
         } catch (\Exception $e) {
@@ -136,7 +237,7 @@ class WhatsAppService
         try {
             $formattedPhone = PhoneHelper::formatForWhatsApp($phone);
             
-            $response = Http::timeout($this->timeout * 2)
+            $response = $this->client(2)
                 ->attach('file', file_get_contents($filePath), basename($filePath))
                 ->post("{$this->baseUrl}/send-media", [
                     'phone' => $formattedPhone,
@@ -335,7 +436,7 @@ class WhatsAppService
     public function logout(): array
     {
         try {
-            $response = Http::timeout($this->timeout)->post("{$this->baseUrl}/logout");
+            $response = $this->client()->post("{$this->baseUrl}/logout");
             return $response->json();
         } catch (\Exception $e) {
             Log::error('WhatsApp Logout Failed: ' . $e->getMessage());

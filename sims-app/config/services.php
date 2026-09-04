@@ -37,6 +37,7 @@ return [
 
     'whatsapp' => [
         'url' => env('WHATSAPP_SERVICE_URL', 'http://localhost:3000'),
+        'key' => env('WHATSAPP_API_KEY', 'whatsapp12345'),
         'timeout' => env('WHATSAPP_TIMEOUT', 30),
     ],
 

@@ -106,11 +106,11 @@
 <div x-data="{ showFinancials: false, showUnpaidModal: false }" class="space-y-6 max-w-7xl mx-auto">
 
     {{-- ═══ HEADER BANNER ═══════════════════════════════════════════════════════ --}}
-    <div class="relative overflow-hidden rounded-2xl p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6"
+    <div class="relative overflow-hidden rounded-2xl p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 gpu-layer"
          style="background: #f8f9ff;">
 
         {{-- Aurora mesh color blending blobs --}}
-        <div class="absolute inset-0 pointer-events-none overflow-hidden">
+        <div class="absolute inset-0 pointer-events-none overflow-hidden gpu-layer">
             {{-- Large indigo blob top-left --}}
             <div class="absolute -top-16 -left-16 w-72 h-72 rounded-full"
                  style="background: radial-gradient(circle at 40% 40%, rgba(99,102,241,0.28) 0%, transparent 70%); filter: blur(32px);"></div>

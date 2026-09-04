@@ -16,11 +16,21 @@ class WhatsAppSetup extends Component
     #[\Livewire\Attributes\Url(as: 'tab', except: 'setup')]
     public $activeTab = 'setup'; // 'setup', 'queue', 'templates'
 
-    // Connection Status
+    // Connection Status & Credentials
     public $status = [];
     public $qrData = null;
     public $isConnected = false;
     public $errorMessage = null;
+
+    public $serviceUrl;
+    public $apiKey;
+    public $isApiKeySaved = false;
+    public $isEditingApiKey = false;
+    public $apiTestResult = null;
+
+    // Pairing Code
+    public $pairingPhone = '';
+    public $pairingCodeResult = null;
 
     // Queue Settings
     public $queueDelay;
@@ -65,6 +75,19 @@ class WhatsAppSetup extends Component
     public function mount()
     {
         $this->authorize('students.manage');
+
+        // Load Service Credentials
+        $this->serviceUrl = \App\Models\Setting::get('whatsapp_service_url', config('services.whatsapp.url', 'http://localhost:3000'));
+        $savedKey = \App\Models\Setting::get('whatsapp_api_key');
+        if (!empty($savedKey)) {
+            $this->isApiKeySaved = true;
+            $this->isEditingApiKey = false;
+            $this->apiKey = $savedKey;
+        } else {
+            $this->isApiKeySaved = false;
+            $this->isEditingApiKey = true;
+            $this->apiKey = config('services.whatsapp.key', 'whatsapp12345');
+        }
 
         // Allow tab switching via query parameter or route name
         if (request()->has('tab')) {
@@ -114,12 +137,71 @@ class WhatsAppSetup extends Component
         $this->refreshStatus();
     }
 
+    public function enableApiKeyEdit()
+    {
+        $this->isEditingApiKey = true;
+        $this->apiKey = '';
+    }
+
+    public function cancelApiKeyEdit()
+    {
+        if ($this->isApiKeySaved) {
+            $this->isEditingApiKey = false;
+            $this->apiKey = \App\Models\Setting::get('whatsapp_api_key');
+        }
+    }
+
+    public function testApiConnection()
+    {
+        $whatsapp = new WhatsAppService();
+        $this->apiTestResult = $whatsapp->testConnection($this->serviceUrl, $this->apiKey);
+    }
+
+    public function saveApiCredentials()
+    {
+        $this->validate([
+            'serviceUrl' => 'required|url',
+            'apiKey' => 'required|string|min:3',
+        ]);
+
+        \App\Models\Setting::set('whatsapp_service_url', rtrim($this->serviceUrl, '/'));
+        \App\Models\Setting::set('whatsapp_api_key', trim($this->apiKey));
+
+        $this->isApiKeySaved = true;
+        $this->isEditingApiKey = false;
+
+        session()->flash('message', 'WhatsApp Service URL & API Key updated successfully.');
+        $this->apiTestResult = [
+            'success' => true,
+            'message' => 'Credentials saved to system settings!'
+        ];
+
+        $this->refreshStatus();
+    }
+
+    public function requestPairingCode()
+    {
+        $this->validate([
+            'pairingPhone' => 'required|string|min:8',
+        ]);
+
+        try {
+            $whatsapp = new WhatsAppService();
+            $this->pairingCodeResult = $whatsapp->requestPairingCode($this->pairingPhone);
+        } catch (\Exception $e) {
+            $this->pairingCodeResult = [
+                'success' => false,
+                'error' => 'Failed to request pairing code: ' . $e->getMessage()
+            ];
+        }
+    }
+
     public function refreshStatus()
     {
         try {
-            $whatsapp = app(WhatsAppService::class);
+            $whatsapp = new WhatsAppService();
             $this->status = $whatsapp->getStatus();
-            $this->isConnected = $this->status['ready'] ?? false;
+            $this->isConnected = $this->status['ready'] ?? $this->status['isReady'] ?? false;
             $this->errorMessage = $this->status['error'] ?? null;
 
             if (!$this->isConnected) {
@@ -137,9 +219,9 @@ class WhatsAppSetup extends Component
     public function logout()
     {
         try {
-            $whatsapp = app(WhatsAppService::class);
+            $whatsapp = new WhatsAppService();
             $whatsapp->logout();
-            $this->errorMessage = "Logged out successfully. Waiting for new QR code...";
+            $this->errorMessage = "Logged out successfully. Waiting for new QR code or pairing code...";
             $this->refreshStatus();
         } catch (\Exception $e) {
             $this->errorMessage = 'Logout failed: ' . $e->getMessage();
@@ -168,16 +250,71 @@ class WhatsAppSetup extends Component
         } catch (\Exception $e) {
             Log::error('Failed to launch queue daemon: ' . $e->getMessage());
         }
+
+        if ($this->forceSendNow || $this->autoSendEnabled) {
+            $this->processQueueBatch();
+        }
     }
 
     public function updatedAutoSendEnabled($value)
     {
         $this->saveSettings();
+        $this->processQueueBatch();
     }
 
     public function updatedForceSendNow($value)
     {
         $this->saveSettings();
+        $this->processQueueBatch();
+    }
+
+    public function processQueueBatch()
+    {
+        $shouldProcess = false;
+
+        if ($this->forceSendNow) {
+            $shouldProcess = true;
+        } elseif ($this->autoSendEnabled) {
+            $now = \Carbon\Carbon::now();
+            $start = \Carbon\Carbon::createFromTimeString($this->autoSendStart ?: '09:00');
+            $end = \Carbon\Carbon::createFromTimeString($this->autoSendEnd ?: '22:00');
+            if ($now->between($start, $end)) {
+                $shouldProcess = true;
+            }
+        }
+
+        if (!$shouldProcess) {
+            return;
+        }
+
+        $whatsapp = app(WhatsAppService::class);
+        if (!$whatsapp->isConnected()) {
+            return;
+        }
+
+        $pendingMessages = DB::table('whatsapp_queue')
+            ->where('status', 'pending')
+            ->orderBy('priority', 'desc')
+            ->orderBy('id', 'asc')
+            ->limit(5)
+            ->get();
+
+        foreach ($pendingMessages as $msg) {
+            $result = $whatsapp->sendMessage($msg->phone, $msg->message);
+            if ($result['success'] ?? false) {
+                DB::table('whatsapp_queue')->where('id', $msg->id)->update([
+                    'status' => 'sent',
+                    'updated_at' => now(),
+                    'error_message' => null
+                ]);
+            } else {
+                DB::table('whatsapp_queue')->where('id', $msg->id)->update([
+                    'status' => 'failed',
+                    'error_message' => $result['error'] ?? 'Service offline',
+                    'updated_at' => now()
+                ]);
+            }
+        }
     }
 
     public function saveTemplates()
@@ -213,6 +350,11 @@ class WhatsAppSetup extends Component
         session()->flash('message', 'Message deleted from queue.');
     }
 
+    public function retryMessage($id)
+    {
+        $this->sendManual($id);
+    }
+
     public function sendManual($id)
     {
         $msg = DB::table('whatsapp_queue')->find($id);
@@ -220,10 +362,18 @@ class WhatsAppSetup extends Component
             $whatsapp = app(WhatsAppService::class);
             $result = $whatsapp->sendMessage($msg->phone, $msg->message);
             if ($result['success'] ?? false) {
-                DB::table('whatsapp_queue')->where('id', $id)->update(['status' => 'sent', 'updated_at' => now()]);
-                session()->flash('message', 'Message sent successfully!');
+                DB::table('whatsapp_queue')->where('id', $id)->update([
+                    'status' => 'sent', 
+                    'updated_at' => now(),
+                    'error_message' => null
+                ]);
+                session()->flash('message', 'Message dispatched successfully!');
             } else {
-                DB::table('whatsapp_queue')->where('id', $id)->update(['status' => 'failed', 'error_message' => $result['error'] ?? 'Unknown error', 'updated_at' => now()]);
+                DB::table('whatsapp_queue')->where('id', $id)->update([
+                    'status' => 'failed', 
+                    'error_message' => $result['error'] ?? 'Unknown error', 
+                    'updated_at' => now()
+                ]);
                 session()->flash('error', 'Failed to send message: ' . ($result['error'] ?? 'Service offline'));
             }
         }
@@ -231,6 +381,10 @@ class WhatsAppSetup extends Component
 
     public function render()
     {
+        if ($this->activeTab === 'queue') {
+            $this->processQueueBatch();
+        }
+
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
         $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
