@@ -60,12 +60,14 @@ class Dashboard extends Component
         }
 
         // ─── Financial Overview ────────────────────────────────────
+        $currentMonth = date('Y-m');
         $financials = ['generated' => 0, 'collected' => 0, 'pending' => 0, 'collection_rate' => 0];
         if ($activeSessionId) {
             $finQuery = FeeRecord::where('fee_records.academic_session_id', $activeSessionId)
                 ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
                 ->where('enrollments.academic_session_id', $activeSessionId)
-                ->where('enrollments.status', 'active');
+                ->where('enrollments.status', 'active')
+                ->where('fee_records.period', '<=', $currentMonth);
 
             if ($shiftType !== 'both') {
                 $finQuery->where('enrollments.shift_type', $shiftType);
@@ -83,7 +85,6 @@ class Dashboard extends Component
         }
 
         // ─── This-Month Fee Stats & Unpaid Balance ──────────────────
-        $currentMonth       = date('Y-m');
         $paidCount          = 0;
         $unpaidCount        = 0;
         $vouchersIssued     = false;
@@ -107,12 +108,13 @@ class Dashboard extends Component
 
             $paidCount = $paidQuery->count();
 
-            // Count distinct active students who have an issued fee record with balance > 0
+            // Count distinct active students who have an issued fee record with balance > 0 due up to current month (excluding upcoming months)
             $unpaidQuery = DB::table('fee_records')
                 ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
                 ->where('fee_records.academic_session_id', $activeSessionId)
                 ->where('enrollments.academic_session_id', $activeSessionId)
                 ->where('enrollments.status', 'active')
+                ->where('fee_records.period', '<=', $currentMonth)
                 ->where('fee_records.balance', '>', 0);
 
             if ($shiftType !== 'both') {
@@ -293,6 +295,7 @@ class Dashboard extends Component
                 ->where('fee_records.academic_session_id', $activeSessionId)
                 ->where('enrollments.academic_session_id', $activeSessionId)
                 ->where('enrollments.status', 'active')
+                ->where('fee_records.period', '<=', $currentMonth)
                 ->where('fee_records.balance', '>', 0);
 
             if ($shiftType !== 'both') {

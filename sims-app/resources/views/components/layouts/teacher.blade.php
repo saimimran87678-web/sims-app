@@ -62,6 +62,7 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 <body class="font-sans antialiased text-gray-900 bg-gray-50">
     <div x-data="{ sidebarOpen: window.innerWidth >= 768 }" class="flex h-screen overflow-hidden bg-gray-50">
@@ -327,7 +328,7 @@
         </main>
     </div>
     @stack('scripts')
-    
+    @livewireScripts
     <x-security-scripts />
 </body>
 </html>

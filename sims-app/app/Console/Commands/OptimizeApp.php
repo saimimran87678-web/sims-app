@@ -36,8 +36,21 @@ class OptimizeApp extends Command
         $this->info('🎨 Caching Blade views...');
         $this->call('view:cache');
 
-        $this->info('📡 Caching event listeners...');
-        $this->call('event:cache');
+        $this->info('⚡ Syncing Livewire static assets...');
+        $this->call('livewire:publish', ['--assets' => true]);
+        if (!file_exists(public_path('livewire'))) {
+            @mkdir(public_path('livewire'), 0775, true);
+        }
+        @copy(public_path('vendor/livewire/livewire.js'), public_path('livewire/livewire.js'));
+        @copy(public_path('vendor/livewire/livewire.min.js'), public_path('livewire/livewire.min.js'));
+        @copy(public_path('vendor/livewire/livewire.esm.js'), public_path('livewire/livewire.esm.js'));
+
+        @chmod(database_path(), 0777);
+        if (file_exists(database_path('database.sqlite'))) {
+            @chmod(database_path('database.sqlite'), 0666);
+        }
+        @chmod(storage_path(), 0777);
+        @chmod(base_path('bootstrap/cache'), 0777);
 
         $this->info('🎉 SIMS application successfully optimized for production serving!');
         return 0;

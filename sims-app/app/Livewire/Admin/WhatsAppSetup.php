@@ -88,28 +88,28 @@ class WhatsAppSetup extends Component
 
         // Load Templates
         $defaultAbsent = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is ABSENT from school today ({date}).\nPlease contact the Class Teacher and give a valid reason.\n\n- {school_name} Administration";
-        $valAbsent = \App\Models\Setting::get("whatsapp_template_absent_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_absent', $defaultAbsent));
-        $this->templateAbsent = !empty(trim($valAbsent)) ? $valAbsent : $defaultAbsent;
+        $valAbsent = \App\Models\Setting::get("whatsapp_template_absent_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_absent'));
+        $this->templateAbsent = (!is_null($valAbsent) && trim($valAbsent) !== '') ? $valAbsent : $defaultAbsent;
 
         $defaultLeave = "*Auto Generated Message*\n\nDear Parents,\nYour {relation} {student_name} (Roll No: {roll_no}) is on LEAVE today ({date}).\n\n- {school_name} Administration";
-        $valLeave = \App\Models\Setting::get("whatsapp_template_leave_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_leave', $defaultLeave));
-        $this->templateLeave = !empty(trim($valLeave)) ? $valLeave : $defaultLeave;
+        $valLeave = \App\Models\Setting::get("whatsapp_template_leave_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_leave'));
+        $this->templateLeave = (!is_null($valLeave) && trim($valLeave) !== '') ? $valLeave : $defaultLeave;
 
         $defaultLate = "*Urgent Message*\n\nDear Parents,\nWe noticed that your {relation} {student_name} (Roll No: {roll_no}) was marked absent/leave, but has now arrived late at school today at {time}.\nPlease ensure they arrive on time in the future to avoid any warning.\n\n- {school_name} Administration";
-        $valLate = \App\Models\Setting::get("whatsapp_template_late_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_late', $defaultLate));
-        $this->templateLate = !empty(trim($valLate)) ? $valLate : $defaultLate;
+        $valLate = \App\Models\Setting::get("whatsapp_template_late_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_late'));
+        $this->templateLate = (!is_null($valLate) && trim($valLate) !== '') ? $valLate : $defaultLate;
 
         $defaultPayment = "*Payment Confirmation*\n\nDear Parents,\nWe have received a payment of Rs. {amount} for {student_name} for the period {period}.\nRemaining Balance: Rs. {balance}\n\nView updated receipt:\n{challan_link}\n\nThank you.\n- {school_name} Administration";
-        $valPayment = \App\Models\Setting::get("whatsapp_template_payment_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_payment', $defaultPayment));
-        $this->templatePayment = !empty(trim($valPayment)) ? $valPayment : $defaultPayment;
+        $valPayment = \App\Models\Setting::get("whatsapp_template_payment_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_payment'));
+        $this->templatePayment = (!is_null($valPayment) && trim($valPayment) !== '') ? $valPayment : $defaultPayment;
 
         $defaultIssuance = "*Fee Voucher Issued*\n\nDear Parents,\nFee voucher of Rs. {amount} for {student_name} for the period {period} has been issued. Due date: {due_date}.\n\nView digital voucher:\n{challan_link}\n\n- {school_name} Administration";
-        $valIssuance = \App\Models\Setting::get("whatsapp_template_issuance_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_issuance', $defaultIssuance));
-        $this->templateIssuance = !empty(trim($valIssuance)) ? $valIssuance : $defaultIssuance;
+        $valIssuance = \App\Models\Setting::get("whatsapp_template_issuance_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_issuance'));
+        $this->templateIssuance = (!is_null($valIssuance) && trim($valIssuance) !== '') ? $valIssuance : $defaultIssuance;
 
         $defaultReminder = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher:\n{challan_link}\n\n- {school_name} Administration";
-        $valReminder = \App\Models\Setting::get("whatsapp_template_reminder_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_reminder', $defaultReminder));
-        $this->templateReminder = !empty(trim($valReminder)) ? $valReminder : $defaultReminder;
+        $valReminder = \App\Models\Setting::get("whatsapp_template_reminder_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_reminder'));
+        $this->templateReminder = (!is_null($valReminder) && trim($valReminder) !== '') ? $valReminder : $defaultReminder;
 
         $this->refreshStatus();
     }
@@ -170,6 +170,16 @@ class WhatsAppSetup extends Component
         }
     }
 
+    public function updatedAutoSendEnabled($value)
+    {
+        $this->saveSettings();
+    }
+
+    public function updatedForceSendNow($value)
+    {
+        $this->saveSettings();
+    }
+
     public function saveTemplates()
     {
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
@@ -221,56 +231,52 @@ class WhatsAppSetup extends Component
 
     public function render()
     {
-        $queue = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
-        if ($this->activeTab === 'queue') {
-            $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-            $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-            $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $query = DB::table('whatsapp_queue')
+            ->leftJoin('students', 'whatsapp_queue.student_id', '=', 'students.id')
+            ->leftJoin('enrollments', function($join) use ($activeSessionId) {
+                $join->on('students.id', '=', 'enrollments.student_id')
+                     ->where('enrollments.academic_session_id', '=', $activeSessionId);
+            })
+            ->leftJoin('classes', 'enrollments.class_id', '=', 'classes.id')
+            ->where(function($q) use ($shiftType) {
+                $q->where(function($sub) use ($shiftType) {
+                    $sub->whereNotNull('whatsapp_queue.student_id')
+                        ->whereNotNull('enrollments.id')
+                        ->when($shiftType !== 'both', function ($s) use ($shiftType) {
+                            $s->where('enrollments.shift_type', $shiftType);
+                        });
+                })->orWhereNull('whatsapp_queue.student_id');
+            });
 
-            $query = DB::table('whatsapp_queue')
-                ->leftJoin('students', 'whatsapp_queue.student_id', '=', 'students.id')
-                ->leftJoin('enrollments', function($join) use ($activeSessionId) {
-                    $join->on('students.id', '=', 'enrollments.student_id')
-                         ->where('enrollments.academic_session_id', '=', $activeSessionId);
-                })
-                ->leftJoin('classes', 'enrollments.class_id', '=', 'classes.id')
-                ->where(function($q) use ($shiftType) {
-                    $q->where(function($sub) use ($shiftType) {
-                        $sub->whereNotNull('whatsapp_queue.student_id')
-                            ->whereNotNull('enrollments.id')
-                            ->when($shiftType !== 'both', function ($s) use ($shiftType) {
-                                $s->where('enrollments.shift_type', $shiftType);
-                            });
-                    })->orWhereNull('whatsapp_queue.student_id');
-                });
-
-            if ($this->filterStatus) {
-                $query->where('whatsapp_queue.status', $this->filterStatus);
-            }
-
-            if ($this->search) {
-                $search = '%' . $this->search . '%';
-                $query->where(function($q) use ($search) {
-                    $q->where('students.name', 'like', $search)
-                      ->orWhere('students.admission_no', 'like', $search)
-                      ->orWhere('enrollments.roll_number', 'like', $search)
-                      ->orWhere('whatsapp_queue.phone', 'like', $search)
-                      ->orWhere('whatsapp_queue.message', 'like', $search);
-                });
-            }
-
-            $queue = $query->select(
-                    'whatsapp_queue.*',
-                    'students.name as student_name',
-                    'students.admission_no',
-                    'enrollments.roll_number as roll_no',
-                    'classes.name as class_name'
-                )
-                ->orderBy('whatsapp_queue.id', 'desc')
-                ->paginate(15);
+        if ($this->filterStatus) {
+            $query->where('whatsapp_queue.status', $this->filterStatus);
         }
+
+        if ($this->search) {
+            $search = '%' . $this->search . '%';
+            $query->where(function($q) use ($search) {
+                $q->where('students.name', 'like', $search)
+                  ->orWhere('students.admission_no', 'like', $search)
+                  ->orWhere('enrollments.roll_number', 'like', $search)
+                  ->orWhere('whatsapp_queue.phone', 'like', $search)
+                  ->orWhere('whatsapp_queue.message', 'like', $search);
+            });
+        }
+
+        $queue = $query->select(
+                'whatsapp_queue.*',
+                'students.name as student_name',
+                'students.admission_no',
+                'enrollments.roll_number as roll_no',
+                'classes.name as class_name'
+            )
+            ->orderBy('whatsapp_queue.id', 'desc')
+            ->paginate(15);
 
         return view('livewire.admin.whatsapp-setup', [
             'queue' => $queue

@@ -1,4 +1,4 @@
-<div class="space-y-6 max-w-6xl mx-auto">
+<div class="space-y-6 max-w-6xl mx-auto" x-data="{ currentTab: '{{ $activeTab ?? 'setup' }}' }">
     <!-- Page Header & Shifter Style Tab Navigation -->
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 dark:border-gray-700 pb-5">
         <div>
@@ -12,7 +12,7 @@
                 <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Centralized WhatsApp controls & message automation</span>
                 <span class="text-gray-300 dark:text-gray-600">•</span>
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-700/60 shadow-xs">
-                    <svg class="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     Session: {{ \App\Models\AcademicSession::find(\App\Models\AcademicSession::getActiveSessionId())->name ?? 'Active Session' }} 
                     <span class="opacity-60">|</span>
                     {{ ucfirst(session('selected_shift_type', 'morning')) }} Shift
@@ -24,25 +24,28 @@
         <div class="overflow-x-auto max-w-full -mx-4 px-4 md:mx-0 md:px-0 self-start md:self-auto shrink-0 scrollbar-none">
             <div class="flex bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700/60 shrink-0 shadow-inner min-w-[350px]">
                 <button 
-                    wire:click="setTab('setup')" 
+                    @click="currentTab = 'setup'; $wire.setTab('setup')" 
                     type="button"
-                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'setup' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
+                    :class="currentTab === 'setup' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                     WhatsApp Setup
                 </button>
                 <button 
-                    wire:click="setTab('queue')" 
+                    @click="currentTab = 'queue'; $wire.setTab('queue')" 
                     type="button"
-                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'queue' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
+                    :class="currentTab === 'queue' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                     Queue Manager
                 </button>
                 <button 
-                    wire:click="setTab('templates')" 
+                    @click="currentTab = 'templates'; $wire.setTab('templates')" 
                     type="button"
-                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap {{ $activeTab === 'templates' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}"
+                    :class="currentTab === 'templates' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                     Message Templates
@@ -72,9 +75,8 @@
     @endif
 
     {{-- TAB 1: WHATSAPP SETUP --}}
-    @if($activeTab === 'setup')
-        <div class="space-y-6 animate-in fade-in duration-200">
-            <div class="glass-card p-6 sm:p-10 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
+    <div x-show="currentTab === 'setup'" class="space-y-6 animate-in fade-in duration-200">
+        <div class="glass-card p-6 sm:p-10 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
                 <div class="text-center space-y-6 max-w-xl mx-auto">
                     
                     {{-- Connection Status --}}
@@ -157,11 +159,9 @@
                 </div>
             </div>
         </div>
-    @endif
 
     {{-- TAB 2: QUEUE MANAGER --}}
-    @if($activeTab === 'queue')
-        <div class="glass-card p-6 sm:p-7 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm animate-in fade-in duration-200" wire:poll.15s>
+    <div x-show="currentTab === 'queue'" class="glass-card p-6 sm:p-7 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm animate-in fade-in duration-200" wire:poll.15s>
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6">
                 <div>
                     <h3 class="text-lg font-extrabold text-gray-900 dark:text-white">Message Queue Dispatcher</h3>
@@ -175,33 +175,33 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
                     <div>
                         <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Queue Processor</label>
-                        <div class="flex items-center h-10" x-data="{ enabled: @entangle('autoSendEnabled') }">
+                        <div class="flex items-center h-10">
                             <label class="relative inline-flex items-center cursor-pointer" title="Enable to start auto-processing messages">
-                                <input type="checkbox" x-model="enabled" class="sr-only peer">
+                                <input type="checkbox" wire:model.live="autoSendEnabled" @if($autoSendEnabled) checked @endif class="sr-only peer">
                                 <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                                <span class="ml-2.5 text-xs font-bold text-gray-700 dark:text-gray-300" x-text="enabled ? 'Enabled' : 'Disabled'">{{ $autoSendEnabled ? 'Enabled' : 'Disabled' }}</span>
+                                <span class="ml-2.5 text-xs font-bold text-gray-700 dark:text-gray-300">{{ $autoSendEnabled ? 'Enabled' : 'Disabled' }}</span>
                             </label>
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Start Window</label>
-                        <input type="time" wire:model="autoSendStart" class="w-full text-xs font-medium rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <input type="time" wire:model.live="autoSendStart" value="{{ $autoSendStart }}" class="w-full text-xs font-medium rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">End Window</label>
-                        <input type="time" wire:model="autoSendEnd" class="w-full text-xs font-medium rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <input type="time" wire:model.live="autoSendEnd" value="{{ $autoSendEnd }}" class="w-full text-xs font-medium rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Delay (Seconds)</label>
-                        <input type="number" min="3" max="60" wire:model="queueDelay" class="w-full text-xs font-medium rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <input type="number" min="3" max="60" wire:model.live="queueDelay" value="{{ $queueDelay }}" class="w-full text-xs font-medium rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Force Dispatch</label>
-                        <div class="flex items-center h-10" x-data="{ force: @entangle('forceSendNow') }">
+                        <div class="flex items-center h-10">
                             <label class="relative inline-flex items-center cursor-pointer" title="Bypass Start/End window restrictions and send immediately">
-                                <input type="checkbox" x-model="force" class="sr-only peer">
+                                <input type="checkbox" wire:model.live="forceSendNow" @if($forceSendNow) checked @endif class="sr-only peer">
                                 <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-red-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                                <span class="ml-2.5 text-xs font-extrabold text-red-600" x-text="force ? 'Active' : 'Off'">{{ $forceSendNow ? 'Active' : 'Off' }}</span>
+                                <span class="ml-2.5 text-xs font-extrabold text-red-600">{{ $forceSendNow ? 'Active' : 'Off' }}</span>
                             </label>
                         </div>
                     </div>
@@ -411,11 +411,9 @@
                 </div>
             @endif
         </div>
-    @endif
 
     {{-- TAB 3: MESSAGE TEMPLATES --}}
-    @if($activeTab === 'templates')
-        <div class="space-y-6 animate-in fade-in duration-200">
+    <div x-show="currentTab === 'templates'" class="space-y-6 animate-in fade-in duration-200">
             <!-- Dynamic Variable Legend -->
             <div class="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 p-5 rounded-2xl border border-purple-100 dark:border-purple-900/50 shadow-sm">
                 <div class="flex items-center gap-2 text-sm font-extrabold text-purple-900 dark:text-purple-300 mb-2">
@@ -454,7 +452,7 @@
                             </label>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded">Attendance</span>
                         </div>
-                        <textarea wire:model="templateAbsent" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono"></textarea>
+                        <textarea wire:model.blur="templateAbsent" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono">{{ $templateAbsent }}</textarea>
                     </div>
                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched when a student is marked 'Absent' in daily attendance.</p>
                 </div>
@@ -469,7 +467,7 @@
                             </label>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded">Attendance</span>
                         </div>
-                        <textarea wire:model="templateLeave" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono"></textarea>
+                        <textarea wire:model.blur="templateLeave" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono">{{ $templateLeave }}</textarea>
                     </div>
                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched when a student is marked 'Leave' in daily attendance.</p>
                 </div>
@@ -484,7 +482,7 @@
                             </label>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-sky-600 bg-sky-50 dark:bg-sky-900/30 px-2 py-0.5 rounded">Attendance</span>
                         </div>
-                        <textarea wire:model="templateLate" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono"></textarea>
+                        <textarea wire:model.blur="templateLate" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono">{{ $templateLate }}</textarea>
                     </div>
                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched when a student arrives late after initial marking.</p>
                 </div>
@@ -499,7 +497,7 @@
                             </label>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">Fee Module</span>
                         </div>
-                        <textarea wire:model="templatePayment" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono"></textarea>
+                        <textarea wire:model.blur="templatePayment" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono">{{ $templatePayment }}</textarea>
                     </div>
                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched when a payment receipt is generated or sent to parent.</p>
                 </div>
@@ -514,7 +512,7 @@
                             </label>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded">Fee Module</span>
                         </div>
-                        <textarea wire:model="templateIssuance" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono"></textarea>
+                        <textarea wire:model.blur="templateIssuance" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono">{{ $templateIssuance }}</textarea>
                     </div>
                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched when new fee vouchers are generated for students with digital voucher links.</p>
                 </div>
@@ -529,7 +527,7 @@
                             </label>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded">Fee Module</span>
                         </div>
-                        <textarea wire:model="templateReminder" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono"></textarea>
+                        <textarea wire:model.blur="templateReminder" rows="7" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-xs focus:border-purple-500 focus:ring-purple-500 text-xs font-mono">{{ $templateReminder }}</textarea>
                     </div>
                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Dispatched for single and bulk fee reminders to defaulters with digital voucher links.</p>
                 </div>
@@ -547,7 +545,6 @@
                         Saving Templates...
                     </span>
                 </button>
-            </div>
         </div>
-    @endif
+    </div>
 </div>
