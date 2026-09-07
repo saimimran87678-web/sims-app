@@ -60,7 +60,10 @@ class LoginRequest extends FormRequest
         $user = Auth::user();
         
         // Retrieve system active sessions
-        $activeSessions = \App\Models\AcademicSession::where('is_active', true)->get();
+        $activeSessions = \App\Models\AcademicSession::active()->where('is_active', true)->get();
+        if ($activeSessions->isEmpty()) {
+            $activeSessions = \App\Models\AcademicSession::active()->orderBy('start_date', 'desc')->get();
+        }
         
         // Check user's access via session_user pivot
         $userSessions = \Illuminate\Support\Facades\DB::table('session_user')
@@ -70,47 +73,50 @@ class LoginRequest extends FormRequest
 
         $activeUserSessions = $userSessions->filter(fn($s) => $s->is_active);
 
-        // If completely blocked and not Super Admin
-        if ($activeUserSessions->isEmpty() && !$user->hasRole('Super Admin')) {
+        // If completely blocked and not Admin / Super Admin
+        if ($activeUserSessions->isEmpty() && !$user->hasRole('Super Admin') && $user->role !== 'admin') {
             Auth::logout();
             throw ValidationException::withMessages([
-                'email' => __('Your account has been disabled in all active shifts.'),
+                'email' => __('Your account has been disabled for the active academic session.'),
             ]);
         }
 
-        if ($user->hasRole('Super Admin') && $activeUserSessions->isEmpty()) {
-            // Super admins can bypass, just pick the first active system session
+        // Determine target session ID
+        $targetSessionId = null;
+        if ($activeUserSessions->isNotEmpty()) {
+            $targetSessionId = $activeUserSessions->first()->academic_session_id;
+        } else {
             $targetSessionId = $activeSessions->first()->id ?? null;
-            if ($targetSessionId) {
-                session(['current_session_id' => $targetSessionId]);
-            }
-        } elseif ($activeUserSessions->isNotEmpty()) {
-            // Determine Time-Based Default Shift (12:00am - 2:00pm = Morning, 2:01pm - 11:59pm = Evening)
-            $now = now()->format('H:i');
-            $preferredShift = ($now >= '00:00' && $now <= '14:00') ? 'Morning' : 'Evening';
-            
-            // Map the active sessions to their shift types (assuming parent or 'Morning' is Morning)
-            $morningSession = $activeSessions->first(fn($s) => $s->shift_type === 'Morning' || is_null($s->parent_id));
-            $eveningSession = $activeSessions->first(fn($s) => $s->shift_type === 'Evening');
-            
-            $morningId = $morningSession ? $morningSession->id : null;
-            $eveningId = $eveningSession ? $eveningSession->id : null;
+        }
 
-            $targetSessionId = null;
-
-            // Attempt to assign the preferred shift
-            if ($preferredShift === 'Morning' && $morningId && $activeUserSessions->contains('academic_session_id', $morningId)) {
-                $targetSessionId = $morningId;
-            } elseif ($preferredShift === 'Evening' && $eveningId && $activeUserSessions->contains('academic_session_id', $eveningId)) {
-                $targetSessionId = $eveningId;
-            }
-
-            // Fallback to whichever shift is available to them
-            if (!$targetSessionId) {
-                $targetSessionId = $activeUserSessions->first()->academic_session_id;
-            }
-
+        if ($targetSessionId) {
             session(['current_session_id' => $targetSessionId]);
+            if ($user->role === 'admin' || $user->hasRole('Super Admin')) {
+                session(['selected_academic_session_id' => $targetSessionId]);
+            } else {
+                session()->forget('selected_academic_session_id');
+            }
+
+            // Determine Shift Type
+            $targetSession = \App\Models\AcademicSession::find($targetSessionId);
+            if ($targetSession && $targetSession->shift_type === 'Regular') {
+                session(['selected_shift_type' => 'regular']);
+            } else {
+                // Check if user has restricted allowed_shifts in session_user
+                $sessionUser = $activeUserSessions->firstWhere('academic_session_id', $targetSessionId);
+                $allowedShifts = $sessionUser ? ($sessionUser->allowed_shifts ?? 'both') : 'both';
+
+                if ($allowedShifts === 'morning') {
+                    session(['selected_shift_type' => 'morning']);
+                } elseif ($allowedShifts === 'evening') {
+                    session(['selected_shift_type' => 'evening']);
+                } else {
+                    // Time-Based Default Shift: 12:00am - 2:00pm = morning, 2:01pm - 11:59pm = evening
+                    $now = now()->format('H:i');
+                    $preferredShift = ($now >= '00:00' && $now <= '14:00') ? 'morning' : 'evening';
+                    session(['selected_shift_type' => $preferredShift]);
+                }
+            }
         }
 
         RateLimiter::clear($this->throttleKey());

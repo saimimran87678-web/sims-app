@@ -323,32 +323,39 @@ class FeatureSharingManager extends Component
         session()->flash('message', 'Permission updated.');
     }
 
-    public function getOppositeShiftSession()
+    public function getOppositeShiftType()
     {
-        $currentSession = \App\Models\AcademicSession::find(\App\Models\AcademicSession::getActiveSessionId());
-        if (!$currentSession || !$currentSession->parent_id) {
+        $sessionObj = \App\Models\AcademicSession::find(\App\Models\AcademicSession::getActiveSessionId());
+        if ($sessionObj && $sessionObj->shift_type === 'Regular') {
             return null;
         }
 
-        $oppositeShiftType = $currentSession->shift_type === 'Morning' ? 'Evening' : 'Morning';
+        $currentShift = session('selected_shift_type', 'morning');
+        if ($currentShift === 'both') {
+            return null;
+        }
 
-        return \App\Models\AcademicSession::where('parent_id', $currentSession->parent_id)
-            ->where('shift_type', $oppositeShiftType)
-            ->first();
+        return $currentShift === 'morning' ? 'evening' : 'morning';
     }
 
     public function getIsActiveInOppositeShiftProperty()
     {
         if (!$this->selectedUserId) return false;
         
-        $oppositeSession = $this->getOppositeShiftSession();
-        if (!$oppositeSession) return false;
+        $oppositeShift = $this->getOppositeShiftType();
+        if (!$oppositeShift) return false;
 
-        return DB::table('session_user')
+        $currentSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionUser = DB::table('session_user')
             ->where('user_id', $this->selectedUserId)
-            ->where('academic_session_id', $oppositeSession->id)
+            ->where('academic_session_id', $currentSessionId)
             ->where('is_active', true)
-            ->exists();
+            ->first();
+
+        if (!$sessionUser) return false;
+
+        $allowed = $sessionUser->allowed_shifts ?? 'both';
+        return $allowed === 'both' || $allowed === $oppositeShift;
     }
 
     public function syncToOppositeShift()
@@ -356,28 +363,23 @@ class FeatureSharingManager extends Component
         if (!$this->selectedUserId) return;
         
         $currentSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $oppositeSession = $this->getOppositeShiftSession();
-        if (!$oppositeSession) return;
+        $oppositeShift = $this->getOppositeShiftType();
+        if (!$oppositeShift || !$this->isActiveInOppositeShift) return;
+
+        $currentShift = session('selected_shift_type', 'morning');
         
-        // Verify active in opposite
-        $isActiveInOpposite = DB::table('session_user')
-            ->where('user_id', $this->selectedUserId)
-            ->where('academic_session_id', $oppositeSession->id)
-            ->where('is_active', true)
-            ->exists();
-            
-        if (!$isActiveInOpposite) return;
-        
-        // Sync permissions
+        // 1. Sync permissions from current shift to opposite shift
         $currentPermissions = DB::table('session_user_permissions')
             ->where('user_id', $this->selectedUserId)
             ->where('academic_session_id', $currentSessionId)
+            ->where('shift_type', $currentShift)
             ->pluck('permission_name')
             ->toArray();
             
         DB::table('session_user_permissions')
             ->where('user_id', $this->selectedUserId)
-            ->where('academic_session_id', $oppositeSession->id)
+            ->where('academic_session_id', $currentSessionId)
+            ->where('shift_type', $oppositeShift)
             ->delete();
             
         $permissionData = [];
@@ -385,8 +387,9 @@ class FeatureSharingManager extends Component
         foreach ($currentPermissions as $permName) {
             $permissionData[] = [
                 'user_id' => $this->selectedUserId,
-                'academic_session_id' => $oppositeSession->id,
+                'academic_session_id' => $currentSessionId,
                 'permission_name' => $permName,
+                'shift_type' => $oppositeShift,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -395,7 +398,7 @@ class FeatureSharingManager extends Component
             DB::table('session_user_permissions')->insert($permissionData);
         }
         
-        // Sync class access (by matching class names)
+        // 2. Sync class access (match classes by name across shifts)
         $currentClassAccessIds = DB::table('user_class_access')
             ->where('user_id', $this->selectedUserId)
             ->whereIn('class_id', $this->allClasses->pluck('id')->toArray())
@@ -409,13 +412,15 @@ class FeatureSharingManager extends Component
                 ->toArray();
                 
             $oppositeClassIds = DB::table('classes')
-                ->where('academic_session_id', $oppositeSession->id)
+                ->where('academic_session_id', $currentSessionId)
+                ->where('shift_type', $oppositeShift)
                 ->whereIn('name', $currentClassNames)
                 ->pluck('id')
                 ->toArray();
                 
             $allOppositeClassIds = DB::table('classes')
-                ->where('academic_session_id', $oppositeSession->id)
+                ->where('academic_session_id', $currentSessionId)
+                ->where('shift_type', $oppositeShift)
                 ->pluck('id')
                 ->toArray();
                 
@@ -438,7 +443,7 @@ class FeatureSharingManager extends Component
             }
         }
         
-        session()->flash('message', 'Permissions and class access successfully synced to ' . $oppositeSession->shift_type . ' shift.');
+        session()->flash('message', 'Permissions and class access successfully synced to ' . ucfirst($oppositeShift) . ' shift.');
     }
 
     public function render()

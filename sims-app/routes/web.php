@@ -71,8 +71,6 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::get('/datesheet/{examId}', \App\Livewire\Admin\Datesheet\DatesheetManager::class)->name('datesheet.manage');
     Route::get('/datesheet/{examId}/print', [\App\Http\Controllers\DatesheetController::class, 'print'])->name('datesheet.print');
     
-    // Legacy/Existing Routes (keeping if needed or removing if replacing)
-    // Route::get('/exams/{exam}/datesheet', ...);
     Route::get('/schedule', \App\Livewire\Admin\ScheduleManager::class)->name('schedule');
     Route::get('/substitutions', \App\Livewire\Admin\SubstitutionManager::class)->name('substitutions');
     Route::get('/substitutions/print', function() {
@@ -95,7 +93,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::get('/grades', \App\Livewire\Admin\GradeManager::class)->name('grades');
     Route::get('/attendance', \App\Livewire\Admin\AttendanceManager::class)->name('attendance');
     Route::get('/whatsapp-setup', \App\Livewire\Admin\WhatsAppSetup::class)->name('whatsapp-setup');
-    Route::get('/whatsapp-templates', \App\Livewire\Admin\WhatsAppSetup::class)->name('whatsapp-templates');
+    Route::redirect('/whatsapp-templates', '/admin/whatsapp-setup')->name('whatsapp-templates');
     Route::get('/communication-hub', \App\Livewire\Admin\CommunicationHub::class)->name('communication-hub');
     Route::get('/settings', \App\Livewire\Admin\Settings::class)->name('settings');
 

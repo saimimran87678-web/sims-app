@@ -65,11 +65,7 @@ class AcademicSession extends Model
     {
         static::saved(function ($session) {
             if ($session->is_active) {
-                // If it's a parent session, deactivate all other parent sessions and THEIR children.
-                if (is_null($session->parent_id)) {
-                    static::where('id', '!=', $session->id)->whereNull('parent_id')->update(['is_active' => false]);
-                    static::whereNotNull('parent_id')->where('parent_id', '!=', $session->id)->update(['is_active' => false]);
-                }
+                static::where('id', '!=', $session->id)->update(['is_active' => false]);
             }
         });
     }
@@ -81,18 +77,7 @@ class AcademicSession extends Model
 
     public static function getActiveSessionId()
     {
-        // 1. If a specific session context is explicitly set for the user (via login or session shifter), use it.
-        if (session()->has('current_session_id')) {
-            $id = session('current_session_id');
-            // Validate the stored ID still exists in the database and is not archived
-            if (static::active()->where('id', $id)->exists()) {
-                return $id;
-            }
-            // Stale reference — clear it and fall through
-            session()->forget('current_session_id');
-        }
-        
-        // Admin overrides for viewing other sessions
+        // 1. Admin overrides for viewing other sessions
         if (session()->has('selected_academic_session_id') && auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->hasRole('Super Admin'))) {
             $id = session('selected_academic_session_id');
             if (static::active()->where('id', $id)->exists()) {
@@ -101,15 +86,19 @@ class AcademicSession extends Model
             session()->forget('selected_academic_session_id');
         }
 
-        // 2. Default: Find the currently active parent session
+        // Backward-compatibility fallback
+        if (session()->has('current_session_id')) {
+            $id = session('current_session_id');
+            if (static::active()->where('id', $id)->exists()) {
+                return $id;
+            }
+            session()->forget('current_session_id');
+        }
+
+        // 2. Default: Find the currently active system session
         $activeSession = static::active()
                                ->where('is_active', true)
-                               ->whereNull('parent_id')
                                ->first();
-
-        if (!$activeSession) {
-            $activeSession = static::active()->where('is_active', true)->first();
-        }
 
         if (!$activeSession) {
             $activeSession = static::active()->orderBy('start_date', 'desc')->first();

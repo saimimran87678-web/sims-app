@@ -33,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
 
             if (in_array($ability, $allSpatiePermissions)) {
                 static $requestPermissionCache = [];
+                if (app()->runningUnitTests()) {
+                    $requestPermissionCache = [];
+                }
 
                 $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
                 if (!$activeSessionId) {
