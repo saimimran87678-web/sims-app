@@ -156,12 +156,30 @@ free_port() {
     fi
 }
 
+# Configure Nginx virtual host for SIMS to override default Apache/Ubuntu page
+configure_nginx() {
+    if [ -d /etc/nginx/sites-available ]; then
+        if [ ! -f /etc/nginx/sites-enabled/sims.conf ] || [ -f /etc/nginx/sites-enabled/default ] || [ -f /var/www/html/index.html ]; then
+            echo "🔧 Configuring SIMS Nginx virtual host and disabling default Apache/Ubuntu page..."
+            sudo cp "$APP_DIR/deployment/nginx/sims.conf" /etc/nginx/sites-available/sims.conf 2>/dev/null || true
+            sudo ln -sf /etc/nginx/sites-available/sims.conf /etc/nginx/sites-enabled/sims.conf 2>/dev/null || true
+            sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+            if [ -f /var/www/html/index.html ]; then
+                sudo mv /var/www/html/index.html /var/www/html/index.html.disabled_by_sims 2>/dev/null || true
+            fi
+        fi
+    fi
+}
+
 ACTION="${1:-status}"
 
 case "$ACTION" in
     start)
         echo "🚀 Starting SIMS Production Services..."
         check_environment
+
+        # Auto-configure Nginx virtual host if needed
+        configure_nginx
 
         # Clear conflicting port locks if services are not cleanly active
         if ! is_service_active nginx; then
@@ -227,6 +245,10 @@ case "$ACTION" in
         manage_service stop nginx 2>/dev/null || true
         manage_service stop "$PHP_FPM" 2>/dev/null || true
         manage_service stop redis-server 2>/dev/null || true
+
+        # Auto-configure Nginx virtual host if needed
+        configure_nginx
+
         free_port 80 "Nginx Web Server"
         free_port 6379 "Redis Server"
         free_port 3000 "WhatsApp Microservice (Port 3000)"
