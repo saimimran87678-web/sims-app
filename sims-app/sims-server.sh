@@ -25,6 +25,9 @@ fi
 
 cd "$APP_DIR" || exit 1
 
+# Prevent Node.js preload errors if custom preloads are set in environment
+unset NODE_OPTIONS
+
 # State persistence file to remember if server was running before reboot/power cut
 STATE_FILE="$APP_DIR/.sims-server.state"
 
@@ -57,6 +60,38 @@ check_environment() {
     fi
 }
 
+# Check if systemd is booted and usable (PID 1)
+has_systemd() {
+    command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && [ "$(systemctl is-system-running 2>/dev/null)" != "offline" ]
+}
+
+# Universal service controller (systemd, service, /etc/init.d)
+manage_service() {
+    local action="$1"
+    local sname="$2"
+    if has_systemd; then
+        sudo systemctl "$action" "$sname"
+    elif command -v service >/dev/null 2>&1; then
+        sudo service "$sname" "$action"
+    elif [ -x "/etc/init.d/$sname" ]; then
+        sudo "/etc/init.d/$sname" "$action"
+    fi
+}
+
+# Universal check if a service is actively running
+is_service_active() {
+    local sname="$1"
+    if has_systemd; then
+        systemctl is-active --quiet "$sname" 2>/dev/null
+    elif command -v service >/dev/null 2>&1; then
+        service "$sname" status >/dev/null 2>&1
+    elif [ -x "/etc/init.d/$sname" ]; then
+        "/etc/init.d/$sname" status >/dev/null 2>&1
+    else
+        return 1
+    fi
+}
+
 # Function to detect and safely free a port if occupied by a conflicting listening process
 free_port() {
     local port="$1"
@@ -68,10 +103,16 @@ free_port() {
     fi
 
     # Specific check: if Apache2 is running on port 80 and blocking Nginx
-    if [ "$port" -eq 80 ] && systemctl is-active --quiet apache2 2>/dev/null; then
-        echo "⚠️ Detected Apache2 running on port 80. Stopping Apache2 so $service_label (Nginx) can bind..."
-        sudo systemctl stop apache2 2>/dev/null || true
-        sudo systemctl disable apache2 2>/dev/null || true
+    if [ "$port" -eq 80 ]; then
+        if is_service_active apache2; then
+            echo "⚠️ Detected Apache2 running on port 80. Stopping Apache2 so $service_label (Nginx) can bind..."
+            manage_service stop apache2 2>/dev/null || true
+            if has_systemd; then
+                sudo systemctl disable apache2 2>/dev/null || true
+            elif command -v update-rc.d >/dev/null 2>&1; then
+                sudo update-rc.d apache2 disable 2>/dev/null || true
+            fi
+        fi
     fi
 
     # Query ONLY local TCP sockets strictly in LISTEN state (never outbound client sockets!)
@@ -91,6 +132,14 @@ free_port() {
             fi
             local proc_name
             proc_name=$(ps -p "$pid" -o comm= 2>/dev/null || true)
+
+            # Specific check for Apache2 processes
+            if [ "$proc_name" = "apache2" ] || [ "$proc_name" = "httpd" ]; then
+                echo "⚠️ Terminating conflicting Apache2 process (PID: $pid) to free port $port..."
+                manage_service stop apache2 2>/dev/null || true
+                sudo kill -9 "$pid" 2>/dev/null || true
+                continue
+            fi
 
             # Never kill IDE, SSH, or terminal connection processes
             case "$proc_name" in
@@ -115,10 +164,10 @@ case "$ACTION" in
         check_environment
 
         # Clear conflicting port locks if services are not cleanly active
-        if ! systemctl is-active --quiet nginx 2>/dev/null; then
+        if ! is_service_active nginx; then
             free_port 80 "Nginx Web Server"
         fi
-        if ! systemctl is-active --quiet redis-server 2>/dev/null; then
+        if ! is_service_active redis-server; then
             free_port 6379 "Redis Server"
         fi
         free_port 3000 "WhatsApp Microservice (Port 3000)"
@@ -129,13 +178,15 @@ case "$ACTION" in
             sudo nginx -t -q 2>/dev/null || echo "⚠️ Warning: Nginx configuration test returned warnings/errors."
         fi
 
-        sudo systemctl start redis-server "$PHP_FPM" nginx
+        manage_service start redis-server
+        manage_service start "$PHP_FPM"
+        manage_service start nginx
         
         # If Nginx failed to start, force clear port 80 and retry
-        if ! systemctl is-active --quiet nginx 2>/dev/null; then
+        if ! is_service_active nginx; then
             echo "⚠️ Nginx initial start failed. Forcing port 80 release and retrying..."
             free_port 80 "Nginx Web Server"
-            sudo systemctl restart nginx 2>/dev/null || true
+            manage_service restart nginx 2>/dev/null || manage_service start nginx 2>/dev/null || true
         fi
 
         pm2 start "$APP_DIR/ecosystem.config.cjs" 2>/dev/null || pm2 restart all
@@ -156,7 +207,9 @@ case "$ACTION" in
         pm2 stop all 2>/dev/null || true
         pm2 save 2>/dev/null || true
         
-        sudo systemctl stop nginx "$PHP_FPM" redis-server
+        manage_service stop nginx 2>/dev/null || true
+        manage_service stop "$PHP_FPM" 2>/dev/null || true
+        manage_service stop redis-server 2>/dev/null || true
 
         # Record stopped state so server does NOT auto-start on next boot
         echo "STOPPED" > "$STATE_FILE"
@@ -171,7 +224,9 @@ case "$ACTION" in
 
         # Gracefully stop services and clear all port locks
         pm2 stop all 2>/dev/null || true
-        sudo systemctl stop nginx "$PHP_FPM" redis-server 2>/dev/null || true
+        manage_service stop nginx 2>/dev/null || true
+        manage_service stop "$PHP_FPM" 2>/dev/null || true
+        manage_service stop redis-server 2>/dev/null || true
         free_port 80 "Nginx Web Server"
         free_port 6379 "Redis Server"
         free_port 3000 "WhatsApp Microservice (Port 3000)"
@@ -181,12 +236,14 @@ case "$ACTION" in
             sudo nginx -t -q 2>/dev/null || echo "⚠️ Warning: Nginx configuration test returned warnings/errors."
         fi
 
-        sudo systemctl restart redis-server "$PHP_FPM" nginx
+        manage_service restart redis-server 2>/dev/null || manage_service start redis-server
+        manage_service restart "$PHP_FPM" 2>/dev/null || manage_service start "$PHP_FPM"
+        manage_service restart nginx 2>/dev/null || manage_service start nginx
         pm2 restart all 2>/dev/null
         pm2 save 2>/dev/null || true
         
         echo "RUNNING" > "$STATE_FILE"
-        php artisan app:optimize
+        CACHE_STORE=array php artisan app:optimize 2>/dev/null || php artisan app:optimize
         echo "⚡ All SIMS services RESTARTED, PORT-CLEARED, and OPTIMIZED!"
         echo "💾 Persistence State: RUNNING (Auto-recovery on reboot/power restore is ACTIVE)"
         ;;
@@ -196,13 +253,13 @@ case "$ACTION" in
         echo "           📊 SIMS PRODUCTION SYSTEM DASHBOARD            "
         echo "=========================================================="
         echo -n "🌐 Nginx Web Server:    "
-        systemctl is-active --quiet nginx 2>/dev/null && echo "🟢 ACTIVE (Listening on http://localhost)" || echo "🔴 INACTIVE"
+        is_service_active nginx && echo "🟢 ACTIVE (Listening on http://localhost)" || echo "🔴 INACTIVE"
         
         echo -n "🐘 PHP-FPM ($PHP_FPM): "
-        systemctl is-active --quiet "$PHP_FPM" 2>/dev/null && echo "🟢 ACTIVE (FastCGI Service)" || echo "🔴 INACTIVE"
+        is_service_active "$PHP_FPM" && echo "🟢 ACTIVE (FastCGI Service)" || echo "🔴 INACTIVE"
         
         echo -n "🚀 Redis Cache & Queue: "
-        systemctl is-active --quiet redis-server 2>/dev/null && echo "🟢 ACTIVE (RAM Storage)" || echo "🔴 INACTIVE"
+        is_service_active redis-server && echo "🟢 ACTIVE (RAM Storage)" || echo "🔴 INACTIVE"
         
         echo -n "🔌 PHP Redis Extension: "
         if command -v php >/dev/null 2>&1 && php -m 2>/dev/null | grep -qi "redis"; then
@@ -240,23 +297,26 @@ case "$ACTION" in
         ;;
 
     auto-boot)
-        # This action is called by systemd on system startup
+        # This action is called on system startup
         echo "🔄 [SIMS Auto-Boot] Checking previous server power state..."
         if [ -f "$STATE_FILE" ] && grep -q "RUNNING" "$STATE_FILE"; then
             echo "⚡ Server was RUNNING before shutdown/power cut. Restoring all SIMS services..."
             "$SCRIPT_DIR/sims-server.sh" start
         else
             echo "💤 Server was STOPPED prior to shutdown. Keeping SIMS services inactive on this boot."
-            sudo systemctl stop nginx "$PHP_FPM" redis-server 2>/dev/null || true
+            manage_service stop nginx 2>/dev/null || true
+            manage_service stop "$PHP_FPM" 2>/dev/null || true
+            manage_service stop redis-server 2>/dev/null || true
             pm2 stop all 2>/dev/null || true
         fi
         ;;
 
     setup-autoboot)
-        echo "⚙️ Setting up State-Aware Auto-Boot Service in systemd..."
-        AUTOBOOT_SERVICE="/etc/systemd/system/sims-autoboot.service"
-        CURRENT_USER="$(id -un)"
-        sudo bash -c "cat <<EOF > $AUTOBOOT_SERVICE
+        if has_systemd; then
+            echo "⚙️ Setting up State-Aware Auto-Boot Service in systemd..."
+            AUTOBOOT_SERVICE="/etc/systemd/system/sims-autoboot.service"
+            CURRENT_USER="$(id -un)"
+            sudo bash -c "cat <<EOF > $AUTOBOOT_SERVICE
 [Unit]
 Description=SIMS State-Aware Auto-Boot Recovery Manager
 After=network.target
@@ -270,9 +330,14 @@ RemainAfterExit=true
 [Install]
 WantedBy=multi-user.target
 EOF"
-        sudo systemctl daemon-reload
-        sudo systemctl enable sims-autoboot.service
-        echo "✅ State-Aware Auto-Boot Service is installed and enabled!"
+            sudo systemctl daemon-reload
+            sudo systemctl enable sims-autoboot.service
+            echo "✅ State-Aware Auto-Boot Service is installed and enabled in systemd!"
+        else
+            echo "⚙️ System does not use systemd as PID 1. Installing auto-boot in crontab (@reboot)..."
+            (crontab -l 2>/dev/null | grep -v "sims-server.sh auto-boot"; echo "@reboot $SCRIPT_DIR/sims-server.sh auto-boot >/dev/null 2>&1") | crontab -
+            echo "✅ State-Aware Auto-Boot is installed in user crontab (@reboot)!"
+        fi
         echo "   - If server was RUNNING before power loss/reboot -> Auto-starts immediately."
         echo "   - If server was STOPPED by you -> Stays off on reboot."
         ;;
