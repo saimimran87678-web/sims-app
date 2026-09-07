@@ -171,6 +171,21 @@ configure_nginx() {
     fi
 }
 
+# Ensure web server (www-data) can traverse home directory and read public assets
+fix_permissions() {
+    echo "🔒 Configuring filesystem permissions for web server (www-data)..."
+    chmod o+x "$HOME" 2>/dev/null || true
+    chmod 755 "/home/saim/SIMS" 2>/dev/null || true
+    chmod 755 "$APP_DIR" 2>/dev/null || true
+    chmod -R 755 "$APP_DIR/public" 2>/dev/null || true
+    chmod -R 777 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" 2>/dev/null || true
+    if [ -f "$APP_DIR/database/database.sqlite" ]; then
+        chmod 666 "$APP_DIR/database/database.sqlite" 2>/dev/null || true
+        chmod 777 "$APP_DIR/database" 2>/dev/null || true
+    fi
+    sudo usermod -a -G "$(id -gn)" www-data 2>/dev/null || true
+}
+
 ACTION="${1:-status}"
 
 case "$ACTION" in
@@ -180,6 +195,9 @@ case "$ACTION" in
 
         # Auto-configure Nginx virtual host if needed
         configure_nginx
+
+        # Ensure permissions for web server
+        fix_permissions
 
         # Clear conflicting port locks if services are not cleanly active
         if ! is_service_active nginx; then
@@ -248,6 +266,9 @@ case "$ACTION" in
 
         # Auto-configure Nginx virtual host if needed
         configure_nginx
+
+        # Ensure permissions for web server
+        fix_permissions
 
         free_port 80 "Nginx Web Server"
         free_port 6379 "Redis Server"
