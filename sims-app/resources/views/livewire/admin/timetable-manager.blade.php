@@ -141,7 +141,7 @@
                                     <div class="flex flex-col h-full justify-center space-y-1 relative z-10">
                                         @foreach($data as $entry)
                                         <div class="border-b border-blue-200/50 pb-1 last:border-0 last:pb-0">
-                                            <div class="font-bold text-xs text-blue-700 truncate" title="{{ $subjects[$entry->subject_id]->name ?? '?' }}">
+                                            <div class="font-medium text-xs text-blue-700 truncate" title="{{ $subjects[$entry->subject_id]->name ?? '?' }}">
                                                 {{ $subjects[$entry->subject_id]->name ?? '?' }}
                                                 @if($entry->merged_class_id && $rowspan == 1)
                                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium bg-purple-100 text-purple-800 ml-1">
@@ -164,7 +164,7 @@
                                     </div>
                                 @else
                                     <div class="h-full flex items-center justify-center group">
-                                        <div class="w-6 h-6 rounded-full bg-gray-50 text-gray-300 group-hover:bg-blue-100 group-hover:text-blue-600 flex items-center justify-center transition-all">
+                                        <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                         </div>
                                     </div>
@@ -193,7 +193,7 @@
                 </button>
             </div>
             
-            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 max-h-[60vh]">
                 @foreach($entries as $index => $entry)
                 <div class="p-4 border border-gray-200 rounded-lg bg-white relative shadow-sm">
                     @if(count($entries) > 1)
@@ -271,7 +271,7 @@
                 </div>
                 @endforeach
                 
-                <button wire:click="addEntry" class="w-full py-2 border border-dashed border-blue-300 rounded-lg text-blue-600 font-medium hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm bg-blue-50/50">
+                <button wire:click="addEntry" class="w-full py-2 border border-dashed border-blue-300 rounded-lg text-blue-800 font-medium bg-blue-100 flex items-center justify-center gap-2 text-sm">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Add another Teacher/Subject (Divide Class)
                 </button>
