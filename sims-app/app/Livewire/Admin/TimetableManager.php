@@ -98,6 +98,9 @@ class TimetableManager extends Component
             // Subjects are fixed for the current class in Class View
             $this->classSubjects = $this->getSubjectsForClass($rowId);
 
+            // Load teacher map for class view dropdown
+            $this->teachersById = \App\Models\User::where('role', 'teacher')->get()->keyBy('id');
+
             $existing = Timetable::where('schedule_template_id', $this->selectedTemplateId)
                 ->where('day', $day)
                 ->where('period_no', $periodNo)
@@ -139,6 +142,11 @@ class TimetableManager extends Component
         $this->showModal = true;
     }
 
+
+
+    /**
+     * Reset modal form state.
+     */
     public function resetForm()
     {
         $this->entries = [];
@@ -202,9 +210,19 @@ class TimetableManager extends Component
 
     public function save()
     {
+        // Auto‑assign teacher for Teacher view
+        if ($this->viewMode === 'teacher') {
+            foreach ($this->entries as &$e) {
+                $e['teacher_id'] = $this->modalRowId;
+            }
+            unset($e);
+        }
+
+
         $this->validate();
 
         $errorsCount = 0;
+
 
         foreach ($this->entries as $index => $formData) {
             $teacherId = $formData['teacher_id'] ?: null;
@@ -267,58 +285,49 @@ class TimetableManager extends Component
 
         DB::transaction(function () use ($targetDays) {
             foreach ($targetDays as $day) {
+                // Remove any existing entries for the target day/period
                 if ($this->viewMode === 'class') {
-                    $dayRecords = Timetable::where('schedule_template_id', $this->selectedTemplateId)
+                    Timetable::where('schedule_template_id', $this->selectedTemplateId)
                         ->where('day', $day)
                         ->where('period_no', $this->modalPeriodNo)
                         ->where(function ($q) {
                             $q->where('class_id', $this->modalRowId)
                               ->orWhere('merged_class_id', $this->modalRowId);
                         })
-                        ->get();
+                        ->delete();
                 } else {
-                    $dayRecords = Timetable::where('schedule_template_id', $this->selectedTemplateId)
+                    Timetable::where('schedule_template_id', $this->selectedTemplateId)
                         ->where('day', $day)
                         ->where('period_no', $this->modalPeriodNo)
                         ->where('teacher_id', $this->modalRowId)
-                        ->get();
+                        ->delete();
                 }
 
-                foreach ($this->entries as $idx => $formData) {
+                // Build rows for bulk insert
+                $rows = [];
+                foreach ($this->entries as $formData) {
                     $mergedId = $formData['merged_class_id'] ?: null;
                     if ($mergedId == $formData['class_id']) {
                         $mergedId = null;
                     }
-
-                    $existing = $dayRecords->get($idx);
-                    if ($existing) {
-                        $existing->update([
-                            'class_id' => $formData['class_id'],
-                            'teacher_id' => $formData['teacher_id'],
-                            'subject_id' => $formData['subject_id'],
-                            'room' => $formData['room'] ?: null,
-                            'merged_class_id' => $mergedId,
-                            'is_divided' => count($this->entries) > 1,
-                        ]);
-                    } else {
-                        Timetable::create([
-                            'schedule_template_id' => $this->selectedTemplateId,
-                            'day' => $day,
-                            'period_no' => $this->modalPeriodNo,
-                            'class_id' => $formData['class_id'],
-                            'teacher_id' => $formData['teacher_id'],
-                            'subject_id' => $formData['subject_id'],
-                            'room' => $formData['room'] ?: null,
-                            'merged_class_id' => $mergedId,
-                            'is_divided' => count($this->entries) > 1,
-                        ]);
-                    }
+                    $rows[] = [
+                        'schedule_template_id' => $this->selectedTemplateId,
+                        'day' => $day,
+                        'period_no' => $this->modalPeriodNo,
+                        'class_id' => $formData['class_id'],
+                        'teacher_id' => $formData['teacher_id'],
+                        'subject_id' => $formData['subject_id'],
+                        'room' => $formData['room'] ?: null,
+                        'merged_class_id' => $mergedId,
+                        'is_divided' => count($this->entries) > 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
                 }
 
-                if ($dayRecords->count() > count($this->entries)) {
-                    for ($i = count($this->entries); $i < $dayRecords->count(); $i++) {
-                        $dayRecords[$i]->delete();
-                    }
+                // Insert all rows in one query
+                if (!empty($rows)) {
+                    Timetable::insert($rows);
                 }
             }
         });
@@ -392,6 +401,7 @@ class TimetableManager extends Component
 
         $classes = Classes::withoutGlobalScopes()->orderBy('numeric_value')->orderBy('name')->get();
         $teachers = User::where('role', 'teacher')->orderBy('name')->get();
+        $teachersById = $teachers->keyBy('id');
         $subjects = Subject::all()->keyBy('id');
         $subjectsByClass = Subject::all()->groupBy('class_id');
         $classesById = $classes->keyBy('id');
@@ -430,7 +440,11 @@ class TimetableManager extends Component
             'subjects' => $subjects,
             'subjectsByClass' => $subjectsByClass,
             'classesById' => $classesById,
+
+            'classSubjects' => $this->classSubjects,
+            
             'teachersById' => $teachersById,
+
         ])->layout('components.layouts.admin', ['title' => 'Timetable Management']);
     }
 

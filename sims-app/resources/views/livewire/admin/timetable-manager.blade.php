@@ -101,17 +101,16 @@
                     @if(isset($skipCells[$row->id][$period->period_no]))
                         @continue
                     @endif
-                    @php 
-                        $data = $this->getCellData($row->id, $selectedDay, $period->period_no); 
+                    @php
+                        $data = isset($this) ? $this->getCellData($row->id, $selectedDay, $period->period_no) : collect();
                         $rowspan = 1;
-                        if($viewMode === 'class' && $data->isNotEmpty() && $data->whereNotNull('merged_class_id')->isNotEmpty()) {
+                        if ($viewMode === 'class' && $data->isNotEmpty() && $data->whereNotNull('merged_class_id')->isNotEmpty()) {
                             $currentIds = $data->pluck('id')->sort()->values()->toJson();
-                            for($nextIndex = $rowIndex + 1; $nextIndex < count($rows); $nextIndex++) {
+                            for ($nextIndex = $rowIndex + 1; $nextIndex < count($rows); $nextIndex++) {
                                 $nextRow = $rows[$nextIndex];
                                 $nextData = $this->getCellData($nextRow->id, $selectedDay, $period->period_no);
                                 $nextIds = $nextData->pluck('id')->sort()->values()->toJson();
-                                
-                                if($currentIds === $nextIds && $currentIds !== '[]') {
+                                if ($currentIds === $nextIds && $currentIds !== '[]') {
                                     $rowspan++;
                                     $skipCells[$nextRow->id][$period->period_no] = true;
                                 } else {
@@ -236,15 +235,11 @@
                                 <select wire:model="entries.{{ $index }}.subject_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                     <option value="">-- Select Subject --</option>
                                     @if($viewMode === 'class')
-                                        @foreach($classSubjects as $s)
+                                        @foreach(($subjectsByClass[$entry['class_id']] ?? collect()) as $s)
                                             <option value="{{ $s->id }}">{{ $s->name }}</option>
                                         @endforeach
                                     @else
-                                        @php
-                                            $cId = $entry['class_id'];
-                                            $subs = $cId ? ($subjectsByClass[$cId] ?? []) : [];
-                                        @endphp
-                                        @foreach($subs as $s)
+                                        @foreach(($subjectsByClass[$entry['class_id']] ?? collect()) as $s)
                                             <option value="{{ $s->id }}">{{ $s->name }}</option>
                                         @endforeach
                                     @endif
