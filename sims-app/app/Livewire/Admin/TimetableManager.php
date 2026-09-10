@@ -18,21 +18,13 @@ class TimetableManager extends Component
     public $selectedTemplateId;
     public $selectedDay = 'Monday'; // Default day
     
-    // Data Collections
-    public $templates = [];
-    public $periods = [];
-    public $classes = [];
-    public $teachers = [];
-    public $subjects = []; // All subjects (for grid lookup)
-    public $classSubjects = []; // Filtered subjects (for modal dropdown)
-    public $timetables = []; 
-
     // Modal State
     public $showModal = false;
     public $modalDay;
     public $modalPeriodNo;
     public $modalRowId; // Class ID or Teacher ID depending on viewMode
     public $modalTitle = ''; 
+    public $classSubjects = []; // Filtered subjects for modal dropdown
 
     // Timings Modal State
     public $showTimingsModal = false;
@@ -43,6 +35,9 @@ class TimetableManager extends Component
     // Format: [['id' => null, 'teacher_id' => '', 'class_id' => '', 'subject_id' => '', 'room' => '', 'merged_class_id' => '']]
     public $syncAllDays = true;
 
+    // Protected (not serialized over the wire) pre-indexed grid data
+    protected $gridMap = [];
+
     protected $rules = [
         'selectedTemplateId' => 'required',
         'selectedDay' => 'required',
@@ -51,49 +46,30 @@ class TimetableManager extends Component
 
     public function mount()
     {
-        $this->templates = ScheduleTemplate::where('is_active', true)->get();
-        // Fallback to first if no active?
-        if ($this->templates->isEmpty()) {
-            $this->templates = ScheduleTemplate::all();
+        $templates = ScheduleTemplate::where('is_active', true)->get();
+        if ($templates->isEmpty()) {
+            $templates = ScheduleTemplate::all();
         }
         
-        // Fix: Ensure selectedTemplateId is set if templates exist
-        if ($this->templates->isNotEmpty()) {
-             $this->selectedTemplateId = $this->templates->first()->id;
-        } else {
-
+        if ($templates->isNotEmpty()) {
+             $this->selectedTemplateId = $templates->first()->id;
         }
 
         // Fixed Timetable: Default to today's weekday (fall back to Monday on Sunday)
         $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         $this->selectedDay = in_array(now()->dayName, $weekdays) ? now()->dayName : 'Monday';
-
-        $this->loadInitialData();
-        $this->loadSchedule();
     }
 
     public function updatedSelectedDay()
     {
-        // View update only, data is already loaded for the template
     }
 
     public function updatedSelectedTemplateId()
     {
-        $this->loadSchedule();
     }
 
     public function updatedViewMode()
     {
-        $this->loadSchedule();
-    }
-
-    public function loadInitialData()
-    {
-        $this->classes = Classes::orderBy('numeric_value')->orderBy('name')->get();
-        $this->teachers = User::where('role', 'teacher')->orderBy('name')->get();
-        // Grid needs ALL subjects to display names
-        $this->subjects = Subject::all(); 
-        $this->classSubjects = collect();
     }
 
     // Load subjects for a specific class
@@ -105,17 +81,6 @@ class TimetableManager extends Component
 
     public function loadSchedule()
     {
-        if (!$this->selectedTemplateId) return;
-
-        // Load Periods for this Template
-        $this->periods = PeriodConfig::where('schedule_template_id', $this->selectedTemplateId)
-            ->orderBy('period_no')
-            ->get();
-
-        // Load Timetables
-        // We load ALL timetables for this template to check conflicts easily
-        $this->timetables = Timetable::where('schedule_template_id', $this->selectedTemplateId)
-            ->get();
     }
 
     public function openModal($day, $periodNo, $rowId)
@@ -127,28 +92,29 @@ class TimetableManager extends Component
 
         // Populate existing entries
         if ($this->viewMode === 'class') {
-            $class = $this->classes->firstWhere('id', $rowId);
-            $this->modalTitle = "{$class->name} - $day Period $periodNo";
+            $class = Classes::withoutGlobalScopes()->find($rowId);
+            $this->modalTitle = "{$class?->name} - $day Period $periodNo";
             
             // Subjects are fixed for the current class in Class View
             $this->classSubjects = $this->getSubjectsForClass($rowId);
 
-            $existing = collect($this->timetables)->filter(function ($item) use ($rowId, $day, $periodNo) {
-                // Return entries where this class is either primary or merged
-                return ($item->class_id == $rowId || $item->merged_class_id == $rowId)
-                    && $item->day === $day
-                    && $item->period_no == $periodNo;
-            })->values();
+            $existing = Timetable::where('schedule_template_id', $this->selectedTemplateId)
+                ->where('day', $day)
+                ->where('period_no', $periodNo)
+                ->where(function ($q) use ($rowId) {
+                    $q->where('class_id', $rowId)->orWhere('merged_class_id', $rowId);
+                })
+                ->get();
 
         } else {
-            $teacher = $this->teachers->firstWhere('id', $rowId);
-            $this->modalTitle = "{$teacher->name} - $day Period $periodNo";
+            $teacher = User::find($rowId);
+            $this->modalTitle = "{$teacher?->name} - $day Period $periodNo";
             
-            $existing = collect($this->timetables)->filter(function ($item) use ($rowId, $day, $periodNo) {
-                return $item->teacher_id == $rowId
-                    && $item->day === $day
-                    && $item->period_no == $periodNo;
-            })->values();
+            $existing = Timetable::where('schedule_template_id', $this->selectedTemplateId)
+                ->where('day', $day)
+                ->where('period_no', $periodNo)
+                ->where('teacher_id', $rowId)
+                ->get();
         }
 
         if ($existing->isNotEmpty()) {
@@ -373,8 +339,11 @@ class TimetableManager extends Component
 
     public function editTimings()
     {
+        $periods = PeriodConfig::where('schedule_template_id', $this->selectedTemplateId)
+            ->orderBy('period_no')
+            ->get();
         $this->periodTimings = [];
-        foreach ($this->periods as $period) {
+        foreach ($periods as $period) {
             $this->periodTimings[] = [
                 'id' => $period->id,
                 'label' => $period->label,
@@ -407,31 +376,67 @@ class TimetableManager extends Component
         }
 
         $this->showTimingsModal = false;
-        $this->loadSchedule();
         session()->flash('message', 'Period timings updated successfully.');
     }
 
     public function render()
     {
-        return view('livewire.admin.timetable-manager')
-            ->layout('components.layouts.admin', ['title' => 'Timetable Management']);
+        $templates = ScheduleTemplate::where('is_active', true)->get();
+        if ($templates->isEmpty()) {
+            $templates = ScheduleTemplate::all();
+        }
+
+        $periods = PeriodConfig::where('schedule_template_id', $this->selectedTemplateId)
+            ->orderBy('period_no')
+            ->get();
+
+        $classes = Classes::withoutGlobalScopes()->orderBy('numeric_value')->orderBy('name')->get();
+        $teachers = User::where('role', 'teacher')->orderBy('name')->get();
+        $subjects = Subject::all()->keyBy('id');
+        $subjectsByClass = Subject::all()->groupBy('class_id');
+        $classesById = $classes->keyBy('id');
+        $teachersById = $teachers->keyBy('id');
+
+        $dayTimetables = Timetable::where('schedule_template_id', $this->selectedTemplateId)
+            ->where('day', $this->selectedDay)
+            ->get();
+
+        $this->gridMap = [];
+        foreach ($dayTimetables as $item) {
+            if ($this->viewMode === 'class') {
+                $this->gridMap[$item->class_id][$item->period_no][] = $item;
+                if ($item->merged_class_id) {
+                    $this->gridMap[$item->merged_class_id][$item->period_no][] = $item;
+                }
+            } else {
+                if ($item->teacher_id) {
+                    $this->gridMap[$item->teacher_id][$item->period_no][] = $item;
+                }
+            }
+        }
+
+        foreach ($this->gridMap as $rId => &$periodsArr) {
+            foreach ($periodsArr as $pNo => &$items) {
+                $items = collect($items);
+            }
+        }
+        unset($periodsArr, $items);
+
+        return view('livewire.admin.timetable-manager', [
+            'templates' => $templates,
+            'periods' => $periods,
+            'classes' => $classes,
+            'teachers' => $teachers,
+            'subjects' => $subjects,
+            'subjectsByClass' => $subjectsByClass,
+            'classesById' => $classesById,
+            'teachersById' => $teachersById,
+        ])->layout('components.layouts.admin', ['title' => 'Timetable Management']);
     }
 
     // Helper to get Data for Cell as a Collection
     public function getCellData($rowId, $day, $periodNo)
     {
-        if ($this->viewMode === 'class') {
-            return collect($this->timetables)->filter(function ($item) use ($rowId, $day, $periodNo) {
-                return ($item->class_id == $rowId || $item->merged_class_id == $rowId)
-                    && $item->day === $day
-                    && $item->period_no == $periodNo;
-            })->values();
-        } else {
-            return collect($this->timetables)->filter(function ($item) use ($rowId, $day, $periodNo) {
-                return $item->teacher_id == $rowId
-                    && $item->day === $day
-                    && $item->period_no == $periodNo;
-            })->values();
-        }
+        return $this->gridMap[$rowId][$periodNo] ?? collect();
     }
 }

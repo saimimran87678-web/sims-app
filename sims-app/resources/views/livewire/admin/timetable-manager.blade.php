@@ -142,11 +142,11 @@
                                     <div class="flex flex-col h-full justify-center space-y-1 relative z-10">
                                         @foreach($data as $entry)
                                         <div class="border-b border-blue-200/50 pb-1 last:border-0 last:pb-0">
-                                            <div class="font-bold text-xs text-blue-700 truncate" title="{{ $subjects->find($entry->subject_id)->name ?? '?' }}">
-                                                {{ $subjects->find($entry->subject_id)->name ?? '?' }}
+                                            <div class="font-bold text-xs text-blue-700 truncate" title="{{ $subjects[$entry->subject_id]->name ?? '?' }}">
+                                                {{ $subjects[$entry->subject_id]->name ?? '?' }}
                                                 @if($entry->merged_class_id && $rowspan == 1)
                                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium bg-purple-100 text-purple-800 ml-1">
-                                                        Merged w/ {{ $classes->firstWhere('id', $entry->merged_class_id == $row->id ? $entry->class_id : $entry->merged_class_id)->name ?? '?' }}
+                                                        Merged w/ {{ $classesById[$entry->merged_class_id == $row->id ? $entry->class_id : $entry->merged_class_id]->name ?? '?' }}
                                                     </span>
                                                 @elseif($entry->merged_class_id && $rowspan > 1)
                                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium bg-purple-100 text-purple-800 ml-1">
@@ -155,7 +155,7 @@
                                                 @endif
                                             </div>
                                             <div class="text-[10px] text-gray-500 truncate mt-0.5 flex justify-between">
-                                                <span>{{ $viewMode === 'class' ? ($teachers->firstWhere('id', $entry->teacher_id)->name ?? '?') : ($classes->firstWhere('id', $entry->class_id)->name ?? '?') }}</span>
+                                                <span>{{ $viewMode === 'class' ? ($teachersById[$entry->teacher_id]->name ?? '?') : ($classesById[$entry->class_id]->name ?? '?') }}</span>
                                                 @if($entry->room)
                                                     <span class="text-[9px] text-gray-400">{{ $entry->room }}</span>
                                                 @endif
@@ -242,7 +242,7 @@
                                     @else
                                         @php
                                             $cId = $entry['class_id'];
-                                            $subs = $cId ? collect($subjects)->where('class_id', $cId) : collect();
+                                            $subs = $cId ? ($subjectsByClass[$cId] ?? []) : [];
                                         @endphp
                                         @foreach($subs as $s)
                                             <option value="{{ $s->id }}">{{ $s->name }}</option>
