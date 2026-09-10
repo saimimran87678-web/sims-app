@@ -3,53 +3,64 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Timetable extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'class_id',
-        'subject_id',
-        'subject_id_2',
-        'teacher_id',
         'schedule_template_id',
+        'class_id',
+        'section_id',
+        'subject_id',
+        'subject_id_2', // For double/split subjects
+        'teacher_id',
         'day',
         'period_no',
-        'room',
-        'is_divided',
-        'is_substitute',
-        'substitute_date',
         'start_time',
         'end_time',
+        'room',
+        'is_divided', // boolean
+        'merged_class_id'
     ];
 
     protected $casts = [
         'is_divided' => 'boolean',
-        'is_substitute' => 'boolean',
-        'substitute_date' => 'date',
     ];
-
-    public function template()
-    {
-        return $this->belongsTo(ScheduleTemplate::class, 'schedule_template_id');
-    }
 
     public function class()
     {
-        return $this->belongsTo(Classes::class);
+        return $this->belongsTo(Classes::class, 'class_id');
+    }
+    
+    public function mergedClass()
+    {
+        return $this->belongsTo(Classes::class, 'merged_class_id');
+    }
+
+    public function section()
+    {
+        return $this->belongsTo(Section::class);
     }
 
     public function subject()
     {
-        return $this->belongsTo(Subject::class);
+        return $this->belongsTo(Subject::class, 'subject_id');
+    }
+
+    public function subject2()
+    {
+        return $this->belongsTo(Subject::class, 'subject_id_2');
     }
 
     public function teacher()
     {
         return $this->belongsTo(User::class, 'teacher_id');
     }
-
-    public function subject2()
+    
+    public function template()
     {
-        return $this->belongsTo(Subject::class, 'subject_id_2');
+        return $this->belongsTo(ScheduleTemplate::class, 'schedule_template_id');
     }
 }

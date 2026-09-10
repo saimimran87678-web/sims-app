@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ScheduleTemplate extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'description',
         'is_active',
-        'is_saturday_working',
+        'is_saturday_working'
     ];
 
     protected $casts = [
@@ -18,7 +21,7 @@ class ScheduleTemplate extends Model
         'is_saturday_working' => 'boolean',
     ];
 
-    public function periods()
+    public function periodConfigs()
     {
         return $this->hasMany(PeriodConfig::class);
     }

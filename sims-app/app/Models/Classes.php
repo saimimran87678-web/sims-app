@@ -47,4 +47,14 @@ class Classes extends Model
     {
         return $this->hasMany(Subject::class, 'class_id');
     }
+
+    public function closedClassrooms()
+    {
+        return $this->hasMany(ClosedClassroom::class, 'class_id');
+    }
+
+    public function isClosedOn($date)
+    {
+        return $this->closedClassrooms()->where('date', $date)->exists();
+    }
 }

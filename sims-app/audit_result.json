@@ -1,0 +1,171 @@
+[
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 10B",
+        "period": 6,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Safeerullah (10) \/ Mr. Waqas  (21)",
+            "Tuesday": "Mr. Safeerullah (10) \/ Mr. Waqas  (21)",
+            "Wednesday": "Mr. Safeerullah (10) \/ Mr. Waqas  (21)",
+            "Thursday": "Mr. Safeerullah (10) \/ Mr. Waqas  (21)",
+            "Friday": "Mr. Safeerullah (10) \/ Mr. Waqas  (21)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 10A",
+        "period": 3,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Rana Zahid (37) \/ Mr. Zakir Hussain (18)",
+            "Tuesday": "Mr. Rana Zahid (37) \/ Mr. Zakir Hussain (18)",
+            "Wednesday": "Mr. Rana Zahid (37) \/ Mr. Zakir Hussain (18)",
+            "Thursday": "Mr. Rana Zahid (37) \/ Mr. Zakir Hussain (18)",
+            "Friday": "Mr. Rana Zahid (37) \/ Mr. Zakir Hussain (18)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 10A",
+        "period": 7,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Safeerullah (10) \/ Mr. Muhammad Amjad (6)",
+            "Tuesday": "Mr. Safeerullah (10) \/ Mr. Muhammad Amjad (6)",
+            "Wednesday": "Mr. Safeerullah (10) \/ Mr. Muhammad Amjad (6)",
+            "Thursday": "Mr. Safeerullah (10) \/ Mr. Muhammad Amjad (6)",
+            "Friday": "Mr. Safeerullah (10) \/ Mr. Muhammad Amjad (6)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 11B",
+        "period": 3,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Azhar Mehmood (7) \/ Mr. Waqas  (21)",
+            "Tuesday": "Mr. Azhar Mehmood (7) \/ Mr. Waqas  (21)",
+            "Wednesday": "Mr. Azhar Mehmood (7) \/ Mr. Waqas  (21)",
+            "Thursday": "Mr. Azhar Mehmood (7) \/ Mr. Waqas  (21)",
+            "Friday": "Mr. Azhar Mehmood (7) \/ Mr. Waqas  (21)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 7A",
+        "period": 8,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Amir (33)",
+            "Tuesday": "Mr. Shahjahan (17)",
+            "Wednesday": "Mr. Shahjahan (17)",
+            "Thursday": "Mr. Shahjahan (17)",
+            "Friday": "Mr. Shahjahan (17)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 7D",
+        "period": 1,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Yosaf (28)",
+            "Tuesday": "Mr. Yosaf (28)",
+            "Wednesday": "Mr. Yosaf (28)",
+            "Thursday": "Mr. Yosaf (28)",
+            "Friday": "Mr. Abdul Ghafar (12)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 9C",
+        "period": 6,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Shahjahan (17) \/ Mr. Muhammad Amjad (6)",
+            "Tuesday": "Mr. Muhammad Amjad (6)",
+            "Wednesday": "Mr. Muhammad Amjad (6)",
+            "Thursday": "Mr. Muhammad Amjad (6)",
+            "Friday": "Mr. Muhammad Amjad (6)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 11C",
+        "period": 7,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Muhammad Owais Ur Rehman (5)",
+            "Tuesday": "Mr. Fahad (4)",
+            "Wednesday": "Mr. Muhammad Owais Ur Rehman (5)",
+            "Thursday": "Mr. Muhammad Owais Ur Rehman (5)",
+            "Friday": "Mr. Fahad (4)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 11C",
+        "period": 1,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Fahad (4)",
+            "Tuesday": "Mr. Muhammad Owais Ur Rehman (5)",
+            "Wednesday": "Mr. Fahad (4)",
+            "Thursday": "Mr. Fahad (4)",
+            "Friday": "Mr. Muhammad Owais Ur Rehman (5)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 12A",
+        "period": 7,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Fahad (4)",
+            "Tuesday": "Mr. Muhammad Owais Ur Rehman (5)",
+            "Wednesday": "Mr. Fahad (4)",
+            "Thursday": "Mr. Fahad (4)",
+            "Friday": "Mr. Muhammad Owais Ur Rehman (5)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 12B",
+        "period": 2,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Muhammad Ahmed (13) \/ Mr. Rana Zahid (37)",
+            "Tuesday": "Mr. Muhammad Ahmed (13) \/ Mr. Rana Zahid (37)",
+            "Wednesday": "Mr. Muhammad Ahmed (13) \/ Mr. Rana Zahid (37)",
+            "Thursday": "Mr. Muhammad Ahmed (13) \/ Mr. Rana Zahid (37)",
+            "Friday": "Mr. Muhammad Ahmed (13) \/ Mr. Rana Zahid (37)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 12B",
+        "period": 4,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Waqas  (21) \/ Mr. Ranjhan Khan (8)",
+            "Tuesday": "Mr. Waqas  (21) \/ Mr. Ranjhan Khan (8)",
+            "Wednesday": "Mr. Waqas  (21) \/ Mr. Ranjhan Khan (8)",
+            "Thursday": "Mr. Waqas  (21) \/ Mr. Ranjhan Khan (8)",
+            "Friday": "Mr. Waqas  (21) \/ Mr. Ranjhan Khan (8)"
+        }
+    },
+    {
+        "type": "Split\/Duplicate Teacher",
+        "class": "Class 12B",
+        "period": 6,
+        "teachers_count": 2,
+        "details": {
+            "Monday": "Mr. Fahad (4) \/ Mr. Akbar Ali Rajpoot (27)",
+            "Tuesday": "Mr. Fahad (4) \/ Mr. Akbar Ali Rajpoot (27)",
+            "Wednesday": "Mr. Fahad (4) \/ Mr. Akbar Ali Rajpoot (27)",
+            "Thursday": "Mr. Fahad (4) \/ Mr. Akbar Ali Rajpoot (27)",
+            "Friday": "Mr. Fahad (4) \/ Mr. Akbar Ali Rajpoot (27)"
+        }
+    }
+]

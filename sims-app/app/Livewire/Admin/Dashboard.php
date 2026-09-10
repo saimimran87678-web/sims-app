@@ -25,8 +25,13 @@ class Dashboard extends Component
             $stats['attendance'] = round(($presentCount / $totalAttendanceRecords) * 100, 1);
         }
 
+        $classes = \App\Models\Classes::orderBy('numeric_value')->orderBy('name')->get();
+        $teachers = User::where('role', 'teacher')->orderBy('name')->get();
+
         return view('livewire.admin.dashboard', [
-            'stats' => $stats
+            'stats' => $stats,
+            'classes' => $classes,
+            'teachers' => $teachers
         ])->layout('components.layouts.admin', ['title' => 'Dashboard']);
     }
 }
