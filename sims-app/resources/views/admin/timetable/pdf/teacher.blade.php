@@ -56,15 +56,14 @@
                             $entries = $timetable->where('day', $day)->where('period_no', $period->period_no)->all();
                             $overrideContent = null;
 
-                            // Manual Overrides Logic
-                            // General Management
-                            $managementTeachers = ['Muhammad Amin', 'Rana Zahid'];
-                            if (in_array($teacher->name, $managementTeachers) && $period->period_no == 1) {
-                                $overrideContent = ['class' => 'School', 'subject' => 'Management', 'is_bold' => false];
-                            }
-                            // Mr. Owais - Management + Arrangement
-                            if ($teacher->name === 'Muhammad Owais Ur Rehman' && $period->period_no == 1) {
-                                $overrideContent = ['class' => '', 'subject' => 'Management + Arrangement', 'is_bold' => false];
+                            // Check for Teacher Duty from Database (e.g. Management)
+                            $duty = ($teacherDuties ?? collect())->first(function ($d) use ($teacher, $day, $period) {
+                                return $d->teacher_id == $teacher->id 
+                                    && $d->day === $day 
+                                    && $d->period_no == $period->period_no;
+                            });
+                            if ($duty) {
+                                $overrideContent = ['class' => 'School', 'subject' => $duty->duty_name, 'is_bold' => false];
                             }
                             // Mr. Owais - P3 12A Comp Sci (Days 4-5 = Thu, Fri only)
                             if ($teacher->name === 'Muhammad Owais Ur Rehman' && $period->period_no == 3 && in_array($day, ['Thursday', 'Friday'])) {
@@ -116,14 +115,6 @@
             
             <!-- Sum Row -->
             <tr>
-                 @php
-                    // Hardcoded Count Reset
-                    if ($teacher->name === 'Rana Zahid') {
-                        $totalLessons = 5;
-                    } elseif ($teacher->name === 'Muhammad Amin') {
-                        $totalLessons = 2;
-                    }
-                @endphp
                 <td colspan="2" style="font-weight: bold; background-color: #f0f0f0; text-align: right; padding-right: 15px;">Sum of lessons</td>
                 <td style="font-weight: bold; font-size: 20px; text-align: center;">{{ $totalLessons }}</td>
             </tr>

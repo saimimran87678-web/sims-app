@@ -9,6 +9,7 @@ use App\Models\Classes;
 use App\Models\User;
 use App\Models\Subject;
 use App\Models\Timetable;
+use App\Models\TeacherDuty;
 use Illuminate\Support\Facades\DB;
 
 class TimetableManager extends Component
@@ -25,6 +26,11 @@ class TimetableManager extends Component
     public $modalRowId; // Class ID or Teacher ID depending on viewMode
     public $modalTitle = ''; 
     public $classSubjects = []; // Filtered subjects for modal dropdown
+
+    // Duty Assignment State
+    public $assignmentType = 'class'; // 'class' or 'duty'
+    public $dutyName = 'Management';
+    public $hasDuty = false;
 
     // Timings Modal State
     public $showTimingsModal = false;
@@ -118,6 +124,22 @@ class TimetableManager extends Component
                 ->where('period_no', $periodNo)
                 ->where('teacher_id', $rowId)
                 ->get();
+
+            $existingDuty = TeacherDuty::where('schedule_template_id', $this->selectedTemplateId)
+                ->where('day', $day)
+                ->where('period_no', $periodNo)
+                ->where('teacher_id', $rowId)
+                ->first();
+
+            if ($existingDuty) {
+                $this->hasDuty = true;
+                $this->assignmentType = 'duty';
+                $this->dutyName = $existingDuty->duty_name;
+            } else {
+                $this->hasDuty = false;
+                $this->assignmentType = 'class';
+                $this->dutyName = 'Management';
+            }
         }
 
         if ($existing->isNotEmpty()) {
@@ -152,6 +174,9 @@ class TimetableManager extends Component
         $this->entries = [];
         $this->classSubjects = collect(); // Reset
         $this->syncAllDays = true;
+        $this->assignmentType = 'class';
+        $this->dutyName = 'Management';
+        $this->hasDuty = false;
         $this->resetValidation();
     }
 
@@ -200,6 +225,15 @@ class TimetableManager extends Component
                 }
 
                 $query->delete();
+
+                // Also delete any teacher duty
+                if ($this->viewMode === 'teacher') {
+                    TeacherDuty::where('schedule_template_id', $this->selectedTemplateId)
+                        ->where('day', $day)
+                        ->where('period_no', $this->modalPeriodNo)
+                        ->where('teacher_id', $this->modalRowId)
+                        ->delete();
+                }
             }
         });
 
@@ -210,6 +244,45 @@ class TimetableManager extends Component
 
     public function save()
     {
+        // 1. Handle Teacher Duty in Teacher view
+        if ($this->viewMode === 'teacher' && $this->assignmentType === 'duty') {
+            $this->validate([
+                'dutyName' => 'required|string|max:100',
+            ]);
+
+            $targetDays = $this->syncAllDays
+                ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                : [$this->modalDay];
+
+            DB::transaction(function () use ($targetDays) {
+                foreach ($targetDays as $day) {
+                    // Remove any class assignments for this teacher in this period
+                    Timetable::where('schedule_template_id', $this->selectedTemplateId)
+                        ->where('day', $day)
+                        ->where('period_no', $this->modalPeriodNo)
+                        ->where('teacher_id', $this->modalRowId)
+                        ->delete();
+
+                    TeacherDuty::updateOrCreate(
+                        [
+                            'schedule_template_id' => $this->selectedTemplateId,
+                            'teacher_id' => $this->modalRowId,
+                            'day' => $day,
+                            'period_no' => $this->modalPeriodNo,
+                        ],
+                        [
+                            'duty_name' => trim($this->dutyName) ?: 'Management',
+                        ]
+                    );
+                }
+            });
+
+            $this->showModal = false;
+            $this->loadSchedule();
+            session()->flash('message', 'Teacher duty saved successfully.');
+            return;
+        }
+
         // Auto‑assign teacher for Teacher view
         if ($this->viewMode === 'teacher') {
             foreach ($this->entries as &$e) {
@@ -217,7 +290,6 @@ class TimetableManager extends Component
             }
             unset($e);
         }
-
 
         $this->validate();
 
@@ -301,6 +373,12 @@ class TimetableManager extends Component
                         ->where('period_no', $this->modalPeriodNo)
                         ->where('teacher_id', $this->modalRowId)
                         ->delete();
+
+                    TeacherDuty::where('schedule_template_id', $this->selectedTemplateId)
+                        ->where('day', $day)
+                        ->where('period_no', $this->modalPeriodNo)
+                        ->where('teacher_id', $this->modalRowId)
+                        ->delete();
                 }
 
                 // Build rows for bulk insert
@@ -341,6 +419,7 @@ class TimetableManager extends Component
     {
         if ($this->selectedTemplateId) {
             Timetable::where('schedule_template_id', $this->selectedTemplateId)->delete();
+            TeacherDuty::where('schedule_template_id', $this->selectedTemplateId)->delete();
             $this->loadSchedule();
             session()->flash('message', 'All entries for the selected template have been deleted.');
         }
@@ -411,6 +490,10 @@ class TimetableManager extends Component
             ->where('day', $this->selectedDay)
             ->get();
 
+        $dayDuties = TeacherDuty::where('schedule_template_id', $this->selectedTemplateId)
+            ->where('day', $this->selectedDay)
+            ->get();
+
         $this->gridMap = [];
         foreach ($dayTimetables as $item) {
             if ($this->viewMode === 'class') {
@@ -422,6 +505,22 @@ class TimetableManager extends Component
                 if ($item->teacher_id) {
                     $this->gridMap[$item->teacher_id][$item->period_no][] = $item;
                 }
+            }
+        }
+
+        if ($this->viewMode === 'teacher') {
+            foreach ($dayDuties as $duty) {
+                $this->gridMap[$duty->teacher_id][$duty->period_no][] = (object)[
+                    'id' => 'duty-' . $duty->id,
+                    'is_duty' => true,
+                    'duty_name' => $duty->duty_name,
+                    'teacher_id' => $duty->teacher_id,
+                    'period_no' => $duty->period_no,
+                    'subject_id' => null,
+                    'class_id' => null,
+                    'room' => null,
+                    'merged_class_id' => null,
+                ];
             }
         }
 

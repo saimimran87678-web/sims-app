@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\ScheduleTemplate;
 use App\Models\PeriodConfig;
 use App\Models\Timetable;
+use App\Models\TeacherDuty;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 
@@ -63,10 +64,13 @@ class TimetablePDFController extends Controller
                 ->where('schedule_template_id', $activeTemplate->id)
                 ->get(); // Fetch all for efficiency
 
+            $teacherDuties = TeacherDuty::where('schedule_template_id', $activeTemplate->id)->get();
+
             $pdf = Pdf::loadView('admin.timetable.pdf.teachers_grid', [
                 'teachers' => $teachers,
                 'periods' => $periods,
                 'timetable' => $timetableData,
+                'teacherDuties' => $teacherDuties,
                 'template' => $activeTemplate,
                 'days' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
             ]);
@@ -87,10 +91,15 @@ class TimetablePDFController extends Controller
             ->where('teacher_id', $id)
             ->get();
 
+        $teacherDuties = TeacherDuty::where('schedule_template_id', $activeTemplate->id)
+            ->where('teacher_id', $id)
+            ->get();
+
         $pdf = Pdf::loadView('admin.timetable.pdf.teacher', [
             'teacher' => $teacher,
             'periods' => $periods,
             'timetable' => $timetableData,
+            'teacherDuties' => $teacherDuties,
             'template' => $activeTemplate,
             'days' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
         ]);
@@ -125,10 +134,12 @@ class TimetablePDFController extends Controller
         }
 
         $timetableData = $query->get();
+        $teacherDuties = TeacherDuty::where('schedule_template_id', $activeTemplate->id)->get();
 
         $data = [
             'periods' => $periods,
             'timetable' => $timetableData,
+            'teacherDuties' => $teacherDuties,
             'template' => $activeTemplate,
             'days' => $days,
             'mode' => $mode

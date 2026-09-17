@@ -69,25 +69,20 @@
 
                                     // 2. Check for Manual Overrides (Higher Priority)
                                     if ($mode === 'teacher') {
-                                        // Management Logic (Period 1 for specific teachers)
-                                        // General Management
-                                        $managementTeachers = ['Muhammad Amin', 'Rana Zahid'];
-                                        if (in_array($item->name, $managementTeachers) && $period->period_no == 1) {
+                                        // Check for Teacher Duty from Database (e.g. Management)
+                                        $duty = ($teacherDuties ?? collect())->first(function ($d) use ($item, $day, $period) {
+                                            return $d->teacher_id == $item->id 
+                                                && $d->day === $day 
+                                                && $d->period_no == $period->period_no;
+                                        });
+                                        if ($duty) {
                                             $overrideContent = [
                                                 'detail' => '', 
-                                                'subject' => 'Management',
+                                                'subject' => $duty->duty_name,
                                                 'is_bold' => false // Subject style
                                             ];
                                         }
 
-                                        // Mr. Owais - Management + Arrangement
-                                        if ($item->name === 'Muhammad Owais Ur Rehman' && $period->period_no == 1) {
-                                            $overrideContent = [
-                                                'detail' => '', 
-                                                'subject' => 'Management + Arrangement',
-                                                'is_bold' => false // Subject style
-                                            ];
-                                        }
                                         
                                         // Temporary: Mr. Muhammad Owais Ur Rehman - Period 3 - 12A Computer Science (Days 4-5 = Thu, Fri)
                                         if ($item->name === 'Muhammad Owais Ur Rehman' && $period->period_no == 3 && in_array($day, ['Thursday', 'Friday'])) {
@@ -181,16 +176,6 @@
                                     @endif
                                 </td>
                             @endforeach
-                            @php
-                                // Hardcoded Count Reset
-                                if ($mode === 'teacher') {
-                                    if ($item->name === 'Rana Zahid') {
-                                        $lessonCount = 5;
-                                    } elseif ($item->name === 'Muhammad Amin') {
-                                        $lessonCount = 2;
-                                    }
-                                }
-                            @endphp
                             <td style="font-weight: bold;">{{ $lessonCount }}</td>
                         </tr>
                     @endforeach

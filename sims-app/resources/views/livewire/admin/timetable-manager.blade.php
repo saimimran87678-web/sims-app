@@ -127,7 +127,7 @@
                         @else
                             <div 
                                 wire:click="openModal('{{ $selectedDay }}', {{ $period->period_no }}, {{ $row->id }})"
-                                class="h-full w-full min-h-[4rem] rounded-md p-1.5 cursor-pointer transition-all relative overflow-hidden hover:ring-2 hover:ring-blue-100 {{ $data->isNotEmpty() ? 'bg-blue-50 border border-blue-100' : 'hover:bg-gray-50' }}"
+                                class="h-full w-full min-h-[4rem] rounded-md p-1.5 cursor-pointer transition-all relative overflow-hidden hover:ring-2 hover:ring-blue-100 {{ $data->isNotEmpty() ? (($data->first()->is_duty ?? false) ? 'bg-amber-50/90 border border-amber-200' : 'bg-blue-50 border border-blue-100') : 'hover:bg-gray-50' }}"
                                 style="{{ $rowspan > 1 ? 'background-color: #f1f5f9; border: 2px dashed #93c5fd;' : '' }}"
                             >
                                 @if($period->period_no == 0)
@@ -141,24 +141,34 @@
                                     <div class="flex flex-col h-full justify-center space-y-1 relative z-10">
                                         @foreach($data as $entry)
                                         <div class="border-b border-blue-200/50 pb-1 last:border-0 last:pb-0">
-                                            <div class="font-medium text-xs text-blue-700 truncate" title="{{ $subjects[$entry->subject_id]->name ?? '?' }}">
-                                                {{ $subjects[$entry->subject_id]->name ?? '?' }}
-                                                @if($entry->merged_class_id && $rowspan == 1)
-                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium bg-purple-100 text-purple-800 ml-1">
-                                                        Merged w/ {{ $classesById[$entry->merged_class_id == $row->id ? $entry->class_id : $entry->merged_class_id]->name ?? '?' }}
-                                                    </span>
-                                                @elseif($entry->merged_class_id && $rowspan > 1)
-                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium bg-purple-100 text-purple-800 ml-1">
-                                                        Merged
-                                                    </span>
-                                                @endif
-                                            </div>
-                                            <div class="text-[10px] text-gray-500 truncate mt-0.5 flex justify-between">
-                                                <span>{{ $viewMode === 'class' ? ($teachersById[$entry->teacher_id]->name ?? '?') : ($classesById[$entry->class_id]->name ?? '?') }}</span>
-                                                @if($entry->room)
-                                                    <span class="text-[9px] text-gray-400">{{ $entry->room }}</span>
-                                                @endif
-                                            </div>
+                                            @if(!empty($entry->is_duty))
+                                                <div class="font-semibold text-xs text-amber-900 truncate flex items-center gap-1" title="{{ $entry->duty_name }}">
+                                                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                                                    <span>{{ $entry->duty_name }}</span>
+                                                </div>
+                                                <div class="text-[10px] text-amber-700 font-medium truncate mt-0.5">
+                                                    Duty Assignment
+                                                </div>
+                                            @else
+                                                <div class="font-medium text-xs text-blue-700 truncate" title="{{ $subjects[$entry->subject_id]->name ?? '?' }}">
+                                                    {{ $subjects[$entry->subject_id]->name ?? '?' }}
+                                                    @if($entry->merged_class_id && $rowspan == 1)
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium bg-purple-100 text-purple-800 ml-1">
+                                                            Merged w/ {{ $classesById[$entry->merged_class_id == $row->id ? $entry->class_id : $entry->merged_class_id]->name ?? '?' }}
+                                                        </span>
+                                                    @elseif($entry->merged_class_id && $rowspan > 1)
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium bg-purple-100 text-purple-800 ml-1">
+                                                            Merged
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <div class="text-[10px] text-gray-500 truncate mt-0.5 flex justify-between">
+                                                    <span>{{ $viewMode === 'class' ? ($teachersById[$entry->teacher_id]->name ?? '?') : ($classesById[$entry->class_id]->name ?? '?') }}</span>
+                                                    @if($entry->room)
+                                                        <span class="text-[9px] text-gray-400">{{ $entry->room }}</span>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         </div>
                                         @endforeach
                                     </div>
@@ -194,6 +204,37 @@
             </div>
             
             <div class="flex-1 overflow-y-auto p-6 space-y-6 max-h-[60vh]">
+                @if($viewMode === 'teacher')
+                <div class="flex rounded-lg bg-gray-100 p-1 border border-gray-200">
+                    <button type="button" 
+                            wire:click="$set('assignmentType', 'class')" 
+                            class="flex-1 py-1.5 text-xs font-semibold rounded-md transition-all {{ $assignmentType === 'class' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                        Class Lesson
+                    </button>
+                    <button type="button" 
+                            wire:click="$set('assignmentType', 'duty')" 
+                            class="flex-1 py-1.5 text-xs font-semibold rounded-md transition-all {{ $assignmentType === 'duty' ? 'bg-amber-100 text-amber-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                        Teacher Duty (e.g. Management)
+                    </button>
+                </div>
+                @endif
+
+                @if($viewMode === 'teacher' && $assignmentType === 'duty')
+                <div class="p-4 border border-amber-200 rounded-lg bg-amber-50/70 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                        <h4 class="text-sm font-bold text-amber-900">Administrative / Management Duty</h4>
+                    </div>
+                    <p class="text-xs text-amber-800">
+                        Assign this period as non-teaching duty. It will appear on the timetable grid and master print without attaching to a student class.
+                    </p>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Duty Title</label>
+                        <input type="text" wire:model="dutyName" class="w-full text-sm border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500 bg-white" placeholder="e.g. Management">
+                        @error('dutyName') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+                @else
                 @foreach($entries as $index => $entry)
                 <div class="p-4 border border-gray-200 rounded-lg bg-white relative shadow-sm">
                     @if(count($entries) > 1)
@@ -275,6 +316,7 @@
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Add another Teacher/Subject (Divide Class)
                 </button>
+                @endif
             </div>
 
             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">

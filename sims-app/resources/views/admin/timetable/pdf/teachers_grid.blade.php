@@ -83,13 +83,14 @@
                                                         
                                                         $overrideContent = null;
 
-                                                        // Override Logic
-                                                        $managementTeachers = ['Muhammad Amin', 'Rana Zahid'];
-                                                        if (in_array($teacher->name, $managementTeachers) && $period->period_no == 1) {
-                                                            $overrideContent = ['class' => 'School', 'subject' => 'Management'];
-                                                        }
-                                                        if ($teacher->name === 'Muhammad Owais Ur Rehman' && $period->period_no == 1) {
-                                                            $overrideContent = ['class' => '', 'subject' => 'Management+Arr'];
+                                                        // Check for Teacher Duty from Database (e.g. Management)
+                                                        $duty = ($teacherDuties ?? collect())->first(function ($d) use ($teacher, $day, $period) {
+                                                            return $d->teacher_id == $teacher->id 
+                                                                && $d->day === $day 
+                                                                && $d->period_no == $period->period_no;
+                                                        });
+                                                        if ($duty) {
+                                                            $overrideContent = ['class' => 'School', 'subject' => $duty->duty_name];
                                                         }
                                                         if ($teacher->name === 'Muhammad Owais Ur Rehman' && $period->period_no == 3 && in_array($day, ['Thursday', 'Friday'])) {
                                                             $overrideContent = ['class' => '12A', 'subject' => 'Comp Sci'];
@@ -132,10 +133,6 @@
                                             </tr>
                                         @endforeach
                                         <tr>
-                                            @php
-                                                if ($teacher->name === 'Rana Zahid') $totalLessons = 5;
-                                                elseif ($teacher->name === 'Muhammad Amin') $totalLessons = 2;
-                                            @endphp
                                             <td colspan="2" style="font-weight: bold; background: #eee; text-align: right; padding-right: 5px;">Sum</td>
                                             <td style="font-weight: bold; text-align: center;">{{ $totalLessons }}</td>
                                         </tr>
