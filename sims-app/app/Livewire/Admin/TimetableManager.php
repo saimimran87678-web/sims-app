@@ -315,17 +315,22 @@ class TimetableManager extends Component
             if ($errorsCount > 0) continue;
 
             // 1. Conflict Check: Is Teacher Busy?
-            $teacherBusy = Timetable::where('schedule_template_id', $this->selectedTemplateId)
-                ->where('day', $this->modalDay)
-                ->where('period_no', $this->modalPeriodNo)
-                ->where('teacher_id', $teacherId)
-                ->where('class_id', '!=', $classId) // allow same teacher in same class (e.g. double subject?)
-                ->where(function ($q) use ($formData) {
-                    if (!empty($formData['id'])) {
-                        $q->where('id', '!=', $formData['id']);
-                    }
-                })
-                ->exists();
+            // Skip conflict check for teacher view when assigning class lessons (multiple classes per teacher allowed)
+            if ($this->viewMode === 'teacher' && $this->assignmentType === 'class') {
+                $teacherBusy = false;
+            } else {
+                $teacherBusy = Timetable::where('schedule_template_id', $this->selectedTemplateId)
+                    ->where('day', $this->modalDay)
+                    ->where('period_no', $this->modalPeriodNo)
+                    ->where('teacher_id', $teacherId)
+                    ->where('class_id', '!=', $classId) // allow same teacher in same class (e.g. double subject?)
+                    ->where(function ($q) use ($formData) {
+                        if (!empty($formData['id'])) {
+                            $q->where('id', '!=', $formData['id']);
+                        }
+                    })
+                    ->exists();
+            }
 
             if ($teacherBusy) {
                 $this->addError("entries.{$index}.teacher_id", 'This teacher is already assigned to another class at this time.');
