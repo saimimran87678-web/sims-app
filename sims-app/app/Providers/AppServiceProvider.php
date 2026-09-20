@@ -21,9 +21,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Enforce session/shift scoped permissions for shared admin features
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
-            // Super Admins bypass session scoping (global access)
+            // Super Admins bypass session scoping and permission checks (global full access)
             if ($user->hasRole('Super Admin')) {
-                return null;
+                return true;
             }
 
             // Check if the permission is a Spatie permission

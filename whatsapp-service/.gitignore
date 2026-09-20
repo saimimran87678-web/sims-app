@@ -1,6 +1,0 @@
-node_modules/
-session/
-.wwebjs_cache/
-.wwebjs_auth/
-uploads/
-*.log
