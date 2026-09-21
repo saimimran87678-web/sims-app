@@ -147,6 +147,15 @@ cp "${ROOT_DIR}/install.bat" "${STAGING_DIR}/install.bat"
 cp "${ROOT_DIR}/install.sh" "${STAGING_DIR}/install.sh"
 chmod +x "${STAGING_DIR}/install.sh"
 
+if [ -f "${ROOT_DIR}/start-server.bat" ]; then
+    cp "${ROOT_DIR}/start-server.bat" "${STAGING_DIR}/start-server.bat"
+fi
+
+if [ -d "${ROOT_DIR}/bin" ]; then
+    mkdir -p "${STAGING_DIR}/bin"
+    cp -r "${ROOT_DIR}/bin/"* "${STAGING_DIR}/bin/"
+fi
+
 cat << 'README_EOF' > "${STAGING_DIR}/README.txt"
 ============================================================
            🏫 SIMS - School Information Management System

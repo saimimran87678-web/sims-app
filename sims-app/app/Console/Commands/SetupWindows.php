@@ -70,18 +70,39 @@ class SetupWindows extends Command
         $publicPath = $appPath . DIRECTORY_SEPARATOR . 'public';
         $artisanPath = $appPath . DIRECTORY_SEPARATOR . 'artisan';
 
+        $rootDir = dirname($appPath);
+        $binDir = $rootDir . DIRECTORY_SEPARATOR . 'bin';
+        if (!is_dir($binDir)) {
+            @mkdir($binDir, 0755, true);
+        }
+
+        // Ensure wrapper batch files exist in bin/
+        $webBat = $binDir . DIRECTORY_SEPARATOR . 'run-web.bat';
+        $queueBat = $binDir . DIRECTORY_SEPARATOR . 'run-queue.bat';
+        $schedulerBat = $binDir . DIRECTORY_SEPARATOR . 'run-scheduler.bat';
+
+        if (!file_exists($webBat)) {
+            file_put_contents($webBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$frankenBinary}\" php-server --listen :80 --root \"{$publicPath}\"\r\n");
+        }
+        if (!file_exists($queueBat)) {
+            file_put_contents($queueBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$phpBinary}\" \"{$artisanPath}\" queue:work --sleep=3 --tries=3\r\n");
+        }
+        if (!file_exists($schedulerBat)) {
+            file_put_contents($schedulerBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$phpBinary}\" \"{$artisanPath}\" schedule:work\r\n");
+        }
+
         $services = [
             'SIMS-Web' => [
-                'desc' => 'SIMS Web Server (FrankenPHP on Port 80)',
-                'cmd'  => "\"{$frankenBinary}\" php-server --listen :80 --root \"{$publicPath}\"",
+                'desc'   => 'SIMS Web Server (FrankenPHP on Port 80)',
+                'script' => $webBat,
             ],
             'SIMS-Queue' => [
-                'desc' => 'SIMS Background Queue Worker',
-                'cmd'  => "\"{$phpBinary}\" \"{$artisanPath}\" queue:work --sleep=3 --tries=3",
+                'desc'   => 'SIMS Background Queue Worker',
+                'script' => $queueBat,
             ],
             'SIMS-Scheduler' => [
-                'desc' => 'SIMS Task Scheduler (Updates & License Sync)',
-                'cmd'  => "\"{$phpBinary}\" \"{$artisanPath}\" schedule:work",
+                'desc'   => 'SIMS Task Scheduler (Updates & License Sync)',
+                'script' => $schedulerBat,
             ],
         ];
 
@@ -104,23 +125,24 @@ class SetupWindows extends Command
         }
 
         // ── Install Services via schtasks ─────────────────────────────────
-        $this->info('⚙️ Registering 3 background tasks with Windows Task Scheduler (ONSTART / SYSTEM)...');
+        $this->info('⚙️ Registering 3 background tasks with Windows Task Scheduler (ONSTART)...');
         $this->line("   PHP Binary:        {$phpBinary}");
         $this->line("   FrankenPHP Binary: {$frankenBinary}");
         $this->line("   Working Directory: {$appPath}");
+        $this->line("   Runners Directory: {$binDir}");
         $this->line('');
 
         $successCount = 0;
 
         foreach ($services as $taskName => $config) {
-            $cmdLine = $config['cmd'];
+            $scriptPath = $config['script'];
             
             // Create the scheduled task:
             // /SC ONSTART : Run when Windows starts
             // /RU SYSTEM  : Run headless as Local System account (survives user logoff)
             // /RL HIGHEST : Run with elevated privileges
             // /F          : Overwrite existing task definition
-            $createCmd = "schtasks /create /tn \"{$taskName}\" /tr \"{$cmdLine}\" /sc ONSTART /ru SYSTEM /rl HIGHEST /f";
+            $createCmd = "schtasks /create /tn \"{$taskName}\" /tr \"\\\"{$scriptPath}\\\"\" /sc ONSTART /ru SYSTEM /rl HIGHEST /f";
 
             if ($dryRun) {
                 $this->info("[DRY RUN] Create {$taskName}:");
@@ -129,6 +151,12 @@ class SetupWindows extends Command
                 $successCount++;
             } else {
                 exec("{$createCmd} 2>&1", $output, $returnCode);
+
+                // If /ru SYSTEM fails on some Windows editions, retry without /ru SYSTEM
+                if ($returnCode !== 0) {
+                    $fallbackCmd = "schtasks /create /tn \"{$taskName}\" /tr \"\\\"{$scriptPath}\\\"\" /sc ONSTART /rl HIGHEST /f";
+                    exec("{$fallbackCmd} 2>&1", $output, $returnCode);
+                }
 
                 if ($returnCode === 0) {
                     // Start immediately
