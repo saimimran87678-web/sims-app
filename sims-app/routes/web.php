@@ -120,6 +120,12 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
 
     // Subject Allocation Manager (Requires granular allocations.view)
     Route::get('/allocations', \App\Livewire\Admin\AccessControl\SubjectAllocationManager::class)->name('allocations');
+
+    // Guided Product Tour Completion Handler
+    Route::post('/tour/complete', function () {
+        \App\Models\Setting::setGlobal('launch_first_tour', false);
+        return response()->json(['success' => true]);
+    })->name('tour.complete');
 });
 
 Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->group(function () {

@@ -62,6 +62,10 @@
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+
+    <!-- Guided Product Tour Styles -->
+    <link rel="stylesheet" href="{{ asset('vendor/driverjs/driver.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/driverjs/driver-theme.css') }}">
 </head>
 <body class="font-sans antialiased text-gray-900 bg-gray-50">
 <div x-data="{ sidebarOpen: true }" class="flex h-screen overflow-hidden bg-gray-50">
@@ -78,7 +82,7 @@
             x-transition:leave-end="-translate-x-full opacity-0"
             class="fixed inset-y-0 left-0 z-50 border-r border-gray-200 bg-white/90 backdrop-blur-xl md:relative flex flex-col h-screen shrink-0 overflow-hidden transition-all duration-300"
         >
-            <div class="flex items-center gap-3 p-6 border-b border-gray-100 flex-shrink-0">
+            <div id="sidebar-branding" class="flex items-center gap-3 p-6 border-b border-gray-100 flex-shrink-0">
                 @php
                     $logoPath = \App\Models\Setting::getGlobal('institute_logo');
                 @endphp
@@ -124,7 +128,7 @@
 
                 <!-- Student Management -->
                 @can('students.manage')
-                <x-nav-link :href="route('admin.students')" :active="request()->routeIs('admin.students')" color="pink">
+                <x-nav-link id="nav-students" :href="route('admin.students')" :active="request()->routeIs('admin.students')" color="pink">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
                     <span class="font-medium">Student Management</span>
                 </x-nav-link>
@@ -196,12 +200,12 @@
 
                 <!-- Schedule Management Entry -->
                 @can('schedule.manage')
-                <x-nav-link :href="route('admin.schedule')" :active="request()->routeIs('admin.schedule') || request()->routeIs('admin.view-schedule') || request()->routeIs('admin.period-config')" color="cyan">
+                <x-nav-link id="nav-schedule" :href="route('admin.schedule')" :active="request()->routeIs('admin.schedule') || request()->routeIs('admin.view-schedule') || request()->routeIs('admin.period-config')" color="cyan">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
                     <span class="font-medium">Schedule Management</span>
                 </x-nav-link>
                 
-                <x-nav-link :href="route('admin.substitutions')" :active="request()->routeIs('admin.substitutions')" color="orange">
+                <x-nav-link id="nav-substitutions" :href="route('admin.substitutions')" :active="request()->routeIs('admin.substitutions')" color="orange">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
                     <span class="font-medium">Substitutions & Attendance</span>
                 </x-nav-link>
@@ -224,6 +228,11 @@
                     <x-nav-link :href="route('admin.allocations')" :active="request()->routeIs('admin.allocations')" color="slate">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
                           <span class="font-medium">Data Scope</span>
+                    </x-nav-link>
+
+                    <x-nav-link id="nav-settings" :href="route('admin.settings')" :active="request()->routeIs('admin.settings')" color="slate">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span class="font-medium">System Settings</span>
                     </x-nav-link>
                 </div>
                 @endcan
@@ -270,6 +279,7 @@
                         $currentSessionObj = \App\Models\AcademicSession::find($currentSessionId);
                         $currentSessionIsRegular = ($currentSessionObj && $currentSessionObj->shift_type === 'Regular');
                     @endphp
+                    <div id="session-shift-selector" class="inline-flex items-center">
                     <form action="{{ route('change-session') }}" method="POST" id="session-switch-form" class="inline-flex items-center gap-3">
                         @csrf
                         <input type="hidden" name="academic_session_id" id="nav-session-id-input" value="{{ $currentSessionId }}">
@@ -351,6 +361,7 @@
                         </div>
                         @endif
                     </form>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-3 md:gap-5">
@@ -389,9 +400,16 @@
                             </div>
                             
                             <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                                 System Settings
                             </a>
+
+                            <button type="button" @click="profileOpen = false; window.startSIMSTour && window.startSIMSTour(true)" class="w-full flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                                </svg>
+                                Take Product Tour
+                            </button>
                             
                             <div class="h-px bg-gray-100 my-1"></div>
                             
@@ -631,5 +649,12 @@
 
     @livewireScripts
     <x-security-scripts />
+
+    <!-- Driver.js Guided Product Tour -->
+    <script src="{{ asset('vendor/driverjs/driver.js.iife.js') }}"></script>
+    <script>
+        window.SIMS_LAUNCH_TOUR = {{ \App\Models\Setting::getGlobal('launch_first_tour', false) ? 'true' : 'false' }};
+    </script>
+    <script src="{{ asset('js/tour.js') }}"></script>
 </body>
 </html>

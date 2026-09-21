@@ -1,0 +1,95 @@
+/* SIMS Custom Driver.js UI Theme */
+.driver-popover.sims-tour-popover {
+    background: #ffffff !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(229, 231, 235, 0.8) !important;
+    padding: 1.25rem 1.35rem !important;
+    max-width: 360px !important;
+    border: none !important;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    letter-spacing: -0.015em !important;
+    margin-bottom: 0.4rem !important;
+    line-height: 1.35 !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-description {
+    font-size: 0.85rem !important;
+    color: #64748b !important;
+    line-height: 1.5 !important;
+    font-weight: 400 !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-footer {
+    margin-top: 1.1rem !important;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid #f1f5f9 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-progress-text {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    letter-spacing: 0.02em !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-prev-btn {
+    all: unset !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-prev-btn:hover {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-next-btn {
+    all: unset !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 0.4rem 0.9rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    border-radius: 0.5rem !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.25) !important;
+    transition: all 0.15s ease !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-next-btn:hover {
+    opacity: 0.92 !important;
+    transform: translateY(-1px) !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-close-btn {
+    color: #94a3b8 !important;
+    top: 0.65rem !important;
+    right: 0.75rem !important;
+    font-size: 1.15rem !important;
+    font-weight: 400 !important;
+    transition: color 0.15s ease !important;
+}
+
+.driver-popover.sims-tour-popover .driver-popover-close-btn:hover {
+    color: #0f172a !important;
+}
