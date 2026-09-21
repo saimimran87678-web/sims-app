@@ -7,6 +7,8 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+Route::get('/setup', \App\Livewire\Setup\SetupWizard::class)->name('setup.wizard');
+
 // Public Vouchers/Receipts (Guest-accessible)
 Route::get('/v/{token}', [\App\Http\Controllers\PublicVoucherController::class, 'show'])
     ->name('public.voucher.show')

@@ -14,6 +14,8 @@ class VerifyLicense
      * These are checked FIRST before any DB access to maximise performance.
      */
     private const EXEMPT_PATHS = [
+        'setup',
+        'ping-internal',
         'login',
         'logout',
         'register',

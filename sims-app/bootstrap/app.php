@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust all proxies (required for Cloudflare Tunnel)
         $middleware->trustProxies(at: '*');
         
+        // First check installation state (redirects unconfigured installations to /setup)
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureAppInstalled::class);
+
         // Register VerifyLicense globally for all web traffic
         $middleware->appendToGroup('web', \App\Http\Middleware\VerifyLicense::class);
         
