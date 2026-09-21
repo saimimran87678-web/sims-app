@@ -213,6 +213,15 @@ Route::get('/ping', function () {
     return response()->json(['status' => 'alive']);
 })->middleware('auth')->name('ping');
 
+Route::get('/ping-internal', function () {
+    abort_unless(in_array(request()->ip(), ['127.0.0.1', '::1']), 403);
+    return response()->json([
+        'status' => 'alive',
+        'version' => config('app.version', '0.0.0'),
+        'database' => \Illuminate\Support\Facades\DB::select('SELECT 1')[0] ? 'ok' : 'fail',
+    ]);
+})->name('ping.internal');
+
 Route::get('/refresh-csrf', function () {
     return response()->json(['token' => csrf_token()]);
 })->name('csrf.refresh');
