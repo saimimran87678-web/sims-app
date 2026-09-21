@@ -9,3 +9,5 @@
 .vscode/
 /final_architecture.md
 /installation_report.md
+/dist/
+*.zip
