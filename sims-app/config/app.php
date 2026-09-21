@@ -17,6 +17,8 @@ return [
 
     'version' => env('APP_VERSION', '2.5.0'),
 
+    'update_manifest_url' => env('UPDATE_MANIFEST_URL', 'https://raw.githubusercontent.com/saimimran87678/SIMS/main/manifest.json'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
