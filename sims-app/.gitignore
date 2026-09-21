@@ -24,6 +24,10 @@ Homestead.yaml
 Thumbs.db
 /database/*.sqlite
 /database/*.sqlite-journal
+/database/*.sqlite-shm
+/database/*.sqlite-wal
+/storage/snapshots
+/storage/updates
 
 # Secrets & Keys
 /private.pem
@@ -32,3 +36,4 @@ Thumbs.db
 /tests_output.txt
 /scratch
 /storage/framework/whatsapp_queue.lock
+

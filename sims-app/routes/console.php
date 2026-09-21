@@ -14,3 +14,7 @@ Schedule::command('whatsapp:process-queue')->everyMinute()->withoutOverlapping()
 Schedule::call(function () {
     \App\Services\LicenseSyncService::syncBackground();
 })->daily();
+
+// Daily SIMS Auto-Update & Maintenance at 02:00 AM
+Schedule::command('sims:update')->dailyAt('02:00')->withoutOverlapping();
+
