@@ -175,6 +175,18 @@ REQUIREMENTS:
 ============================================================
 README_EOF
 
+# 7b. Bundle Portable Runtime Environment (if available)
+if [ -d "${ROOT_DIR}/runtime" ] && [ -f "${ROOT_DIR}/runtime/frankenphp.exe" ] && [ -f "${ROOT_DIR}/runtime/php/php.exe" ]; then
+    echo -e "${BLUE}[*] Bundling portable Windows runtime (FrankenPHP & PHP 8.2)...${NC}"
+    mkdir -p "${STAGING_DIR}/runtime"
+    cp -r "${ROOT_DIR}/runtime/"* "${STAGING_DIR}/runtime/"
+    echo -e "${GREEN}[OK] Portable runtime bundled successfully (Zero-Install enabled).${NC}"
+else
+    echo -e "${YELLOW}[NOTICE] Portable runtime/ not detected in project root.${NC}"
+    echo -e "         Package will rely on target machine's system PHP (Fallback mode)."
+    echo -e "         Tip: Run ./download-windows-runtime.sh to enable Zero-Install packages."
+fi
+
 # 8. CRITICAL SECURITY ASSERTIONS
 echo -e "${BLUE}[*] Performing security integrity audit on staging package...${NC}"
 
