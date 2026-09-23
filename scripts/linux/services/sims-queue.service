@@ -1,0 +1,16 @@
+[Unit]
+Description=SIMS Background Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/sims/sims-app
+ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

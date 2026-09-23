@@ -71,15 +71,14 @@ class SetupWindows extends Command
         $artisanPath = $appPath . DIRECTORY_SEPARATOR . 'artisan';
 
         $rootDir = dirname($appPath);
+        $servicesDir = $rootDir . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'windows' . DIRECTORY_SEPARATOR . 'services';
         $binDir = $rootDir . DIRECTORY_SEPARATOR . 'bin';
-        if (!is_dir($binDir)) {
-            @mkdir($binDir, 0755, true);
-        }
+        $activeRunnersDir = is_dir($servicesDir) ? $servicesDir : $binDir;
 
-        // Ensure wrapper batch files exist in bin/
-        $webBat = $binDir . DIRECTORY_SEPARATOR . 'run-web.bat';
-        $queueBat = $binDir . DIRECTORY_SEPARATOR . 'run-queue.bat';
-        $schedulerBat = $binDir . DIRECTORY_SEPARATOR . 'run-scheduler.bat';
+        // Ensure wrapper batch files exist in active runners directory
+        $webBat = $activeRunnersDir . DIRECTORY_SEPARATOR . 'run-web.bat';
+        $queueBat = $activeRunnersDir . DIRECTORY_SEPARATOR . 'run-queue.bat';
+        $schedulerBat = $activeRunnersDir . DIRECTORY_SEPARATOR . 'run-scheduler.bat';
 
         if (!file_exists($webBat)) {
             file_put_contents($webBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$frankenBinary}\" run --config \"{$appPath}\\Caddyfile\"\r\n");
@@ -129,7 +128,7 @@ class SetupWindows extends Command
         $this->line("   PHP Binary:        {$phpBinary}");
         $this->line("   FrankenPHP Binary: {$frankenBinary}");
         $this->line("   Working Directory: {$appPath}");
-        $this->line("   Runners Directory: {$binDir}");
+        $this->line("   Runners Directory: {$activeRunnersDir}");
         $this->line('');
 
         $successCount = 0;

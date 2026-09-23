@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-#  SIMS Portable Windows Runtime Downloader
+#  SIMS Portable Windows Runtime Downloader (Linux Cross-Packaging Support)
 #  Downloads and configures FrankenPHP and Portable PHP 8.2 for Windows
 #  into the ./runtime/ directory for a 100% self-contained, zero-install package.
 # ==============================================================================
@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../.." >/dev/null 2>&1 && pwd )"
 RUNTIME_DIR="${ROOT_DIR}/runtime"
 TMP_DIR="${ROOT_DIR}/dist/runtime_tmp"
 
@@ -47,7 +47,6 @@ FRANKEN_URL="https://github.com/dunglas/frankenphp/releases/latest/download/fran
 if curl -fSL --progress-bar "${FRANKEN_URL}" -o "${FRANKEN_ZIP}"; then
     echo -e "${GREEN}[OK] FrankenPHP downloaded. Extracting...${NC}"
     unzip -q -o "${FRANKEN_ZIP}" -d "${TMP_DIR}/franken_extracted"
-    # Copy frankenphp.exe and all bundled DLLs (including libwatcher-c.dll) to runtime/
     find "${TMP_DIR}/franken_extracted" -type f \( -name "*.exe" -o -name "*.dll" \) -exec cp -f {} "${RUNTIME_DIR}/" \;
     echo -e "${GREEN}[OK] FrankenPHP and companion libraries installed to ${RUNTIME_DIR}/${NC}"
 else
@@ -61,7 +60,6 @@ fi
 echo -e "\n${BLUE}[2/3] Downloading Portable Windows PHP 8.2 (x64 NTS)...${NC}"
 PHP_ZIP="${TMP_DIR}/php82.zip"
 
-# Attempt to find latest 8.2 release or fallback to known stable release 8.2.27
 PHP_URL="https://windows.php.net/downloads/releases/php-8.2.27-nts-Win32-vs16-x64.zip"
 echo -e "Source: ${PHP_URL}"
 
@@ -169,11 +167,10 @@ echo -e "${GREEN}[OK] php.ini created and optimized.${NC}"
 rm -rf "${TMP_DIR}"
 
 echo -e "\n${GREEN}${BOLD}======================================================${NC}"
-echo -e "${GREEN}${BOLD}  🎉 Portable Windows Runtime Setup Complete!         ${NC}"
+echo -e "${GREEN}${BOLD}  Portable Windows Runtime Setup Complete!            ${NC}"
 echo -e "${GREEN}${BOLD}======================================================${NC}"
 echo -e "Files installed in: ${CYAN}${RUNTIME_DIR}/${NC}"
 echo -e "  - ${BOLD}frankenphp.exe${NC} (Standalone Web Server)"
 echo -e "  - ${BOLD}php/php.exe${NC}    (CLI Runner for Queue & Scheduler)"
 echo -e "  - ${BOLD}php/php.ini${NC}    (Configured with SQLite WAL & Extensions)"
 echo -e "  - ${BOLD}php/ext/*${NC}      (Required Windows DLLs)"
-echo -e "\nYou can now run ${BOLD}./build-release.sh${NC} to create a zero-install release ZIP!"

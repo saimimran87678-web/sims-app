@@ -1,4 +1,4 @@
-# Secrets & Plans
+﻿# Secrets & Plans
 /firebase_admin_panel.html
 /sims_license_complete.md
 /sims_license_system.md
@@ -12,3 +12,4 @@
 /dist/
 *.zip
 /runtime/
+/storage/

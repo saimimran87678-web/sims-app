@@ -1,0 +1,18 @@
+[Unit]
+Description=SIMS High-Performance Web Server (Port 80)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/sims/sims-app
+Environment="PHP_CLI_SERVER_WORKERS=4"
+ExecStart=/usr/bin/php -S 0.0.0.0:80 -t public
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

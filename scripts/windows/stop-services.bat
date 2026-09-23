@@ -3,14 +3,16 @@ setlocal
 cd /d "%~dp0"
 title Stop SIMS Services
 
-:: Auto-elevate to Administrator if double-clicked by standard user
 net session >nul 2>&1
-if %errorLevel% neq 0 (
-    echo [INFO] Requesting Administrator privileges to stop background services...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b 0
-)
+if %errorLevel% equ 0 goto :ADMIN_OK
 
+echo [ERROR] Administrator privileges are required to stop background services.
+echo Please right-click stop-services.bat and select "Run as administrator".
+echo.
+pause
+exit /b 1
+
+:ADMIN_OK
 echo ====================================================
 echo         Stopping All SIMS Windows Services
 echo ====================================================
@@ -22,7 +24,7 @@ schtasks /end /tn "SIMS-Queue" >nul 2>&1
 schtasks /end /tn "SIMS-Scheduler" >nul 2>&1
 
 echo [2/2] Terminating any remaining PHP and FrankenPHP processes...
-taskkill /F /IM frankenphp.exe /IM php.exe >nul 2>&1
+taskkill /F /IM frankenphp.exe /IM php.exe /IM php-cgi.exe >nul 2>&1
 
 echo.
 echo ====================================================

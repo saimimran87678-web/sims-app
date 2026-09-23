@@ -31,6 +31,14 @@ class SimsInstall extends Command
         $this->info('       🚀 SIMS Client First-Time Installation       ');
         $this->info('====================================================');
 
+        // 0. Self-healing: Purge any stale bootstrap cache files that freeze paths
+        $bootstrapCacheDir = base_path('bootstrap/cache');
+        if (File::isDirectory($bootstrapCacheDir)) {
+            foreach (File::glob($bootstrapCacheDir . '/*.php') as $cacheFile) {
+                @unlink($cacheFile);
+            }
+        }
+
         // 1. Ensure .env exists
         $envPath = base_path('.env');
         $envExamplePath = base_path('.env.example');
@@ -40,6 +48,9 @@ class SimsInstall extends Command
             if (File::exists($envExamplePath)) {
                 File::copy($envExamplePath, $envPath);
                 $this->info('✅ Created .env file.');
+                if (class_exists(\Dotenv\Dotenv::class)) {
+                    \Dotenv\Dotenv::createImmutable(base_path())->safeLoad();
+                }
             } else {
                 $this->error('❌ Error: .env.example not found!');
                 return 1;
@@ -56,7 +67,7 @@ class SimsInstall extends Command
             $this->line('ℹ️ Cryptographic APP_KEY is already configured.');
         }
 
-        // 3. Ensure SQLite database file exists
+        // 3. Ensure SQLite database file exists and connection uses current absolute path
         $dbPath = database_path('database.sqlite');
         $dbDir = dirname($dbPath);
 
@@ -70,6 +81,15 @@ class SimsInstall extends Command
             $this->info('✅ Created database.sqlite.');
         } else {
             $this->line('ℹ️ database.sqlite already exists.');
+        }
+
+        // Explicitly bind the SQLite connection to current filesystem path and reconnect
+        config(['database.connections.sqlite.database' => $dbPath]);
+        try {
+            \Illuminate\Support\Facades\DB::purge('sqlite');
+            \Illuminate\Support\Facades\DB::reconnect('sqlite');
+        } catch (\Throwable $t) {
+            // Ignore if DB connection not yet established
         }
 
         // Set safe file permissions on non-Windows environments

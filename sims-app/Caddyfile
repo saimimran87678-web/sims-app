@@ -1,16 +1,24 @@
 {
-    frankenphp
     local_certs
     admin off
 }
 
-:80 {
-    redir https://{host}{uri} permanent
+(sims_common) {
+    root * "{$APP_PUBLIC:public}"
+    encode zstd br gzip
+    php_fastcgi 127.0.0.1:9000
+    file_server
 }
 
-:443, localhost, 127.0.0.1, {$COMPUTERNAME}.local, sims.local {
-    root * public
-    encode zstd br gzip
-    php_server
+# HTTP on Port 80: Automatically redirect localhost to secure HTTPS, while keeping direct HTTP for LAN devices
+:80 {
+    @local host localhost 127.0.0.1 sims.local
+    redir @local https://{host}{uri} permanent
+    import sims_common
+}
+
+# HTTPS on Port 443: Secure access with trusted local TLS certificates
+:443, localhost, 127.0.0.1, {$COMPUTERNAME}, {$COMPUTERNAME}.local, sims.local {
+    import sims_common
     tls internal
 }
