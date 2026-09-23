@@ -1,0 +1,16 @@
+{
+    frankenphp
+    local_certs
+    admin off
+}
+
+:80 {
+    redir https://{host}{uri} permanent
+}
+
+:443, localhost, 127.0.0.1, {$COMPUTERNAME}.local, sims.local {
+    root * public
+    encode zstd br gzip
+    php_server
+    tls internal
+}

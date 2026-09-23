@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (str_starts_with((string) config('app.url'), 'https://') || request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // Enforce session/shift scoped permissions for shared admin features
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
             // Super Admins bypass session scoping and permission checks (global full access)
@@ -96,14 +100,31 @@ class AppServiceProvider extends ServiceProvider
                        str_starts_with($sqlLower, 'replace');
 
             if ($isWrite) {
-                // Allow write operations to session, cache, and licensing tables
+                // Allow write operations to session, cache, internal sequence, setup, and licensing tables
+                $isSetup = request()->is('setup*') || 
+                           (request()->is('livewire*') && str_contains((string) request()->header('referer', ''), '/setup'));
+
                 $isExempt = str_contains($sqlLower, 'software_licenses') || 
+                            str_contains($sqlLower, 'sqlite_sequence') || 
                             str_contains($sqlLower, 'sessions') ||
                             str_contains($sqlLower, 'cache') ||
+                            $isSetup ||
                             request()->is('login') || 
                             request()->is('logout') ||
                             request()->is('license/sync') ||
                             request()->is('license-blocked/activate');
+
+                // If running in web and system is not installed yet, allow initial setup writes
+                if (!$isExempt && !app()->runningUnitTests()) {
+                    try {
+                        $isInstalled = \App\Models\Setting::getGlobal('app_installed');
+                        if ($isInstalled === null || !(bool) $isInstalled) {
+                            $isExempt = true;
+                        }
+                    } catch (\Throwable $e) {
+                        $isExempt = true;
+                    }
+                }
 
                 if (!$isExempt && !\App\Services\LicenseStatus::canWrite()) {
                     \Illuminate\Support\Facades\Log::warning('Blocked Query: ' . $sql);

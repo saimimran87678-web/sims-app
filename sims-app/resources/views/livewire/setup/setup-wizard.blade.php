@@ -64,12 +64,15 @@
             </div>
 
             @if($license_error)
-                <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-3">
-                    <svg class="w-5 h-5 flex-shrink-0 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <div>
-                        <span class="font-bold">Activation Notice:</span> {{ $license_error }}
+                <div class="p-4 rounded-xl bg-red-50/90 border border-red-200 text-red-800 text-xs flex items-start gap-3 shadow-sm">
+                    <div class="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div class="space-y-0.5">
+                        <p class="font-bold text-red-900 text-sm">License Activation Notice</p>
+                        <p class="text-red-700 leading-relaxed">{{ $license_error }}</p>
                     </div>
                 </div>
             @endif
@@ -93,7 +96,7 @@
 
             <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Software License Key</label>
-                <input type="text" wire:model="license_key" placeholder="e.g. SIMS-IMCB-1781541807190" class="input-modern font-mono text-sm uppercase tracking-wider" {{ $license_verified ? 'disabled' : '' }}>
+                <input type="text" wire:model="license_key" placeholder="e.g. SIMS-XXXX-XXXXXXXXXXXXX" class="input-modern font-mono text-sm uppercase tracking-wider" {{ $license_verified ? 'disabled' : '' }}>
                 @error('license_key') <span class="text-xs text-red-500 font-medium mt-1 block">{{ $message }}</span> @enderror
                 <p class="text-[11px] text-slate-400 mt-2">Connecting to licensing servers requires an active internet connection on this first boot.</p>
             </div>
@@ -267,7 +270,7 @@
     <!-- STEP 4: SUPER ADMIN ACCOUNT CREATION                               -->
     <!-- ────────────────────────────────────────────────────────────────── -->
     @if($currentStep === 4)
-        <div class="space-y-5">
+        <form wire:submit.prevent="finishSetup" class="space-y-5">
             <div class="border-b border-slate-100 pb-3">
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,8 +282,16 @@
             </div>
 
             @if($setup_error)
-                <div class="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
-                    {{ $setup_error }}
+                <div class="p-4 rounded-xl bg-red-50/90 border border-red-200 text-red-800 text-xs flex items-start gap-3 shadow-sm">
+                    <div class="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div class="space-y-0.5">
+                        <p class="font-bold text-red-900 text-sm">Setup Error</p>
+                        <p class="text-red-700 leading-relaxed">{{ $setup_error }}</p>
+                    </div>
                 </div>
             @endif
 
@@ -317,7 +328,7 @@
                 <button type="button" wire:click="$set('currentStep', 3)" class="text-xs font-semibold text-slate-500 hover:text-slate-800">
                     ⬅ Back to Shifts
                 </button>
-                <button type="button" wire:click="finishSetup" wire:loading.attr="disabled" class="btn-login !w-auto px-8 !bg-gradient-to-r !from-emerald-600 !to-teal-600">
+                <button type="submit" wire:loading.attr="disabled" class="btn-login !w-auto px-8 !bg-gradient-to-r !from-emerald-600 !to-teal-600">
                     <span wire:loading.remove wire:target="finishSetup">🚀 Complete Installation & Launch SIMS</span>
                     <span wire:loading wire:target="finishSetup" class="inline-flex items-center gap-2">
                         <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -328,6 +339,6 @@
                     </span>
                 </button>
             </div>
-        </div>
+        </form>
     @endif
 </div>

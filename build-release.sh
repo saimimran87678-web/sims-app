@@ -100,7 +100,7 @@ APP_VERSION="${VERSION}"
 APP_ENV=production
 APP_KEY=
 APP_DEBUG=false
-APP_URL=http://localhost
+APP_URL=https://localhost
 
 APP_LOCALE=en
 APP_FALLBACK_LOCALE=en
@@ -149,6 +149,18 @@ chmod +x "${STAGING_DIR}/install.sh"
 
 if [ -f "${ROOT_DIR}/start-server.bat" ]; then
     cp "${ROOT_DIR}/start-server.bat" "${STAGING_DIR}/start-server.bat"
+fi
+
+if [ -f "${ROOT_DIR}/sims-start.bat" ]; then
+    cp "${ROOT_DIR}/sims-start.bat" "${STAGING_DIR}/sims-start.bat"
+fi
+
+if [ -f "${ROOT_DIR}/stop-services.bat" ]; then
+    cp "${ROOT_DIR}/stop-services.bat" "${STAGING_DIR}/stop-services.bat"
+fi
+
+if [ -f "${ROOT_DIR}/sims.bat" ]; then
+    cp "${ROOT_DIR}/sims.bat" "${STAGING_DIR}/sims.bat"
 fi
 
 if [ -d "${ROOT_DIR}/bin" ]; then
@@ -239,6 +251,7 @@ echo -e "   - public.pem  : VERIFIED PRESENT"
 ZIP_FILENAME="SIMS-v${VERSION}.zip"
 ZIP_FILEPATH="${RELEASES_DIR}/${ZIP_FILENAME}"
 rm -f "${ZIP_FILEPATH}"
+rm -f "${RELEASES_DIR}"/zi*
 
 echo -e "${BLUE}[*] Compressing release package into ${ZIP_FILENAME}...${NC}"
 cd "${STAGING_PARENT}"

@@ -82,7 +82,7 @@ class SetupWindows extends Command
         $schedulerBat = $binDir . DIRECTORY_SEPARATOR . 'run-scheduler.bat';
 
         if (!file_exists($webBat)) {
-            file_put_contents($webBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$frankenBinary}\" php-server --listen :80 --root \"{$publicPath}\"\r\n");
+            file_put_contents($webBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$frankenBinary}\" run --config \"{$appPath}\\Caddyfile\"\r\n");
         }
         if (!file_exists($queueBat)) {
             file_put_contents($queueBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$phpBinary}\" \"{$artisanPath}\" queue:work --sleep=3 --tries=3\r\n");
@@ -93,7 +93,7 @@ class SetupWindows extends Command
 
         $services = [
             'SIMS-Web' => [
-                'desc'   => 'SIMS Web Server (FrankenPHP on Port 80)',
+                'desc'   => 'SIMS Web Server (FrankenPHP HTTPS & HTTP)',
                 'script' => $webBat,
             ],
             'SIMS-Queue' => [
@@ -182,7 +182,9 @@ class SetupWindows extends Command
             $this->line('• Survives administrator logoff.');
             $this->line('• Access application in browser at:');
             $hostname = gethostname();
-            $this->info("   🌐 http://{$hostname}  or  http://localhost");
+            $this->info("   🔒 https://sims.local");
+            $this->info("   🔒 https://localhost");
+            $this->line("   🌐 Local LAN: https://{$hostname}.local  or  http://{$hostname}");
             return 0;
         }
 

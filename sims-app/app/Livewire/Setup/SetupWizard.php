@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
@@ -157,7 +158,32 @@ class SetupWizard extends Component
                 return;
             }
 
-            // 5. Compute HMAC integrity hash with local unique APP_KEY
+            // 5. Setup Gatekeeper: Initial onboarding strictly requires an ACTIVE, unexpired license
+            $licStatus = strtolower(trim($firebaseLic['status'] ?? ''));
+            if ($licStatus === 'suspended') {
+                $this->license_error = 'This license key is SUSPENDED. An active subscription is required to set up SIMS. Please contact support or renew your subscription.';
+                return;
+            }
+
+            if ($licStatus === 'expired') {
+                $this->license_error = 'This license key has EXPIRED. An active subscription is required to complete setup. Please renew your subscription.';
+                return;
+            }
+
+            if ($licStatus !== 'active') {
+                $this->license_error = 'This license cannot be activated (Status: ' . ucfirst($licStatus ?: 'Invalid') . '). An active subscription is required.';
+                return;
+            }
+
+            if (!empty($firebaseLic['expires_at'])) {
+                $expiry = Carbon::parse($firebaseLic['expires_at'])->startOfDay();
+                if (Carbon::now()->startOfDay()->gt($expiry)) {
+                    $this->license_error = 'This license key expired on ' . $expiry->format('d M Y') . '. An active subscription is required to set up SIMS.';
+                    return;
+                }
+            }
+
+            // 6. Compute HMAC integrity hash with local unique APP_KEY
             $allowedDomains = $firebaseLic['allowed_domain'] ?? 'localhost';
             $integrityHash = LicenseVerifier::computeIntegrityHash(
                 $licenseKey,
@@ -168,7 +194,7 @@ class SetupWizard extends Component
             );
 
             // 6. Save encrypted license payload to SQLite
-            DB::table('software_licenses')->truncate();
+            DB::table('software_licenses')->delete();
             DB::table('software_licenses')->insert([
                 'license_key'             => encrypt($licenseKey),
                 'school_id'               => $firebaseLic['school_id'],
@@ -204,6 +230,9 @@ class SetupWizard extends Component
             }
 
             $this->currentStep = 2;
+        } catch (\App\Exceptions\LicenseLockedException $e) {
+            Log::error('Setup wizard license verification error: ' . $e->getMessage());
+            $this->license_error = 'Your subscription is suspended or expired. An active subscription is required to set up SIMS.';
         } catch (\Exception $e) {
             Log::error('Setup wizard license verification error: ' . $e->getMessage());
             $this->license_error = 'Verification failed: ' . $e->getMessage();
@@ -256,12 +285,25 @@ class SetupWizard extends Component
             'admin_email'    => 'required|email|max:255|unique:users,email',
             'admin_password' => 'required|string|min:8|confirmed',
         ], [
-            'admin_name.required'     => 'Please provide the administrator full name.',
-            'admin_email.required'    => 'Please enter a valid email address.',
-            'admin_password.required' => 'A secure password of at least 8 characters is required.',
+            'admin_name.required'      => 'Please provide the administrator full name.',
+            'admin_email.required'     => 'Please enter a valid email address.',
+            'admin_email.unique'       => 'This email address is already registered in the system. Please use a different email.',
+            'admin_password.required'  => 'A secure password of at least 8 characters is required.',
+            'admin_password.confirmed' => 'The password confirmation does not match.',
         ]);
 
         try {
+            // Ensure is_active column exists on users if missing (before transaction)
+            if (Schema::hasTable('users') && !Schema::hasColumn('users', 'is_active')) {
+                try {
+                    Schema::table('users', function ($table) {
+                        $table->boolean('is_active')->default(true);
+                    });
+                } catch (\Throwable $e) {
+                    Log::warning('Note: Could not add is_active column to users: ' . $e->getMessage());
+                }
+            }
+
             DB::beginTransaction();
 
             // 1. Save global institute settings
@@ -270,6 +312,7 @@ class SetupWizard extends Component
             Setting::setGlobal('institute_short_name', $this->institute_short_name ?: $this->institute_name);
             Setting::setGlobal('institute_phone', $this->institute_phone ?? '');
             Setting::setGlobal('default_session_shift_mode', $this->shift_mode);
+            Setting::setGlobal('weekend_mode', $this->weekend_mode);
             Setting::set('weekend_mode', $this->weekend_mode);
 
             // 2. Handle logo upload
@@ -279,7 +322,7 @@ class SetupWizard extends Component
             }
 
             // 3. Create active Academic Session
-            AcademicSession::create([
+            $session = AcademicSession::create([
                 'name'       => $this->session_name,
                 'start_date' => now()->startOfYear(),
                 'end_date'   => now()->endOfYear(),
@@ -293,15 +336,39 @@ class SetupWizard extends Component
             $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin']);
             $superAdminRole->givePermissionTo(Permission::all());
 
-            // 6. Create Super Admin User
-            $user = User::create([
+            // 6. Create Super Admin User (only sending columns that actually exist in the table)
+            $userData = [
                 'name'     => $this->admin_name,
                 'email'    => $this->admin_email,
                 'password' => Hash::make($this->admin_password),
                 'role'     => 'admin',
-            ]);
+            ];
+
+            if (Schema::hasColumn('users', 'email_verified_at')) {
+                $userData['email_verified_at'] = now();
+            }
+
+            if (Schema::hasColumn('users', 'is_active')) {
+                $userData['is_active'] = true;
+            }
+
+            $user = User::create($userData);
 
             $user->assignRole($superAdminRole);
+
+            // 6b. Attach Super Admin to active session in session_user
+            if (Schema::hasTable('session_user') && $session) {
+                DB::table('session_user')->updateOrInsert(
+                    ['user_id' => $user->id, 'academic_session_id' => $session->id],
+                    [
+                        'is_active'      => true,
+                        'is_primary'     => true,
+                        'allowed_shifts' => 'both',
+                        'updated_at'     => now(),
+                        'created_at'     => now(),
+                    ]
+                );
+            }
 
             // 7. Mark application as installed and schedule product tour
             Setting::setGlobal('app_installed', true);
@@ -311,12 +378,18 @@ class SetupWizard extends Component
 
             // 8. Auto-authenticate the Super Admin user
             Auth::login($user);
+            if ($session) {
+                session([
+                    'current_session_id'           => $session->id,
+                    'selected_academic_session_id' => $session->id,
+                ]);
+            }
 
-            // 9. Redirect straight to the dashboard
-            return redirect()->route('dashboard');
+            // 9. Redirect straight to the admin dashboard
+            return redirect()->route('admin.dashboard');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('SIMS Setup Wizard finalization error: ' . $e->getMessage());
+            Log::error('SIMS Setup Wizard finalization error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->setup_error = 'Failed to finalize setup: ' . $e->getMessage();
         }
     }

@@ -47,16 +47,9 @@ FRANKEN_URL="https://github.com/dunglas/frankenphp/releases/latest/download/fran
 if curl -fSL --progress-bar "${FRANKEN_URL}" -o "${FRANKEN_ZIP}"; then
     echo -e "${GREEN}[OK] FrankenPHP downloaded. Extracting...${NC}"
     unzip -q -o "${FRANKEN_ZIP}" -d "${TMP_DIR}/franken_extracted"
-    # Find frankenphp.exe and move to runtime/
-    if [ -f "${TMP_DIR}/franken_extracted/frankenphp.exe" ]; then
-        mv "${TMP_DIR}/franken_extracted/frankenphp.exe" "${RUNTIME_DIR}/frankenphp.exe"
-    elif [ -f "${TMP_DIR}/franken_extracted/frankenphp-windows-x86_64.exe" ]; then
-        mv "${TMP_DIR}/franken_extracted/frankenphp-windows-x86_64.exe" "${RUNTIME_DIR}/frankenphp.exe"
-    else
-        # Find wherever .exe is
-        find "${TMP_DIR}/franken_extracted" -name "*.exe" -exec mv {} "${RUNTIME_DIR}/frankenphp.exe" \;
-    fi
-    echo -e "${GREEN}[OK] FrankenPHP installed to ${RUNTIME_DIR}/frankenphp.exe${NC}"
+    # Copy frankenphp.exe and all bundled DLLs (including libwatcher-c.dll) to runtime/
+    find "${TMP_DIR}/franken_extracted" -type f \( -name "*.exe" -o -name "*.dll" \) -exec cp -f {} "${RUNTIME_DIR}/" \;
+    echo -e "${GREEN}[OK] FrankenPHP and companion libraries installed to ${RUNTIME_DIR}/${NC}"
 else
     echo -e "${RED}[ERROR] Failed to download FrankenPHP from ${FRANKEN_URL}.${NC}"
     exit 1
