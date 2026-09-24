@@ -250,15 +250,31 @@ class Settings extends Component
         $this->updateErrorMessage = '';
 
         try {
-            $manifestSource = config('app.update_manifest_url', \App\Console\Commands\SimsUpdate::DEFAULT_MANIFEST_URL);
-            $response = \Illuminate\Support\Facades\Http::timeout(8)->get($manifestSource);
+            $manifestSource = trim(config('app.update_manifest_url', \App\Console\Commands\SimsUpdate::DEFAULT_MANIFEST_URL), " '\"");
+            $manifest = null;
 
-            if (!$response->successful()) {
+            if (str_starts_with($manifestSource, 'http://') || str_starts_with($manifestSource, 'https://')) {
+                $response = \Illuminate\Support\Facades\Http::timeout(8)->get($manifestSource);
+                if ($response->successful()) {
+                    $manifest = $response->json();
+                }
+            } else {
+                $filePath = str_starts_with($manifestSource, 'file://') ? substr($manifestSource, 7) : $manifestSource;
+                if (!file_exists($filePath)) {
+                    $filePath = base_path($manifestSource);
+                }
+                if (file_exists($filePath)) {
+                    $raw = file_get_contents($filePath);
+                    $clean = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+                    $manifest = json_decode(trim($clean), true);
+                }
+            }
+
+            if (!$manifest) {
                 $this->updateCheckMessage = 'Unable to reach the update server. Please verify your internet connection.';
                 return;
             }
 
-            $manifest = $response->json();
             $latest = trim($manifest['version'] ?? '');
             $this->latestVersion = $latest;
             $this->releaseNotes = $manifest['changelog'] ?? 'Maintenance updates and bug fixes.';
