@@ -1,0 +1,65 @@
+name: SIMS CI Test Suite
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: PHP Feature & Integrity Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP runtime
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl
+          coverage: none
+
+      - name: Validate composer.json
+        run: |
+          cd sims-app
+          composer validate --strict
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: sims-app/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('sims-app/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: |
+          cd sims-app
+          composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Lint PHP Syntax
+        run: |
+          find sims-app/app sims-app/routes sims-app/config -name "*.php" -print0 | xargs -0 -n1 -P4 php -l
+
+      - name: Prepare SQLite Environment & Migrate
+        run: |
+          cd sims-app
+          cp .env.example .env
+          touch database/database.sqlite
+          php artisan key:generate
+          php artisan migrate --force
+
+      - name: Run Test Suite
+        run: |
+          cd sims-app
+          php artisan test
+
+      - name: Verify Delta Patch Packaging (Dry Run)
+        run: |
+          chmod +x scripts/build/linux/build-patch.sh
+          ./scripts/build/linux/build-patch.sh "9.9.9-ci" "CI Packaging Integrity Validation" "8.2.0"
+          test -f dist/patches/sims-patch-v9.9.9-ci.zip
+          test -f dist/patches/manifest.json

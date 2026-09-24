@@ -1,0 +1,89 @@
+name: SIMS Release Delta Patch
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Target Version (e.g. 2.5.1)'
+        required: true
+      changelog:
+        description: 'Changelog / Release Notes'
+        required: false
+        default: 'Maintenance updates, bug fixes, and security patches.'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Delta Patch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Version and Changelog
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION="${VERSION#v}"
+            CHANGELOG="${{ github.event.inputs.changelog }}"
+          else
+            TAG_REF="${{ github.ref }}"
+            VERSION="${TAG_REF#refs/tags/v}"
+            CHANGELOG=$(git log -1 --pretty=%B)
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "changelog=${CHANGELOG}" >> $GITHUB_OUTPUT
+          echo "Building patch for version: ${VERSION}"
+
+      - name: Package Delta Patch Archive
+        run: |
+          chmod +x scripts/build/linux/build-patch.sh
+          ./scripts/build/linux/build-patch.sh "${{ steps.vars.outputs.version }}" "${{ steps.vars.outputs.changelog }}" "8.2.0"
+
+      - name: Copy Manifest to Repository Root
+        run: |
+          cp dist/patches/manifest.json manifest.json
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.vars.outputs.version }}
+          name: SIMS Release v${{ steps.vars.outputs.version }}
+          body: |
+            ### SIMS v${{ steps.vars.outputs.version }} Delta Patch Release
+            
+            **Changelog:**
+            ${{ steps.vars.outputs.changelog }}
+            
+            **Verification:**
+            - Checksum (SHA-256): `$(jq -r .checksum dist/patches/manifest.json)`
+            - Target Architecture: Windows / Linux Standalone Runtime
+          files: |
+            dist/patches/sims-patch-v${{ steps.vars.outputs.version }}.zip
+            dist/patches/manifest-v${{ steps.vars.outputs.version }}.json
+          draft: false
+          prerelease: false
+
+      - name: Commit Updated manifest.json to main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git pull origin main --rebase
+          cp dist/patches/manifest.json manifest.json
+          git add manifest.json
+          if git diff --staged --quiet; then
+            echo "manifest.json has not changed."
+          else
+            git commit -m "chore(release): update manifest.json to v${{ steps.vars.outputs.version }} [skip ci]"
+            git push origin main
+          fi
