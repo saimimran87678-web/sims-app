@@ -35,10 +35,20 @@ if /i "%ACTION%"=="help" goto :USAGE
 if /i "%ACTION%"=="--help" goto :USAGE
 if /i "%ACTION%"=="-h" goto :USAGE
 if /i "%ACTION%"=="status" goto :DO_STATUS
-if /i "%ACTION%"=="activate" goto :DO_ACTIVATE
+if /i "%ACTION%"=="activate" goto :DO_UPDATE
+echo ====================================================
+echo             SIMS Safe System Update Manager
+echo ====================================================
+cd /d "%APP_DIR%"
+"%PHP_BIN%" artisan sims:update %2 %3 %4 %5
+echo ====================================================
+exit /b %errorLevel%
+
+:DO_ACTIVATE
 if /i "%ACTION%"=="start" goto :CHECK_ELEVATION
 if /i "%ACTION%"=="stop" goto :CHECK_ELEVATION
 if /i "%ACTION%"=="restart" goto :CHECK_ELEVATION
+if /i "%ACTION%"=="update" goto :DO_UPDATE
 
 echo [ERROR] Unknown command: '%ACTION%'
 echo.
@@ -53,9 +63,10 @@ echo.
 echo Commands:
 echo   sims status              - Display health and status of all services
 echo   sims activate [key]      - Activate school license (reads .env if omitted)
-echo   sims start               - Start all background services (HTTPS & HTTP)
+echo   sims start               - Start all background services (HTTPS and HTTP)
 echo   sims stop                - Stop all services and release folder locks
 echo   sims restart             - Completely restart all services
+echo   sims update              - Check and apply automated delta updates safely
 echo ====================================================
 exit /b 0
 
@@ -75,9 +86,10 @@ echo  [4] Activate School License Key
 echo  [5] Refresh service status
 echo  [6] Open SIMS in web browser
 echo  [7] Trust SSL Certificate in Windows
+echo  [8] Check and Apply System Updates
 echo  [0] Exit
 echo ====================================================
-set /p "CHOICE=Enter choice (0-7): "
+set /p "CHOICE=Enter choice (0-8): "
 
 if "%CHOICE%"=="1" (
     set "ACTION=start"
@@ -93,13 +105,28 @@ if "%CHOICE%"=="3" (
 )
 if "%CHOICE%"=="4" (
     echo.
-    call :DO_ACTIVATE
+    call :DO_UPDATE
+echo ====================================================
+echo             SIMS Safe System Update Manager
+echo ====================================================
+cd /d "%APP_DIR%"
+"%PHP_BIN%" artisan sims:update %2 %3 %4 %5
+echo ====================================================
+exit /b %errorLevel%
+
+:DO_ACTIVATE
     pause
     goto :INTERACTIVE_MENU
 )
 if "%CHOICE%"=="5" goto :INTERACTIVE_MENU
 if "%CHOICE%"=="6" (
     start https://localhost
+    goto :INTERACTIVE_MENU
+)
+if "%CHOICE%"=="8" (
+    echo.
+    call :DO_UPDATE
+    pause
     goto :INTERACTIVE_MENU
 )
 if "%CHOICE%"=="7" (
@@ -124,6 +151,15 @@ if /i "%ACTION%"=="start" goto :DO_START
 if /i "%ACTION%"=="stop" goto :DO_STOP
 if /i "%ACTION%"=="restart" goto :DO_RESTART
 exit /b 0
+
+:DO_UPDATE
+echo ====================================================
+echo             SIMS Safe System Update Manager
+echo ====================================================
+cd /d "%APP_DIR%"
+"%PHP_BIN%" artisan sims:update %2 %3 %4 %5
+echo ====================================================
+exit /b %errorLevel%
 
 :DO_ACTIVATE
 echo ====================================================

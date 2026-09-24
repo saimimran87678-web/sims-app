@@ -55,6 +55,15 @@ case "${ACTION}" in
         cd "${APP_DIR}"
         php artisan license:activate "${2:-}" "${3:-}"
         ;;
+    update)
+        echo "===================================================="
+        echo "          SIMS Safe System Update Manager"
+        echo "===================================================="
+        cd "${APP_DIR}"
+        shift || true
+        php artisan sims:update "$@"
+        echo "===================================================="
+        ;;
     logs)
         if command -v journalctl >/dev/null 2>&1; then
             journalctl -u sims-web -n 50 --no-pager
@@ -74,6 +83,7 @@ case "${ACTION}" in
         echo "  stop          - Stop all services"
         echo "  restart       - Restart all services"
         echo "  activate [key]- Activate school license"
+        echo "  update        - Check and apply automated delta updates safely"
         echo "  logs          - View recent service and application logs"
         echo "===================================================="
         exit 0

@@ -260,6 +260,7 @@ class SimsUpdate extends Command
     protected function fetchManifest(string $source): ?array
     {
         try {
+            $source = trim($source, " '\"");
             if (str_starts_with($source, 'http://') || str_starts_with($source, 'https://')) {
                 $response = Http::timeout(10)->get($source);
                 return $response->successful() ? $response->json() : null;
@@ -273,7 +274,9 @@ class SimsUpdate extends Command
             }
 
             if (file_exists($filePath)) {
-                return json_decode(file_get_contents($filePath), true);
+                $raw = file_get_contents($filePath);
+                $clean = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+                return json_decode(trim($clean), true);
             }
         } catch (\Throwable $e) {
             Log::debug("SIMS manifest fetch failed: " . $e->getMessage());
@@ -288,6 +291,7 @@ class SimsUpdate extends Command
     protected function downloadPackage(string $url, string $dest): bool
     {
         try {
+            $url = trim($url, " '\"");
             if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
                 $response = Http::timeout(180)->get($url);
                 if (!$response->successful()) {

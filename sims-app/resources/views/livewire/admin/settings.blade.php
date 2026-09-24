@@ -339,6 +339,102 @@
         </form>
     </div>
 
+    {{-- System Updates & Version Integrity Card --}}
+    <div class="glass-card p-8 rounded-2xl bg-white shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800">System Updates & Integrity</h2>
+                    <p class="text-xs text-gray-500 font-medium">Over-the-air automated delta updates with safe rollback protection</p>
+                </div>
+            </div>
+            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Active: v{{ $currentVersion }}
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">Cryptographic Integrity</span>
+                <span class="text-xs font-mono text-gray-700 break-all">{{ $lastUpdateChecksum }}</span>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">Last Updated</span>
+                <span class="text-xs font-medium text-gray-700">{{ $lastUpdatedAt }}</span>
+            </div>
+        </div>
+
+        {{-- Status Messages --}}
+        @if ($updateCheckMessage)
+            <div class="p-4 mb-6 rounded-xl text-sm flex items-center gap-2 {{ $updateAvailable ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-blue-50 border border-blue-200 text-blue-700' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {{ $updateCheckMessage }}
+            </div>
+        @endif
+
+        @if ($updateSuccessMessage)
+            <div class="p-4 mb-6 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {{ $updateSuccessMessage }}
+            </div>
+        @endif
+
+        @if ($updateErrorMessage)
+            <div class="p-4 mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {{ $updateErrorMessage }}
+            </div>
+        @endif
+
+        {{-- Update Available Banner --}}
+        @if ($updateAvailable)
+            <div class="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-base font-bold text-gray-900">New Release Ready: v{{ $latestVersion }}</h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-600 text-white">Delta Patch</span>
+                </div>
+                <p class="text-sm text-gray-700 mb-4 whitespace-pre-line">{{ $releaseNotes }}</p>
+                <div class="flex items-center justify-between pt-3 border-t border-blue-100">
+                    <span class="text-xs text-gray-500">🛡️ Database & uploads will be auto-backed up before update.</span>
+                    <button
+                        type="button"
+                        wire:click="applyUpdate"
+                        wire:loading.attr="disabled"
+                        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                        <span wire:loading.remove wire:target="applyUpdate">Install & Apply Update</span>
+                        <span wire:loading wire:target="applyUpdate">Applying Update...</span>
+                    </button>
+                </div>
+            </div>
+        @endif
+
+        {{-- Action Bar --}}
+        <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+            <span class="text-xs text-gray-400">Nightly automated check runs automatically at 02:00 AM.</span>
+            <button
+                type="button"
+                wire:click="checkForUpdates"
+                wire:loading.attr="disabled"
+                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+                <span wire:loading.remove wire:target="checkForUpdates">Check for Updates</span>
+                <span wire:loading wire:target="checkForUpdates">Checking Server...</span>
+            </button>
+        </div>
+    </div>
+
     {{-- System Powered-By Info --}}
     <div class="glass-card p-6 rounded-2xl bg-gray-50 border border-gray-100 text-gray-500 text-sm">
         <p class="flex items-center gap-2">

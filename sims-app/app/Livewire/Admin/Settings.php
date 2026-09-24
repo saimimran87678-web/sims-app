@@ -22,6 +22,17 @@ class Settings extends Component
     public $admin_action_pin = '';
     public $successMessage = '';
 
+    // System Update Properties
+    public $currentVersion = '2.5.0';
+    public $lastUpdateChecksum = 'Initial Installation';
+    public $lastUpdatedAt = 'Initial Installation';
+    public $updateAvailable = false;
+    public $latestVersion = '';
+    public $releaseNotes = '';
+    public $updateCheckMessage = '';
+    public $updateSuccessMessage = '';
+    public $updateErrorMessage = '';
+
     // Security Verification Modal Fields
     public $isSecurityVerificationModalOpen = false;
     public $verificationMethod = 'password'; // 'password' or 'otp'
@@ -56,6 +67,11 @@ class Settings extends Component
         $this->default_session_shift_mode = Setting::getGlobal('default_session_shift_mode', 'Regular');
         $this->admin_action_pin_enabled = (bool) Setting::get('admin_action_pin_enabled', false);
         $this->admin_action_pin = Setting::get('admin_action_pin', '');
+
+        // Initialize Version & Integrity status
+        $this->currentVersion = config('app.version', '2.5.0');
+        $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'None (Initial Installation)');
+        $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', 'Initial Installation');
     }
 
     public function updatedAdminActionPinEnabled($value)
@@ -225,6 +241,61 @@ class Settings extends Component
         }
         $this->logo = null;
         session()->flash('status', 'Logo removed successfully.');
+    }
+
+    public function checkForUpdates()
+    {
+        $this->updateCheckMessage = '';
+        $this->updateSuccessMessage = '';
+        $this->updateErrorMessage = '';
+
+        try {
+            $manifestSource = config('app.update_manifest_url', \App\Console\Commands\SimsUpdate::DEFAULT_MANIFEST_URL);
+            $response = \Illuminate\Support\Facades\Http::timeout(8)->get($manifestSource);
+
+            if (!$response->successful()) {
+                $this->updateCheckMessage = 'Unable to reach the update server. Please verify your internet connection.';
+                return;
+            }
+
+            $manifest = $response->json();
+            $latest = trim($manifest['version'] ?? '');
+            $this->latestVersion = $latest;
+            $this->releaseNotes = $manifest['changelog'] ?? 'Maintenance updates and bug fixes.';
+
+            if (!empty($latest) && version_compare($latest, $this->currentVersion, '>')) {
+                $this->updateAvailable = true;
+                $this->updateCheckMessage = "A newer version (v{$latest}) is available to install!";
+            } else {
+                $this->updateAvailable = false;
+                $this->updateCheckMessage = "Your system is up to date (v{$this->currentVersion}).";
+            }
+        } catch (\Throwable $e) {
+            $this->updateCheckMessage = 'Update check failed: ' . $e->getMessage();
+        }
+    }
+
+    public function applyUpdate()
+    {
+        $this->updateSuccessMessage = '';
+        $this->updateErrorMessage = '';
+
+        try {
+            $exitCode = \Illuminate\Support\Facades\Artisan::call('sims:update');
+            $output = \Illuminate\Support\Facades\Artisan::output();
+
+            if ($exitCode === 0) {
+                $this->updateSuccessMessage = 'System successfully updated! All services and database migrations are synchronized.';
+                $this->updateAvailable = false;
+                $this->currentVersion = config('app.version', '2.5.0');
+                $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'None');
+                $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', now()->toIso8601String());
+            } else {
+                $this->updateErrorMessage = 'Update could not be completed cleanly. The automatic rollback safeguard restored your previous version and database safely.';
+            }
+        } catch (\Throwable $e) {
+            $this->updateErrorMessage = 'Update execution error: ' . $e->getMessage();
+        }
     }
 
     public function render()
