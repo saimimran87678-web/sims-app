@@ -19,7 +19,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl, gd, fileinfo, openssl, pdo
           coverage: none
 
       - name: Validate composer.json
@@ -55,7 +55,7 @@ jobs:
       - name: Run Test Suite
         run: |
           cd sims-app
-          php artisan test
+          php artisan test --env=testing
 
       - name: Verify Delta Patch Packaging (Dry Run)
         run: |

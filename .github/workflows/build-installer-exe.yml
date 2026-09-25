@@ -8,6 +8,7 @@ on:
         required: true
         default: '2.5.0'
   push:
+    branches: [ main ]
     tags:
       - 'v*.*.*'
 
@@ -29,13 +30,13 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl, gd, fileinfo
           coverage: none
 
       - name: Optimize Composer Autoloader for Production
         run: |
           cd sims-app
-          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --quiet
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --ignore-platform-reqs
 
       - name: Download Portable Windows Runtime (FrankenPHP & PHP 8.2)
         shell: pwsh
@@ -54,6 +55,12 @@ jobs:
             $ver = "2.5.0"
           }
           echo "version=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Install Inno Setup Compiler
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
 
       - name: Compile SIMS-Installer.exe
         shell: pwsh
