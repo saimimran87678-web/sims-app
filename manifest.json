@@ -1,0 +1,10 @@
+{
+  "version": "2.5.1",
+  "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.1/sims-patch-v2.5.1.zip",
+  "checksum": "5e0e811f441aa1b89022eba276ebdbfaa9f6ff9827aec04addf71fbcf59ad2ff",
+  "sha256": "5e0e811f441aa1b89022eba276ebdbfaa9f6ff9827aec04addf71fbcf59ad2ff",
+  "min_php_version": "8.2.0",
+  "changelog": "release(v2.5.1): update manifest packaging, repo URLs, and same-version checksum check",
+  "size_bytes": 608514,
+  "released_at": "2026-09-25T17:48:35Z"
+}
