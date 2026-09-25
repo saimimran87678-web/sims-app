@@ -7,7 +7,7 @@ set -euo pipefail
 VERSION="${1:-}"
 CHANGELOG="${2:-Maintenance release, bug fixes, and security patches.}"
 MIN_PHP_VERSION="${3:-8.2.0}"
-REPO_URL="https://github.com/saimimran87678/SIMS"
+REPO_URL="https://github.com/saimimran87678-web/sims-app"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT_DIR="$( cd "${SCRIPT_DIR}/../../.." >/dev/null 2>&1 && pwd )"

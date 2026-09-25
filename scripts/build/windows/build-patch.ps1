@@ -29,7 +29,7 @@ param(
     [string]$MinPhpVersion = "8.2.0",
 
     [Parameter()]
-    [string]$RepoUrl = "https://github.com/saimimran87678/SIMS"
+    [string]$RepoUrl = "https://github.com/saimimran87678-web/sims-app"
 )
 
 Set-StrictMode -Version Latest

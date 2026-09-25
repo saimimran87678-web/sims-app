@@ -33,7 +33,7 @@ class SimsUpdate extends Command
     /**
      * Default manifest URL (hosted on GitHub Pages or CDN)
      */
-    public const DEFAULT_MANIFEST_URL = 'https://raw.githubusercontent.com/saimimran87678/SIMS/main/manifest.json';
+    public const DEFAULT_MANIFEST_URL = 'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json';
 
     /**
      * Execute the console command.
@@ -83,7 +83,9 @@ class SimsUpdate extends Command
             return 1;
         }
 
-        $isNewer = version_compare($latestVersion, $currentVersion, '>');
+        $installedChecksum = Setting::getGlobal('last_update_checksum', '');
+        $isChecksumDiff = (!empty($expectedHash) && !empty($installedChecksum) && !hash_equals($installedChecksum, $expectedHash));
+        $isNewer = version_compare($latestVersion, $currentVersion, '>') || $isChecksumDiff;
         $isForce = (bool) $this->option('force');
 
         // ── Handle --check option ─────────────────────────────────────
@@ -98,7 +100,10 @@ class SimsUpdate extends Command
             $this->info("==========================================");
 
             if ($isNewer) {
-                $this->info("🚀 A newer version (v{$latestVersion}) is available to install.");
+                $msg = ($isChecksumDiff && !version_compare($latestVersion, $currentVersion, '>'))
+                    ? "🚀 A hotfix patch for v{$latestVersion} is available to install (checksum updated)."
+                    : "🚀 A newer version (v{$latestVersion}) is available to install.";
+                $this->info($msg);
             } else {
                 $this->info("✨ SIMS is up to date (v{$currentVersion}).");
             }
@@ -112,6 +117,8 @@ class SimsUpdate extends Command
 
         if ($isForce && !$isNewer) {
             $this->warn("⚠️ Force-reapplying version v{$latestVersion} over current v{$currentVersion}.");
+        } elseif ($isChecksumDiff && !version_compare($latestVersion, $currentVersion, '>')) {
+            $this->info("🚀 Applying hotfix patch for v{$latestVersion} (checksum updated)");
         } else {
             $this->info("🚀 Applying update: v{$currentVersion} → v{$latestVersion}");
         }

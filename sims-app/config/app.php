@@ -15,9 +15,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
-    'version' => env('APP_VERSION', '2.5.0'),
+    'version' => env('APP_VERSION', '2.5.1'),
 
-    'update_manifest_url' => env('UPDATE_MANIFEST_URL', 'https://raw.githubusercontent.com/saimimran87678/SIMS/main/manifest.json'),
+    'update_manifest_url' => env('UPDATE_MANIFEST_URL', 'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json'),
 
     /*
     |--------------------------------------------------------------------------

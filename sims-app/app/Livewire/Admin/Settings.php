@@ -279,9 +279,15 @@ class Settings extends Component
             $this->latestVersion = $latest;
             $this->releaseNotes = $manifest['changelog'] ?? 'Maintenance updates and bug fixes.';
 
-            if (!empty($latest) && version_compare($latest, $this->currentVersion, '>')) {
+            $installedChecksum = Setting::getGlobal('last_update_checksum', '');
+            $manifestHash = strtolower(trim($manifest['checksum'] ?? $manifest['sha256'] ?? ''));
+            $isChecksumDiff = (!empty($manifestHash) && !empty($installedChecksum) && !hash_equals($installedChecksum, $manifestHash));
+
+            if (!empty($latest) && (version_compare($latest, $this->currentVersion, '>') || $isChecksumDiff)) {
                 $this->updateAvailable = true;
-                $this->updateCheckMessage = "A newer version (v{$latest}) is available to install!";
+                $this->updateCheckMessage = ($isChecksumDiff && !version_compare($latest, $this->currentVersion, '>'))
+                    ? "A hotfix patch for v{$latest} is available to install!"
+                    : "A newer version (v{$latest}) is available to install!";
             } else {
                 $this->updateAvailable = false;
                 $this->updateCheckMessage = "Your system is up to date (v{$this->currentVersion}).";
