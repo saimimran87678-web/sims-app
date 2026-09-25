@@ -1,10 +1,10 @@
 {
   "version": "2.5.1",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.1/sims-patch-v2.5.1.zip",
-  "checksum": "1792c99865276be761cb864dbccee66e21946516b49e519258816dcfcd9c702b",
-  "sha256": "1792c99865276be761cb864dbccee66e21946516b49e519258816dcfcd9c702b",
+  "checksum": "b94f38d94b770bf45885ca1ea93b00b007ccd7400f06565cd1dcb12b74ec9e35",
+  "sha256": "b94f38d94b770bf45885ca1ea93b00b007ccd7400f06565cd1dcb12b74ec9e35",
   "min_php_version": "8.2.0",
-  "changelog": "feat: add Adminova light theme desktop control panel, app icons, and fix unattended installer hang",
-  "size_bytes": 1138050,
-  "released_at": "2026-09-25T18:49:41Z"
+  "changelog": "feat: native Control Center executable, server startup fixes, and same-version hotfix detection",
+  "size_bytes": 1146022,
+  "released_at": "2026-09-25T19:32:24Z"
 }
