@@ -55,28 +55,30 @@ if (-not $CscExe) {
 
 Write-Host "[INFO] Using C# Compiler: $CscExe" -ForegroundColor Yellow
 
-$IconArg = ""
-if (Test-Path $IconFile) {
-    $IconArg = "/win32icon:`"$IconFile`""
-}
-
 $Arguments = @(
     "/target:winexe",
     "/optimize+",
-    "/platform:anycpu",
-    $IconArg,
-    "/out:`"$OutputFile`"",
-    "/r:System.dll,System.Windows.Forms.dll,System.Drawing.dll",
-    "`"$SourceFile`""
-) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    "/platform:anycpu"
+)
 
+if (Test-Path $IconFile) {
+    $Arguments += "/win32icon:$IconFile"
+}
+
+$Arguments += "/out:$OutputFile"
+$Arguments += "/r:System.dll,System.Windows.Forms.dll,System.Drawing.dll"
+$Arguments += $SourceFile
+
+Write-Host "[INFO] Compiling executable..." -ForegroundColor Yellow
 & $CscExe $Arguments
 
 if ($LASTEXITCODE -eq 0 -and (Test-Path $OutputFile)) {
     Write-Host ""
     Write-Host "[OK] Adminova-Control-Center.exe compiled successfully!" -ForegroundColor Green
     Write-Host " Output: $OutputFile" -ForegroundColor Green
+    Write-Host " Size  : $((Get-Item $OutputFile).Length) bytes" -ForegroundColor Green
     Write-Host "====================================================" -ForegroundColor Cyan
+    exit 0
 } else {
     Write-Host "[ERROR] Compilation failed with exit code $LASTEXITCODE!" -ForegroundColor Red
     exit 1

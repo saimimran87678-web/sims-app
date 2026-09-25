@@ -48,7 +48,7 @@ Source: "..\..\..\resources\icons\*"; DestDir: "{app}\resources\icons"; Flags: i
 ; Root Launcher scripts
 Source: "..\..\..\install.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\sims.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\manifest.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\..\control-center.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\control-center.bat"; DestDir: "{app}"; Flags: ignoreversion
@@ -65,7 +65,7 @@ Name: "{autodesktop}\Adminova School Portal"; Filename: "https://localhost"; Ico
 [Run]
 ; Run automated initial installation and service registration in unattended mode
 Filename: "{app}\install.bat"; Parameters: "--unattended"; StatusMsg: "Configuring database, background services, and SSL certificates..."; Flags: runhidden waituntilterminated
-Filename: "{app}\Adminova-Control-Center.exe"; Description: "Launch Adminova Control Center"; Flags: postinstall nowait skipifdoesntexist
+Filename: "{app}\Adminova-Control-Center.exe"; Description: "Launch Adminova Control Center"; Flags: postinstall nowait
 Filename: "https://localhost"; Description: "Open SIMS in web browser"; Flags: postinstall shellexec nowait
 
 [Code]

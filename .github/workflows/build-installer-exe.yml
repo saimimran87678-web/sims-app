@@ -84,6 +84,15 @@ jobs:
           choco install innosetup --no-progress -y
           echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
 
+      - name: Compile Native Adminova-Control-Center.exe
+        shell: pwsh
+        run: |
+          .\scripts\build\windows\compile-control-center.ps1
+          if (-not (Test-Path .\Adminova-Control-Center.exe)) {
+            Write-Error "Adminova-Control-Center.exe compilation failed or file not found!"
+            exit 1
+          }
+
       - name: Compile SIMS-Installer.exe
         shell: pwsh
         run: |

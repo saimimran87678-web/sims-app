@@ -102,12 +102,13 @@ Write-Success "Found Inno Setup Compiler: $IsccExe"
 $CompileScript = Join-Path $ScriptDir "compile-control-center.ps1"
 if (Test-Path $CompileScript) {
     Write-Info "Compiling native Adminova-Control-Center.exe..."
-    try {
-        & $CompileScript
-    } catch {
-        Write-Failure "Failed to compile Adminova-Control-Center.exe: $_"
+    & $CompileScript
+    $CompiledExe = Join-Path $RootDir "Adminova-Control-Center.exe"
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $CompiledExe)) {
+        Write-Failure "Failed to compile Adminova-Control-Center.exe (Exit code: $LASTEXITCODE)!"
         exit 1
     }
+    Write-Success "Adminova-Control-Center.exe verified at $CompiledExe"
 }
 
 # 3. Compile Installer

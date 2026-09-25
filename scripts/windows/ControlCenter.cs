@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Diagnostics;
 using System.Windows.Forms;
 using System.Threading;
-using System.Text.RegularExpressions;
+using System.Text;
 
 namespace Adminova.ControlCenter
 {
@@ -47,8 +47,24 @@ namespace Adminova.ControlCenter
         {
             InitializeEnvironment();
             InitializeComponents();
-            DetectLanIp();
-            CheckServerStatusAsync();
+
+            this.Load += (s, e) => {
+                DetectLanIp();
+                CheckServerStatusAsync();
+            };
+        }
+
+        private void SafeInvoke(Action action)
+        {
+            if (this.IsDisposed) return;
+            try
+            {
+                if (this.IsHandleCreated)
+                {
+                    this.BeginInvoke(action);
+                }
+            }
+            catch { }
         }
 
         private void InitializeEnvironment()
@@ -352,9 +368,9 @@ namespace Adminova.ControlCenter
                 catch { }
 
                 lanIp = ip;
-                this.Invoke(new Action(() => {
+                SafeInvoke(() => {
                     lblLanAddress.Text = "School LAN: https://" + lanIp + " (Port 443/80)";
-                }));
+                });
             });
         }
 
@@ -393,7 +409,7 @@ namespace Adminova.ControlCenter
                     detail = "Port 8000 (Fallback Server Active)";
                 }
 
-                this.Invoke(new Action(() => {
+                SafeInvoke(() => {
                     currentUrl = activeUrl;
                     if (isOnline)
                     {
@@ -419,7 +435,7 @@ namespace Adminova.ControlCenter
                         btnStop.Enabled = false;
                         btnRestart.Enabled = false;
                     }
-                }));
+                });
             });
         }
 
@@ -465,11 +481,11 @@ namespace Adminova.ControlCenter
             ThreadPool.QueueUserWorkItem(state => {
                 RunCommand("cmd.exe", "/c \"" + simsBat + "\" start", rootDir);
                 Thread.Sleep(2000);
-                this.Invoke(new Action(() => {
+                SafeInvoke(() => {
                     isOperationRunning = false;
                     SetActionButtonsEnabled(true);
                     CheckServerStatusAsync();
-                }));
+                });
             });
         }
 
@@ -483,11 +499,11 @@ namespace Adminova.ControlCenter
             ThreadPool.QueueUserWorkItem(state => {
                 RunCommand("cmd.exe", "/c \"" + simsBat + "\" stop", rootDir);
                 Thread.Sleep(1000);
-                this.Invoke(new Action(() => {
+                SafeInvoke(() => {
                     isOperationRunning = false;
                     SetActionButtonsEnabled(true);
                     CheckServerStatusAsync();
-                }));
+                });
             });
         }
 
@@ -501,11 +517,11 @@ namespace Adminova.ControlCenter
             ThreadPool.QueueUserWorkItem(state => {
                 RunCommand("cmd.exe", "/c \"" + simsBat + "\" restart", rootDir);
                 Thread.Sleep(2000);
-                this.Invoke(new Action(() => {
+                SafeInvoke(() => {
                     isOperationRunning = false;
                     SetActionButtonsEnabled(true);
                     CheckServerStatusAsync();
-                }));
+                });
             });
         }
 
@@ -519,7 +535,7 @@ namespace Adminova.ControlCenter
             ThreadPool.QueueUserWorkItem(state => {
                 string checkOutput = RunCommand(phpBin, "artisan sims:update --check", appDir);
 
-                this.Invoke(new Action(() => {
+                SafeInvoke(() => {
                     isOperationRunning = false;
                     SetActionButtonsEnabled(true);
 
@@ -544,7 +560,7 @@ namespace Adminova.ControlCenter
                     {
                         MessageBox.Show("Your SIMS installation is up to date!\nYou are running the latest version.", "System Up to Date", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-                }));
+                });
             });
         }
 
@@ -563,7 +579,7 @@ namespace Adminova.ControlCenter
                 RunCommand("cmd.exe", "/c \"" + simsBat + "\" start", rootDir);
                 Thread.Sleep(2000);
 
-                this.Invoke(new Action(() => {
+                SafeInvoke(() => {
                     isOperationRunning = false;
                     SetActionButtonsEnabled(true);
                     CheckServerStatusAsync();
@@ -576,7 +592,7 @@ namespace Adminova.ControlCenter
                     {
                         MessageBox.Show("The update operation finished. Please check the Activity Log for details.", "Update Result", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-                }));
+                });
             });
         }
 
@@ -602,7 +618,7 @@ namespace Adminova.ControlCenter
                 psi.RedirectStandardOutput = true;
                 psi.RedirectStandardError = true;
 
-                System.Text.StringBuilder outputBuilder = new System.Text.StringBuilder();
+                StringBuilder outputBuilder = new StringBuilder();
                 using (Process proc = new Process())
                 {
                     proc.StartInfo = psi;
@@ -638,14 +654,16 @@ namespace Adminova.ControlCenter
 
         private void LogMessage(string message)
         {
-            if (this.IsDisposed || !this.IsHandleCreated) return;
-
-            this.BeginInvoke(new Action(() => {
-                string time = DateTime.Now.ToString("HH:mm:ss");
-                txtLog.AppendText("[" + time + "] " + message + Environment.NewLine);
-                txtLog.SelectionStart = txtLog.Text.Length;
-                txtLog.ScrollToCaret();
-            }));
+            SafeInvoke(() => {
+                try
+                {
+                    string time = DateTime.Now.ToString("HH:mm:ss");
+                    txtLog.AppendText("[" + time + "] " + message + Environment.NewLine);
+                    txtLog.SelectionStart = txtLog.Text.Length;
+                    txtLog.ScrollToCaret();
+                }
+                catch { }
+            });
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
