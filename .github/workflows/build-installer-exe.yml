@@ -1,0 +1,74 @@
+name: Build Windows SIMS-Installer.exe
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Target Installer Version (e.g. 2.5.0)'
+        required: true
+        default: '2.5.0'
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-exe:
+    name: Compile SIMS-Installer.exe (Inno Setup)
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP runtime for Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl
+          coverage: none
+
+      - name: Optimize Composer Autoloader for Production
+        run: |
+          cd sims-app
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --quiet
+
+      - name: Download Portable Windows Runtime (FrankenPHP & PHP 8.2)
+        shell: pwsh
+        run: |
+          .\scripts\build\windows\download-runtime.ps1
+
+      - name: Resolve Version
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $ver = "${{ github.event.inputs.version }}".TrimStart('v')
+          } elseif ("${{ github.ref }}".StartsWith("refs/tags/v")) {
+            $ver = "${{ github.ref }}".Substring(11)
+          } else {
+            $ver = "2.5.0"
+          }
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Compile SIMS-Installer.exe
+        shell: pwsh
+        run: |
+          .\scripts\build\windows\build-installer.ps1 -Version "${{ steps.vars.outputs.version }}"
+
+      - name: Upload Installer Executable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SIMS-Installer-v${{ steps.vars.outputs.version }}-exe
+          path: dist/installer/SIMS-Installer-*.exe
+          if-no-files-found: error
+
+      - name: Attach Installer to GitHub Release (If Tagged)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/installer/SIMS-Installer-*.exe

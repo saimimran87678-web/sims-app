@@ -79,7 +79,7 @@ class SetupWizardTest extends TestCase
             ->set('admin_password_confirmation', 'password123')
             ->call('finishSetup')
             ->assertHasNoErrors()
-            ->assertRedirect(route('dashboard'));
+            ->assertRedirect(route('admin.dashboard'));
 
         // Verify Database State
         $this->assertEquals('Test Islamic Academy', Setting::getGlobal('institute_name'));

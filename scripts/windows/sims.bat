@@ -35,16 +35,7 @@ if /i "%ACTION%"=="help" goto :USAGE
 if /i "%ACTION%"=="--help" goto :USAGE
 if /i "%ACTION%"=="-h" goto :USAGE
 if /i "%ACTION%"=="status" goto :DO_STATUS
-if /i "%ACTION%"=="activate" goto :DO_UPDATE
-echo ====================================================
-echo             SIMS Safe System Update Manager
-echo ====================================================
-cd /d "%APP_DIR%"
-"%PHP_BIN%" artisan sims:update %2 %3 %4 %5
-echo ====================================================
-exit /b %errorLevel%
-
-:DO_ACTIVATE
+if /i "%ACTION%"=="activate" goto :DO_ACTIVATE
 if /i "%ACTION%"=="start" goto :CHECK_ELEVATION
 if /i "%ACTION%"=="stop" goto :CHECK_ELEVATION
 if /i "%ACTION%"=="restart" goto :CHECK_ELEVATION
@@ -105,16 +96,7 @@ if "%CHOICE%"=="3" (
 )
 if "%CHOICE%"=="4" (
     echo.
-    call :DO_UPDATE
-echo ====================================================
-echo             SIMS Safe System Update Manager
-echo ====================================================
-cd /d "%APP_DIR%"
-"%PHP_BIN%" artisan sims:update %2 %3 %4 %5
-echo ====================================================
-exit /b %errorLevel%
-
-:DO_ACTIVATE
+    call :DO_ACTIVATE
     pause
     goto :INTERACTIVE_MENU
 )
