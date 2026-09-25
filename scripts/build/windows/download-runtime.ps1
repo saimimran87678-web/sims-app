@@ -55,7 +55,7 @@ if (Test-Path $FrankenExe) {
 } else {
     Write-Host "[1/3] Downloading FrankenPHP for Windows (x86_64)..." -ForegroundColor Blue
     $FrankenZip = Join-Path $TmpDir "frankenphp.zip"
-    $FrankenUrl = "https://github.com/dunglas/frankenphp/releases/latest/download/frankenphp-windows-x86_64.zip"
+    $FrankenUrl = "https://github.com/php/frankenphp/releases/latest/download/frankenphp-windows-x86_64.zip"
     
     $downloadSuccess = Save-FileWithFallback -Url $FrankenUrl -OutputFile $FrankenZip
     if (-not $downloadSuccess) {
