@@ -11,5 +11,6 @@ if exist "%~dp0scripts\windows\install.bat" (
 echo [ERROR] Installer engine not found at scripts\windows\install.bat!
 echo Please ensure the release package was extracted completely.
 echo.
+if /i "%~1"=="--unattended" exit /b 1
 pause
 exit /b 1

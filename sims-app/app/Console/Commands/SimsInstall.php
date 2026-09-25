@@ -110,6 +110,29 @@ class SimsInstall extends Command
             return 1;
         }
 
+        // 4b. Seed initial installation checksum and version if manifest is present
+        $manifestCandidates = [
+            base_path('../manifest.json'),
+            base_path('manifest.json'),
+            base_path('public/build/manifest.json')
+        ];
+        foreach ($manifestCandidates as $candidate) {
+            if (File::exists($candidate)) {
+                $raw = File::get($candidate);
+                $clean = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+                $manifestData = json_decode(trim($clean), true);
+                if (is_array($manifestData) && !empty($manifestData['version']) && (!empty($manifestData['checksum']) || !empty($manifestData['sha256']))) {
+                    $chk = strtolower(trim($manifestData['checksum'] ?? $manifestData['sha256']));
+                    $ver = trim($manifestData['version']);
+                    \App\Models\Setting::setGlobal('last_update_checksum', $chk);
+                    \App\Models\Setting::setGlobal('installed_version', $ver);
+                    \App\Models\Setting::setGlobal('last_updated_at', now()->toIso8601String());
+                    $this->info("🔖 Seeded release tracking metadata: v{$ver} ({$chk})");
+                    break;
+                }
+            }
+        }
+
         // 5. Ensure storage symlink exists
         try {
             Artisan::call('storage:link', ['--force' => true]);

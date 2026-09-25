@@ -24,7 +24,7 @@ if defined ROOT_CRT goto :FOUND_CRT
 
 set /a CRT_TRIES+=1
 if %CRT_TRIES% lss 6 (
-    timeout /t 1 /nobreak >nul
+    ping 127.0.0.1 -n 2 >nul
     goto :CHECK_CRT_LOOP
 )
 

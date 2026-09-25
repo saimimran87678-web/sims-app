@@ -82,6 +82,46 @@ class AutoUpdateTest extends TestCase
             ->assertExitCode(0);
     }
 
+    public function test_same_version_hotfix_detected_when_checksum_differs(): void
+    {
+        Setting::setGlobal('last_update_checksum', 'oldchecksum11111111111111111111111111111111111111111111111111111111');
+
+        $manifestPath = $this->tempDir . '/manifest.json';
+        $manifestData = [
+            'version'         => '2.5.0', // Same as current config version
+            'download_url'    => 'https://example.com/sims-v2.5.0-patch.zip',
+            'checksum'        => 'newchecksum22222222222222222222222222222222222222222222222222222222',
+            'min_php_version' => '8.2.0',
+            'changelog'       => 'Critical hotfix patch for v2.5.0',
+        ];
+        File::put($manifestPath, json_encode($manifestData));
+
+        $this->artisan("sims:update --check --manifest={$manifestPath}")
+            ->expectsOutputToContain('SIMS Update Check')
+            ->expectsOutputToContain('A hotfix patch for v2.5.0 is available to install (checksum updated).')
+            ->assertExitCode(0);
+    }
+
+    public function test_same_version_hotfix_detected_when_installed_checksum_is_empty(): void
+    {
+        Setting::setGlobal('last_update_checksum', '');
+
+        $manifestPath = $this->tempDir . '/manifest.json';
+        $manifestData = [
+            'version'         => '2.5.0', // Same as current config version
+            'download_url'    => 'https://example.com/sims-v2.5.0-patch.zip',
+            'checksum'        => 'newchecksum33333333333333333333333333333333333333333333333333333333',
+            'min_php_version' => '8.2.0',
+            'changelog'       => 'Initial hotfix patch for v2.5.0',
+        ];
+        File::put($manifestPath, json_encode($manifestData));
+
+        $this->artisan("sims:update --check --manifest={$manifestPath}")
+            ->expectsOutputToContain('SIMS Update Check')
+            ->expectsOutputToContain('A hotfix patch for v2.5.0 is available to install (checksum updated).')
+            ->assertExitCode(0);
+    }
+
     public function test_update_aborts_when_sha256_checksum_mismatches(): void
     {
         $zipPath = $this->tempDir . '/sims-v2.6.0.zip';

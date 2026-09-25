@@ -65,8 +65,15 @@ if [ -d "${ROOT_DIR}/scripts" ]; then
     echo "  - Included: scripts/ (operational runners)"
 fi
 
+# Include resources and icons if present
+if [ -d "${ROOT_DIR}/resources/icons" ]; then
+    mkdir -p "${STAGING_DIR}/resources"
+    cp -r "${ROOT_DIR}/resources/icons" "${STAGING_DIR}/resources/"
+    echo "  - Included: resources/icons (Adminova branding)"
+fi
+
 # Top-level launchers
-for LAUNCHER in install.bat install.sh sims.bat; do
+for LAUNCHER in install.bat install.sh sims.bat control-center.bat control-center.vbs; do
     if [ -f "${ROOT_DIR}/${LAUNCHER}" ]; then
         cp "${ROOT_DIR}/${LAUNCHER}" "${STAGING_DIR}/"
     fi

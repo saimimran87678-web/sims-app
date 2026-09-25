@@ -4,7 +4,7 @@
 }
 
 (sims_common) {
-    root * "{$APP_PUBLIC:public}"
+    root * public
     encode zstd br gzip
     php_fastcgi 127.0.0.1:9000
     file_server
@@ -18,7 +18,7 @@
 }
 
 # HTTPS on Port 443: Secure access with trusted local TLS certificates
-:443, localhost, 127.0.0.1, {$COMPUTERNAME}, {$COMPUTERNAME}.local, sims.local {
+:443, localhost, 127.0.0.1, sims.local {
     import sims_common
     tls internal
 }

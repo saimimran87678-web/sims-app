@@ -281,9 +281,10 @@ class Settings extends Component
 
             $installedChecksum = Setting::getGlobal('last_update_checksum', '');
             $manifestHash = strtolower(trim($manifest['checksum'] ?? $manifest['sha256'] ?? ''));
-            $isChecksumDiff = (!empty($manifestHash) && !empty($installedChecksum) && !hash_equals($installedChecksum, $manifestHash));
+            $isSameVersion = version_compare($latest, $this->currentVersion, '==');
+            $isChecksumDiff = (!empty($manifestHash) && $manifestHash !== $installedChecksum);
 
-            if (!empty($latest) && (version_compare($latest, $this->currentVersion, '>') || $isChecksumDiff)) {
+            if (!empty($latest) && (version_compare($latest, $this->currentVersion, '>') || ($isSameVersion && $isChecksumDiff))) {
                 $this->updateAvailable = true;
                 $this->updateCheckMessage = ($isChecksumDiff && !version_compare($latest, $this->currentVersion, '>'))
                     ? "A hotfix patch for v{$latest} is available to install!"

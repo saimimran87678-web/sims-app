@@ -1,6 +1,12 @@
 @echo off
 setlocal
 
+:: Check if unattended / silent execution is requested
+set "UNATTENDED=0"
+if /i "%~1"=="--unattended" set "UNATTENDED=1"
+if /i "%~1"=="-u" set "UNATTENDED=1"
+if /i "%~1"=="/silent" set "UNATTENDED=1"
+
 :: 0. Force working directory to script location
 cd /d "%~dp0"
 title SIMS Automated System Installer
@@ -23,6 +29,7 @@ echo Please close this window, then:
 echo   Right-click install.bat and select "Run as administrator"
 echo.
 echo ====================================================
+if "%UNATTENDED%"=="1" exit /b 1
 pause
 exit /b 1
 
@@ -45,6 +52,7 @@ echo.
 echo [ERROR] PHP runtime not found!
 echo Please ensure runtime\php\php.exe exists or install PHP 8.2+.
 echo.
+if "%UNATTENDED%"=="1" exit /b 1
 pause
 exit /b 1
 
@@ -94,6 +102,7 @@ echo.
 echo [ERROR] Neither .env nor .env.example was found in:
 echo   %APP_DIR%
 echo Please ensure the release package was extracted properly.
+if "%UNATTENDED%"=="1" exit /b 1
 pause
 exit /b 1
 
@@ -105,6 +114,7 @@ echo [ERROR] Application vendor dependencies are missing!
 echo Missing: %APP_DIR%\vendor\autoload.php
 echo Please ensure you are running the standalone release package with bundled dependencies.
 echo.
+if "%UNATTENDED%"=="1" exit /b 1
 pause
 exit /b 1
 
@@ -132,6 +142,7 @@ echo.
 echo [ERROR] Initial installation failed!
 echo Check the error messages above for details.
 echo.
+if "%UNATTENDED%"=="1" exit /b 1
 pause
 exit /b 1
 
@@ -152,7 +163,7 @@ schtasks /end /tn "SIMS-Web" >nul 2>&1
 schtasks /end /tn "SIMS-Queue" >nul 2>&1
 schtasks /end /tn "SIMS-Scheduler" >nul 2>&1
 taskkill /F /IM frankenphp.exe /IM php-cgi.exe >nul 2>&1
-timeout /t 1 /nobreak >nul
+ping 127.0.0.1 -n 2 >nul
 
 schtasks /run /tn "SIMS-Web" >nul 2>&1
 schtasks /run /tn "SIMS-Queue" >nul 2>&1
@@ -160,10 +171,12 @@ schtasks /run /tn "SIMS-Scheduler" >nul 2>&1
 
 set "WAIT_TRIES=0"
 :CHECK_PORT_LOOP
-timeout /t 1 /nobreak >nul
+ping 127.0.0.1 -n 2 >nul
 netstat -ano 2>nul | findstr ":80 " >nul 2>&1
 if %errorLevel% equ 0 goto :PORT_ONLINE
 netstat -ano 2>nul | findstr ":443 " >nul 2>&1
+if %errorLevel% equ 0 goto :PORT_ONLINE
+netstat -ano 2>nul | findstr ":8000 " >nul 2>&1
 if %errorLevel% equ 0 goto :PORT_ONLINE
 set /a WAIT_TRIES+=1
 if %WAIT_TRIES% lss 6 goto :CHECK_PORT_LOOP
@@ -171,23 +184,29 @@ if %WAIT_TRIES% lss 6 goto :CHECK_PORT_LOOP
 echo [INFO] Starting web server directly in background...
 if exist "%SERVICES_DIR%\run-web.bat" (
     start "" /min "%SERVICES_DIR%\run-web.bat"
-    timeout /t 3 /nobreak >nul
+    ping 127.0.0.1 -n 3 >nul
 )
 
 :PORT_ONLINE
-netstat -ano 2>nul | findstr ":80 " >nul 2>&1
-if %errorLevel% equ 0 goto :PRINT_ONLINE_80
 netstat -ano 2>nul | findstr ":443 " >nul 2>&1
 if %errorLevel% equ 0 goto :PRINT_ONLINE_443
+netstat -ano 2>nul | findstr ":80 " >nul 2>&1
+if %errorLevel% equ 0 goto :PRINT_ONLINE_80
+netstat -ano 2>nul | findstr ":8000 " >nul 2>&1
+if %errorLevel% equ 0 goto :PRINT_ONLINE_8000
 echo [NOTICE] Web server is starting up in the background.
+goto :REGISTER_CLI
+
+:PRINT_ONLINE_443
+echo [OK] SIMS Web Server is ONLINE and listening on Port 443 (HTTPS).
 goto :REGISTER_CLI
 
 :PRINT_ONLINE_80
 echo [OK] SIMS Web Server is ONLINE and listening on Port 80.
 goto :REGISTER_CLI
 
-:PRINT_ONLINE_443
-echo [OK] SIMS Web Server is ONLINE and listening on Port 443 (HTTPS).
+:PRINT_ONLINE_8000
+echo [OK] SIMS Web Server is ONLINE and listening on Port 8000 (Fallback).
 
 :REGISTER_CLI
 if exist "%SERVICES_DIR%\trust-cert.bat" (
@@ -199,6 +218,13 @@ if exist "%SERVICES_DIR%\trust-cert.bat" (
 setx SIMS_HOME "%ROOT_DIR%" /m >nul 2>&1
 if exist "%ROOT_DIR%\sims.bat" (
     copy /y "%ROOT_DIR%\sims.bat" "%WINDIR%\System32\sims.bat" >nul 2>&1
+)
+
+if not exist "%ROOT_DIR%\Adminova-Control-Center.exe" (
+    if exist "%ROOT_DIR%\scripts\windows\compile-control-center.bat" (
+        echo [INFO] Compiling native Adminova Control Center executable...
+        call "%ROOT_DIR%\scripts\windows\compile-control-center.bat" >nul 2>&1
+    )
 )
 
 echo.
@@ -214,8 +240,10 @@ echo   sims start     - Start all services
 echo   sims restart   - Restart all services
 echo ====================================================
 echo.
-echo Opening SIMS in your default web browser (HTTPS Secured)...
-start https://localhost
+if not "%UNATTENDED%"=="1" (
+    echo Opening SIMS in your default web browser (HTTPS Secured)...
+    start https://localhost
+)
 
 echo.
 echo Primary Access Addresses:
@@ -230,4 +258,6 @@ echo.
 echo Detected Local Network IP Addresses:
 ipconfig 2>nul | findstr /i "IPv4"
 echo.
+if "%UNATTENDED%"=="1" exit /b 0
 pause
+exit /b 0

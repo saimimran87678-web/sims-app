@@ -136,8 +136,17 @@ if (Test-Path $ScriptsSrc) {
     Write-Success "Included: scripts/ (operational runners)"
 }
 
+# Copy branding resources
+$IconsSrc = Join-Path $RootDir "resources\icons"
+if (Test-Path $IconsSrc) {
+    $IconsDst = Join-Path $StagingDir "resources\icons"
+    New-Item -ItemType Directory -Path $IconsDst -Force | Out-Null
+    Copy-Item -Path "$IconsSrc\*" -Destination $IconsDst -Force
+    Write-Success "Included: resources/icons (Adminova branding)"
+}
+
 # Copy top-level launcher stubs
-foreach ($Launcher in @("install.bat", "install.sh", "sims.bat")) {
+foreach ($Launcher in @("install.bat", "install.sh", "sims.bat", "control-center.bat", "control-center.vbs")) {
     $LauncherPath = Join-Path $RootDir $Launcher
     if (Test-Path $LauncherPath) {
         Copy-Item -Path $LauncherPath -Destination $StagingDir -Force

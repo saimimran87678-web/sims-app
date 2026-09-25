@@ -98,7 +98,19 @@ if (-not $IsccExe) {
 
 Write-Success "Found Inno Setup Compiler: $IsccExe"
 
-# 2. Compile Installer
+# 2. Compile Native Windows Control Center Executable
+$CompileScript = Join-Path $ScriptDir "compile-control-center.ps1"
+if (Test-Path $CompileScript) {
+    Write-Info "Compiling native Adminova-Control-Center.exe..."
+    try {
+        & $CompileScript
+    } catch {
+        Write-Failure "Failed to compile Adminova-Control-Center.exe: $_"
+        exit 1
+    }
+}
+
+# 3. Compile Installer
 if (-not (Test-Path $DistDir)) {
     New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
 }

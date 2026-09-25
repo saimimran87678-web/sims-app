@@ -84,8 +84,9 @@ class SimsUpdate extends Command
         }
 
         $installedChecksum = Setting::getGlobal('last_update_checksum', '');
-        $isChecksumDiff = (!empty($expectedHash) && !empty($installedChecksum) && !hash_equals($installedChecksum, $expectedHash));
-        $isNewer = version_compare($latestVersion, $currentVersion, '>') || $isChecksumDiff;
+        $isSameVersion = version_compare($latestVersion, $currentVersion, '==');
+        $isChecksumDiff = (!empty($expectedHash) && $expectedHash !== $installedChecksum);
+        $isNewer = version_compare($latestVersion, $currentVersion, '>') || ($isSameVersion && $isChecksumDiff);
         $isForce = (bool) $this->option('force');
 
         // ── Handle --check option ─────────────────────────────────────

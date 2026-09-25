@@ -63,6 +63,7 @@ exit /b 0
 
 :INTERACTIVE_MENU
 cls
+set "INTERACTIVE=1"
 echo ====================================================
 echo        SIMS Control Center (Interactive)
 echo ====================================================
@@ -169,25 +170,26 @@ echo ====================================================
 exit /b 0
 
 :PRINT_SERVICE_STATUS
-:: 1. Check Port 443 & 80
+:: 1. Check Port 443, 80 & 8000
 netstat -ano 2>nul | findstr ":443 " >nul 2>&1
-if %errorLevel% equ 0 goto :STATUS_HTTPS_UP
-echo [HTTPS Web Server] OFFLINE (Port 443 closed)
-goto :STATUS_CHECK_80
+if %errorLevel% equ 0 (
+    echo [HTTPS Web Server] ONLINE  (Port 443 listening - SSL Active)
+) else (
+    echo [HTTPS Web Server] OFFLINE (Port 443 closed)
+)
 
-:STATUS_HTTPS_UP
-echo [HTTPS Web Server] ONLINE  (Port 443 listening - SSL Active)
-
-:STATUS_CHECK_80
 netstat -ano 2>nul | findstr ":80 " >nul 2>&1
-if %errorLevel% equ 0 goto :STATUS_HTTP_UP
-echo [HTTP Web Server]  OFFLINE (Port 80 closed)
-goto :STATUS_CHECK_FRANKEN
+if %errorLevel% equ 0 (
+    echo [HTTP Web Server]  ONLINE  (Port 80 listening)
+) else (
+    echo [HTTP Web Server]  OFFLINE (Port 80 closed)
+)
 
-:STATUS_HTTP_UP
-echo [HTTP Web Server]  ONLINE  (Port 80 listening)
+netstat -ano 2>nul | findstr ":8000 " >nul 2>&1
+if %errorLevel% equ 0 (
+    echo [Fallback Web Svr] ONLINE  (Port 8000 listening)
+)
 
-:STATUS_CHECK_FRANKEN
 :: 2. Check FrankenPHP Process
 tasklist /fi "imagename eq frankenphp.exe" 2>nul | findstr /i "frankenphp.exe" >nul 2>&1
 if %errorLevel% equ 0 (
@@ -196,10 +198,10 @@ if %errorLevel% equ 0 (
     echo [FrankenPHP Engine] STOPPED
 )
 
-:: 3. Check PHP Process (Worker / Scheduler)
+:: 3. Check PHP Process (Worker / Scheduler / Server)
 tasklist /fi "imagename eq php.exe" 2>nul | findstr /i "php.exe" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo [PHP Background]    ACTIVE (Worker / Scheduler running)
+    echo [PHP Background]    ACTIVE (Worker / Scheduler / Server)
 ) else (
     echo [PHP Background]    IDLE / STOPPED
 )
@@ -232,7 +234,7 @@ schtasks /end /tn "SIMS-Web" >nul 2>&1
 schtasks /end /tn "SIMS-Queue" >nul 2>&1
 schtasks /end /tn "SIMS-Scheduler" >nul 2>&1
 taskkill /F /IM frankenphp.exe /IM php.exe /IM php-cgi.exe >nul 2>&1
-timeout /t 1 /nobreak >nul
+ping 127.0.0.1 -n 2 >nul
 goto :eof
 
 :DO_STOP
@@ -241,30 +243,32 @@ echo Stopping all SIMS services and background processes...
 call :DO_STOP_SILENT
 echo [OK] All SIMS services and processes have been stopped.
 echo ====================================================
-pause
+if defined INTERACTIVE (
+    pause
+    goto :INTERACTIVE_MENU
+)
 exit /b 0
 
 :DO_START
 echo ====================================================
 echo Starting all SIMS services...
 
-:: Trust SSL Certificate if present
-if exist "%SERVICES_DIR%\trust-cert.bat" call "%SERVICES_DIR%\trust-cert.bat"
-
 schtasks /run /tn "SIMS-Web" >nul 2>&1
 schtasks /run /tn "SIMS-Queue" >nul 2>&1
 schtasks /run /tn "SIMS-Scheduler" >nul 2>&1
 
-timeout /t 2 /nobreak >nul
+ping 127.0.0.1 -n 3 >nul
 netstat -ano 2>nul | findstr ":443 " >nul 2>&1
 if %errorLevel% equ 0 goto :START_HTTPS_OK
 netstat -ano 2>nul | findstr ":80 " >nul 2>&1
 if %errorLevel% equ 0 goto :START_HTTP_OK
+netstat -ano 2>nul | findstr ":8000 " >nul 2>&1
+if %errorLevel% equ 0 goto :START_HTTP8000_OK
 
 echo [INFO] Starting web server directly in background...
 if exist "%SERVICES_DIR%\run-web.bat" (
     start "" /min "%SERVICES_DIR%\run-web.bat"
-    timeout /t 3 /nobreak >nul
+    ping 127.0.0.1 -n 3 >nul
 )
 goto :START_CHECK_FINAL
 
@@ -276,11 +280,17 @@ goto :START_FINISH
 echo [OK] SIMS Web Server is ONLINE on Port 80!
 goto :START_FINISH
 
+:START_HTTP8000_OK
+echo [OK] SIMS Web Server is ONLINE on Port 8000 (Fallback)!
+goto :START_FINISH
+
 :START_CHECK_FINAL
 netstat -ano 2>nul | findstr ":443 " >nul 2>&1
 if %errorLevel% equ 0 goto :START_HTTPS_OK
 netstat -ano 2>nul | findstr ":80 " >nul 2>&1
 if %errorLevel% equ 0 goto :START_HTTP_OK
+netstat -ano 2>nul | findstr ":8000 " >nul 2>&1
+if %errorLevel% equ 0 goto :START_HTTP8000_OK
 echo [NOTICE] Services initiated. Please allow a few moments for full startup.
 
 :START_FINISH
@@ -291,12 +301,16 @@ echo Primary Access URLs:
 echo   - [HTTPS] https://localhost         (Secured with Local Certificate)
 echo   - [HTTPS] https://sims.local
 echo   - [HTTP]  http://localhost          (Redirects to HTTPS)
+echo   - [HTTP]  http://localhost:8000     (Fallback Server)
 echo.
 echo Local School Network (LAN) Access:
 echo   - [HTTP]  http://%COMPUTERNAME%
 echo   - [HTTPS] https://%COMPUTERNAME%.local
 echo ====================================================
-pause
+if defined INTERACTIVE (
+    pause
+    goto :INTERACTIVE_MENU
+)
 exit /b 0
 
 :DO_RESTART

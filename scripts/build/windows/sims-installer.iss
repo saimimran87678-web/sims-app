@@ -29,34 +29,43 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
-SetupIconFile=
-UninstallDisplayIcon={app}\runtime\php\php.exe
+SetupIconFile=app.ico
+UninstallDisplayIcon={app}\resources\icons\adminova.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "desktopicon"; Description: "Create Desktop Shortcuts for Adminova Control Center and School Portal"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 ; Standalone Portable Runtime
 Source: "..\..\..\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Operational Scripts
 Source: "..\..\..\scripts\windows\*"; DestDir: "{app}\scripts\windows"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Root Launcher batch scripts
+; Branding and Icons
+Source: "..\..\..\resources\icons\*"; DestDir: "{app}\resources\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Root Launcher scripts
 Source: "..\..\..\install.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\sims.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\..\manifest.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\..\control-center.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\..\control-center.bat"; DestDir: "{app}"; Flags: ignoreversion
 ; Application Source
 Source: "..\..\..\sims-app\*"; DestDir: "{app}\sims-app"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: ".env, .env.*, database\database.sqlite*, storage\logs\*, storage\caddy\*, tests\*, node_modules\*"
 
 [Icons]
-Name: "{group}\SIMS School Portal"; Filename: "https://localhost"
-Name: "{group}\SIMS Control Center"; Filename: "{app}\sims.bat"
-Name: "{autodesktop}\SIMS School Portal"; Filename: "https://localhost"; Tasks: desktopicon
+Name: "{group}\Adminova Control Center"; Filename: "{app}\Adminova-Control-Center.exe"; IconFilename: "{app}\resources\icons\adminova.ico"
+Name: "{group}\Adminova School Portal"; Filename: "https://localhost"; IconFilename: "{app}\resources\icons\adminova.ico"
+Name: "{group}\Uninstall Adminova"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\Adminova Control Center"; Filename: "{app}\Adminova-Control-Center.exe"; IconFilename: "{app}\resources\icons\adminova.ico"; Tasks: desktopicon
+Name: "{autodesktop}\Adminova School Portal"; Filename: "https://localhost"; IconFilename: "{app}\resources\icons\adminova.ico"; Tasks: desktopicon
 
 [Run]
-; Run automated initial installation and service registration
-Filename: "{app}\install.bat"; StatusMsg: "Configuring database, background services, and SSL certificates..."; Flags: runhidden waituntilterminated
+; Run automated initial installation and service registration in unattended mode
+Filename: "{app}\install.bat"; Parameters: "--unattended"; StatusMsg: "Configuring database, background services, and SSL certificates..."; Flags: runhidden waituntilterminated
+Filename: "{app}\Adminova-Control-Center.exe"; Description: "Launch Adminova Control Center"; Flags: postinstall nowait skipifdoesntexist
 Filename: "https://localhost"; Description: "Open SIMS in web browser"; Flags: postinstall shellexec nowait
 
 [Code]
