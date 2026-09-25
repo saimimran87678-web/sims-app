@@ -10,7 +10,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [string]$Version = "2.5.0"
+    [string]$Version = "2.5.1"
 )
 
 Set-StrictMode -Version Latest

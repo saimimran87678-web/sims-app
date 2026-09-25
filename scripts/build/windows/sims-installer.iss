@@ -5,7 +5,7 @@
 ; ==============================================================================
 
 #define MyAppName "SIMS School Management System"
-#define MyAppVersion "2.5.0"
+#define MyAppVersion "2.5.1"
 #define MyAppPublisher "Adminova Tech"
 #define MyAppURL "https://sims.local"
 #define MyAppExeName "sims.bat"
