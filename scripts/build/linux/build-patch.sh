@@ -50,7 +50,7 @@ rm -rf "${STAGING_DIR}"
 mkdir -p "${STAGING_DIR}/sims-app"
 
 echo "ℹ️ Collecting application code for delta package..."
-for DIR in app resources routes database/migrations config; do
+for DIR in app resources routes database/migrations config public/build; do
     if [ -d "${APP_DIR}/${DIR}" ]; then
         mkdir -p "${STAGING_DIR}/sims-app/$(dirname "${DIR}")"
         cp -r "${APP_DIR}/${DIR}" "${STAGING_DIR}/sims-app/${DIR}"

@@ -114,7 +114,7 @@ $SourceAppDir = Join-Path $StagingDir "sims-app"
 New-Item -ItemType Directory -Path $SourceAppDir -Force | Out-Null
 
 # Directories to bundle
-$DirsToInclude = @("app", "resources", "routes", "database\migrations", "config")
+$DirsToInclude = @("app", "resources", "routes", "database\migrations", "config", "public\build")
 foreach ($Dir in $DirsToInclude) {
     $Src = Join-Path $AppDir $Dir
     $Dst = Join-Path $SourceAppDir $Dir

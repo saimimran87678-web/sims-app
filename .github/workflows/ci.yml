@@ -40,6 +40,21 @@ jobs:
           cd sims-app
           composer install --prefer-dist --no-interaction --no-progress
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: sims-app/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: sims-app
+        run: npm ci
+
+      - name: Build frontend assets
+        working-directory: sims-app
+        run: npm run build
+
       - name: Lint PHP Syntax
         run: |
           find sims-app/app sims-app/routes sims-app/config -name "*.php" -print0 | xargs -0 -n1 -P4 php -l
