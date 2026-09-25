@@ -18,7 +18,7 @@ jobs:
       - name: Setup PHP runtime
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl, gd, fileinfo, openssl, pdo
           coverage: none
 
@@ -48,18 +48,27 @@ jobs:
         run: |
           cd sims-app
           cp .env.example .env
+          cp .env.example .env.testing
           touch database/database.sqlite
           php artisan key:generate
+          php artisan key:generate --env=testing
           php artisan migrate --force
 
       - name: Run Test Suite
         run: |
           cd sims-app
-          php artisan test --env=testing
+          php artisan test --without-tty
 
       - name: Verify Delta Patch Packaging (Dry Run)
         run: |
           chmod +x scripts/build/linux/build-patch.sh
-          ./scripts/build/linux/build-patch.sh "9.9.9-ci" "CI Packaging Integrity Validation" "8.2.0"
-          test -f dist/patches/sims-patch-v9.9.9-ci.zip
+          ./scripts/build/linux/build-patch.sh "2.5.0-patch" "CI Packaging Integrity Validation" "8.2.0"
+          test -f dist/patches/sims-patch-v2.5.0-patch.zip
           test -f dist/patches/manifest.json
+
+      - name: Upload Delta Patch Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SIMS-Patch-v2.5.0-zip
+          path: dist/patches/sims-patch-*.zip
+          if-no-files-found: warn
