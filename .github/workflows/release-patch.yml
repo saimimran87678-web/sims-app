@@ -49,10 +49,6 @@ jobs:
           chmod +x scripts/build/linux/build-patch.sh
           ./scripts/build/linux/build-patch.sh "${{ steps.vars.outputs.version }}" "${{ steps.vars.outputs.changelog }}" "8.2.0"
 
-      - name: Copy Manifest to Repository Root
-        run: |
-          cp dist/patches/manifest.json manifest.json
-
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -77,7 +73,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout main
+          git checkout -f main
           git pull origin main --rebase
           cp dist/patches/manifest.json manifest.json
           git add manifest.json
