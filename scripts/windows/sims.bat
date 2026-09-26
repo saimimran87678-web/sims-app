@@ -23,6 +23,7 @@ if not exist "%SERVICES_DIR%" (
 
 if exist "%ROOT_DIR%\runtime\php\php.exe" (
     set "PHP_BIN=%ROOT_DIR%\runtime\php\php.exe"
+    set "PATH=%ROOT_DIR%\runtime\php;%ROOT_DIR%\runtime;%PATH%"
 ) else (
     set "PHP_BIN=php"
 )

@@ -14,12 +14,11 @@ namespace Adminova.ControlCenter
     {
         private string rootDir;
         private string appDir;
-        private string simsBat;
         private string phpBin;
         private string lanIp = "localhost";
         private string currentUrl = "https://localhost";
 
-        // Controls
+        // UI Components
         private Label lblStatusBadge;
         private Label lblStatusDetail;
         private Label lblLanAddress;
@@ -72,11 +71,6 @@ namespace Adminova.ControlCenter
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             rootDir = ResolveRootDir(baseDir);
             appDir = Path.Combine(rootDir, "sims-app");
-            simsBat = Path.Combine(rootDir, "sims.bat");
-            if (!File.Exists(simsBat))
-            {
-                simsBat = Path.Combine(rootDir, "scripts", "windows", "sims.bat");
-            }
 
             string bundledPhp = Path.Combine(rootDir, "runtime", "php", "php.exe");
             if (File.Exists(bundledPhp))
@@ -95,7 +89,8 @@ namespace Adminova.ControlCenter
             while (current != null)
             {
                 if (File.Exists(Path.Combine(current.FullName, "sims-app", "artisan")) ||
-                    File.Exists(Path.Combine(current.FullName, "sims.bat")))
+                    File.Exists(Path.Combine(current.FullName, "sims.bat")) ||
+                    File.Exists(Path.Combine(current.FullName, "scripts", "windows", "sims.bat")))
                 {
                     return current.FullName;
                 }
@@ -106,15 +101,16 @@ namespace Adminova.ControlCenter
 
         private void InitializeComponents()
         {
+            // Window Setup (Modern, Clean, Minimalist)
             this.Text = "Adminova Control Center";
-            this.Size = new Size(580, 710);
-            this.StartPosition = FormStartPosition.CenterScreen;
+            this.ClientSize = new Size(540, 636);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
+            this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = ColorTranslator.FromHtml("#F8FAFC");
-            this.Font = new Font("Segoe UI", 9.25f, FontStyle.Regular);
+            this.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
 
-            // Set Application Icon if available
+            // Application Icon
             string icoPath = Path.Combine(rootDir, "resources", "icons", "adminova.ico");
             if (!File.Exists(icoPath))
             {
@@ -125,22 +121,12 @@ namespace Adminova.ControlCenter
                 try { this.Icon = new Icon(icoPath); } catch { }
             }
 
-            // 1. Header Panel
-            Panel headerPanel = new Panel();
-            headerPanel.Location = new Point(16, 14);
-            headerPanel.Size = new Size(532, 90);
-            headerPanel.BackColor = Color.White;
-            headerPanel.BorderStyle = BorderStyle.None;
-            headerPanel.Paint += (s, e) => {
-                using (Pen p = new Pen(ColorTranslator.FromHtml("#E2E8F0"), 1))
-                {
-                    e.Graphics.DrawRectangle(p, 0, 0, headerPanel.Width - 1, headerPanel.Height - 1);
-                }
-            };
+            // ── CARD 1: Header (Branding & School LAN Link) ──
+            Panel pnlHeader = CreateCardPanel(new Point(16, 12), new Size(508, 86));
 
             PictureBox picLogo = new PictureBox();
-            picLogo.Location = new Point(16, 16);
-            picLogo.Size = new Size(56, 56);
+            picLogo.Location = new Point(14, 15);
+            picLogo.Size = new Size(48, 48);
             picLogo.SizeMode = PictureBoxSizeMode.Zoom;
             picLogo.BackColor = Color.Transparent;
 
@@ -153,137 +139,155 @@ namespace Adminova.ControlCenter
             {
                 picLogo.Image = this.Icon.ToBitmap();
             }
-            headerPanel.Controls.Add(picLogo);
+            pnlHeader.Controls.Add(picLogo);
 
             Label lblTitle = new Label();
-            lblTitle.Text = "Adminova School Management";
-            lblTitle.Font = new Font("Segoe UI", 13.5f, FontStyle.Bold);
+            lblTitle.Text = "Adminova Control Center";
+            lblTitle.Font = new Font("Segoe UI", 13f, FontStyle.Bold);
             lblTitle.ForeColor = ColorTranslator.FromHtml("#0F172A");
-            lblTitle.Location = new Point(84, 14);
+            lblTitle.Location = new Point(70, 14);
             lblTitle.AutoSize = true;
-            headerPanel.Controls.Add(lblTitle);
+            pnlHeader.Controls.Add(lblTitle);
 
             Label lblSubTitle = new Label();
-            lblSubTitle.Text = "Service Control Center & Update Supervisor";
-            lblSubTitle.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
+            lblSubTitle.Text = "School Server & Service Supervisor";
+            lblSubTitle.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblSubTitle.ForeColor = ColorTranslator.FromHtml("#64748B");
-            lblSubTitle.Location = new Point(86, 39);
+            lblSubTitle.Location = new Point(71, 38);
             lblSubTitle.AutoSize = true;
-            headerPanel.Controls.Add(lblSubTitle);
+            pnlHeader.Controls.Add(lblSubTitle);
 
             lblLanAddress = new Label();
-            lblLanAddress.Text = "Local School LAN: Detecting...";
-            lblLanAddress.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
-            lblLanAddress.ForeColor = ColorTranslator.FromHtml("#3B82F6");
-            lblLanAddress.Location = new Point(86, 61);
+            lblLanAddress.Text = "LAN: Detecting local network IP...";
+            lblLanAddress.Font = new Font("Consolas", 8.5f, FontStyle.Regular);
+            lblLanAddress.ForeColor = ColorTranslator.FromHtml("#2563EB");
+            lblLanAddress.Location = new Point(71, 58);
             lblLanAddress.AutoSize = true;
-            headerPanel.Controls.Add(lblLanAddress);
+            pnlHeader.Controls.Add(lblLanAddress);
 
             btnCopyLan = new Button();
             btnCopyLan.Text = "Copy";
             btnCopyLan.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
-            btnCopyLan.Size = new Size(48, 22);
-            btnCopyLan.Location = new Point(470, 59);
+            btnCopyLan.Size = new Size(50, 22);
+            btnCopyLan.Location = new Point(444, 55);
             btnCopyLan.FlatStyle = FlatStyle.Flat;
+            btnCopyLan.FlatAppearance.BorderSize = 1;
             btnCopyLan.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#CBD5E1");
             btnCopyLan.BackColor = ColorTranslator.FromHtml("#F1F5F9");
             btnCopyLan.ForeColor = ColorTranslator.FromHtml("#334155");
             btnCopyLan.Cursor = Cursors.Hand;
             btnCopyLan.Click += (s, e) => CopyLanUrl();
-            headerPanel.Controls.Add(btnCopyLan);
+            pnlHeader.Controls.Add(btnCopyLan);
 
-            this.Controls.Add(headerPanel);
+            this.Controls.Add(pnlHeader);
 
-            // 2. Status Card Panel
-            Panel statusCard = new Panel();
-            statusCard.Location = new Point(16, 116);
-            statusCard.Size = new Size(532, 76);
-            statusCard.BackColor = Color.White;
-            statusCard.Paint += (s, e) => {
-                using (Pen p = new Pen(ColorTranslator.FromHtml("#E2E8F0"), 1))
-                {
-                    e.Graphics.DrawRectangle(p, 0, 0, statusCard.Width - 1, statusCard.Height - 1);
-                }
-            };
+            // ── CARD 2: Server Status Badge & Launch Button ──
+            Panel pnlStatus = CreateCardPanel(new Point(16, 106), new Size(508, 106));
 
             lblStatusBadge = new Label();
-            lblStatusBadge.Text = "● CHECKING...";
-            lblStatusBadge.Font = new Font("Segoe UI", 11.5f, FontStyle.Bold);
+            lblStatusBadge.Text = "● CHECKING";
+            lblStatusBadge.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             lblStatusBadge.TextAlign = ContentAlignment.MiddleCenter;
-            lblStatusBadge.Size = new Size(130, 38);
-            lblStatusBadge.Location = new Point(16, 19);
-            lblStatusBadge.BackColor = ColorTranslator.FromHtml("#E2E8F0");
-            lblStatusBadge.ForeColor = ColorTranslator.FromHtml("#475569");
-            statusCard.Controls.Add(lblStatusBadge);
+            lblStatusBadge.Size = new Size(115, 30);
+            lblStatusBadge.Location = new Point(14, 14);
+            lblStatusBadge.BackColor = ColorTranslator.FromHtml("#F1F5F9");
+            lblStatusBadge.ForeColor = ColorTranslator.FromHtml("#64748B");
+            pnlStatus.Controls.Add(lblStatusBadge);
 
             lblStatusDetail = new Label();
-            lblStatusDetail.Text = "Probing service ports (443, 80, 8000)...";
-            lblStatusDetail.Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
-            lblStatusDetail.ForeColor = ColorTranslator.FromHtml("#334155");
-            lblStatusDetail.Location = new Point(158, 21);
-            lblStatusDetail.Size = new Size(270, 36);
-            statusCard.Controls.Add(lblStatusDetail);
+            lblStatusDetail.Text = "Probing server ports (443, 80, 8000)...";
+            lblStatusDetail.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
+            lblStatusDetail.ForeColor = ColorTranslator.FromHtml("#475569");
+            lblStatusDetail.Location = new Point(136, 15);
+            lblStatusDetail.Size = new Size(318, 28);
+            lblStatusDetail.TextAlign = ContentAlignment.MiddleLeft;
+            pnlStatus.Controls.Add(lblStatusDetail);
 
-            btnRefresh = CreateFlatButton("⟳", ColorTranslator.FromHtml("#F1F5F9"), ColorTranslator.FromHtml("#1E293B"), new Size(42, 38), new Point(474, 19));
-            btnRefresh.Font = new Font("Segoe UI", 13f, FontStyle.Bold);
+            btnRefresh = new Button();
+            btnRefresh.Text = "↻";
+            btnRefresh.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
+            btnRefresh.Size = new Size(34, 30);
+            btnRefresh.Location = new Point(460, 14);
+            btnRefresh.FlatStyle = FlatStyle.Flat;
+            btnRefresh.FlatAppearance.BorderSize = 1;
+            btnRefresh.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#E2E8F0");
+            btnRefresh.BackColor = ColorTranslator.FromHtml("#F8FAFC");
+            btnRefresh.ForeColor = ColorTranslator.FromHtml("#64748B");
+            btnRefresh.Cursor = Cursors.Hand;
             btnRefresh.Click += (s, e) => {
                 LogMessage("Refreshing service status...");
                 CheckServerStatusAsync();
             };
-            statusCard.Controls.Add(btnRefresh);
+            pnlStatus.Controls.Add(btnRefresh);
 
-            this.Controls.Add(statusCard);
-
-            // 3. Primary Action Buttons Panel
-            btnOpenBrowser = CreateFlatButton("🌐  Open Adminova in Browser", ColorTranslator.FromHtml("#4F46E5"), Color.White, new Size(532, 44), new Point(16, 204));
-            btnOpenBrowser.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
+            btnOpenBrowser = CreateButton("🌐   Open School Portal in Browser", ColorTranslator.FromHtml("#2563EB"), Color.White, new Size(480, 40), new Point(14, 52), new Font("Segoe UI", 9.5f, FontStyle.Bold));
             btnOpenBrowser.Click += (s, e) => OpenInBrowser();
-            this.Controls.Add(btnOpenBrowser);
+            pnlStatus.Controls.Add(btnOpenBrowser);
 
-            int btnY = 258;
-            int btnW = 168;
-            btnStart = CreateFlatButton("▶  Start Server", ColorTranslator.FromHtml("#10B981"), Color.White, new Size(btnW, 38), new Point(16, btnY));
+            this.Controls.Add(pnlStatus);
+
+            // ── CARD 3: Native Service Operations & Updates ──
+            Panel pnlControls = CreateCardPanel(new Point(16, 220), new Size(508, 96));
+
+            int btnW = 153;
+            btnStart = CreateButton("▶  Start Server", ColorTranslator.FromHtml("#059669"), Color.White, new Size(btnW, 36), new Point(14, 12), new Font("Segoe UI", 9f, FontStyle.Bold));
             btnStart.Click += (s, e) => ExecuteStartServer();
-            this.Controls.Add(btnStart);
+            pnlControls.Controls.Add(btnStart);
 
-            btnStop = CreateFlatButton("⏹  Stop Server", ColorTranslator.FromHtml("#EF4444"), Color.White, new Size(btnW, 38), new Point(198, btnY));
+            btnStop = CreateButton("⏹  Stop Server", ColorTranslator.FromHtml("#E11D48"), Color.White, new Size(btnW, 36), new Point(177, 12), new Font("Segoe UI", 9f, FontStyle.Bold));
             btnStop.Click += (s, e) => ExecuteStopServer();
-            this.Controls.Add(btnStop);
+            pnlControls.Controls.Add(btnStop);
 
-            btnRestart = CreateFlatButton("🔄  Restart", ColorTranslator.FromHtml("#64748B"), Color.White, new Size(btnW, 38), new Point(380, btnY));
+            btnRestart = CreateButton("🔄  Restart", ColorTranslator.FromHtml("#475569"), Color.White, new Size(btnW, 36), new Point(341, 12), new Font("Segoe UI", 9f, FontStyle.Bold));
             btnRestart.Click += (s, e) => ExecuteRestartServer();
-            this.Controls.Add(btnRestart);
+            pnlControls.Controls.Add(btnRestart);
 
-            btnCheckUpdates = CreateFlatButton("🚀  Check for Software Updates", ColorTranslator.FromHtml("#0284C7"), Color.White, new Size(532, 38), new Point(16, 306));
-            btnCheckUpdates.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            btnCheckUpdates = CreateButton("⚡  Check for Software Updates & Delta Patches", ColorTranslator.FromHtml("#F8FAFC"), ColorTranslator.FromHtml("#0369A1"), new Size(480, 32), new Point(14, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
+            btnCheckUpdates.FlatAppearance.BorderSize = 1;
+            btnCheckUpdates.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#BAE6FD");
             btnCheckUpdates.Click += (s, e) => ExecuteCheckUpdates();
-            this.Controls.Add(btnCheckUpdates);
+            pnlControls.Controls.Add(btnCheckUpdates);
 
-            // 4. Activity Log Area
-            Label lblLogHeader = new Label();
-            lblLogHeader.Text = "ACTIVITY & DIAGNOSTIC LOG";
-            lblLogHeader.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
-            lblLogHeader.ForeColor = ColorTranslator.FromHtml("#64748B");
-            lblLogHeader.Location = new Point(16, 356);
-            lblLogHeader.AutoSize = true;
-            this.Controls.Add(lblLogHeader);
+            this.Controls.Add(pnlControls);
+
+            // ── CARD 4: Activity Log Terminal ──
+            Label lblLogTitle = new Label();
+            lblLogTitle.Text = "ACTIVITY & DIAGNOSTIC LOG";
+            lblLogTitle.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            lblLogTitle.ForeColor = ColorTranslator.FromHtml("#64748B");
+            lblLogTitle.Location = new Point(18, 326);
+            lblLogTitle.AutoSize = true;
+            this.Controls.Add(lblLogTitle);
+
+            Button btnClearLog = new Button();
+            btnClearLog.Text = "Clear";
+            btnClearLog.Font = new Font("Segoe UI", 7.5f, FontStyle.Regular);
+            btnClearLog.ForeColor = ColorTranslator.FromHtml("#94A3B8");
+            btnClearLog.BackColor = Color.Transparent;
+            btnClearLog.FlatStyle = FlatStyle.Flat;
+            btnClearLog.FlatAppearance.BorderSize = 0;
+            btnClearLog.Size = new Size(50, 18);
+            btnClearLog.Location = new Point(474, 324);
+            btnClearLog.Cursor = Cursors.Hand;
+            btnClearLog.Click += (s, e) => { txtLog.Clear(); };
+            this.Controls.Add(btnClearLog);
 
             txtLog = new RichTextBox();
-            txtLog.Location = new Point(16, 376);
-            txtLog.Size = new Size(532, 260);
+            txtLog.Location = new Point(16, 346);
+            txtLog.Size = new Size(508, 252);
             txtLog.BackColor = ColorTranslator.FromHtml("#0F172A");
             txtLog.ForeColor = ColorTranslator.FromHtml("#E2E8F0");
-            txtLog.Font = new Font("Consolas", 9f, FontStyle.Regular);
+            txtLog.Font = new Font("Consolas", 8.5f, FontStyle.Regular);
             txtLog.ReadOnly = true;
             txtLog.BorderStyle = BorderStyle.None;
             this.Controls.Add(txtLog);
 
-            // 5. Footer info
+            // ── CARD 5: Minimalist Footer ──
             Label lblFooter = new Label();
-            lblFooter.Text = "SIMS v2.5.1 • Standalone Desktop Server • Adminova Tech";
-            lblFooter.Font = new Font("Segoe UI", 8f, FontStyle.Regular);
+            lblFooter.Text = "Adminova SIMS v2.5.1 • Standalone Local Server • Adminova Tech";
+            lblFooter.Font = new Font("Segoe UI", 7.5f, FontStyle.Regular);
             lblFooter.ForeColor = ColorTranslator.FromHtml("#94A3B8");
-            lblFooter.Location = new Point(16, 646);
+            lblFooter.Location = new Point(18, 608);
             lblFooter.AutoSize = true;
             this.Controls.Add(lblFooter);
 
@@ -315,7 +319,7 @@ namespace Adminova.ControlCenter
             });
             trayIcon.ContextMenu = contextMenu;
 
-            // Timer for health checks (every 3.5 seconds)
+            // Health check background timer (every 3.5 seconds)
             statusTimer = new System.Windows.Forms.Timer();
             statusTimer.Interval = 3500;
             statusTimer.Tick += (s, e) => {
@@ -326,11 +330,26 @@ namespace Adminova.ControlCenter
             };
             statusTimer.Start();
 
-            LogMessage("Adminova Control Center initialized successfully.");
-            LogMessage("Installation Root: " + rootDir);
+            LogMessage("Adminova Control Center initialized.");
+            LogMessage("Root Directory: " + rootDir);
         }
 
-        private Button CreateFlatButton(string text, Color backColor, Color foreColor, Size size, Point location)
+        private Panel CreateCardPanel(Point location, Size size)
+        {
+            Panel p = new Panel();
+            p.Location = location;
+            p.Size = size;
+            p.BackColor = Color.White;
+            p.Paint += (s, e) => {
+                using (Pen pen = new Pen(ColorTranslator.FromHtml("#E2E8F0"), 1))
+                {
+                    e.Graphics.DrawRectangle(pen, 0, 0, p.Width - 1, p.Height - 1);
+                }
+            };
+            return p;
+        }
+
+        private Button CreateButton(string text, Color backColor, Color foreColor, Size size, Point location, Font font)
         {
             Button btn = new Button();
             btn.Text = text;
@@ -341,8 +360,25 @@ namespace Adminova.ControlCenter
             btn.FlatStyle = FlatStyle.Flat;
             btn.FlatAppearance.BorderSize = 0;
             btn.Cursor = Cursors.Hand;
-            btn.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            btn.Font = font;
             return btn;
+        }
+
+        private void SetButtonState(Button btn, bool enabled, Color enabledBack, Color enabledFore)
+        {
+            btn.Enabled = enabled;
+            if (enabled)
+            {
+                btn.BackColor = enabledBack;
+                btn.ForeColor = enabledFore;
+                btn.Cursor = Cursors.Hand;
+            }
+            else
+            {
+                btn.BackColor = ColorTranslator.FromHtml("#E2E8F0");
+                btn.ForeColor = ColorTranslator.FromHtml("#94A3B8");
+                btn.Cursor = Cursors.Default;
+            }
         }
 
         private void DetectLanIp()
@@ -369,7 +405,7 @@ namespace Adminova.ControlCenter
 
                 lanIp = ip;
                 SafeInvoke(() => {
-                    lblLanAddress.Text = "School LAN: https://" + lanIp + " (Port 443/80)";
+                    lblLanAddress.Text = "LAN: https://" + lanIp + " (Port 443/80)";
                 });
             });
         }
@@ -377,9 +413,16 @@ namespace Adminova.ControlCenter
         private void CopyLanUrl()
         {
             string url = "https://" + lanIp;
-            Clipboard.SetText(url);
-            LogMessage("Copied school LAN URL (" + url + ") to clipboard.");
-            MessageBox.Show("School LAN Address copied to clipboard:\n\n" + url + "\n\nTeachers and staff on the school network can open this link in their browser.", "Link Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                Clipboard.SetText(url);
+                LogMessage("Copied school LAN URL (" + url + ") to clipboard.");
+                MessageBox.Show("School LAN Address copied to clipboard:\n\n" + url + "\n\nTeachers and staff on the school network can open this link in their browser.", "Link Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                LogMessage("Clipboard error: " + ex.Message);
+            }
         }
 
         private void CheckServerStatusAsync()
@@ -419,9 +462,9 @@ namespace Adminova.ControlCenter
                         lblStatusDetail.Text = detail;
                         lblStatusDetail.ForeColor = ColorTranslator.FromHtml("#166534");
 
-                        btnStart.Enabled = false;
-                        btnStop.Enabled = true;
-                        btnRestart.Enabled = true;
+                        SetButtonState(btnStart, false, ColorTranslator.FromHtml("#059669"), Color.White);
+                        SetButtonState(btnStop, true, ColorTranslator.FromHtml("#E11D48"), Color.White);
+                        SetButtonState(btnRestart, true, ColorTranslator.FromHtml("#475569"), Color.White);
                     }
                     else
                     {
@@ -431,9 +474,9 @@ namespace Adminova.ControlCenter
                         lblStatusDetail.Text = detail;
                         lblStatusDetail.ForeColor = ColorTranslator.FromHtml("#991B1B");
 
-                        btnStart.Enabled = true;
-                        btnStop.Enabled = false;
-                        btnRestart.Enabled = false;
+                        SetButtonState(btnStart, true, ColorTranslator.FromHtml("#059669"), Color.White);
+                        SetButtonState(btnStop, false, ColorTranslator.FromHtml("#E11D48"), Color.White);
+                        SetButtonState(btnRestart, false, ColorTranslator.FromHtml("#475569"), Color.White);
                     }
                 });
             });
@@ -471,16 +514,21 @@ namespace Adminova.ControlCenter
             }
         }
 
+        // ══════════════════════════════════════════════════════════════════
+        // ── NATIVE SERVICE CONTROLS (Zero cmd.exe / No terminal popups) ──
+        // ══════════════════════════════════════════════════════════════════
+
         private void ExecuteStartServer()
         {
             if (isOperationRunning) return;
             isOperationRunning = true;
             SetActionButtonsEnabled(false);
-            LogMessage("Starting SIMS Web Server and services...");
+            LogMessage("Initiating native server start sequence...");
 
             ThreadPool.QueueUserWorkItem(state => {
-                RunCommand("cmd.exe", "/c \"" + simsBat + "\" start", rootDir);
-                Thread.Sleep(2000);
+                NativeStartServer();
+                Thread.Sleep(1500);
+
                 SafeInvoke(() => {
                     isOperationRunning = false;
                     SetActionButtonsEnabled(true);
@@ -494,11 +542,12 @@ namespace Adminova.ControlCenter
             if (isOperationRunning) return;
             isOperationRunning = true;
             SetActionButtonsEnabled(false);
-            LogMessage("Stopping SIMS services and freeing network ports...");
+            LogMessage("Stopping all SIMS services natively...");
 
             ThreadPool.QueueUserWorkItem(state => {
-                RunCommand("cmd.exe", "/c \"" + simsBat + "\" stop", rootDir);
-                Thread.Sleep(1000);
+                NativeStopServer();
+                Thread.Sleep(800);
+
                 SafeInvoke(() => {
                     isOperationRunning = false;
                     SetActionButtonsEnabled(true);
@@ -512,17 +561,169 @@ namespace Adminova.ControlCenter
             if (isOperationRunning) return;
             isOperationRunning = true;
             SetActionButtonsEnabled(false);
-            LogMessage("Restarting SIMS services & clearing OPcache...");
+            LogMessage("Restarting SIMS services natively...");
 
             ThreadPool.QueueUserWorkItem(state => {
-                RunCommand("cmd.exe", "/c \"" + simsBat + "\" restart", rootDir);
-                Thread.Sleep(2000);
+                NativeRestartServer();
+                Thread.Sleep(1500);
+
                 SafeInvoke(() => {
                     isOperationRunning = false;
                     SetActionButtonsEnabled(true);
                     CheckServerStatusAsync();
                 });
             });
+        }
+
+        private void NativeStartServer()
+        {
+            // 1. Terminate any previous orphaned processes
+            NativeStopServerQuiet();
+            Thread.Sleep(400);
+
+            bool started = false;
+
+            // 2. Try launching FrankenPHP directly (Native Win32 Background Process)
+            string frankenExe = Path.Combine(rootDir, "runtime", "frankenphp.exe");
+            string caddyfile = Path.Combine(appDir, "Caddyfile");
+
+            if (File.Exists(frankenExe) && File.Exists(caddyfile))
+            {
+                try
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo();
+                    psi.FileName = frankenExe;
+                    psi.Arguments = "run -c \"" + caddyfile + "\"";
+                    psi.WorkingDirectory = appDir;
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    // Ensure PATH includes runtime directory for VC++ DLLs
+                    string runtimeDir = Path.Combine(rootDir, "runtime");
+                    string phpDir = Path.Combine(rootDir, "runtime", "php");
+                    string envPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+                    psi.EnvironmentVariables["PATH"] = phpDir + ";" + runtimeDir + ";" + envPath;
+
+                    Process p = Process.Start(psi);
+                    if (p != null && !p.HasExited)
+                    {
+                        started = true;
+                        LogMessage("FrankenPHP web server process started (PID: " + p.Id + ").");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessage("[WARN] Direct FrankenPHP launch error: " + ex.Message);
+                }
+            }
+
+            // 3. Fallback: Built-in PHP server on Port 8000
+            if (!started && File.Exists(phpBin))
+            {
+                try
+                {
+                    string publicDir = Path.Combine(appDir, "public");
+                    ProcessStartInfo psi = new ProcessStartInfo();
+                    psi.FileName = phpBin;
+                    psi.Arguments = "-S 0.0.0.0:8000 -t \"" + publicDir + "\"";
+                    psi.WorkingDirectory = appDir;
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    Process p = Process.Start(psi);
+                    if (p != null && !p.HasExited)
+                    {
+                        started = true;
+                        LogMessage("PHP fallback server started on port 8000 (PID: " + p.Id + ").");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessage("[ERROR] Failed to start PHP server: " + ex.Message);
+                }
+            }
+
+            // 4. Trigger Windows Task Scheduler background tasks (Queue & Scheduler) silently
+            RunHiddenUtility("schtasks.exe", "/run /tn \"SIMS-Queue\"");
+            RunHiddenUtility("schtasks.exe", "/run /tn \"SIMS-Scheduler\"");
+
+            // 5. Poll ports for readiness
+            for (int i = 0; i < 8; i++)
+            {
+                Thread.Sleep(400);
+                if (IsPortOpen("127.0.0.1", 443, 200) || IsPortOpen("127.0.0.1", 80, 200) || IsPortOpen("127.0.0.1", 8000, 200))
+                {
+                    LogMessage("[OK] SIMS Web Server is ONLINE and accepting connections.");
+                    return;
+                }
+            }
+        }
+
+        private void NativeStopServer()
+        {
+            NativeStopServerQuiet();
+            LogMessage("[OK] All SIMS services terminated and network ports released.");
+        }
+
+        private void NativeStopServerQuiet()
+        {
+            // 1. End scheduled tasks quietly
+            RunHiddenUtility("schtasks.exe", "/end /tn \"SIMS-Web\"");
+            RunHiddenUtility("schtasks.exe", "/end /tn \"SIMS-Queue\"");
+            RunHiddenUtility("schtasks.exe", "/end /tn \"SIMS-Scheduler\"");
+
+            // 2. Kill web and worker processes natively using Process.GetProcessesByName
+            string[] targets = new string[] { "frankenphp", "php-cgi" };
+            foreach (string target in targets)
+            {
+                try
+                {
+                    Process[] procs = Process.GetProcessesByName(target);
+                    foreach (Process p in procs)
+                    {
+                        try
+                        {
+                            p.Kill();
+                            p.WaitForExit(1000);
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+            }
+
+            // Terminate background php.exe instances
+            try
+            {
+                Process[] phpProcs = Process.GetProcessesByName("php");
+                foreach (Process p in phpProcs)
+                {
+                    try
+                    {
+                        p.Kill();
+                        p.WaitForExit(1000);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        private void NativeRestartServer()
+        {
+            NativeStopServerQuiet();
+            Thread.Sleep(800);
+
+            // Flush caches if PHP is present
+            if (File.Exists(phpBin))
+            {
+                LogMessage("Flushing application cache and OPcache...");
+                RunDirectProcess(phpBin, "artisan optimize:clear", appDir);
+            }
+
+            NativeStartServer();
         }
 
         private void ExecuteCheckUpdates()
@@ -533,7 +734,7 @@ namespace Adminova.ControlCenter
             LogMessage("Contacting update server to check for delta patches and releases...");
 
             ThreadPool.QueueUserWorkItem(state => {
-                string checkOutput = RunCommand(phpBin, "artisan sims:update --check", appDir);
+                string checkOutput = RunDirectProcess(phpBin, "artisan sims:update --check", appDir);
 
                 SafeInvoke(() => {
                     isOperationRunning = false;
@@ -544,9 +745,9 @@ namespace Adminova.ControlCenter
                         checkOutput.IndexOf("available to install", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         DialogResult res = MessageBox.Show(
-                            "A software update / hotfix patch is available for your SIMS installation!\n\n" +
+                            "A software update or hotfix patch is available for your SIMS installation!\n\n" +
                             "Would you like to download and install this update now?\n" +
-                            "(Your existing database and student records are automatically backed up first).",
+                            "(Existing database and student records are automatically backed up first).",
                             "SIMS Software Update Available",
                             MessageBoxButtons.YesNo,
                             MessageBoxIcon.Information);
@@ -571,13 +772,13 @@ namespace Adminova.ControlCenter
             LogMessage("Preparing to apply update: Releasing file locks...");
 
             ThreadPool.QueueUserWorkItem(state => {
-                RunCommand("cmd.exe", "/c \"" + simsBat + "\" stop", rootDir);
+                NativeStopServerQuiet();
                 LogMessage("Downloading verified update archive and running database migrations...");
-                string updateOutput = RunCommand(phpBin, "artisan sims:update", appDir);
+                string updateOutput = RunDirectProcess(phpBin, "artisan sims:update", appDir);
 
                 LogMessage("Restarting SIMS Web Server with updated application code...");
-                RunCommand("cmd.exe", "/c \"" + simsBat + "\" start", rootDir);
-                Thread.Sleep(2000);
+                NativeStartServer();
+                Thread.Sleep(1500);
 
                 SafeInvoke(() => {
                     isOperationRunning = false;
@@ -605,49 +806,83 @@ namespace Adminova.ControlCenter
             btnRefresh.Enabled = enabled;
         }
 
-        private string RunCommand(string file, string args, string workingDir)
+        private void RunHiddenUtility(string exe, string args)
         {
             try
             {
                 ProcessStartInfo psi = new ProcessStartInfo();
-                psi.FileName = file;
+                psi.FileName = exe;
                 psi.Arguments = args;
+                psi.CreateNoWindow = true;
+                psi.UseShellExecute = false;
+                psi.WindowStyle = ProcessWindowStyle.Hidden;
+                using (Process p = Process.Start(psi))
+                {
+                    if (p != null) p.WaitForExit(3000);
+                }
+            }
+            catch { }
+        }
+
+        private string RunDirectProcess(string fileName, string arguments, string workingDir)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = fileName;
+
+                // Load custom php.ini if calling php.exe
+                if (fileName.IndexOf("php", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    string phpIni = Path.Combine(rootDir, "runtime", "php", "php.ini");
+                    if (File.Exists(phpIni))
+                    {
+                        arguments = "-c \"" + phpIni + "\" " + arguments;
+                    }
+                }
+
+                psi.Arguments = arguments;
                 psi.WorkingDirectory = workingDir;
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;
                 psi.RedirectStandardOutput = true;
                 psi.RedirectStandardError = true;
 
-                StringBuilder outputBuilder = new StringBuilder();
-                using (Process proc = new Process())
+                // Ensure PATH contains runtime directories for VC++ DLLs
+                string runtimeDir = Path.Combine(rootDir, "runtime");
+                string phpDir = Path.Combine(rootDir, "runtime", "php");
+                string envPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+                psi.EnvironmentVariables["PATH"] = phpDir + ";" + runtimeDir + ";" + envPath;
+
+                StringBuilder sb = new StringBuilder();
+                using (Process p = new Process())
                 {
-                    proc.StartInfo = psi;
-                    proc.OutputDataReceived += (s, e) => {
+                    p.StartInfo = psi;
+                    p.OutputDataReceived += (s, e) => {
                         if (!string.IsNullOrEmpty(e.Data))
                         {
-                            outputBuilder.AppendLine(e.Data);
+                            sb.AppendLine(e.Data);
                             LogMessage(e.Data);
                         }
                     };
-                    proc.ErrorDataReceived += (s, e) => {
+                    p.ErrorDataReceived += (s, e) => {
                         if (!string.IsNullOrEmpty(e.Data))
                         {
-                            outputBuilder.AppendLine("[ERROR] " + e.Data);
+                            sb.AppendLine("[ERROR] " + e.Data);
                             LogMessage("[ERROR] " + e.Data);
                         }
                     };
 
-                    proc.Start();
-                    proc.BeginOutputReadLine();
-                    proc.BeginErrorReadLine();
-                    proc.WaitForExit();
-
-                    return outputBuilder.ToString();
+                    p.Start();
+                    p.BeginOutputReadLine();
+                    p.BeginErrorReadLine();
+                    p.WaitForExit();
+                    return sb.ToString();
                 }
             }
             catch (Exception ex)
             {
-                LogMessage("Command error: " + ex.Message);
+                LogMessage("Execution error: " + ex.Message);
                 return "Error: " + ex.Message;
             }
         }

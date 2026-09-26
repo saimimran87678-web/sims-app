@@ -13,6 +13,8 @@ set "APP_PUBLIC=%APP_DIR%\public"
 set "RUNTIME_DIR=%ROOT_DIR%\runtime"
 set "LOG_FILE=%APP_DIR%\storage\logs\web-server.log"
 
+set "PATH=%RUNTIME_DIR%\php;%RUNTIME_DIR%;%PATH%"
+
 if not exist "%APP_DIR%\storage\logs" mkdir "%APP_DIR%\storage\logs" >nul 2>&1
 
 cd /d "%APP_DIR%"

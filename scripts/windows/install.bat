@@ -58,6 +58,7 @@ exit /b 1
 
 :USE_PORTABLE_PHP
 set "PHP_BIN=%PORTABLE_PHP%"
+set "PATH=%ROOT_DIR%\runtime\php;%ROOT_DIR%\runtime;%PATH%"
 echo [OK] Using bundled portable PHP runtime.
 goto :PHP_READY
 

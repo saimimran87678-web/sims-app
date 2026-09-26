@@ -214,7 +214,58 @@ Set-Content -Path (Join-Path $PhpDir "php.ini") -Value $PhpIniContent -Encoding 
 Write-Host "[OK] php.ini generated successfully." -ForegroundColor Green
 
 # ------------------------------------------------------------------------------
-# 4. Clean up temporary download cache
+# 4. Bundle Microsoft Visual C++ 2015-2022 Runtime DLLs (VC15/VS16)
+# ------------------------------------------------------------------------------
+Write-Host "`n[4/5] Bundling Visual C++ Runtime DLLs (VCRUNTIME140.dll, MSVCP140.dll)..." -ForegroundColor Blue
+
+$vcDllNames = @(
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+    "msvcp140.dll",
+    "msvcp140_1.dll",
+    "msvcp140_2.dll",
+    "msvcp140_atomic_wait.dll",
+    "msvcp140_codecvt_ids.dll",
+    "concrt140.dll",
+    "vcomp140.dll"
+)
+
+# Priority 1: Check system System32 on the build machine (e.g. GitHub Actions runner)
+$system32 = "$env:WINDIR\System32"
+foreach ($dll in $vcDllNames) {
+    $src = Join-Path $system32 $dll
+    if (Test-Path $src) {
+        Copy-Item -Path $src -Destination $PhpDir -Force
+        Copy-Item -Path $src -Destination $RuntimeDir -Force
+    }
+}
+
+# Priority 2: Fallback to downloading official Microsoft VC_redist if missing
+$checkDll = Join-Path $PhpDir "vcruntime140.dll"
+if (-not (Test-Path $checkDll)) {
+    Write-Host "Downloading Microsoft VC_redist.x64.exe fallback..." -ForegroundColor Cyan
+    $vcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    $vcRedistPath = Join-Path $TmpDir "vc_redist.x64.exe"
+    if (Save-FileWithFallback -Url $vcRedistUrl -OutputFile $vcRedistPath) {
+        Start-Process -FilePath $vcRedistPath -ArgumentList "/install /quiet /norestart" -Wait -WindowStyle Hidden
+        foreach ($dll in $vcDllNames) {
+            $src = Join-Path $system32 $dll
+            if (Test-Path $src) {
+                Copy-Item -Path $src -Destination $PhpDir -Force
+                Copy-Item -Path $src -Destination $RuntimeDir -Force
+            }
+        }
+    }
+}
+
+if (Test-Path (Join-Path $PhpDir "vcruntime140.dll")) {
+    Write-Host "[OK] Microsoft Visual C++ runtime libraries bundled successfully." -ForegroundColor Green
+} else {
+    Write-Host "[WARNING] vcruntime140.dll could not be bundled. Ensure VC++ Redistributable is installed." -ForegroundColor Yellow
+}
+
+# ------------------------------------------------------------------------------
+# 5. Clean up temporary download cache
 # ------------------------------------------------------------------------------
 if (Test-Path $TmpDir) {
     [System.IO.Directory]::Delete($TmpDir, $true)
