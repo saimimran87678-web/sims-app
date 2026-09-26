@@ -50,7 +50,6 @@ Source: "..\..\..\install.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\sims.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\manifest.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\..\..\control-center.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\control-center.bat"; DestDir: "{app}"; Flags: ignoreversion
 ; Application Source
 Source: "..\..\..\sims-app\*"; DestDir: "{app}\sims-app"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: ".env, .env.*, database\database.sqlite*, storage\logs\*, storage\caddy\*, tests\*, node_modules\*"

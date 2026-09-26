@@ -73,7 +73,7 @@ if [ -d "${ROOT_DIR}/resources/icons" ]; then
 fi
 
 # Top-level launchers
-for LAUNCHER in install.bat install.sh sims.bat control-center.bat control-center.vbs; do
+for LAUNCHER in install.bat install.sh sims.bat control-center.bat; do
     if [ -f "${ROOT_DIR}/${LAUNCHER}" ]; then
         cp "${ROOT_DIR}/${LAUNCHER}" "${STAGING_DIR}/"
     fi
