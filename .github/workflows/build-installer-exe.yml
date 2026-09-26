@@ -1,5 +1,15 @@
 name: Build Windows SIMS-Installer.exe
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TRIGGER STRATEGY:
+#   • workflow_dispatch  → manual trigger (specify version explicitly)
+#   • push: tags v*.*.*  → auto-trigger on version tag push
+#
+# RACE CONDITION FIX:
+#   release-patch.yml no longer triggers on tags — only this workflow does.
+#   Patch releases use workflow_dispatch only on release-patch.yml.
+#   This prevents two workflows from creating the same GitHub Release simultaneously.
+# ─────────────────────────────────────────────────────────────────────────────
 on:
   workflow_dispatch:
     inputs:
@@ -28,6 +38,7 @@ jobs:
       - name: Setup PHP runtime for Composer
         uses: shivammathur/setup-php@v2
         with:
+          # IMPORTANT: Match the bundled runtime PHP version (8.2) to catch compatibility issues in CI
           php-version: '8.2'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl, gd, fileinfo
           coverage: none
@@ -98,6 +109,22 @@ jobs:
         run: |
           .\scripts\build\windows\build-installer.ps1 -Version "${{ steps.vars.outputs.version }}"
 
+      - name: Verify installer was produced
+        shell: pwsh
+        run: |
+          $installer = "dist\installer\SIMS-Installer-v${{ steps.vars.outputs.version }}.exe"
+          if (-not (Test-Path $installer)) {
+            Write-Error "Expected installer not found at: $installer"
+            exit 1
+          }
+          $hash = (Get-FileHash -Path $installer -Algorithm SHA256).Hash.ToLower()
+          $size = [math]::Round((Get-Item $installer).Length / 1MB, 2)
+          Write-Host "Installer verified: $installer ($size MB)"
+          Write-Host "SHA-256: $hash"
+          echo "installer_hash=$hash" >> $env:GITHUB_OUTPUT
+          echo "installer_size=$size" >> $env:GITHUB_OUTPUT
+        id: verify
+
       - name: Upload Installer Executable Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -110,4 +137,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.vars.outputs.version }}
+          name: SIMS v${{ steps.vars.outputs.version }}
+          body: |
+            ### SIMS v${{ steps.vars.outputs.version }} — Windows Installer
+
+            Download `SIMS-Installer-v${{ steps.vars.outputs.version }}.exe` and run it to install SIMS on a new Windows machine.
+
+            **Installer Verification:**
+            - SHA-256: `${{ steps.verify.outputs.installer_hash }}`
+            - Size: ${{ steps.verify.outputs.installer_size }} MB
+
+            **For existing installations:** Use `sims update` or `sims [8]` in the interactive menu to apply patch updates without reinstalling.
           files: dist/installer/SIMS-Installer-*.exe
+          # Use update_existing so that release-patch.yml can attach the patch zip to same release if needed
+          fail_on_unmatched_files: true

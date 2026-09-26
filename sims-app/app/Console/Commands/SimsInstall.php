@@ -57,11 +57,40 @@ class SimsInstall extends Command
             }
         }
 
-        // 2. Generate unique cryptographic APP_KEY if missing or forced
+        // 2. Generate unique cryptographic APP_KEY if missing or forced.
+        //    CRITICAL: key:generate writes to .env then returns. The in-process config() cache still
+        //    holds the OLD (empty) key. We must re-read .env after generation so that config:cache
+        //    (called later) bakes in the real key — not the empty one that causes HTTP 500.
         $currentKey = config('app.key');
         if (empty($currentKey) || $this->option('force')) {
             $this->info('🔑 Generating unique cryptographic APP_KEY for this installation...');
-            Artisan::call('key:generate', ['--force' => true]);
+
+            // Run key:generate in a separate sub-process so the new key is written to .env
+            // without being contaminated by the current process's in-memory config state.
+            $phpBin  = PHP_BINARY;
+            $artisan = base_path('artisan');
+            exec("\"{$phpBin}\" \"{$artisan}\" key:generate --force 2>&1", $keyOutput, $keyCode);
+
+            if ($keyCode !== 0) {
+                // Fallback to in-process if exec is disabled (some shared hosts)
+                Artisan::call('key:generate', ['--force' => true]);
+            }
+
+            // Re-read the freshly written APP_KEY from .env into the running process
+            // so that any subsequent config:cache call encodes the real key.
+            $envFilePath = base_path('.env');
+            if (file_exists($envFilePath)) {
+                $envContents = file_get_contents($envFilePath);
+                if (preg_match('/^APP_KEY=(.+)$/m', $envContents, $matches)) {
+                    $freshKey = trim($matches[1]);
+                    // Inject fresh key into the current process config and env
+                    config(['app.key' => $freshKey]);
+                    putenv("APP_KEY={$freshKey}");
+                    $_ENV['APP_KEY']    = $freshKey;
+                    $_SERVER['APP_KEY'] = $freshKey;
+                }
+            }
+
             $this->info('✅ Generated new 256-bit AES master APP_KEY.');
         } else {
             $this->line('ℹ️ Cryptographic APP_KEY is already configured.');

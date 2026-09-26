@@ -204,11 +204,15 @@ class SimsUpdate extends Command
             }
         }
 
-        $extractPath = $this->option('extract-to') ?: base_path();
+        // CRITICAL: The patch zip structure is relative to the INSTALLATION ROOT, e.g.:
+        //   sims-app/app/...      sims-app/resources/...      scripts/windows/...
+        // base_path()         = <install>\sims-app\  → would extract into sims-app\sims-app\ (wrong!)
+        // dirname(base_path()) = <install>\           → correct installation root
+        $extractPath = $this->option('extract-to') ?: dirname(base_path());
         $zip->extractTo($extractPath);
         $zip->close();
         @unlink($zipPath);
-        $this->line("✅ Files extracted successfully.");
+        $this->line('✅ Files extracted successfully to installation root.');
 
         // ── STEP 4: Run silent database migrations ────────────────────
         if (!app()->runningUnitTests()) {
@@ -257,6 +261,10 @@ class SimsUpdate extends Command
         $this->info("🎉 SIMS successfully updated to v{$latestVersion}!");
         $this->info(" Verified SHA-256 : {$actualHash}");
         $this->info("==========================================");
+
+        // ── STEP 7: Restart background services so new code is loaded ──
+        $this->line('🔄 Restarting SIMS background services to load updated code...');
+        $this->restartServices();
 
         Log::info("SIMS successfully updated from v{$currentVersion} to v{$latestVersion}. Verified SHA-256: {$actualHash}");
         return 0;
@@ -376,9 +384,11 @@ class SimsUpdate extends Command
         $pingUrl = rtrim($appUrl, '/') . '/ping-internal';
 
         // Attempt up to 3 times
+        // NOTE: localhost uses a self-signed cert, so we must skip TLS verification here.
+        // Security is guaranteed by the SHA-256 checksum we already verified on the package.
         for ($i = 0; $i < 3; $i++) {
             try {
-                $response = Http::timeout(4)->get($pingUrl);
+                $response = Http::timeout(4)->withoutVerifying()->get($pingUrl);
                 if ($response->successful() && $response->json('status') === 'alive') {
                     return true;
                 }
@@ -401,6 +411,51 @@ class SimsUpdate extends Command
         }
 
         return false;
+    }
+
+    /**
+     * Restart SIMS background services after a successful update so the new code is loaded.
+     * On Windows: uses schtasks. On Linux: uses systemctl if available, else pkill/restart.
+     */
+    protected function restartServices(): void
+    {
+        try {
+            if (PHP_OS_FAMILY === 'Windows') {
+                // Stop then restart via Task Scheduler (runs as SYSTEM, survives logoff)
+                foreach (['SIMS-Web', 'SIMS-Queue', 'SIMS-Scheduler'] as $task) {
+                    exec("schtasks /end /tn \"{$task}\" >nul 2>&1");
+                }
+                sleep(2);
+                foreach (['SIMS-Web', 'SIMS-Queue', 'SIMS-Scheduler'] as $task) {
+                    exec("schtasks /run /tn \"{$task}\" >nul 2>&1");
+                }
+                $this->info('✅ Windows Task Scheduler services restarted.');
+            } else {
+                // Linux: try systemctl first, then pkill-based restart
+                $services = ['sims-web', 'sims-queue', 'sims-scheduler'];
+                $systemctlWorks = false;
+                foreach ($services as $svc) {
+                    exec("systemctl is-enabled {$svc} 2>/dev/null", $out, $code);
+                    if ($code === 0) {
+                        exec("systemctl restart {$svc} 2>/dev/null");
+                        $systemctlWorks = true;
+                    }
+                }
+                if (!$systemctlWorks) {
+                    // Fallback: kill FrankenPHP and PHP workers; init scripts will restart via cron
+                    exec('pkill -f "frankenphp" 2>/dev/null || true');
+                    exec('pkill -f "queue:work" 2>/dev/null || true');
+                    exec('pkill -f "schedule:work" 2>/dev/null || true');
+                    $this->warn('⚠️ Systemd services not found. Killed running processes — they should restart via cron or init. Please verify manually.');
+                } else {
+                    $this->info('✅ Linux systemd services restarted.');
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->warn('⚠️ Could not auto-restart services: ' . $e->getMessage());
+            $this->warn('   Please run: sims restart   (Windows) or   sudo systemctl restart sims-web   (Linux)');
+            Log::warning('SIMS post-update service restart failed: ' . $e->getMessage());
+        }
     }
 
     /**

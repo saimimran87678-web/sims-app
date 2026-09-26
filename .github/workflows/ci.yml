@@ -18,7 +18,8 @@ jobs:
       - name: Setup PHP runtime
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          # IMPORTANT: Must match the bundled runtime PHP version (8.2) to catch incompatibilities
+          php-version: '8.2'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3, zip, bcmath, curl, gd, fileinfo, openssl, pdo
           coverage: none
 

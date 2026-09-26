@@ -79,9 +79,38 @@ for LAUNCHER in install.bat install.sh sims.bat control-center.bat; do
     fi
 done
 
+# Include vendor/ (PHP dependencies).
+# REQUIRED: Without vendor/, any update adding new PHP packages will cause Fatal errors on client.
+# The vendor directory is pre-optimized for production and does not contain dev dependencies.
+if [ -d "${APP_DIR}/vendor" ]; then
+    echo "  - Staging vendor/ (PHP dependencies)..."
+    cp -r "${APP_DIR}/vendor" "${STAGING_DIR}/sims-app/vendor"
+    # Remove dev-only packages to keep patch size minimal
+    rm -rf "${STAGING_DIR}/sims-app/vendor/phpunit" 2>/dev/null || true
+    echo "  - Included: sims-app/vendor/ (production PHP dependencies)"
+else
+    echo "WARNING: vendor/ not found at ${APP_DIR}/vendor — patch will not include PHP dependencies!"
+    echo "         Run 'composer install --no-dev --optimize-autoloader' before building patches."
+fi
+
 # Strict secret & state sanitation
 echo "ℹ️ Sanitizing staging files..."
 find "${STAGING_DIR}" -type f \( -name "*.pem" -o -name "*.key" -o -name "*.sqlite*" -o -name ".env*" -o -name ".sims-server.state" -o -name "*.log" \) -delete
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ZIP STRUCTURE NOTE (CRITICAL — do not change):
+#   The zip is built by cd-ing into STAGING_DIR and zipping "."
+#   This produces entries like:
+#     ./sims-app/app/...
+#     ./sims-app/resources/...
+#     ./sims-app/vendor/...
+#     ./scripts/windows/...
+#     ./scripts/linux/...
+#     ./install.bat
+#   SimsUpdate.php extracts to dirname(base_path()) = the INSTALLATION ROOT
+#   so these paths land at: <install>\sims-app\app\... and <install>\scripts\...
+#   DO NOT change the staging structure or the extract path without updating both.
+# ─────────────────────────────────────────────────────────────────────────────
 
 ZIP_FILE="sims-patch-v${VERSION}.zip"
 ZIP_PATH="${DIST_DIR}/${ZIP_FILE}"

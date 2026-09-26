@@ -1,9 +1,13 @@
 name: SIMS Release Delta Patch
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TRIGGER STRATEGY:
+#   • workflow_dispatch only  → manual one-click patch release from GitHub UI
+#   • Tags intentionally REMOVED from this workflow to avoid race condition
+#     with build-installer-exe.yml which also fires on v*.*.* tags.
+#   • To cut a patch release: Actions → "SIMS Release Delta Patch" → Run workflow
+# ─────────────────────────────────────────────────────────────────────────────
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       version:
@@ -31,23 +35,39 @@ jobs:
       - name: Resolve Version and Changelog
         id: vars
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-            VERSION="${VERSION#v}"
-            CHANGELOG="${{ github.event.inputs.changelog }}"
-          else
-            TAG_REF="${{ github.ref }}"
-            VERSION="${TAG_REF#refs/tags/v}"
-            CHANGELOG=$(git log -1 --pretty=%B)
-          fi
+          VERSION="${{ github.event.inputs.version }}"
+          VERSION="${VERSION#v}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "changelog=${CHANGELOG}" >> $GITHUB_OUTPUT
+          # Use heredoc delimiter to safely handle multi-line changelog
+          {
+            echo "changelog<<CHANGELOG_EOF"
+            printf '%s' "${{ github.event.inputs.changelog }}"
+            echo ""
+            echo "CHANGELOG_EOF"
+          } >> $GITHUB_OUTPUT
           echo "Building patch for version: ${VERSION}"
 
       - name: Package Delta Patch Archive
         run: |
           chmod +x scripts/build/linux/build-patch.sh
           ./scripts/build/linux/build-patch.sh "${{ steps.vars.outputs.version }}" "${{ steps.vars.outputs.changelog }}" "8.2.0"
+
+      - name: Read Manifest Checksum
+        id: manifest
+        run: |
+          CHECKSUM=$(jq -r '.checksum' dist/patches/manifest.json)
+          SIZE=$(jq -r '.size_bytes' dist/patches/manifest.json)
+          echo "checksum=${CHECKSUM}" >> $GITHUB_OUTPUT
+          echo "size=${SIZE}" >> $GITHUB_OUTPUT
+
+      - name: Verify patch archive exists
+        run: |
+          PATCH_FILE="dist/patches/sims-patch-v${{ steps.vars.outputs.version }}.zip"
+          if [ ! -f "${PATCH_FILE}" ]; then
+            echo "ERROR: Patch archive not found at: ${PATCH_FILE}"
+            exit 1
+          fi
+          echo "OK: Patch archive verified: ${PATCH_FILE}"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -56,12 +76,16 @@ jobs:
           name: SIMS Release v${{ steps.vars.outputs.version }}
           body: |
             ### SIMS v${{ steps.vars.outputs.version }} Delta Patch Release
-            
+
             **Changelog:**
             ${{ steps.vars.outputs.changelog }}
-            
+
+            **Installation:**
+            Existing installations auto-update via `sims update` (Windows) or `./scripts/linux/sims.sh update` (Linux).
+
             **Verification:**
-            - Checksum (SHA-256): `$(jq -r .checksum dist/patches/manifest.json)`
+            - Checksum (SHA-256): `${{ steps.manifest.outputs.checksum }}`
+            - Package Size: ${{ steps.manifest.outputs.size }} bytes
             - Target Architecture: Windows / Linux Standalone Runtime
           files: |
             dist/patches/sims-patch-v${{ steps.vars.outputs.version }}.zip
@@ -73,13 +97,15 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
           git checkout -f main
           git pull origin main --rebase
           cp dist/patches/manifest.json manifest.json
           git add manifest.json
           if git diff --staged --quiet; then
-            echo "manifest.json has not changed."
+            echo "manifest.json unchanged, skipping commit."
           else
             git commit -m "chore(release): update manifest.json to v${{ steps.vars.outputs.version }} [skip ci]"
-            git push origin main
+            # Retry push once to handle transient race conditions
+            git push origin main || (git pull origin main --rebase && git push origin main)
           fi

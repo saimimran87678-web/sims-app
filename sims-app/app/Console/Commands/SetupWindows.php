@@ -81,13 +81,30 @@ class SetupWindows extends Command
         $schedulerBat = $activeRunnersDir . DIRECTORY_SEPARATOR . 'run-scheduler.bat';
 
         if (!file_exists($webBat)) {
-            file_put_contents($webBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$frankenBinary}\" run --config \"{$appPath}\\Caddyfile\"\r\n");
+            // IMPORTANT: Must cd into APP_DIR first so that Caddyfile's "root * public" resolves
+            // to sims-app\public correctly. No --adapter flag needed; FrankenPHP auto-detects format.
+            file_put_contents($webBat,
+                "@echo off\r\n" .
+                "cd /d \"{$appPath}\"\r\n" .
+                "set \"FRANKEN={$frankenBinary}\"\r\n" .
+                "set \"PHP_FCGI_MAX_REQUESTS=0\"\r\n" .
+                "if not exist \"%FRANKEN%\" set \"FRANKEN=frankenphp.exe\"\r\n" .
+                "\"%FRANKEN%\" run --config \"{$appPath}\\Caddyfile\" >> \"{$appPath}\\storage\\logs\\web-server.log\" 2>&1\r\n"
+            );
         }
         if (!file_exists($queueBat)) {
-            file_put_contents($queueBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$phpBinary}\" \"{$artisanPath}\" queue:work --sleep=3 --tries=3\r\n");
+            file_put_contents($queueBat,
+                "@echo off\r\n" .
+                "cd /d \"{$appPath}\"\r\n" .
+                "\"{$phpBinary}\" \"{$artisanPath}\" queue:work --sleep=3 --tries=3 --max-time=3600\r\n"
+            );
         }
         if (!file_exists($schedulerBat)) {
-            file_put_contents($schedulerBat, "@echo off\r\ncd /d \"{$appPath}\"\r\n\"{$phpBinary}\" \"{$artisanPath}\" schedule:work\r\n");
+            file_put_contents($schedulerBat,
+                "@echo off\r\n" .
+                "cd /d \"{$appPath}\"\r\n" .
+                "\"{$phpBinary}\" \"{$artisanPath}\" schedule:work\r\n"
+            );
         }
 
         $services = [

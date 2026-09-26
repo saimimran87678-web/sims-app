@@ -72,7 +72,9 @@ if %errorLevel% neq 0 (
 )
 
 echo [%date% %time%] Launching FrankenPHP with Caddyfile... >> "%LOG_FILE%"
-"%FRANKEN%" run --adapter caddyfile --config "%APP_DIR%\Caddyfile" >> "%LOG_FILE%" 2>&1
+:: Note: --adapter flag is NOT needed; FrankenPHP auto-detects the Caddyfile format.
+:: cd /d APP_DIR (line 20) ensures "root * public" in Caddyfile resolves to sims-app\public.
+"%FRANKEN%" run --config "%APP_DIR%\Caddyfile" >> "%LOG_FILE%" 2>&1
 set "FRANKEN_EXIT=%errorLevel%"
 echo [%date% %time%] FrankenPHP exited with code %FRANKEN_EXIT%. >> "%LOG_FILE%"
 
