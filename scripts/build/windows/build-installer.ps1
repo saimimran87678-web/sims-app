@@ -10,7 +10,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [string]$Version = "2.5.1"
+    [string]$Version = "2.5.2"
 )
 
 Set-StrictMode -Version Latest
@@ -43,6 +43,16 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $RootDir = (Resolve-Path "$ScriptDir\..\..\..").Path
 $IssFile = Join-Path $ScriptDir "sims-installer.iss"
 $DistDir = Join-Path $RootDir "dist\installer"
+
+$ManifestFile = Join-Path $RootDir "manifest.json"
+if ($PSBoundParameters.ContainsKey('Version') -eq $false -and (Test-Path $ManifestFile)) {
+    try {
+        $manifestJson = Get-Content -Raw $ManifestFile | ConvertFrom-Json
+        if ($manifestJson.version) {
+            $Version = [string]$manifestJson.version
+        }
+    } catch {}
+}
 
 Write-Header "SIMS Windows Executable Installer Compiler"
 Write-Info "Repository Root : $RootDir"

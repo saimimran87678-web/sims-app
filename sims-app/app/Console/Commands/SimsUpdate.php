@@ -43,7 +43,7 @@ class SimsUpdate extends Command
     {
         // ── Option: Display current installed version & checksum ──────
         if ($this->option('verify-checksum')) {
-            $version   = config('app.version', '2.5.0');
+            $version   = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
             $checksum  = Setting::getGlobal('last_update_checksum', 'None (Initial installation)');
             $updatedAt = Setting::getGlobal('last_updated_at', 'N/A');
 
@@ -77,7 +77,7 @@ class SimsUpdate extends Command
                 return 1;
             }
 
-            $currentVersion = config('app.version', '2.5.0');
+            $currentVersion = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
             $latestVersion = null;
             $minPhpVersion = '8.2.0';
 
@@ -123,7 +123,7 @@ class SimsUpdate extends Command
             }
 
             $latestVersion   = trim($manifest['version'] ?? '');
-            $currentVersion  = config('app.version', '2.5.0');
+            $currentVersion  = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
             $expectedHash    = strtolower(trim($manifest['checksum'] ?? $manifest['sha256'] ?? ''));
             $downloadUrl     = $manifest['download_url'] ?? '';
             $minPhpVersion   = $manifest['min_php_version'] ?? '8.2.0';
@@ -586,7 +586,16 @@ class SimsUpdate extends Command
     {
         try {
             if (PHP_OS_FAMILY === 'Windows') {
-                // Terminate running PHP-CGI workers so newly extracted code is immediately loaded
+                if (!app()->runningInConsole()) {
+                    // Running inside a web request (e.g. Settings UI).
+                    // Avoid killing php-cgi.exe synchronously while it is actively streaming the HTTP response.
+                    // Instead, trigger a background delayed restart so the client receives the response cleanly.
+                    pclose(popen("start /B cmd /c \"ping 127.0.0.1 -n 3 >nul & taskkill /F /IM php-cgi.exe >nul 2>&1 & schtasks /run /tn SIMS-Web >nul 2>&1 & schtasks /run /tn SIMS-Queue >nul 2>&1\"", "r"));
+                    $this->info('✅ Windows background services scheduled to reload after request.');
+                    return;
+                }
+
+                // Console / Control Center execution: synchronous restart
                 exec("taskkill /F /IM php-cgi.exe >nul 2>&1");
 
                 // Stop then restart via Task Scheduler (runs as SYSTEM, survives logoff)

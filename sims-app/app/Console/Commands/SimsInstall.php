@@ -141,10 +141,11 @@ class SimsInstall extends Command
 
         // 4b. Seed initial installation checksum and version if manifest is present
         $manifestCandidates = [
-            base_path('../manifest.json'),
+            dirname(base_path()) . DIRECTORY_SEPARATOR . 'manifest.json',
             base_path('manifest.json'),
-            base_path('public/build/manifest.json')
+            base_path('../manifest.json'),
         ];
+        $seeded = false;
         foreach ($manifestCandidates as $candidate) {
             if (File::exists($candidate)) {
                 $raw = File::get($candidate);
@@ -157,9 +158,17 @@ class SimsInstall extends Command
                     \App\Models\Setting::setGlobal('installed_version', $ver);
                     \App\Models\Setting::setGlobal('last_updated_at', now()->toIso8601String());
                     $this->info("🔖 Seeded release tracking metadata: v{$ver} ({$chk})");
+                    $seeded = true;
                     break;
                 }
             }
+        }
+
+        if (!$seeded && !\App\Models\Setting::getGlobal('installed_version')) {
+            $ver = config('app.version', '2.5.2');
+            \App\Models\Setting::setGlobal('installed_version', $ver);
+            \App\Models\Setting::setGlobal('last_updated_at', now()->toIso8601String());
+            $this->info("🔖 Seeded default version metadata: v{$ver}");
         }
 
         // 5. Ensure storage symlink exists

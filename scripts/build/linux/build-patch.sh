@@ -37,7 +37,7 @@ if [ -z "${VERSION}" ]; then
         fi
     fi
     if [ -z "${VERSION}" ]; then
-        VERSION="2.5.1"
+        VERSION="2.5.2"
     fi
 fi
 

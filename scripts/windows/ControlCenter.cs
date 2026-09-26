@@ -933,6 +933,11 @@ namespace Adminova.ControlCenter
                             ApplyUpdate();
                         }
                     }
+                    else if (checkOutput.IndexOf("Unable to retrieve", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             checkOutput.IndexOf("No internet", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        MessageBox.Show("Could not connect to the update server.\n\nPlease verify your internet connection and try again.", "Update Server Unreachable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                     else if (checkOutput.IndexOf("SQLSTATE", StringComparison.OrdinalIgnoreCase) >= 0 ||
                              checkOutput.IndexOf("In StreamHandler.php", StringComparison.OrdinalIgnoreCase) >= 0 ||
                              checkOutput.IndexOf("Permission denied", StringComparison.OrdinalIgnoreCase) >= 0 ||

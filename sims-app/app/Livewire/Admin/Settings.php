@@ -23,7 +23,7 @@ class Settings extends Component
     public $successMessage = '';
 
     // System Update Properties
-    public $currentVersion = '2.5.0';
+    public $currentVersion = '2.5.2';
     public $lastUpdateChecksum = 'Initial Installation';
     public $lastUpdatedAt = 'Initial Installation';
     public $updateAvailable = false;
@@ -74,7 +74,13 @@ class Settings extends Component
         $this->admin_action_pin = Setting::get('admin_action_pin', '');
 
         // Initialize Version & Integrity status
-        $this->currentVersion = config('app.version', '2.5.0');
+        $cfgVer = config('app.version', '2.5.2');
+        $dbVer = Setting::getGlobal('installed_version');
+        if (empty($dbVer) || version_compare($dbVer, $cfgVer, '<')) {
+            Setting::setGlobal('installed_version', $cfgVer);
+            $dbVer = $cfgVer;
+        }
+        $this->currentVersion = $dbVer;
         $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'None (Initial Installation)');
         $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', 'Initial Installation');
     }
@@ -255,6 +261,14 @@ class Settings extends Component
         $this->updateErrorMessage = '';
 
         try {
+            $cfgVer = config('app.version', '2.5.2');
+            $dbVer = Setting::getGlobal('installed_version');
+            if (empty($dbVer) || version_compare($dbVer, $cfgVer, '<')) {
+                Setting::setGlobal('installed_version', $cfgVer);
+                $dbVer = $cfgVer;
+            }
+            $this->currentVersion = $dbVer;
+
             $manifestSource = trim(config('app.update_manifest_url', \App\Console\Commands\SimsUpdate::DEFAULT_MANIFEST_URL), " '\"");
             $manifest = null;
 
@@ -331,7 +345,7 @@ class Settings extends Component
             $installedChecksum = Setting::getGlobal('last_update_checksum', '');
             $manifestHash = strtolower(trim($manifest['checksum'] ?? $manifest['sha256'] ?? ''));
             $isSameVersion = version_compare($latest, $this->currentVersion, '==');
-            $isChecksumDiff = (!empty($manifestHash) && $manifestHash !== $installedChecksum);
+            $isChecksumDiff = (!empty($manifestHash) && !empty($installedChecksum) && !in_array($installedChecksum, ['None', 'None (Initial Installation)', 'Manual Patch']) && $manifestHash !== $installedChecksum);
 
             if (!empty($latest) && (version_compare($latest, $this->currentVersion, '>') || ($isSameVersion && $isChecksumDiff))) {
                 $this->updateAvailable = true;
@@ -359,9 +373,10 @@ class Settings extends Component
             if ($exitCode === 0) {
                 $this->updateSuccessMessage = 'System successfully updated! All services and database migrations are synchronized.';
                 $this->updateAvailable = false;
-                $this->currentVersion = config('app.version', '2.5.0');
+                $this->currentVersion = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
                 $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'None');
                 $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', now()->toIso8601String());
+                $this->updateCheckMessage = "Your system is up to date (v{$this->currentVersion}).";
             } else {
                 $this->updateErrorMessage = 'Update could not be completed cleanly. The automatic rollback safeguard restored your previous version and database safely.';
             }
@@ -390,13 +405,36 @@ class Settings extends Component
 
         try {
             $updateDir = storage_path('updates');
-            @mkdir($updateDir, 0755, true);
+            if (!is_dir($updateDir)) {
+                @mkdir($updateDir, 0755, true);
+            }
             $filename = 'manual-patch-' . time() . '.zip';
-            $savedRelative = $this->patchArchive->storeAs('updates', $filename);
+            $storedPath = $updateDir . DIRECTORY_SEPARATOR . $filename;
 
-            $storedPath = storage_path('app/' . $savedRelative);
-            if (!file_exists($storedPath)) {
-                $storedPath = storage_path('updates/' . $filename);
+            // Direct copy from uploaded temp file to avoid Laravel local disk root mismatches
+            $tempPath = $this->patchArchive->getRealPath();
+            if (!$tempPath || !file_exists($tempPath)) {
+                $tempPath = $this->patchArchive->path();
+            }
+
+            if (!$tempPath || !file_exists($tempPath)) {
+                $this->manualPatchError = 'Could not locate temporary uploaded patch archive.';
+                return;
+            }
+
+            if (!@copy($tempPath, $storedPath)) {
+                $sourceStream = fopen($tempPath, 'rb');
+                $destStream = fopen($storedPath, 'wb');
+                if ($sourceStream && $destStream) {
+                    stream_copy_to_stream($sourceStream, $destStream);
+                    fclose($sourceStream);
+                    fclose($destStream);
+                }
+            }
+
+            if (!file_exists($storedPath) || filesize($storedPath) === 0) {
+                $this->manualPatchError = 'Failed to stage the uploaded patch archive to the updates storage directory.';
+                return;
             }
 
             $exitCode = \Illuminate\Support\Facades\Artisan::call('sims:update', [
@@ -407,12 +445,18 @@ class Settings extends Component
 
             if ($exitCode === 0) {
                 $this->manualPatchSuccess = 'Patch package applied successfully! System has been updated cleanly.';
-                $this->currentVersion = config('app.version', '2.5.2');
+                $this->currentVersion = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
                 $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'Manual Patch');
                 $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', now()->toIso8601String());
+                $this->updateAvailable = false;
+                $this->updateCheckMessage = "Your system is up to date (v{$this->currentVersion}).";
                 $this->patchArchive = null;
             } else {
                 $this->manualPatchError = 'Update failed. The system rolled back safely to prevent corruption. Details: ' . trim($output);
+            }
+
+            if (file_exists($storedPath)) {
+                @unlink($storedPath);
             }
         } catch (\Throwable $e) {
             $this->manualPatchError = 'Error applying manual patch: ' . $e->getMessage();
