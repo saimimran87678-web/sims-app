@@ -64,8 +64,11 @@ Source: "..\..\..\sims.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\manifest.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\..\control-center.bat"; DestDir: "{app}"; Flags: ignoreversion
+; Environment configuration templates
+Source: "..\..\..\sims-app\.env.example"; DestDir: "{app}\sims-app"; DestName: ".env.example"; Flags: ignoreversion
+Source: "..\..\..\sims-app\.env.example"; DestDir: "{app}\sims-app"; DestName: ".env"; Flags: onlyifdestfiledoesntexist
 ; Application Source
-Source: "..\..\..\sims-app\*"; DestDir: "{app}\sims-app"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: ".env, .env.*, database\database.sqlite*, storage\logs\*, storage\caddy\*, tests\*, node_modules\*"
+Source: "..\..\..\sims-app\*"; DestDir: "{app}\sims-app"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: ".env, .env.backup*, .env.local, .env.testing, database\database.sqlite*, storage\logs\*, storage\caddy\*, tests\*, node_modules\*"
 
 [Icons]
 Name: "{group}\Adminova Control Center"; Filename: "{app}\Adminova-Control-Center.exe"; IconFilename: "{app}\resources\icons\adminova.ico"

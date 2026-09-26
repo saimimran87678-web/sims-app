@@ -93,9 +93,9 @@ else
     echo "         Run 'composer install --no-dev --optimize-autoloader' before building patches."
 fi
 
-# Strict secret & state sanitation
+# Strict secret & state sanitation (.env.example is preserved)
 echo "ℹ️ Sanitizing staging files..."
-find "${STAGING_DIR}" -type f \( -name "*.pem" -o -name "*.key" -o -name "*.sqlite*" -o -name ".env*" -o -name ".sims-server.state" -o -name "*.log" \) -delete
+find "${STAGING_DIR}" -type f \( -name "*.pem" -o -name "*.key" -o -name "*.sqlite*" -o -name ".env" -o -name ".env.backup*" -o -name ".env.local" -o -name ".env.testing" -o -name ".sims-server.state" -o -name "*.log" \) -delete
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ZIP STRUCTURE NOTE (CRITICAL — do not change):
