@@ -75,7 +75,10 @@
     background-color: #94a3b8;
 }
 
-/* Strip Livewire's white error modal */
+/* Strip Livewire's error modal (both legacy div and Livewire 3 dialog) */
+dialog#livewire-error {
+    display: none !important;
+}
 body > div[style*="z-index: 2147483647"],
 body > div[style*="z-index:2147483647"] {
     background: transparent !important;

@@ -22,6 +22,7 @@ class SimsUpdate extends Command
                             {--manifest= : Custom manifest URL or file path}
                             {--extract-to= : Target directory to extract to}
                             {--skip-health-check : Skip localhost health check probe}
+                            {--no-restart : Skip restarting background services after update}
                             {--verify-checksum : Display installed version checksum verification}';
 
     /**
@@ -370,8 +371,12 @@ class SimsUpdate extends Command
         $this->info("==========================================");
 
         // ── STEP 7: Restart background services so new code is loaded ──
-        $this->line('🔄 Restarting SIMS background services to load updated code...');
-        $this->restartServices();
+        if (!$this->option('no-restart')) {
+            $this->line('🔄 Restarting SIMS background services to load updated code...');
+            $this->restartServices();
+        } else {
+            $this->line('ℹ️ Skipping service restart (--no-restart flag set).');
+        }
 
         Log::info("SIMS successfully updated from v{$currentVersion} to v{$latestVersion}. Verified SHA-256: {$actualHash}");
         return 0;

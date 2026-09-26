@@ -342,17 +342,21 @@
             // Start checker initially
             startChecker();
             
-            // --- 3. Livewire 419 Error Interceptor ---
+            // --- 3. Livewire Error Interceptor ---
             document.addEventListener('livewire:init', function() {
                 Livewire.hook('request', ({ fail }) => {
                     fail(({ status, preventDefault }) => {
+                        // Suppress Livewire's default dark failure modal across all requests
+                        preventDefault();
+
                         if (status === 419) {
                             // Ignore 419 errors if we successfully logged in less than 5 seconds ago.
                             // (Prevents duplicate popups from lagging background requests that failed while the modal was open)
                             if (Date.now() - lastLoginTime > 5000) {
-                                preventDefault();
                                 triggerExpiration();
                             }
+                        } else {
+                            console.warn('Livewire request encountered a server or network error with HTTP status:', status);
                         }
                     });
                 });

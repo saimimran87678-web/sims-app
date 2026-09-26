@@ -363,14 +363,23 @@ class Settings extends Component
 
     public function applyUpdate()
     {
+        @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
         $this->updateSuccessMessage = '';
         $this->updateErrorMessage = '';
 
         try {
-            $exitCode = \Illuminate\Support\Facades\Artisan::call('sims:update');
+            $exitCode = \Illuminate\Support\Facades\Artisan::call('sims:update', [
+                '--skip-health-check' => true,
+                '--no-restart'        => true,
+            ]);
             $output = \Illuminate\Support\Facades\Artisan::output();
 
             if ($exitCode === 0) {
+                try {
+                    \Illuminate\Support\Facades\Artisan::call('queue:restart');
+                } catch (\Throwable) {}
+
                 $this->updateSuccessMessage = 'System successfully updated! All services and database migrations are synchronized.';
                 $this->updateAvailable = false;
                 $this->currentVersion = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
@@ -378,7 +387,7 @@ class Settings extends Component
                 $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', now()->toIso8601String());
                 $this->updateCheckMessage = "Your system is up to date (v{$this->currentVersion}).";
             } else {
-                $this->updateErrorMessage = 'Update could not be completed cleanly. The automatic rollback safeguard restored your previous version and database safely.';
+                $this->updateErrorMessage = 'Update could not be completed cleanly. Details: ' . trim($output);
             }
         } catch (\Throwable $e) {
             $this->updateErrorMessage = 'Update execution error: ' . $e->getMessage();
@@ -387,6 +396,8 @@ class Settings extends Component
 
     public function applyManualPatch()
     {
+        @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
         $this->manualPatchSuccess = '';
         $this->manualPatchError = '';
 
@@ -438,12 +449,18 @@ class Settings extends Component
             }
 
             $exitCode = \Illuminate\Support\Facades\Artisan::call('sims:update', [
-                '--package' => $storedPath,
-                '--force'   => true,
+                '--package'           => $storedPath,
+                '--force'             => true,
+                '--skip-health-check' => true,
+                '--no-restart'        => true,
             ]);
             $output = \Illuminate\Support\Facades\Artisan::output();
 
             if ($exitCode === 0) {
+                try {
+                    \Illuminate\Support\Facades\Artisan::call('queue:restart');
+                } catch (\Throwable) {}
+
                 $this->manualPatchSuccess = 'Patch package applied successfully! System has been updated cleanly.';
                 $this->currentVersion = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
                 $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'Manual Patch');
