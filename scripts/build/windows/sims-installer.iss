@@ -5,7 +5,9 @@
 ; ==============================================================================
 
 #define MyAppName "SIMS School Management System"
-#define MyAppVersion "2.5.1"
+#ifndef MyAppVersion
+  #define MyAppVersion "2.5.1"
+#endif
 #define MyAppPublisher "Adminova Tech"
 #define MyAppURL "https://sims.local"
 #define MyAppExeName "sims.bat"
@@ -176,19 +178,15 @@ var
   BatPath: String;
   ResultCode: Integer;
 begin
-  // Only self-destruct if installation was successful
-  if WizardIsTaskSelected('desktopicon') or True then
-  begin
-    BatPath := ExpandConstant('{tmp}\cleanup_setup.bat');
-    SelfDeleteBat := 
-      '@echo off' + #13#10 +
-      ':REPEAT' + #13#10 +
-      'timeout /t 2 /nobreak >nul' + #13#10 +
-      'del /f /q "' + ExpandConstant('{srcexe}') + '" >nul 2>&1' + #13#10 +
-      'if exist "' + ExpandConstant('{srcexe}') + '" goto :REPEAT' + #13#10 +
-      'del /f /q "%~f0" >nul 2>&1' + #13#10;
-    
-    SaveStringToFile(BatPath, SelfDeleteBat, False);
-    Exec('cmd.exe', '/c "' + BatPath + '"', '', SW_HIDE, ewNoWait, ResultCode);
-  end;
+  BatPath := ExpandConstant('{tmp}\cleanup_setup.bat');
+  SelfDeleteBat := 
+    '@echo off' + #13#10 +
+    ':REPEAT' + #13#10 +
+    'timeout /t 2 /nobreak >nul' + #13#10 +
+    'del /f /q "' + ExpandConstant('{srcexe}') + '" >nul 2>&1' + #13#10 +
+    'if exist "' + ExpandConstant('{srcexe}') + '" goto :REPEAT' + #13#10 +
+    'del /f /q "%~f0" >nul 2>&1' + #13#10;
+  
+  SaveStringToFile(BatPath, SelfDeleteBat, False);
+  Exec('cmd.exe', '/c "' + BatPath + '"', '', SW_HIDE, ewNoWait, ResultCode);
 end;
