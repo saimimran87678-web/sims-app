@@ -273,6 +273,9 @@ class SimsUpdate extends Command
     /**
      * Perform an HTTP GET request with CA bundle verification and fallback for Windows environments.
      */
+    /**
+     * Perform an HTTP GET request with CA bundle verification and fallback for Windows environments.
+     */
     protected function performHttpGet(string $url, int $timeoutSec): ?\Illuminate\Http\Client\Response
     {
         // 1. Resolve bundled CA bundle candidates
@@ -280,6 +283,7 @@ class SimsUpdate extends Command
             dirname(base_path()) . DIRECTORY_SEPARATOR . 'runtime' . DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . 'cacert.pem',
             dirname(base_path()) . DIRECTORY_SEPARATOR . 'runtime' . DIRECTORY_SEPARATOR . 'cacert.pem',
             base_path('resources' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cacert.pem'),
+            base_path('cacert.pem'),
         ];
 
         $caPath = null;
@@ -290,44 +294,80 @@ class SimsUpdate extends Command
             }
         }
 
-        // 2. Attempt with verified CA certificate
+        // 2. Attempt with verified CA certificate and descriptive User-Agent
         try {
-            $client = Http::timeout($timeoutSec);
+            $client = Http::timeout($timeoutSec)->withHeaders([
+                'User-Agent' => 'SIMS-Update-Client/' . config('app.version', '2.5.1') . ' (Windows/Linux; Standalone)',
+                'Accept'     => 'application/json, text/plain, */*',
+            ]);
             if ($caPath) {
                 $client = $client->withOptions(['verify' => $caPath]);
             }
-            return $client->get($url);
-        } catch (\Throwable $e) {
-            // 3. Fallback: If cURL error 60 (SSL CA certificate missing or untrusted on Windows), retry without verifying.
-            // Note: Download integrity is strictly enforced by cryptographic SHA-256 hash comparison against the manifest.
-            if (str_contains($e->getMessage(), 'cURL error 60') || str_contains($e->getMessage(), 'certificate')) {
-                try {
-                    return Http::timeout($timeoutSec)->withoutVerifying()->get($url);
-                } catch (\Throwable $fallbackEx) {
-                    Log::debug("SIMS HTTP GET fallback failed: " . $fallbackEx->getMessage());
-                }
+            $response = $client->get($url);
+            if ($response && $response->successful()) {
+                return $response;
             }
-            Log::debug("SIMS HTTP GET failed: " . $e->getMessage());
-            return null;
+        } catch (\Throwable $e) {
+            // Fallback: Retry without SSL verification (integrity is strictly checked via SHA-256)
+            try {
+                return Http::timeout($timeoutSec)
+                    ->withoutVerifying()
+                    ->withHeaders([
+                        'User-Agent' => 'SIMS-Update-Client/' . config('app.version', '2.5.1'),
+                        'Accept'     => 'application/json, text/plain, */*',
+                    ])
+                    ->get($url);
+            } catch (\Throwable $fallbackEx) {
+                Log::debug("SIMS HTTP GET fallback failed: " . $fallbackEx->getMessage());
+            }
         }
+        return null;
     }
 
     /**
-     * Retrieve manifest JSON from URL or local path.
+     * Retrieve manifest JSON from URL or local path with multi-mirror and PowerShell fallback.
      */
     protected function fetchManifest(string $source): ?array
     {
         try {
             $source = trim($source, " '\"");
             if (str_starts_with($source, 'http://') || str_starts_with($source, 'https://')) {
-                $response = $this->performHttpGet($source, 15);
-                return ($response && $response->successful()) ? $response->json() : null;
+                // Build mirror candidates in case raw.githubusercontent.com is blocked or DNS-poisoned
+                $candidates = [$source];
+                if (str_contains($source, 'raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json')) {
+                    $candidates[] = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
+                    $candidates[] = 'https://fastly.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
+                }
+
+                foreach ($candidates as $url) {
+                    $response = $this->performHttpGet($url, 12);
+                    if ($response && $response->successful()) {
+                        $json = $response->json();
+                        if (is_array($json) && !empty($json['version'])) {
+                            return $json;
+                        }
+                    }
+                }
+
+                // Native Windows fallback: PowerShell Invoke-RestMethod uses Windows WinINet/Schannel network stack
+                if (PHP_OS_FAMILY === 'Windows') {
+                    $psScript = "\$urls = @('{$source}', 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json'); foreach (\$u in \$urls) { try { (Invoke-RestMethod -Uri \$u -TimeoutSec 8 -Headers @{'User-Agent'='SIMS-Updater'}) | ConvertTo-Json -Compress; break } catch {} }";
+                    $encoded = base64_encode(mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8'));
+                    $psOut = shell_exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}");
+                    if (!empty($psOut)) {
+                        $json = json_decode(trim($psOut), true);
+                        if (is_array($json) && !empty($json['version'])) {
+                            return $json;
+                        }
+                    }
+                }
+
+                return null;
             }
 
             // Local file path
             $filePath = str_starts_with($source, 'file://') ? substr($source, 7) : $source;
             if (!file_exists($filePath)) {
-                // If relative path, try base_path
                 $filePath = base_path($source);
             }
 
@@ -352,11 +392,23 @@ class SimsUpdate extends Command
             $url = trim($url, " '\"");
             if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
                 $response = $this->performHttpGet($url, 180);
-                if (!$response || !$response->successful()) {
-                    return false;
+                if ($response && $response->successful() && strlen($response->body()) > 1024) {
+                    file_put_contents($dest, $response->body());
+                    return true;
                 }
-                file_put_contents($dest, $response->body());
-                return true;
+
+                // Native Windows fallback: PowerShell Invoke-WebRequest handles large downloads via Windows BITS/WinINet
+                if (PHP_OS_FAMILY === 'Windows') {
+                    $this->line("   [Fallback] Downloading update package via Windows Native Web Client...");
+                    $psScript = "Invoke-WebRequest -Uri '{$url}' -OutFile '{$dest}' -TimeoutSec 180 -Headers @{'User-Agent'='SIMS-Updater'}";
+                    $encoded  = base64_encode(mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8'));
+                    exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}", $out, $ret);
+                    if ($ret === 0 && file_exists($dest) && filesize($dest) > 1024) {
+                        return true;
+                    }
+                }
+
+                return false;
             }
 
             // Local file source (e.g. file:// or local path)

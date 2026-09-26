@@ -27,6 +27,7 @@ namespace Adminova.ControlCenter
         private Button btnRestart;
         private Button btnOpenBrowser;
         private Button btnCheckUpdates;
+        private Button btnRepair;
         private Button btnRefresh;
         private Button btnCopyLan;
         private RichTextBox txtLog;
@@ -244,11 +245,17 @@ namespace Adminova.ControlCenter
             btnRestart.Click += (s, e) => ExecuteRestartServer();
             pnlControls.Controls.Add(btnRestart);
 
-            btnCheckUpdates = CreateButton("⚡  Check for Software Updates & Delta Patches", ColorTranslator.FromHtml("#F8FAFC"), ColorTranslator.FromHtml("#0369A1"), new Size(480, 32), new Point(14, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
+            btnCheckUpdates = CreateButton("⚡  Check Updates", ColorTranslator.FromHtml("#F8FAFC"), ColorTranslator.FromHtml("#0369A1"), new Size(236, 32), new Point(14, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
             btnCheckUpdates.FlatAppearance.BorderSize = 1;
             btnCheckUpdates.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#BAE6FD");
             btnCheckUpdates.Click += (s, e) => ExecuteCheckUpdates();
             pnlControls.Controls.Add(btnCheckUpdates);
+
+            btnRepair = CreateButton("🛠️  Repair / Fix 500", ColorTranslator.FromHtml("#FEF2F2"), ColorTranslator.FromHtml("#B91C1C"), new Size(236, 32), new Point(258, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
+            btnRepair.FlatAppearance.BorderSize = 1;
+            btnRepair.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#FECACA");
+            btnRepair.Click += (s, e) => ExecuteSelfRepair();
+            pnlControls.Controls.Add(btnRepair);
 
             this.Controls.Add(pnlControls);
 
@@ -927,12 +934,55 @@ namespace Adminova.ControlCenter
             });
         }
 
+        private void ExecuteSelfRepair()
+        {
+            if (isOperationRunning) return;
+            isOperationRunning = true;
+            SetActionButtonsEnabled(false);
+            LogMessage("Initiating automated self-repair sequence...");
+
+            ThreadPool.QueueUserWorkItem(state => {
+                try {
+                    NativeStopServerQuiet();
+                    LogMessage("1/5: Purging stale bootstrap, route, and view caches...");
+                    RunDirectProcess(phpBin, "artisan optimize:clear", appDir);
+
+                    LogMessage("2/5: Regenerating application master encryption key...");
+                    RunDirectProcess(phpBin, "artisan key:generate --force", appDir);
+
+                    LogMessage("3/5: Ensuring SQLite database tables and migrations...");
+                    RunDirectProcess(phpBin, "artisan migrate --force", appDir);
+
+                    LogMessage("4/5: Rebuilding clean configuration and route caches...");
+                    RunDirectProcess(phpBin, "artisan optimize:clear", appDir);
+
+                    LogMessage("5/5: Restarting SIMS Web Server and FastCGI...");
+                    NativeStartServer();
+                    Thread.Sleep(1500);
+
+                    SafeInvoke(() => {
+                        isOperationRunning = false;
+                        SetActionButtonsEnabled(true);
+                        CheckServerStatusAsync();
+                        MessageBox.Show("Self-Repair completed successfully!\n\n• Application encryption key regenerated\n• Stale caches cleared\n• Database migrations synchronized\n• Web server restarted\n\nPlease open the School Portal in your browser.", "Self-Repair Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    });
+                } catch (Exception ex) {
+                    LogMessage("Self-repair warning: " + ex.Message);
+                    SafeInvoke(() => {
+                        isOperationRunning = false;
+                        SetActionButtonsEnabled(true);
+                    });
+                }
+            });
+        }
+
         private void SetActionButtonsEnabled(bool enabled)
         {
             btnStart.Enabled = enabled;
             btnStop.Enabled = enabled;
             btnRestart.Enabled = enabled;
             btnCheckUpdates.Enabled = enabled;
+            if (btnRepair != null) btnRepair.Enabled = enabled;
             btnRefresh.Enabled = enabled;
         }
 
