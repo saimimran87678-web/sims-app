@@ -35,6 +35,16 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
+        // Guarantee $errors is always available to every Blade view, preventing Undefined variable $errors
+        \Illuminate\Support\Facades\View::composer('*', function ($view) {
+            if (!\Illuminate\Support\Facades\View::shared('errors')) {
+                \Illuminate\Support\Facades\View::share('errors', session()->get('errors') ?: new \Illuminate\Support\ViewErrorBag);
+            }
+            if (!isset($view->getData()['errors'])) {
+                $view->with('errors', \Illuminate\Support\Facades\View::shared('errors') ?: new \Illuminate\Support\ViewErrorBag);
+            }
+        });
+
         // Enforce session/shift scoped permissions for shared admin features
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
             // Super Admins bypass session scoping and permission checks (global full access)

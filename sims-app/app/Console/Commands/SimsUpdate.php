@@ -347,8 +347,16 @@ class SimsUpdate extends Command
         // ── STEP 6: Finalize update, record checksum & warm caches ────
         if (!app()->runningUnitTests()) {
             try {
-                Artisan::call('optimize:clear');
-                Artisan::call('optimize');
+                if ($this->option('no-restart')) {
+                    // Running in web context:
+                    // Only clear compiled views and general cache. DO NOT run optimize (config:cache/route:cache)
+                    // as it reboots the container and wipes request singletons during an active HTTP response.
+                    Artisan::call('view:clear');
+                    Artisan::call('cache:clear');
+                } else {
+                    Artisan::call('optimize:clear');
+                    Artisan::call('view:cache');
+                }
             } catch (\Throwable $e) {
                 Log::warning("Post-update optimization warning: " . $e->getMessage());
             }

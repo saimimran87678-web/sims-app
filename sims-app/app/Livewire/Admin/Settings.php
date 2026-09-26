@@ -386,11 +386,18 @@ class Settings extends Component
                 $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'None');
                 $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', now()->toIso8601String());
                 $this->updateCheckMessage = "Your system is up to date (v{$this->currentVersion}).";
+                $this->dispatch('sims-update-finished', success: true, message: $this->updateSuccessMessage);
             } else {
                 $this->updateErrorMessage = 'Update could not be completed cleanly. Details: ' . trim($output);
+                $this->dispatch('sims-update-finished', success: false, message: $this->updateErrorMessage);
             }
         } catch (\Throwable $e) {
             $this->updateErrorMessage = 'Update execution error: ' . $e->getMessage();
+            $this->dispatch('sims-update-finished', success: false, message: $this->updateErrorMessage);
+        } finally {
+            if (!\Illuminate\Support\Facades\View::shared('errors')) {
+                \Illuminate\Support\Facades\View::share('errors', session()->get('errors') ?: new \Illuminate\Support\ViewErrorBag);
+            }
         }
     }
 
@@ -468,8 +475,10 @@ class Settings extends Component
                 $this->updateAvailable = false;
                 $this->updateCheckMessage = "Your system is up to date (v{$this->currentVersion}).";
                 $this->patchArchive = null;
+                $this->dispatch('sims-update-finished', success: true, message: $this->manualPatchSuccess);
             } else {
                 $this->manualPatchError = 'Update failed. The system rolled back safely to prevent corruption. Details: ' . trim($output);
+                $this->dispatch('sims-update-finished', success: false, message: $this->manualPatchError);
             }
 
             if (file_exists($storedPath)) {
@@ -477,11 +486,20 @@ class Settings extends Component
             }
         } catch (\Throwable $e) {
             $this->manualPatchError = 'Error applying manual patch: ' . $e->getMessage();
+            $this->dispatch('sims-update-finished', success: false, message: $this->manualPatchError);
+        } finally {
+            if (!\Illuminate\Support\Facades\View::shared('errors')) {
+                \Illuminate\Support\Facades\View::share('errors', session()->get('errors') ?: new \Illuminate\Support\ViewErrorBag);
+            }
         }
     }
 
     public function render()
     {
+        if (!\Illuminate\Support\Facades\View::shared('errors')) {
+            \Illuminate\Support\Facades\View::share('errors', session()->get('errors') ?: new \Illuminate\Support\ViewErrorBag);
+        }
+
         return view('livewire.admin.settings')
             ->layout('components.layouts.admin', ['title' => 'System Settings']);
     }
