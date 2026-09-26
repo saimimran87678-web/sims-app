@@ -206,12 +206,24 @@ $PhpIniLines = @(
     'opcache.max_wasted_percentage = 5',
     'opcache.validate_timestamps = 0',
     'opcache.revalidate_freq = 0',
-    'opcache.save_comments = 1'
+    'opcache.save_comments = 1',
+    '',
+    '[curl]',
+    'curl.cainfo = "cacert.pem"',
+    '',
+    '[openssl]',
+    'openssl.cafile = "cacert.pem"'
 )
 
 $PhpIniContent = $PhpIniLines -join "`r`n"
 Set-Content -Path (Join-Path $PhpDir "php.ini") -Value $PhpIniContent -Encoding UTF8
 Write-Host "[OK] php.ini generated successfully." -ForegroundColor Green
+
+$CacertFile = Join-Path $PhpDir "cacert.pem"
+if (-not (Test-Path $CacertFile)) {
+    Write-Host "Downloading Mozilla Root CA bundle (cacert.pem)..." -ForegroundColor Cyan
+    Save-FileWithFallback -Url "https://curl.se/ca/cacert.pem" -OutputFile $CacertFile | Out-Null
+}
 
 # ------------------------------------------------------------------------------
 # 4. Bundle Microsoft Visual C++ 2015-2022 Runtime DLLs (VC15/VS16)

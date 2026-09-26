@@ -81,6 +81,8 @@ namespace Adminova.ControlCenter
             {
                 phpBin = "php.exe";
             }
+
+            EnsureStorageAndDatabaseReady();
         }
 
         private string ResolveRootDir(string startDir)
@@ -479,6 +481,15 @@ namespace Adminova.ControlCenter
                         SetButtonState(btnRestart, false, ColorTranslator.FromHtml("#475569"), Color.White);
                     }
                 });
+
+                // Self-healing: If FrankenPHP is active on 443 or 80, ensure FastCGI port 9000 is open
+                if ((port443 || port80) && !isOperationRunning)
+                {
+                    if (!IsPortOpen("127.0.0.1", 9000, 200))
+                    {
+                        EnsurePhpFastCgiRunning();
+                    }
+                }
             });
         }
 
@@ -575,15 +586,117 @@ namespace Adminova.ControlCenter
             });
         }
 
+        private void EnsureStorageAndDatabaseReady()
+        {
+            try
+            {
+                string[] requiredDirs = new string[]
+                {
+                    Path.Combine(appDir, "storage"),
+                    Path.Combine(appDir, "storage", "logs"),
+                    Path.Combine(appDir, "storage", "framework"),
+                    Path.Combine(appDir, "storage", "framework", "views"),
+                    Path.Combine(appDir, "storage", "framework", "sessions"),
+                    Path.Combine(appDir, "storage", "framework", "cache"),
+                    Path.Combine(appDir, "storage", "framework", "cache", "data"),
+                    Path.Combine(appDir, "bootstrap", "cache"),
+                    Path.Combine(appDir, "database")
+                };
+
+                foreach (string dir in requiredDirs)
+                {
+                    if (!Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+                }
+
+                // Ensure database.sqlite exists
+                string dbFile = Path.Combine(appDir, "database", "database.sqlite");
+                if (!File.Exists(dbFile))
+                {
+                    File.WriteAllBytes(dbFile, new byte[0]);
+                    LogMessage("Initialized database.sqlite file.");
+                }
+
+                // Ensure laravel.log exists
+                string logFile = Path.Combine(appDir, "storage", "logs", "laravel.log");
+                if (!File.Exists(logFile))
+                {
+                    File.WriteAllBytes(logFile, new byte[0]);
+                }
+
+                // Grant full write and modify permissions on storage, cache, and database (Crucial for C:\Program Files)
+                string storageDir = Path.Combine(appDir, "storage");
+                string bootCacheDir = Path.Combine(appDir, "bootstrap", "cache");
+                string dbDir = Path.Combine(appDir, "database");
+
+                RunHiddenUtility("icacls.exe", "\"" + storageDir + "\" /grant Everyone:(OI)(CI)F /T /Q");
+                RunHiddenUtility("icacls.exe", "\"" + bootCacheDir + "\" /grant Everyone:(OI)(CI)F /T /Q");
+                RunHiddenUtility("icacls.exe", "\"" + dbDir + "\" /grant Everyone:(OI)(CI)F /T /Q");
+            }
+            catch (Exception ex)
+            {
+                LogMessage("[WARN] Storage initialization warning: " + ex.Message);
+            }
+        }
+
+        private void EnsurePhpFastCgiRunning()
+        {
+            string phpCgi = Path.Combine(rootDir, "runtime", "php", "php-cgi.exe");
+            string phpIni = Path.Combine(rootDir, "runtime", "php", "php.ini");
+
+            if (File.Exists(phpCgi) && !IsPortOpen("127.0.0.1", 9000, 200))
+            {
+                try
+                {
+                    ProcessStartInfo cgiPsi = new ProcessStartInfo();
+                    cgiPsi.FileName = phpCgi;
+                    cgiPsi.Arguments = "-b 127.0.0.1:9000" + (File.Exists(phpIni) ? " -c \"" + phpIni + "\"" : "");
+                    cgiPsi.WorkingDirectory = appDir;
+                    cgiPsi.UseShellExecute = false;
+                    cgiPsi.CreateNoWindow = true;
+                    cgiPsi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    string runtimeDir = Path.Combine(rootDir, "runtime");
+                    string phpDir = Path.Combine(rootDir, "runtime", "php");
+                    string envPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+                    cgiPsi.EnvironmentVariables["PATH"] = phpDir + ";" + runtimeDir + ";" + envPath;
+                    cgiPsi.EnvironmentVariables["PHP_FCGI_MAX_REQUESTS"] = "0";
+
+                    Process cgiProc = Process.Start(cgiPsi);
+                    if (cgiProc != null && !cgiProc.HasExited)
+                    {
+                        LogMessage("PHP FastCGI Engine started on 127.0.0.1:9000 (PID: " + cgiProc.Id + ").");
+                        for (int k = 0; k < 6; k++)
+                        {
+                            Thread.Sleep(200);
+                            if (IsPortOpen("127.0.0.1", 9000, 200)) break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessage("[WARN] Failed to start PHP FastCGI engine: " + ex.Message);
+                }
+            }
+        }
+
         private void NativeStartServer()
         {
+            // 0. Ensure storage and database files and permissions are ready
+            EnsureStorageAndDatabaseReady();
+
             // 1. Terminate any previous orphaned processes
             NativeStopServerQuiet();
             Thread.Sleep(400);
 
+            // 2. Start PHP FastCGI Engine on port 9000 for FrankenPHP
+            EnsurePhpFastCgiRunning();
+
             bool started = false;
 
-            // 2. Try launching FrankenPHP directly (Native Win32 Background Process)
+            // 3. Try launching FrankenPHP directly (Native Win32 Background Process)
             string frankenExe = Path.Combine(rootDir, "runtime", "frankenphp.exe");
             string caddyfile = Path.Combine(appDir, "Caddyfile");
 
@@ -593,7 +706,7 @@ namespace Adminova.ControlCenter
                 {
                     ProcessStartInfo psi = new ProcessStartInfo();
                     psi.FileName = frankenExe;
-                    psi.Arguments = "run -c \"" + caddyfile + "\"";
+                    psi.Arguments = "run --adapter caddyfile --config \"" + caddyfile + "\"";
                     psi.WorkingDirectory = appDir;
                     psi.UseShellExecute = false;
                     psi.CreateNoWindow = true;
@@ -618,7 +731,7 @@ namespace Adminova.ControlCenter
                 }
             }
 
-            // 3. Fallback: Built-in PHP server on Port 8000
+            // 4. Fallback: Built-in PHP server on Port 8000
             if (!started && File.Exists(phpBin))
             {
                 try
@@ -645,11 +758,11 @@ namespace Adminova.ControlCenter
                 }
             }
 
-            // 4. Trigger Windows Task Scheduler background tasks (Queue & Scheduler) silently
+            // 5. Trigger Windows Task Scheduler background tasks (Queue & Scheduler) silently
             RunHiddenUtility("schtasks.exe", "/run /tn \"SIMS-Queue\"");
             RunHiddenUtility("schtasks.exe", "/run /tn \"SIMS-Scheduler\"");
 
-            // 5. Poll ports for readiness
+            // 6. Poll ports for readiness
             for (int i = 0; i < 8; i++)
             {
                 Thread.Sleep(400);
@@ -716,9 +829,18 @@ namespace Adminova.ControlCenter
             NativeStopServerQuiet();
             Thread.Sleep(800);
 
+            EnsureStorageAndDatabaseReady();
+
             // Flush caches if PHP is present
             if (File.Exists(phpBin))
             {
+                string dbFile = Path.Combine(appDir, "database", "database.sqlite");
+                if (File.Exists(dbFile) && new FileInfo(dbFile).Length == 0)
+                {
+                    LogMessage("Initializing SQLite database schema...");
+                    RunDirectProcess(phpBin, "artisan migrate --force", appDir);
+                }
+
                 LogMessage("Flushing application cache and OPcache...");
                 RunDirectProcess(phpBin, "artisan optimize:clear", appDir);
             }
@@ -756,6 +878,14 @@ namespace Adminova.ControlCenter
                         {
                             ApplyUpdate();
                         }
+                    }
+                    else if (checkOutput.IndexOf("SQLSTATE", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             checkOutput.IndexOf("In StreamHandler.php", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             checkOutput.IndexOf("Permission denied", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             checkOutput.IndexOf("Fatal error", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             checkOutput.IndexOf("Error:", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        MessageBox.Show("Could not complete update check due to an application issue:\n\n" + checkOutput.Trim() + "\n\nPlease review the Activity Log.", "Update Check Notice", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                     else
                     {

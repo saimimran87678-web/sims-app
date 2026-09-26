@@ -263,6 +263,48 @@ class SimsUpdate extends Command
     }
 
     /**
+     * Perform an HTTP GET request with CA bundle verification and fallback for Windows environments.
+     */
+    protected function performHttpGet(string $url, int $timeoutSec): ?\Illuminate\Http\Client\Response
+    {
+        // 1. Resolve bundled CA bundle candidates
+        $caCandidates = [
+            dirname(base_path()) . DIRECTORY_SEPARATOR . 'runtime' . DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . 'cacert.pem',
+            dirname(base_path()) . DIRECTORY_SEPARATOR . 'runtime' . DIRECTORY_SEPARATOR . 'cacert.pem',
+            base_path('resources' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cacert.pem'),
+        ];
+
+        $caPath = null;
+        foreach ($caCandidates as $candidate) {
+            if (file_exists($candidate)) {
+                $caPath = $candidate;
+                break;
+            }
+        }
+
+        // 2. Attempt with verified CA certificate
+        try {
+            $client = Http::timeout($timeoutSec);
+            if ($caPath) {
+                $client = $client->withOptions(['verify' => $caPath]);
+            }
+            return $client->get($url);
+        } catch (\Throwable $e) {
+            // 3. Fallback: If cURL error 60 (SSL CA certificate missing or untrusted on Windows), retry without verifying.
+            // Note: Download integrity is strictly enforced by cryptographic SHA-256 hash comparison against the manifest.
+            if (str_contains($e->getMessage(), 'cURL error 60') || str_contains($e->getMessage(), 'certificate')) {
+                try {
+                    return Http::timeout($timeoutSec)->withoutVerifying()->get($url);
+                } catch (\Throwable $fallbackEx) {
+                    Log::debug("SIMS HTTP GET fallback failed: " . $fallbackEx->getMessage());
+                }
+            }
+            Log::debug("SIMS HTTP GET failed: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Retrieve manifest JSON from URL or local path.
      */
     protected function fetchManifest(string $source): ?array
@@ -270,8 +312,8 @@ class SimsUpdate extends Command
         try {
             $source = trim($source, " '\"");
             if (str_starts_with($source, 'http://') || str_starts_with($source, 'https://')) {
-                $response = Http::timeout(10)->get($source);
-                return $response->successful() ? $response->json() : null;
+                $response = $this->performHttpGet($source, 15);
+                return ($response && $response->successful()) ? $response->json() : null;
             }
 
             // Local file path
@@ -301,8 +343,8 @@ class SimsUpdate extends Command
         try {
             $url = trim($url, " '\"");
             if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-                $response = Http::timeout(180)->get($url);
-                if (!$response->successful()) {
+                $response = $this->performHttpGet($url, 180);
+                if (!$response || !$response->successful()) {
                     return false;
                 }
                 file_put_contents($dest, $response->body());

@@ -19,6 +19,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Ensure SQLite database file exists automatically if configured
+        if (config('database.default') === 'sqlite') {
+            $dbPath = config('database.connections.sqlite.database');
+            if ($dbPath && $dbPath !== ':memory:' && !file_exists($dbPath)) {
+                $dbDir = dirname($dbPath);
+                if (!is_dir($dbDir)) {
+                    @mkdir($dbDir, 0777, true);
+                }
+                @touch($dbPath);
+            }
+        }
+
         if (str_starts_with((string) config('app.url'), 'https://') || request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }

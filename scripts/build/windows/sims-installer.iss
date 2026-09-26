@@ -38,6 +38,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Create Desktop Shortcuts for Adminova Control Center and School Portal"; GroupDescription: "{cm:AdditionalIcons}"
 
+[Dirs]
+Name: "{app}\sims-app\storage"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\storage\logs"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\storage\framework"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\storage\framework\views"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\storage\framework\sessions"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\storage\framework\cache"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\storage\framework\cache\data"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\bootstrap\cache"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\database"; Permissions: users-modify authusers-modify
+
 [Files]
 ; Standalone Portable Runtime
 Source: "..\..\..\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
