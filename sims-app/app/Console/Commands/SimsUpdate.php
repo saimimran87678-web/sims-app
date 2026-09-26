@@ -391,18 +391,40 @@ class SimsUpdate extends Command
         try {
             $url = trim($url, " '\"");
             if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-                $response = $this->performHttpGet($url, 180);
-                if ($response && $response->successful() && strlen($response->body()) > 1024) {
-                    file_put_contents($dest, $response->body());
-                    return true;
+                // Engine 1: Windows 10/11 Native curl.exe (fastest, streams directly to disk, handles S3 302 redirects)
+                if (PHP_OS_FAMILY === 'Windows') {
+                    $curlExe = 'curl.exe';
+                    $cmd = "{$curlExe} -L -k -s -f --retry 2 --max-time 180 -H \"User-Agent: SIMS-Updater\" -o \"{$dest}\" \"{$url}\"";
+                    @exec($cmd, $curlOut, $curlRet);
+                    if ($curlRet === 0 && file_exists($dest) && filesize($dest) > 1024) {
+                        return true;
+                    }
                 }
 
-                // Native Windows fallback: PowerShell Invoke-WebRequest handles large downloads via Windows BITS/WinINet
+                // Engine 2: PHP Guzzle with file sink (handles streaming and redirects directly to file)
+                try {
+                    $response = Http::timeout(180)
+                        ->withoutVerifying()
+                        ->withHeaders(['User-Agent' => 'SIMS-Updater/' . config('app.version', '2.5.2')])
+                        ->withOptions([
+                            'sink'            => $dest,
+                            'allow_redirects' => ['max' => 5, 'strict' => false, 'referer' => true, 'protocols' => ['http', 'https']],
+                        ])
+                        ->get($url);
+
+                    if (file_exists($dest) && filesize($dest) > 1024) {
+                        return true;
+                    }
+                } catch (\Throwable $guzzleEx) {
+                    Log::debug("SIMS Guzzle download failed: " . $guzzleEx->getMessage());
+                }
+
+                // Engine 3: Native Windows PowerShell with TLS 1.2 WebClient (robust BITS / .NET fallback)
                 if (PHP_OS_FAMILY === 'Windows') {
-                    $this->line("   [Fallback] Downloading update package via Windows Native Web Client...");
-                    $psScript = "Invoke-WebRequest -Uri '{$url}' -OutFile '{$dest}' -TimeoutSec 180 -Headers @{'User-Agent'='SIMS-Updater'}";
+                    $this->line("   [Fallback] Downloading update package via Windows WebClient...");
+                    $psScript = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; \$wc = New-Object System.Net.WebClient; \$wc.Headers.Add('User-Agent', 'SIMS-Updater'); \$wc.DownloadFile('{$url}', '{$dest}');";
                     $encoded  = base64_encode(mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8'));
-                    exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}", $out, $ret);
+                    @exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}", $out, $ret);
                     if ($ret === 0 && file_exists($dest) && filesize($dest) > 1024) {
                         return true;
                     }

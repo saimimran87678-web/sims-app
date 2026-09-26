@@ -910,10 +910,20 @@ namespace Adminova.ControlCenter
 
             ThreadPool.QueueUserWorkItem(state => {
                 NativeStopServerQuiet();
-                LogMessage("Downloading verified update archive and running database migrations...");
+                LogMessage("Downloading verified update archive and applying patch...");
                 string updateOutput = RunDirectProcess(phpBin, "artisan sims:update", appDir);
 
-                LogMessage("Restarting SIMS Web Server with updated application code...");
+                bool isSuccess = updateOutput.IndexOf("successfully updated", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (isSuccess)
+                {
+                    LogMessage("Restarting SIMS Web Server with updated application code...");
+                }
+                else
+                {
+                    LogMessage("Update was not applied. Restarting SIMS Web Server in safe state...");
+                }
+
                 NativeStartServer();
                 Thread.Sleep(1500);
 
@@ -922,13 +932,13 @@ namespace Adminova.ControlCenter
                     SetActionButtonsEnabled(true);
                     CheckServerStatusAsync();
 
-                    if (updateOutput.IndexOf("successfully updated", StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (isSuccess)
                     {
                         MessageBox.Show("SIMS was updated successfully!\n\nAll services and database migrations are synchronized.", "Update Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     else
                     {
-                        MessageBox.Show("The update operation finished. Please check the Activity Log for details.", "Update Result", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Update could not be completed. The existing version was safely preserved.\n\nPlease review the Activity Log for details.", "Update Notice", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                 });
             });
