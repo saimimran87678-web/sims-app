@@ -66,7 +66,7 @@ Source: "..\..\..\manifest.json"; DestDir: "{app}"; Flags: ignoreversion skipifs
 Source: "..\..\..\control-center.bat"; DestDir: "{app}"; Flags: ignoreversion
 ; Environment configuration templates
 Source: "..\..\..\sims-app\.env.example"; DestDir: "{app}\sims-app"; DestName: ".env.example"; Flags: ignoreversion
-Source: "..\..\..\sims-app\.env.example"; DestDir: "{app}\sims-app"; DestName: ".env"; Flags: onlyifdestfiledoesntexist
+Source: "..\..\..\sims-app\.env.example"; DestDir: "{app}\sims-app"; DestName: ".env"; Flags: onlyifdoesntexist
 ; Application Source
 Source: "..\..\..\sims-app\*"; DestDir: "{app}\sims-app"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: ".env, .env.backup*, .env.local, .env.testing, database\database.sqlite*, storage\logs\*, storage\caddy\*, tests\*, node_modules\*"
 
