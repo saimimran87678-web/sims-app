@@ -28,6 +28,7 @@ namespace Adminova.ControlCenter
         private Button btnOpenBrowser;
         private Button btnCheckUpdates;
         private Button btnRepair;
+        private Button btnApplyPatch;
         private Button btnRefresh;
         private Button btnCopyLan;
         private RichTextBox txtLog;
@@ -104,11 +105,12 @@ namespace Adminova.ControlCenter
 
         private void InitializeComponents()
         {
-            // Window Setup (Modern, Clean, Minimalist)
+            // Window Setup (Modern, Clean, Minimalist, Resizable/Maximizable)
             this.Text = "Adminova Control Center";
             this.ClientSize = new Size(540, 636);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
+            this.MinimumSize = new Size(560, 680);
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.MaximizeBox = true;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = ColorTranslator.FromHtml("#F8FAFC");
             this.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
@@ -126,6 +128,7 @@ namespace Adminova.ControlCenter
 
             // ── CARD 1: Header (Branding & School LAN Link) ──
             Panel pnlHeader = CreateCardPanel(new Point(16, 12), new Size(508, 86));
+            pnlHeader.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
 
             PictureBox picLogo = new PictureBox();
             picLogo.Location = new Point(14, 15);
@@ -173,6 +176,7 @@ namespace Adminova.ControlCenter
             btnCopyLan.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             btnCopyLan.Size = new Size(50, 22);
             btnCopyLan.Location = new Point(444, 55);
+            btnCopyLan.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnCopyLan.FlatStyle = FlatStyle.Flat;
             btnCopyLan.FlatAppearance.BorderSize = 1;
             btnCopyLan.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#CBD5E1");
@@ -186,6 +190,7 @@ namespace Adminova.ControlCenter
 
             // ── CARD 2: Server Status Badge & Launch Button ──
             Panel pnlStatus = CreateCardPanel(new Point(16, 106), new Size(508, 106));
+            pnlStatus.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
 
             lblStatusBadge = new Label();
             lblStatusBadge.Text = "● CHECKING";
@@ -203,6 +208,7 @@ namespace Adminova.ControlCenter
             lblStatusDetail.ForeColor = ColorTranslator.FromHtml("#475569");
             lblStatusDetail.Location = new Point(136, 15);
             lblStatusDetail.Size = new Size(318, 28);
+            lblStatusDetail.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             lblStatusDetail.TextAlign = ContentAlignment.MiddleLeft;
             pnlStatus.Controls.Add(lblStatusDetail);
 
@@ -211,6 +217,7 @@ namespace Adminova.ControlCenter
             btnRefresh.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
             btnRefresh.Size = new Size(34, 30);
             btnRefresh.Location = new Point(460, 14);
+            btnRefresh.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.FlatAppearance.BorderSize = 1;
             btnRefresh.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#E2E8F0");
@@ -224,6 +231,7 @@ namespace Adminova.ControlCenter
             pnlStatus.Controls.Add(btnRefresh);
 
             btnOpenBrowser = CreateButton("🌐   Open School Portal in Browser", ColorTranslator.FromHtml("#2563EB"), Color.White, new Size(480, 40), new Point(14, 52), new Font("Segoe UI", 9.5f, FontStyle.Bold));
+            btnOpenBrowser.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             btnOpenBrowser.Click += (s, e) => OpenInBrowser();
             pnlStatus.Controls.Add(btnOpenBrowser);
 
@@ -231,6 +239,7 @@ namespace Adminova.ControlCenter
 
             // ── CARD 3: Native Service Operations & Updates ──
             Panel pnlControls = CreateCardPanel(new Point(16, 220), new Size(508, 96));
+            pnlControls.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
 
             int btnW = 153;
             btnStart = CreateButton("▶  Start Server", ColorTranslator.FromHtml("#059669"), Color.White, new Size(btnW, 36), new Point(14, 12), new Font("Segoe UI", 9f, FontStyle.Bold));
@@ -245,17 +254,42 @@ namespace Adminova.ControlCenter
             btnRestart.Click += (s, e) => ExecuteRestartServer();
             pnlControls.Controls.Add(btnRestart);
 
-            btnCheckUpdates = CreateButton("⚡  Check Updates", ColorTranslator.FromHtml("#F8FAFC"), ColorTranslator.FromHtml("#0369A1"), new Size(236, 32), new Point(14, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
+            btnCheckUpdates = CreateButton("⚡  Updates", ColorTranslator.FromHtml("#F8FAFC"), ColorTranslator.FromHtml("#0369A1"), new Size(153, 32), new Point(14, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
             btnCheckUpdates.FlatAppearance.BorderSize = 1;
             btnCheckUpdates.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#BAE6FD");
             btnCheckUpdates.Click += (s, e) => ExecuteCheckUpdates();
             pnlControls.Controls.Add(btnCheckUpdates);
 
-            btnRepair = CreateButton("🛠️  Repair / Fix 500", ColorTranslator.FromHtml("#FEF2F2"), ColorTranslator.FromHtml("#B91C1C"), new Size(236, 32), new Point(258, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
+            btnApplyPatch = CreateButton("📦  Patch Zip", ColorTranslator.FromHtml("#F5F3FF"), ColorTranslator.FromHtml("#6D28D9"), new Size(153, 32), new Point(177, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
+            btnApplyPatch.FlatAppearance.BorderSize = 1;
+            btnApplyPatch.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#DDD6FE");
+            btnApplyPatch.Click += (s, e) => ExecuteApplyLocalPatch();
+            pnlControls.Controls.Add(btnApplyPatch);
+
+            btnRepair = CreateButton("🛠️  Fix 500", ColorTranslator.FromHtml("#FEF2F2"), ColorTranslator.FromHtml("#B91C1C"), new Size(153, 32), new Point(341, 54), new Font("Segoe UI", 8.5f, FontStyle.Bold));
             btnRepair.FlatAppearance.BorderSize = 1;
             btnRepair.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#FECACA");
             btnRepair.Click += (s, e) => ExecuteSelfRepair();
             pnlControls.Controls.Add(btnRepair);
+
+            pnlControls.Resize += (s, e) => {
+                int totalW = pnlControls.ClientSize.Width - 28;
+                int gap = 8;
+                int w3 = Math.Max(70, (totalW - (gap * 2)) / 3);
+                btnStart.Width = w3;
+                btnStart.Location = new Point(14, 12);
+                btnStop.Width = w3;
+                btnStop.Location = new Point(14 + w3 + gap, 12);
+                btnRestart.Width = Math.Max(70, totalW - (w3 * 2 + gap * 2));
+                btnRestart.Location = new Point(14 + (w3 + gap) * 2, 12);
+
+                btnCheckUpdates.Width = w3;
+                btnCheckUpdates.Location = new Point(14, 54);
+                btnApplyPatch.Width = w3;
+                btnApplyPatch.Location = new Point(14 + w3 + gap, 54);
+                btnRepair.Width = Math.Max(70, totalW - (w3 * 2 + gap * 2));
+                btnRepair.Location = new Point(14 + (w3 + gap) * 2, 54);
+            };
 
             this.Controls.Add(pnlControls);
 
@@ -265,6 +299,7 @@ namespace Adminova.ControlCenter
             lblLogTitle.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             lblLogTitle.ForeColor = ColorTranslator.FromHtml("#64748B");
             lblLogTitle.Location = new Point(18, 326);
+            lblLogTitle.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             lblLogTitle.AutoSize = true;
             this.Controls.Add(lblLogTitle);
 
@@ -277,6 +312,7 @@ namespace Adminova.ControlCenter
             btnClearLog.FlatAppearance.BorderSize = 0;
             btnClearLog.Size = new Size(50, 18);
             btnClearLog.Location = new Point(474, 324);
+            btnClearLog.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnClearLog.Cursor = Cursors.Hand;
             btnClearLog.Click += (s, e) => { txtLog.Clear(); };
             this.Controls.Add(btnClearLog);
@@ -284,6 +320,7 @@ namespace Adminova.ControlCenter
             txtLog = new RichTextBox();
             txtLog.Location = new Point(16, 346);
             txtLog.Size = new Size(508, 252);
+            txtLog.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             txtLog.BackColor = ColorTranslator.FromHtml("#0F172A");
             txtLog.ForeColor = ColorTranslator.FromHtml("#E2E8F0");
             txtLog.Font = new Font("Consolas", 8.5f, FontStyle.Regular);
@@ -293,10 +330,11 @@ namespace Adminova.ControlCenter
 
             // ── CARD 5: Minimalist Footer ──
             Label lblFooter = new Label();
-            lblFooter.Text = "Adminova SIMS v2.5.1 • Standalone Local Server • Adminova Tech";
+            lblFooter.Text = "Adminova SIMS v2.5.2 • Standalone Local Server • Adminova Tech";
             lblFooter.Font = new Font("Segoe UI", 7.5f, FontStyle.Regular);
             lblFooter.ForeColor = ColorTranslator.FromHtml("#94A3B8");
             lblFooter.Location = new Point(18, 608);
+            lblFooter.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblFooter.AutoSize = true;
             this.Controls.Add(lblFooter);
 
@@ -321,6 +359,7 @@ namespace Adminova.ControlCenter
             contextMenu.MenuItems.Add("-");
             contextMenu.MenuItems.Add("Start Server", (s, e) => ExecuteStartServer());
             contextMenu.MenuItems.Add("Stop Server", (s, e) => ExecuteStopServer());
+            contextMenu.MenuItems.Add("Apply Local Patch (.zip)...", (s, e) => ExecuteApplyLocalPatch());
             contextMenu.MenuItems.Add("-");
             contextMenu.MenuItems.Add("Exit", (s, e) => {
                 trayIcon.Visible = false;
@@ -653,39 +692,47 @@ namespace Adminova.ControlCenter
             string phpCgi = Path.Combine(rootDir, "runtime", "php", "php-cgi.exe");
             string phpIni = Path.Combine(rootDir, "runtime", "php", "php.ini");
 
-            if (File.Exists(phpCgi) && !IsPortOpen("127.0.0.1", 9000, 200))
+            if (!File.Exists(phpCgi)) return;
+
+            int[] ports = new int[] { 9000, 9001, 9002, 9003 };
+            foreach (int port in ports)
             {
-                try
+                if (!IsPortOpen("127.0.0.1", port, 150))
                 {
-                    ProcessStartInfo cgiPsi = new ProcessStartInfo();
-                    cgiPsi.FileName = phpCgi;
-                    cgiPsi.Arguments = "-b 127.0.0.1:9000" + (File.Exists(phpIni) ? " -c \"" + phpIni + "\"" : "");
-                    cgiPsi.WorkingDirectory = appDir;
-                    cgiPsi.UseShellExecute = false;
-                    cgiPsi.CreateNoWindow = true;
-                    cgiPsi.WindowStyle = ProcessWindowStyle.Hidden;
-
-                    string runtimeDir = Path.Combine(rootDir, "runtime");
-                    string phpDir = Path.Combine(rootDir, "runtime", "php");
-                    string envPath = Environment.GetEnvironmentVariable("PATH") ?? "";
-                    cgiPsi.EnvironmentVariables["PATH"] = phpDir + ";" + runtimeDir + ";" + envPath;
-                    cgiPsi.EnvironmentVariables["PHP_FCGI_MAX_REQUESTS"] = "0";
-
-                    Process cgiProc = Process.Start(cgiPsi);
-                    if (cgiProc != null && !cgiProc.HasExited)
+                    try
                     {
-                        LogMessage("PHP FastCGI Engine started on 127.0.0.1:9000 (PID: " + cgiProc.Id + ").");
-                        for (int k = 0; k < 6; k++)
+                        ProcessStartInfo cgiPsi = new ProcessStartInfo();
+                        cgiPsi.FileName = phpCgi;
+                        cgiPsi.Arguments = "-b 127.0.0.1:" + port + (File.Exists(phpIni) ? " -c \"" + phpIni + "\"" : "");
+                        cgiPsi.WorkingDirectory = appDir;
+                        cgiPsi.UseShellExecute = false;
+                        cgiPsi.CreateNoWindow = true;
+                        cgiPsi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                        string runtimeDir = Path.Combine(rootDir, "runtime");
+                        string phpDir = Path.Combine(rootDir, "runtime", "php");
+                        string envPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+                        cgiPsi.EnvironmentVariables["PATH"] = phpDir + ";" + runtimeDir + ";" + envPath;
+                        cgiPsi.EnvironmentVariables["PHP_FCGI_MAX_REQUESTS"] = "0";
+
+                        Process cgiProc = Process.Start(cgiPsi);
+                        if (cgiProc != null && !cgiProc.HasExited)
                         {
-                            Thread.Sleep(200);
-                            if (IsPortOpen("127.0.0.1", 9000, 200)) break;
+                            LogMessage("PHP FastCGI Engine worker started on 127.0.0.1:" + port + " (PID: " + cgiProc.Id + ").");
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        LogMessage("[WARN] Failed to start PHP FastCGI worker on " + port + ": " + ex.Message);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    LogMessage("[WARN] Failed to start PHP FastCGI engine: " + ex.Message);
-                }
+            }
+
+            // Wait briefly for primary port 9000 to be open
+            for (int k = 0; k < 6; k++)
+            {
+                Thread.Sleep(200);
+                if (IsPortOpen("127.0.0.1", 9000, 200)) break;
             }
         }
 
@@ -698,7 +745,7 @@ namespace Adminova.ControlCenter
             NativeStopServerQuiet();
             Thread.Sleep(400);
 
-            // 2. Start PHP FastCGI Engine on port 9000 for FrankenPHP
+            // 2. Start PHP FastCGI Engine worker pool for FrankenPHP / Caddy
             EnsurePhpFastCgiRunning();
 
             bool started = false;
@@ -713,7 +760,7 @@ namespace Adminova.ControlCenter
                 {
                     ProcessStartInfo psi = new ProcessStartInfo();
                     psi.FileName = frankenExe;
-                    psi.Arguments = "run --adapter caddyfile --config \"" + caddyfile + "\"";
+                    psi.Arguments = "run --config \"" + caddyfile + "\"";
                     psi.WorkingDirectory = appDir;
                     psi.UseShellExecute = false;
                     psi.CreateNoWindow = true;
@@ -944,6 +991,79 @@ namespace Adminova.ControlCenter
             });
         }
 
+        private void ExecuteApplyLocalPatch(string patchZipPath = null)
+        {
+            if (isOperationRunning) return;
+
+            if (string.IsNullOrEmpty(patchZipPath))
+            {
+                using (OpenFileDialog ofd = new OpenFileDialog())
+                {
+                    ofd.Title = "Select SIMS Update Patch Archive (.zip)";
+                    ofd.Filter = "SIMS Patch Archive (*.zip)|*.zip|All Files (*.*)|*.*";
+                    ofd.CheckFileExists = true;
+                    if (ofd.ShowDialog() != DialogResult.OK)
+                    {
+                        return;
+                    }
+                    patchZipPath = ofd.FileName;
+                }
+            }
+
+            DialogResult confirm = MessageBox.Show(
+                "Are you sure you want to apply this local patch package?\n\n" +
+                Path.GetFileName(patchZipPath) + "\n\n" +
+                "Existing database and student records are automatically backed up before installation.",
+                "Confirm Patch Installation",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes) return;
+
+            isOperationRunning = true;
+            SetActionButtonsEnabled(false);
+            LogMessage("Preparing to apply local patch package: " + Path.GetFileName(patchZipPath));
+
+            ThreadPool.QueueUserWorkItem(state => {
+                NativeStopServerQuiet();
+                LogMessage("Extracting patch archive and applying migrations...");
+                string updateOutput = RunDirectProcess(phpBin, "artisan sims:update --package=\"" + patchZipPath + "\" --force", appDir);
+
+                bool isSuccess = updateOutput.IndexOf("successfully updated", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                 updateOutput.IndexOf("Update completed successfully", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                 (updateOutput.IndexOf("Package verified", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                                  updateOutput.IndexOf("Rollback", StringComparison.OrdinalIgnoreCase) < 0 &&
+                                  updateOutput.IndexOf("Exception", StringComparison.OrdinalIgnoreCase) < 0);
+
+                if (isSuccess)
+                {
+                    LogMessage("Patch installed successfully! Restarting SIMS Web Server...");
+                }
+                else
+                {
+                    LogMessage("Patch was not applied. Restarting SIMS Web Server in safe state...");
+                }
+
+                NativeStartServer();
+                Thread.Sleep(1500);
+
+                SafeInvoke(() => {
+                    isOperationRunning = false;
+                    SetActionButtonsEnabled(true);
+                    CheckServerStatusAsync();
+
+                    if (isSuccess)
+                    {
+                        MessageBox.Show("SIMS was updated successfully with the local patch package!\n\nAll services and database migrations are synchronized.", "Patch Applied Successfully", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Patch installation could not be completed cleanly. The existing version was safely preserved.\n\nPlease review the Activity Log for details.", "Patch Notice", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                });
+            });
+        }
+
         private void ExecuteSelfRepair()
         {
             if (isOperationRunning) return;
@@ -992,6 +1112,7 @@ namespace Adminova.ControlCenter
             btnStop.Enabled = enabled;
             btnRestart.Enabled = enabled;
             btnCheckUpdates.Enabled = enabled;
+            if (btnApplyPatch != null) btnApplyPatch.Enabled = enabled;
             if (btnRepair != null) btnRepair.Enabled = enabled;
             btnRefresh.Enabled = enabled;
         }

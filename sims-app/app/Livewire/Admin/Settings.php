@@ -33,6 +33,11 @@ class Settings extends Component
     public $updateSuccessMessage = '';
     public $updateErrorMessage = '';
 
+    // Manual Patch Upload Properties
+    public $patchArchive;
+    public $manualPatchSuccess = '';
+    public $manualPatchError = '';
+
     // Security Verification Modal Fields
     public $isSecurityVerificationModalOpen = false;
     public $verificationMethod = 'password'; // 'password' or 'otp'
@@ -254,17 +259,28 @@ class Settings extends Component
             $manifest = null;
 
             if (str_starts_with($manifestSource, 'http://') || str_starts_with($manifestSource, 'https://')) {
-                $candidates = [$manifestSource];
-                if (str_contains($manifestSource, 'raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json')) {
-                    $candidates[] = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
-                    $candidates[] = 'https://fastly.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
+                $cacheBust = '?t=' . time() . '_' . mt_rand(100, 999);
+                $cleanSource = strtok($manifestSource, '?');
+
+                $candidates = [
+                    'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust,
+                    'https://fastly.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust,
+                    'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json' . $cacheBust,
+                ];
+
+                if (!str_contains($cleanSource, 'manifest.json')) {
+                    array_unshift($candidates, $cleanSource . $cacheBust);
                 }
 
                 foreach ($candidates as $url) {
                     try {
-                        $response = \Illuminate\Support\Facades\Http::timeout(8)
+                        $response = \Illuminate\Support\Facades\Http::timeout(3)
                             ->withoutVerifying()
-                            ->withHeaders(['User-Agent' => 'SIMS-Settings-UI/' . config('app.version', '2.5.2')])
+                            ->withHeaders([
+                                'User-Agent' => 'SIMS-Settings-UI/' . config('app.version', '2.5.2'),
+                                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                                'Pragma' => 'no-cache',
+                            ])
                             ->get($url);
 
                         if ($response && $response->successful()) {
@@ -277,9 +293,11 @@ class Settings extends Component
                     } catch (\Throwable) {}
                 }
 
-                // Native Windows fallback if PHP cURL is blocked or has CA errors
+                // Native Windows fallback if PHP cURL is blocked or has network issues
                 if (!$manifest && PHP_OS_FAMILY === 'Windows') {
-                    $psScript = "\$urls = @('{$manifestSource}', 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json'); foreach (\$u in \$urls) { try { (Invoke-RestMethod -Uri \$u -TimeoutSec 8 -Headers @{'User-Agent'='SIMS-Updater'}) | ConvertTo-Json -Compress; break } catch {} }";
+                    $cdnUrl = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust;
+                    $rawUrl = 'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json' . $cacheBust;
+                    $psScript = "\$urls = @('{$cdnUrl}', '{$rawUrl}'); foreach (\$u in \$urls) { try { (Invoke-RestMethod -Uri \$u -TimeoutSec 4 -Headers @{'User-Agent'='SIMS-Updater'}) | ConvertTo-Json -Compress; break } catch {} }";
                     $encoded = base64_encode(mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8'));
                     $psOut = shell_exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}");
                     if (!empty($psOut)) {
@@ -349,6 +367,55 @@ class Settings extends Component
             }
         } catch (\Throwable $e) {
             $this->updateErrorMessage = 'Update execution error: ' . $e->getMessage();
+        }
+    }
+
+    public function applyManualPatch()
+    {
+        $this->manualPatchSuccess = '';
+        $this->manualPatchError = '';
+
+        $this->validate([
+            'patchArchive' => 'required|file|max:102400', // max 100MB
+        ], [
+            'patchArchive.required' => 'Please select a patch .zip archive to upload.',
+            'patchArchive.max' => 'Patch archive size must be under 100MB.',
+        ]);
+
+        $clientName = $this->patchArchive->getClientOriginalName();
+        if (!str_ends_with(strtolower($clientName), '.zip')) {
+            $this->manualPatchError = 'Invalid file type. Only .zip patch archives are supported.';
+            return;
+        }
+
+        try {
+            $updateDir = storage_path('updates');
+            @mkdir($updateDir, 0755, true);
+            $filename = 'manual-patch-' . time() . '.zip';
+            $savedRelative = $this->patchArchive->storeAs('updates', $filename);
+
+            $storedPath = storage_path('app/' . $savedRelative);
+            if (!file_exists($storedPath)) {
+                $storedPath = storage_path('updates/' . $filename);
+            }
+
+            $exitCode = \Illuminate\Support\Facades\Artisan::call('sims:update', [
+                '--package' => $storedPath,
+                '--force'   => true,
+            ]);
+            $output = \Illuminate\Support\Facades\Artisan::output();
+
+            if ($exitCode === 0) {
+                $this->manualPatchSuccess = 'Patch package applied successfully! System has been updated cleanly.';
+                $this->currentVersion = config('app.version', '2.5.2');
+                $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'Manual Patch');
+                $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', now()->toIso8601String());
+                $this->patchArchive = null;
+            } else {
+                $this->manualPatchError = 'Update failed. The system rolled back safely to prevent corruption. Details: ' . trim($output);
+            }
+        } catch (\Throwable $e) {
+            $this->manualPatchError = 'Error applying manual patch: ' . $e->getMessage();
         }
     }
 

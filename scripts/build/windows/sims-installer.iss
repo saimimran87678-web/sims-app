@@ -41,6 +41,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create Desktop Shortcuts for Adminova Control Center and School Portal"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Dirs]
+Name: "{app}"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app"; Permissions: users-modify authusers-modify
 Name: "{app}\sims-app\storage"; Permissions: users-modify authusers-modify
 Name: "{app}\sims-app\storage\logs"; Permissions: users-modify authusers-modify
 Name: "{app}\sims-app\storage\framework"; Permissions: users-modify authusers-modify

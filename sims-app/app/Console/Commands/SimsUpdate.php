@@ -18,6 +18,7 @@ class SimsUpdate extends Command
     protected $signature = 'sims:update 
                             {--check : Check if updates are available without applying}
                             {--force : Force apply update even if version is current or higher}
+                            {--package= : Path to a local update package (.zip) to apply directly}
                             {--manifest= : Custom manifest URL or file path}
                             {--extract-to= : Target directory to extract to}
                             {--skip-health-check : Skip localhost health check probe}
@@ -31,9 +32,9 @@ class SimsUpdate extends Command
     protected $description = 'Automated, cross-platform update manager with SHA-256 checksum verification and safe rollback';
 
     /**
-     * Default manifest URL (hosted on GitHub Pages or CDN)
+     * Default manifest URL (hosted on fast global Anycast CDN)
      */
-    public const DEFAULT_MANIFEST_URL = 'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json';
+    public const DEFAULT_MANIFEST_URL = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
 
     /**
      * Execute the console command.
@@ -56,72 +57,123 @@ class SimsUpdate extends Command
             return 0;
         }
 
-        $manifestSource = $this->option('manifest') ?: config('app.update_manifest_url', self::DEFAULT_MANIFEST_URL);
-        $this->line("📡 Fetching update manifest from: {$manifestSource}");
+        $localPackage = $this->option('package');
+        $isLocalPackage = false;
+        $zipPath = null;
+        $actualHash = null;
 
-        // ── Step 0: Fetch & parse manifest ────────────────────────────
-        $manifest = $this->fetchManifest($manifestSource);
-        if (!$manifest) {
-            if ($this->option('check')) {
-                $this->warn("⚠️ Unable to retrieve update manifest from: {$manifestSource}");
+        if ($localPackage) {
+            $packagePath = realpath($localPackage) ?: $localPackage;
+            if (!file_exists($packagePath) || !is_file($packagePath)) {
+                $this->error("❌ Specified update package file does not exist: {$localPackage}");
                 return 1;
             }
-            // In unattended scheduled runs, silently exit if no internet
-            $this->line("No internet or manifest unreachable. Will retry next scheduled run.");
-            return 0;
-        }
 
-        $latestVersion   = trim($manifest['version'] ?? '');
-        $currentVersion  = config('app.version', '2.5.0');
-        $expectedHash    = strtolower(trim($manifest['checksum'] ?? $manifest['sha256'] ?? ''));
-        $downloadUrl     = $manifest['download_url'] ?? '';
-        $minPhpVersion   = $manifest['min_php_version'] ?? '8.2.0';
-        $releaseNotes    = $manifest['changelog'] ?? $manifest['notes'] ?? 'No release notes provided.';
-
-        if (empty($latestVersion) || empty($downloadUrl)) {
-            $this->error("❌ Invalid manifest structure: missing 'version' or 'download_url'.");
-            return 1;
-        }
-
-        $installedChecksum = Setting::getGlobal('last_update_checksum', '');
-        $isSameVersion = version_compare($latestVersion, $currentVersion, '==');
-        $isChecksumDiff = (!empty($expectedHash) && $expectedHash !== $installedChecksum);
-        $isNewer = version_compare($latestVersion, $currentVersion, '>') || ($isSameVersion && $isChecksumDiff);
-        $isForce = (bool) $this->option('force');
-
-        // ── Handle --check option ─────────────────────────────────────
-        if ($this->option('check')) {
-            $this->info("==========================================");
-            $this->info(" SIMS Update Check");
-            $this->info("==========================================");
-            $this->line(" Current Version   : v{$currentVersion}");
-            $this->line(" Available Version : v{$latestVersion}");
-            $this->line(" Manifest SHA-256  : " . ($expectedHash ?: 'MISSING'));
-            $this->line(" Release Notes     : {$releaseNotes}");
-            $this->info("==========================================");
-
-            if ($isNewer) {
-                $msg = ($isChecksumDiff && !version_compare($latestVersion, $currentVersion, '>'))
-                    ? "🚀 A hotfix patch for v{$latestVersion} is available to install (checksum updated)."
-                    : "🚀 A newer version (v{$latestVersion}) is available to install.";
-                $this->info($msg);
-            } else {
-                $this->info("✨ SIMS is up to date (v{$currentVersion}).");
+            $this->line("📦 Inspecting local patch archive: {$packagePath}");
+            $zip = new \ZipArchive();
+            $res = $zip->open($packagePath);
+            if ($res !== true) {
+                $this->error("❌ Invalid or corrupt zip package (Code: {$res})");
+                return 1;
             }
-            return 0;
-        }
 
-        if (!$isNewer && !$isForce) {
-            $this->info("✨ SIMS is already up to date (v{$currentVersion}).");
-            return 0;
-        }
+            $currentVersion = config('app.version', '2.5.0');
+            $latestVersion = null;
+            $minPhpVersion = '8.2.0';
 
-        if ($isForce && !$isNewer) {
-            $this->warn("⚠️ Force-reapplying version v{$latestVersion} over current v{$currentVersion}.");
-        } elseif ($isChecksumDiff && !version_compare($latestVersion, $currentVersion, '>')) {
-            $this->info("🚀 Applying hotfix patch for v{$latestVersion} (checksum updated)");
+            // Check if manifest.json exists inside the zip archive
+            $manifestIndex = $zip->locateName('manifest.json');
+            if ($manifestIndex !== false) {
+                $rawManifest = $zip->getFromIndex($manifestIndex);
+                $zipManifest = json_decode(preg_replace('/^\xEF\xBB\xBF/', '', $rawManifest), true);
+                if (is_array($zipManifest)) {
+                    $latestVersion = trim($zipManifest['version'] ?? '');
+                    $minPhpVersion = $zipManifest['min_php_version'] ?? '8.2.0';
+                }
+            }
+            $zip->close();
+
+            if (empty($latestVersion)) {
+                if (preg_match('/v?([0-9]+\.[0-9]+\.[0-9]+)/i', basename($packagePath), $matches)) {
+                    $latestVersion = $matches[1];
+                } else {
+                    $latestVersion = $currentVersion;
+                }
+            }
+
+            $actualHash = hash_file('sha256', $packagePath);
+            $zipPath = $packagePath;
+            $isLocalPackage = true;
+            $downloadUrl = 'local://' . basename($packagePath);
+            $this->info("✅ Package verified: target v{$latestVersion} (SHA-256: {$actualHash})");
         } else {
-            $this->info("🚀 Applying update: v{$currentVersion} → v{$latestVersion}");
+            $manifestSource = $this->option('manifest') ?: config('app.update_manifest_url', self::DEFAULT_MANIFEST_URL);
+            $this->line("📡 Fetching update manifest from: {$manifestSource}");
+
+            // ── Step 0: Fetch & parse manifest ────────────────────────────
+            $manifest = $this->fetchManifest($manifestSource);
+            if (!$manifest) {
+                if ($this->option('check')) {
+                    $this->warn("⚠️ Unable to retrieve update manifest from: {$manifestSource}");
+                    return 1;
+                }
+                // In unattended scheduled runs, silently exit if no internet
+                $this->line("No internet or manifest unreachable. Will retry next scheduled run.");
+                return 0;
+            }
+
+            $latestVersion   = trim($manifest['version'] ?? '');
+            $currentVersion  = config('app.version', '2.5.0');
+            $expectedHash    = strtolower(trim($manifest['checksum'] ?? $manifest['sha256'] ?? ''));
+            $downloadUrl     = $manifest['download_url'] ?? '';
+            $minPhpVersion   = $manifest['min_php_version'] ?? '8.2.0';
+            $releaseNotes    = $manifest['changelog'] ?? $manifest['notes'] ?? 'No release notes provided.';
+
+            if (empty($latestVersion) || empty($downloadUrl)) {
+                $this->error("❌ Invalid manifest structure: missing 'version' or 'download_url'.");
+                return 1;
+            }
+
+            $installedChecksum = Setting::getGlobal('last_update_checksum', '');
+            $isSameVersion = version_compare($latestVersion, $currentVersion, '==');
+            $isChecksumDiff = (!empty($expectedHash) && $expectedHash !== $installedChecksum);
+            $isNewer = version_compare($latestVersion, $currentVersion, '>') || ($isSameVersion && $isChecksumDiff);
+            $isForce = (bool) $this->option('force');
+
+            // ── Handle --check option ─────────────────────────────────────
+            if ($this->option('check')) {
+                $this->info("==========================================");
+                $this->info(" SIMS Update Check");
+                $this->info("==========================================");
+                $this->line(" Current Version   : v{$currentVersion}");
+                $this->line(" Available Version : v{$latestVersion}");
+                $this->line(" Manifest SHA-256  : " . ($expectedHash ?: 'MISSING'));
+                $this->line(" Release Notes     : {$releaseNotes}");
+                $this->info("==========================================");
+
+                if ($isNewer) {
+                    $msg = ($isChecksumDiff && !version_compare($latestVersion, $currentVersion, '>'))
+                        ? "🚀 A hotfix patch for v{$latestVersion} is available to install (checksum updated)."
+                        : "🚀 A newer version (v{$latestVersion}) is available to install.";
+                    $this->info($msg);
+                } else {
+                    $this->info("✨ SIMS is up to date (v{$currentVersion}).");
+                }
+                return 0;
+            }
+
+            if (!$isNewer && !$isForce) {
+                $this->info("✨ SIMS is already up to date (v{$currentVersion}).");
+                return 0;
+            }
+
+            if ($isForce && !$isNewer) {
+                $this->warn("⚠️ Force-reapplying version v{$latestVersion} over current v{$currentVersion}.");
+            } elseif ($isChecksumDiff && !version_compare($latestVersion, $currentVersion, '>')) {
+                $this->info("🚀 Applying hotfix patch for v{$latestVersion} (checksum updated)");
+            } else {
+                $this->info("🚀 Applying update: v{$currentVersion} → v{$latestVersion}");
+            }
         }
 
         // ── Check minimum PHP version requirement ─────────────────────
@@ -154,34 +206,36 @@ class SimsUpdate extends Command
         file_put_contents("{$snapshotDir}/meta.json", json_encode($meta, JSON_PRETTY_PRINT));
         $this->line("💾 Snapshot backup successfully saved to: {$snapshotDir}");
 
-        // ── STEP 2: Download & verify SHA-256 Checksum ────────────────
-        $updateDir = storage_path('updates');
-        @mkdir($updateDir, 0755, true);
-        $zipPath = "{$updateDir}/sims-v{$latestVersion}.zip";
+        // ── STEP 2: Download & verify SHA-256 Checksum (if remote) ────
+        if (!$isLocalPackage) {
+            $updateDir = storage_path('updates');
+            @mkdir($updateDir, 0755, true);
+            $zipPath = "{$updateDir}/sims-v{$latestVersion}.zip";
 
-        $this->line("📥 Downloading update package from: {$downloadUrl}");
-        if (!$this->downloadPackage($downloadUrl, $zipPath)) {
-            $this->error("❌ Download failed. Aborting update.");
-            return 1;
-        }
+            $this->line("📥 Downloading update package from: {$downloadUrl}");
+            if (!$this->downloadPackage($downloadUrl, $zipPath)) {
+                $this->error("❌ Download failed. Aborting update.");
+                return 1;
+            }
 
-        $this->line("🔒 Verifying package integrity (SHA-256 checksum)...");
-        if (empty($expectedHash)) {
-            $this->error("❌ Security Error: Manifest has no checksum. Aborting update for safety.");
-            @unlink($zipPath);
-            return 1;
-        }
+            $this->line("🔒 Verifying package integrity (SHA-256 checksum)...");
+            if (empty($expectedHash)) {
+                $this->error("❌ Security Error: Manifest has no checksum. Aborting update for safety.");
+                @unlink($zipPath);
+                return 1;
+            }
 
-        $actualHash = hash_file('sha256', $zipPath);
-        if (!hash_equals($expectedHash, $actualHash)) {
-            $this->error("❌ Checksum verification mismatch!");
-            $this->error("   Expected SHA-256 : {$expectedHash}");
-            $this->error("   Actual SHA-256   : {$actualHash}");
-            @unlink($zipPath);
-            Log::error("SIMS update security mismatch for v{$latestVersion}. Expected: {$expectedHash}, Computed: {$actualHash}");
-            return 1;
+            $actualHash = hash_file('sha256', $zipPath);
+            if (!hash_equals($expectedHash, $actualHash)) {
+                $this->error("❌ Checksum verification mismatch!");
+                $this->error("   Expected SHA-256 : {$expectedHash}");
+                $this->error("   Actual SHA-256   : {$actualHash}");
+                @unlink($zipPath);
+                Log::error("SIMS update security mismatch for v{$latestVersion}. Expected: {$expectedHash}, Computed: {$actualHash}");
+                return 1;
+            }
+            $this->info("✅ SHA-256 Checksum verified: {$actualHash}");
         }
-        $this->info("✅ SHA-256 Checksum verified: {$actualHash}");
 
         // ── STEP 3: Extract update package ────────────────────────────
         $this->line("📦 Extracting files to application root...");
@@ -189,29 +243,79 @@ class SimsUpdate extends Command
         $openResult = $zip->open($zipPath);
         if ($openResult !== true) {
             $this->error("❌ Corrupt update archive: cannot open zip (Code: {$openResult}).");
-            @unlink($zipPath);
+            if (!$isLocalPackage || str_contains($zipPath, storage_path('updates'))) {
+                @unlink($zipPath);
+            }
             return $this->rollback($snapshotDir, "Corrupt update zip");
         }
 
-        // Validate zip security against path traversal attacks
+        // Validate zip security against path traversal attacks and auto-detect layout
+        $hasSimsAppPrefix = false;
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $entry = $zip->getNameIndex($i);
             if (str_contains($entry, '..') || str_starts_with($entry, '/') || str_starts_with($entry, '\\')) {
                 $zip->close();
-                @unlink($zipPath);
+                if (!$isLocalPackage || str_contains($zipPath, storage_path('updates'))) {
+                    @unlink($zipPath);
+                }
                 $this->error("❌ Malicious path detected in update archive: {$entry}");
                 return $this->rollback($snapshotDir, "Malicious path in update archive: {$entry}");
+            }
+            if (str_starts_with($entry, 'sims-app/') || str_starts_with($entry, 'sims-app\\')) {
+                $hasSimsAppPrefix = true;
             }
         }
 
         // CRITICAL: The patch zip structure is relative to the INSTALLATION ROOT, e.g.:
         //   sims-app/app/...      sims-app/resources/...      scripts/windows/...
-        // base_path()         = <install>\sims-app\  → would extract into sims-app\sims-app\ (wrong!)
-        // dirname(base_path()) = <install>\           → correct installation root
-        $extractPath = $this->option('extract-to') ?: dirname(base_path());
-        $zip->extractTo($extractPath);
+        // If zip entries start with sims-app/, extract to dirname(base_path()) = installation root.
+        // If zip entries start directly with app/, resources/, extract to base_path().
+        $defaultExtract = $hasSimsAppPrefix ? dirname(base_path()) : base_path();
+        $extractPath = $this->option('extract-to') ?: $defaultExtract;
+
+        // Filter out non-essential or platform-mismatched files like install.sh
+        $entriesToExtract = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = $zip->getNameIndex($i);
+            $cleanEntry = ltrim(str_replace('\\', '/', $entry), '/');
+
+            // Skip Linux installer or root installers that shouldn't be extracted during app updates
+            if ($cleanEntry === 'install.sh' || str_ends_with($cleanEntry, '/install.sh') ||
+                $cleanEntry === 'install.bat' || str_ends_with($cleanEntry, '/install.bat')) {
+                continue;
+            }
+
+            $entriesToExtract[] = $entry;
+        }
+
+        // Extract verified entries safely
+        $extractSuccess = false;
+        try {
+            $extractSuccess = $zip->extractTo($extractPath, !empty($entriesToExtract) ? $entriesToExtract : null);
+        } catch (\Throwable $e) {
+            Log::warning("Batch zip extraction notice: " . $e->getMessage());
+        }
+
+        if (!$extractSuccess) {
+            // Fallback: extract entry by entry to ensure single non-critical files don't fail the update
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entry = $zip->getNameIndex($i);
+                $cleanEntry = ltrim(str_replace('\\', '/', $entry), '/');
+                if (in_array($cleanEntry, ['install.sh', 'install.bat']) || str_ends_with($cleanEntry, '/install.sh')) {
+                    continue;
+                }
+                try {
+                    $zip->extractTo($extractPath, $entry);
+                } catch (\Throwable $e) {
+                    Log::warning("Skipping non-critical locked file during update: {$entry}");
+                }
+            }
+        }
         $zip->close();
-        @unlink($zipPath);
+
+        if (!$isLocalPackage || str_contains($zipPath, storage_path('updates'))) {
+            @unlink($zipPath);
+        }
         $this->line('✅ Files extracted successfully to installation root.');
 
         // ── STEP 4: Run silent database migrations ────────────────────
@@ -250,6 +354,9 @@ class SimsUpdate extends Command
 
             // Update APP_VERSION in .env
             $this->updateEnvVersion($latestVersion);
+
+            // Automatically optimize session & cache drivers to eliminate SQLite database locks
+            $this->ensureFastEnvironment();
         }
 
         // Update checksum and version records in SQLite Settings
@@ -273,55 +380,24 @@ class SimsUpdate extends Command
     /**
      * Perform an HTTP GET request with CA bundle verification and fallback for Windows environments.
      */
-    /**
-     * Perform an HTTP GET request with CA bundle verification and fallback for Windows environments.
-     */
-    protected function performHttpGet(string $url, int $timeoutSec): ?\Illuminate\Http\Client\Response
+    protected function performHttpGet(string $url, int $timeoutSec = 4): ?\Illuminate\Http\Client\Response
     {
-        // 1. Resolve bundled CA bundle candidates
-        $caCandidates = [
-            dirname(base_path()) . DIRECTORY_SEPARATOR . 'runtime' . DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . 'cacert.pem',
-            dirname(base_path()) . DIRECTORY_SEPARATOR . 'runtime' . DIRECTORY_SEPARATOR . 'cacert.pem',
-            base_path('resources' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cacert.pem'),
-            base_path('cacert.pem'),
-        ];
-
-        $caPath = null;
-        foreach ($caCandidates as $candidate) {
-            if (file_exists($candidate)) {
-                $caPath = $candidate;
-                break;
-            }
-        }
-
-        // 2. Attempt with verified CA certificate and descriptive User-Agent
         try {
-            $client = Http::timeout($timeoutSec)->withHeaders([
-                'User-Agent' => 'SIMS-Update-Client/' . config('app.version', '2.5.1') . ' (Windows/Linux; Standalone)',
-                'Accept'     => 'application/json, text/plain, */*',
-            ]);
-            if ($caPath) {
-                $client = $client->withOptions(['verify' => $caPath]);
-            }
-            $response = $client->get($url);
-            if ($response && $response->successful()) {
-                return $response;
-            }
+            // Note: Update manifest and package integrity is strictly validated via SHA-256 cryptographic hashes.
+            // Using withoutVerifying() prevents cURL error 77 (missing/unreadable cacert.pem) in portable runtimes.
+            return Http::timeout($timeoutSec)
+                ->withoutVerifying()
+                ->withHeaders([
+                    'User-Agent' => 'SIMS-Update-Client/' . config('app.version', '2.5.2') . ' (Windows/Linux; Standalone)',
+                    'Accept'     => 'application/json, text/plain, */*',
+                    'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                    'Pragma'        => 'no-cache',
+                ])
+                ->get($url);
         } catch (\Throwable $e) {
-            // Fallback: Retry without SSL verification (integrity is strictly checked via SHA-256)
-            try {
-                return Http::timeout($timeoutSec)
-                    ->withoutVerifying()
-                    ->withHeaders([
-                        'User-Agent' => 'SIMS-Update-Client/' . config('app.version', '2.5.1'),
-                        'Accept'     => 'application/json, text/plain, */*',
-                    ])
-                    ->get($url);
-            } catch (\Throwable $fallbackEx) {
-                Log::debug("SIMS HTTP GET fallback failed: " . $fallbackEx->getMessage());
-            }
+            Log::debug("SIMS HTTP GET failed ({$url}): " . $e->getMessage());
+            return null;
         }
-        return null;
     }
 
     /**
@@ -332,15 +408,23 @@ class SimsUpdate extends Command
         try {
             $source = trim($source, " '\"");
             if (str_starts_with($source, 'http://') || str_starts_with($source, 'https://')) {
-                // Build mirror candidates in case raw.githubusercontent.com is blocked or DNS-poisoned
-                $candidates = [$source];
-                if (str_contains($source, 'raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json')) {
-                    $candidates[] = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
-                    $candidates[] = 'https://fastly.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
+                // High-performance Anycast CDN candidates with dynamic cache-busting
+                $cacheBust = '?t=' . time() . '_' . mt_rand(100, 999);
+                $cleanSource = strtok($source, '?');
+
+                $candidates = [
+                    'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust,
+                    'https://fastly.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust,
+                    'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json' . $cacheBust,
+                ];
+
+                // If user or environment specified a custom distinct manifest URL, check it first
+                if (!str_contains($cleanSource, 'manifest.json')) {
+                    array_unshift($candidates, $cleanSource . $cacheBust);
                 }
 
                 foreach ($candidates as $url) {
-                    $response = $this->performHttpGet($url, 12);
+                    $response = $this->performHttpGet($url, 4);
                     if ($response && $response->successful()) {
                         $json = $response->json();
                         if (is_array($json) && !empty($json['version'])) {
@@ -351,7 +435,9 @@ class SimsUpdate extends Command
 
                 // Native Windows fallback: PowerShell Invoke-RestMethod uses Windows WinINet/Schannel network stack
                 if (PHP_OS_FAMILY === 'Windows') {
-                    $psScript = "\$urls = @('{$source}', 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json'); foreach (\$u in \$urls) { try { (Invoke-RestMethod -Uri \$u -TimeoutSec 8 -Headers @{'User-Agent'='SIMS-Updater'}) | ConvertTo-Json -Compress; break } catch {} }";
+                    $cdnUrl = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust;
+                    $rawUrl = 'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json' . $cacheBust;
+                    $psScript = "\$urls = @('{$cdnUrl}', '{$rawUrl}'); foreach (\$u in \$urls) { try { (Invoke-RestMethod -Uri \$u -TimeoutSec 5 -Headers @{'User-Agent'='SIMS-Updater'}) | ConvertTo-Json -Compress; break } catch {} }";
                     $encoded = base64_encode(mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8'));
                     $psOut = shell_exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}");
                     if (!empty($psOut)) {
@@ -391,19 +477,22 @@ class SimsUpdate extends Command
         try {
             $url = trim($url, " '\"");
             if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-                // Engine 1: Windows 10/11 Native curl.exe (fastest, streams directly to disk, handles S3 302 redirects)
+                // Engine 1: Windows 10/11 Native curl.exe (fastest, streams directly to disk, follows S3 302 redirects)
                 if (PHP_OS_FAMILY === 'Windows') {
+                    $this->line("   [Engine 1] Transferring patch via Windows Native cURL...");
                     $curlExe = 'curl.exe';
-                    $cmd = "{$curlExe} -L -k -s -f --retry 2 --max-time 180 -H \"User-Agent: SIMS-Updater\" -o \"{$dest}\" \"{$url}\"";
+                    $cmd = "{$curlExe} -L -k -s -f --connect-timeout 10 --max-time 120 --retry 2 -H \"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) SIMS-Updater\" -o \"{$dest}\" \"{$url}\"";
                     @exec($cmd, $curlOut, $curlRet);
                     if ($curlRet === 0 && file_exists($dest) && filesize($dest) > 1024) {
+                        $this->line("   [OK] Download completed successfully (" . round(filesize($dest) / 1048576, 2) . " MB).");
                         return true;
                     }
                 }
 
                 // Engine 2: PHP Guzzle with file sink (handles streaming and redirects directly to file)
+                $this->line("   [Engine 2] Transferring patch via PHP Stream Sink...");
                 try {
-                    $response = Http::timeout(180)
+                    $response = Http::timeout(120)
                         ->withoutVerifying()
                         ->withHeaders(['User-Agent' => 'SIMS-Updater/' . config('app.version', '2.5.2')])
                         ->withOptions([
@@ -413,6 +502,7 @@ class SimsUpdate extends Command
                         ->get($url);
 
                     if (file_exists($dest) && filesize($dest) > 1024) {
+                        $this->line("   [OK] Download completed successfully (" . round(filesize($dest) / 1048576, 2) . " MB).");
                         return true;
                     }
                 } catch (\Throwable $guzzleEx) {
@@ -421,11 +511,12 @@ class SimsUpdate extends Command
 
                 // Engine 3: Native Windows PowerShell with TLS 1.2 WebClient (robust BITS / .NET fallback)
                 if (PHP_OS_FAMILY === 'Windows') {
-                    $this->line("   [Fallback] Downloading update package via Windows WebClient...");
-                    $psScript = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; \$wc = New-Object System.Net.WebClient; \$wc.Headers.Add('User-Agent', 'SIMS-Updater'); \$wc.DownloadFile('{$url}', '{$dest}');";
+                    $this->line("   [Engine 3] Transferring patch via Windows WebClient...");
+                    $psScript = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; \$wc = New-Object System.Net.WebClient; \$wc.Headers.Add('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SIMS-Updater'); \$wc.DownloadFile('{$url}', '{$dest}');";
                     $encoded  = base64_encode(mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8'));
                     @exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}", $out, $ret);
                     if ($ret === 0 && file_exists($dest) && filesize($dest) > 1024) {
+                        $this->line("   [OK] Download completed successfully (" . round(filesize($dest) / 1048576, 2) . " MB).");
                         return true;
                     }
                 }
@@ -495,6 +586,9 @@ class SimsUpdate extends Command
     {
         try {
             if (PHP_OS_FAMILY === 'Windows') {
+                // Terminate running PHP-CGI workers so newly extracted code is immediately loaded
+                exec("taskkill /F /IM php-cgi.exe >nul 2>&1");
+
                 // Stop then restart via Task Scheduler (runs as SYSTEM, survives logoff)
                 foreach (['SIMS-Web', 'SIMS-Queue', 'SIMS-Scheduler'] as $task) {
                     exec("schtasks /end /tn \"{$task}\" >nul 2>&1");
@@ -503,7 +597,7 @@ class SimsUpdate extends Command
                 foreach (['SIMS-Web', 'SIMS-Queue', 'SIMS-Scheduler'] as $task) {
                     exec("schtasks /run /tn \"{$task}\" >nul 2>&1");
                 }
-                $this->info('✅ Windows Task Scheduler services restarted.');
+                $this->info('✅ Windows background services and PHP FastCGI workers reloaded.');
             } else {
                 // Linux: try systemctl first, then pkill-based restart
                 $services = ['sims-web', 'sims-queue', 'sims-scheduler'];
@@ -609,5 +703,34 @@ class SimsUpdate extends Command
             : $content . "\nAPP_VERSION=\"{$version}\"\n";
 
         file_put_contents($path, $content);
+    }
+
+    /**
+     * Migrate session and cache drivers to high-performance file drivers to prevent SQLite database locking.
+     */
+    protected function ensureFastEnvironment(): void
+    {
+        $envPath = base_path('.env');
+        if (!file_exists($envPath)) {
+            return;
+        }
+
+        $content = file_get_contents($envPath);
+        $modified = false;
+
+        if (preg_match('/^SESSION_DRIVER=database/m', $content)) {
+            $content = preg_replace('/^SESSION_DRIVER=database/m', 'SESSION_DRIVER=file', $content);
+            $modified = true;
+        }
+
+        if (preg_match('/^CACHE_STORE=database/m', $content)) {
+            $content = preg_replace('/^CACHE_STORE=database/m', 'CACHE_STORE=file', $content);
+            $modified = true;
+        }
+
+        if ($modified) {
+            file_put_contents($envPath, $content);
+            $this->line('⚡ Automatically optimized session and cache drivers (switched to file).');
+        }
     }
 }

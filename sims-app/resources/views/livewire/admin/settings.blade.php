@@ -433,6 +433,59 @@
                 <span wire:loading wire:target="checkForUpdates">Checking Server...</span>
             </button>
         </div>
+
+        {{-- Manual Offline Patch Upload (.zip) --}}
+        <div class="mt-6 pt-6 border-t border-gray-100">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Manual Offline Patch Upload (.zip)
+                    </h3>
+                    <p class="text-xs text-gray-500">Apply custom delta patch packages directly without needing internet downloads or reinstallation.</p>
+                </div>
+            </div>
+
+            @if ($manualPatchSuccess)
+                <div class="p-3 mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {{ $manualPatchSuccess }}
+                </div>
+            @endif
+
+            @if ($manualPatchError)
+                <div class="p-3 mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    {{ $manualPatchError }}
+                </div>
+            @endif
+
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <input
+                    type="file"
+                    wire:model="patchArchive"
+                    accept=".zip"
+                    class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-gray-200 rounded-xl p-1 bg-white"
+                />
+                <button
+                    type="button"
+                    wire:click="applyManualPatch"
+                    wire:loading.attr="disabled"
+                    class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"
+                >
+                    <span wire:loading.remove wire:target="applyManualPatch,patchArchive">Apply Patch Archive</span>
+                    <span wire:loading wire:target="patchArchive">Uploading...</span>
+                    <span wire:loading wire:target="applyManualPatch">Installing Patch...</span>
+                </button>
+            </div>
+            @error('patchArchive') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+        </div>
     </div>
 
     {{-- System Powered-By Info --}}

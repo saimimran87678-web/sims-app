@@ -72,8 +72,8 @@ if [ -d "${ROOT_DIR}/resources/icons" ]; then
     echo "  - Included: resources/icons (Adminova branding)"
 fi
 
-# Top-level launchers
-for LAUNCHER in install.bat install.sh sims.bat control-center.bat; do
+# Top-level launchers (runtime runners only, excluding fresh installers)
+for LAUNCHER in sims.bat control-center.bat; do
     if [ -f "${ROOT_DIR}/${LAUNCHER}" ]; then
         cp "${ROOT_DIR}/${LAUNCHER}" "${STAGING_DIR}/"
     fi

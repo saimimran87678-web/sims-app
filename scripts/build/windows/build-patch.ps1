@@ -145,8 +145,8 @@ if (Test-Path $IconsSrc) {
     Write-Success "Included: resources/icons (Adminova branding)"
 }
 
-# Copy top-level launcher stubs
-foreach ($Launcher in @("install.bat", "install.sh", "sims.bat", "control-center.bat")) {
+# Copy top-level launcher stubs (runtime runners only, excluding fresh installers)
+foreach ($Launcher in @("sims.bat", "control-center.bat")) {
     $LauncherPath = Join-Path $RootDir $Launcher
     if (Test-Path $LauncherPath) {
         Copy-Item -Path $LauncherPath -Destination $StagingDir -Force

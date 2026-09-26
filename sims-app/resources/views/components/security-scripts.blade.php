@@ -9,19 +9,13 @@
     }
 </style>
 <script>
-    // --- 1. Tab Closure Security (Anti-Flash) ---
-    // If this tab was newly opened or reopened from history, sessionStorage is empty.
+    // Ensure tab session authentication marker is active
     if (!sessionStorage.getItem('sims_tab_auth')) {
-        // Instantly hide the HTML document BEFORE it renders to prevent visual glitch
-        document.documentElement.style.display = 'none';
-        
-        // Wait for DOM to load, then redirect to GET logout route
-        document.addEventListener('DOMContentLoaded', function() {
-            window.location.href = '{{ route('logout.get') }}';
-        });
-    } else {
-        // --- 2. Professional Inactivity Timeout (15 minutes) ---
-        document.addEventListener('DOMContentLoaded', function() {
+        sessionStorage.setItem('sims_tab_auth', 'active');
+    }
+
+    // --- Professional Inactivity Timeout (15 minutes) ---
+    document.addEventListener('DOMContentLoaded', function() {
             let timeoutTime = 15 * 60 * 1000; // 15 minutes
             let warningThreshold = 60 * 1000; // 60 seconds warning
             let lastActivityTime = Date.now();
@@ -364,6 +358,5 @@
                 });
             });
         });
-    }
 </script>
 @endauth

@@ -205,4 +205,28 @@ class AutoUpdateTest extends TestCase
         // Verify database is still intact after rollback
         $this->assertEquals('canary_alive', Setting::getGlobal('rollback_canary'));
     }
+
+    public function test_local_package_update_succeeds_directly(): void
+    {
+        $testFile = 'sims_local_patch_' . uniqid() . '.txt';
+        $zipPath = $this->tempDir . '/sims-patch-v2.6.5.zip';
+        $this->createDummyZip($zipPath, [
+            $testFile => 'local patch content',
+            'manifest.json' => json_encode(['version' => '2.6.5', 'min_php_version' => '8.2.0'])
+        ]);
+
+        $realChecksum = hash_file('sha256', $zipPath);
+        $extractTarget = $this->tempDir . '/extracted_local';
+        File::ensureDirectoryExists($extractTarget);
+
+        $this->artisan("sims:update --package={$zipPath} --extract-to={$extractTarget} --skip-health-check --force")
+            ->expectsOutputToContain("Inspecting local patch archive")
+            ->expectsOutputToContain("Package verified: target v2.6.5")
+            ->expectsOutputToContain("SIMS successfully updated to v2.6.5!")
+            ->assertExitCode(0);
+
+        $this->assertEquals('2.6.5', Setting::getGlobal('installed_version'));
+        $this->assertEquals($realChecksum, Setting::getGlobal('last_update_checksum'));
+        $this->assertFileExists("{$extractTarget}/{$testFile}");
+    }
 }

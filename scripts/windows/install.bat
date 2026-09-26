@@ -138,7 +138,8 @@ if not exist "%APP_DIR%\storage\framework\cache\data" mkdir "%APP_DIR%\storage\f
 if not exist "%APP_DIR%\bootstrap\cache" mkdir "%APP_DIR%\bootstrap\cache" >nul 2>&1
 if not exist "%APP_DIR%\database" mkdir "%APP_DIR%\database" >nul 2>&1
 
-:: 2. Grant full write and modify permissions on storage, cache, and database (Crucial for C:\Program Files)
+:: 2. Grant full write and modify permissions on root, storage, cache, and database (Crucial for in-place updates in C:\Program Files)
+icacls "%ROOT_DIR%" /grant Users:(OI)(CI)M /T /Q >nul 2>&1
 icacls "%APP_DIR%\storage" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1
 icacls "%APP_DIR%\bootstrap\cache" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1
 icacls "%APP_DIR%\database" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1

@@ -37,6 +37,11 @@ class EnsureAppInstalled
     {
         $path = $request->path();
 
+        // ── Fast path: exempt routes (except setup itself) pass immediately without DB/Schema queries
+        if (!($path === 'setup' || str_starts_with($path, 'setup/')) && $this->isExempt($path)) {
+            return $next($request);
+        }
+
         // 1. Safe check for database schema readiness
         try {
             if (!\Illuminate\Support\Facades\Schema::hasTable('settings')) {
