@@ -254,9 +254,40 @@ class Settings extends Component
             $manifest = null;
 
             if (str_starts_with($manifestSource, 'http://') || str_starts_with($manifestSource, 'https://')) {
-                $response = \Illuminate\Support\Facades\Http::timeout(8)->get($manifestSource);
-                if ($response->successful()) {
-                    $manifest = $response->json();
+                $candidates = [$manifestSource];
+                if (str_contains($manifestSource, 'raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json')) {
+                    $candidates[] = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
+                    $candidates[] = 'https://fastly.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json';
+                }
+
+                foreach ($candidates as $url) {
+                    try {
+                        $response = \Illuminate\Support\Facades\Http::timeout(8)
+                            ->withoutVerifying()
+                            ->withHeaders(['User-Agent' => 'SIMS-Settings-UI/' . config('app.version', '2.5.2')])
+                            ->get($url);
+
+                        if ($response && $response->successful()) {
+                            $json = $response->json();
+                            if (is_array($json) && !empty($json['version'])) {
+                                $manifest = $json;
+                                break;
+                            }
+                        }
+                    } catch (\Throwable) {}
+                }
+
+                // Native Windows fallback if PHP cURL is blocked or has CA errors
+                if (!$manifest && PHP_OS_FAMILY === 'Windows') {
+                    $psScript = "\$urls = @('{$manifestSource}', 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json'); foreach (\$u in \$urls) { try { (Invoke-RestMethod -Uri \$u -TimeoutSec 8 -Headers @{'User-Agent'='SIMS-Updater'}) | ConvertTo-Json -Compress; break } catch {} }";
+                    $encoded = base64_encode(mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8'));
+                    $psOut = shell_exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}");
+                    if (!empty($psOut)) {
+                        $json = json_decode(trim($psOut), true);
+                        if (is_array($json) && !empty($json['version'])) {
+                            $manifest = $json;
+                        }
+                    }
                 }
             } else {
                 $filePath = str_starts_with($manifestSource, 'file://') ? substr($manifestSource, 7) : $manifestSource;

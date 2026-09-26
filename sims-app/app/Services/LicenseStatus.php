@@ -27,14 +27,16 @@ class LicenseStatus
     public static function getLicenseRecord()
     {
         try {
-            if (!Schema::hasTable('software_licenses')) {
-                Artisan::call('migrate', ['--force' => true]);
-            } else if (!Schema::hasColumn('software_licenses', 'plan') || !Schema::hasColumn('software_licenses', 'allowed_domains')) {
-                Artisan::call('migrate', ['--force' => true]);
-            }
             return DB::table('software_licenses')->first();
         } catch (\Exception $e) {
-            Log::error('License Database lookup/migration failed: ' . $e->getMessage());
+            // Self-heal only if table is genuinely missing on cold boot
+            try {
+                if (!Schema::hasTable('software_licenses')) {
+                    Artisan::call('migrate', ['--force' => true]);
+                    return DB::table('software_licenses')->first();
+                }
+            } catch (\Throwable) {}
+            Log::error('License Database lookup failed: ' . $e->getMessage());
             return null;
         }
     }
