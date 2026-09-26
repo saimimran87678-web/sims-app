@@ -1,10 +1,10 @@
 {
   "version": "2.5.1",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.1/sims-patch-v2.5.1.zip",
-  "checksum": "661487b91ff4db7462ac65271869e8dfd38714f1fc5b9877443bebb720cd7fea",
-  "sha256": "661487b91ff4db7462ac65271869e8dfd38714f1fc5b9877443bebb720cd7fea",
+  "checksum": "adf9258c5647b827c938328dc7b9a59843f14721e1447e1e7cf413a3efa096ea",
+  "sha256": "adf9258c5647b827c938328dc7b9a59843f14721e1447e1e7cf413a3efa096ea",
   "min_php_version": "8.2.0",
   "changelog": "chore: remove legacy control panel, obsolete deployment configs, and unused scripts",
   "size_bytes": 1167410,
-  "released_at": "2026-09-26T06:46:56Z"
+  "released_at": "2026-09-26T06:58:54Z"
 }
