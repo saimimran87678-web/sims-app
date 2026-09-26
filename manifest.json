@@ -1,10 +1,10 @@
 {
-  "version": "2.5.1",
-  "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.1/sims-patch-v2.5.1.zip",
-  "checksum": "d25e7d05c16f37082517576c315ad3d84b52050848bc5c417191b0c7101106d3",
-  "sha256": "d25e7d05c16f37082517576c315ad3d84b52050848bc5c417191b0c7101106d3",
+  "version": "2.5.2",
+  "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
+  "checksum": "ac403115723f4da8992b4444b5e08f71cd3b8907baf193e2aa68868dc32409da",
+  "sha256": "ac403115723f4da8992b4444b5e08f71cd3b8907baf193e2aa68868dc32409da",
   "min_php_version": "8.2.0",
-  "changelog": "feat(control-center): native process management, modern minimalist UI, and bundle VC++ runtime DLLs",
-  "size_bytes": 1169181,
-  "released_at": "2026-09-26T08:05:37Z"
+  "changelog": "Maintenance updates, bug fixes, and security patches.",
+  "size_bytes": 1173081,
+  "released_at": "2026-09-26T09:39:43Z"
 }
