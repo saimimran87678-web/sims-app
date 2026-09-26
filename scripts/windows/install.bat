@@ -130,12 +130,29 @@ echo.
 echo [2/4] Performing initial database and cache setup...
 cd /d "%APP_DIR%"
 
+:: 1. Ensure runtime directories exist
+if not exist "%APP_DIR%\storage\logs" mkdir "%APP_DIR%\storage\logs" >nul 2>&1
+if not exist "%APP_DIR%\storage\framework\views" mkdir "%APP_DIR%\storage\framework\views" >nul 2>&1
+if not exist "%APP_DIR%\storage\framework\sessions" mkdir "%APP_DIR%\storage\framework\sessions" >nul 2>&1
+if not exist "%APP_DIR%\storage\framework\cache\data" mkdir "%APP_DIR%\storage\framework\cache\data" >nul 2>&1
+if not exist "%APP_DIR%\bootstrap\cache" mkdir "%APP_DIR%\bootstrap\cache" >nul 2>&1
+if not exist "%APP_DIR%\database" mkdir "%APP_DIR%\database" >nul 2>&1
+
+:: 2. Grant full write and modify permissions on storage, cache, and database (Crucial for C:\Program Files)
+icacls "%APP_DIR%\storage" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1
+icacls "%APP_DIR%\bootstrap\cache" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1
+icacls "%APP_DIR%\database" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1
+
+:: 3. Ensure database.sqlite file exists before booting Laravel
+if not exist "%APP_DIR%\database\database.sqlite" (
+    type nul > "%APP_DIR%\database\database.sqlite" 2>nul
+)
+
 del /q /f "%APP_DIR%\bootstrap\cache\*.php" >nul 2>&1
 del /q /f "%APP_DIR%\storage\framework\views\*.php" >nul 2>&1
 "%PHP_BIN%" artisan config:clear >nul 2>&1
 "%PHP_BIN%" artisan route:clear >nul 2>&1
 "%PHP_BIN%" artisan view:clear >nul 2>&1
-"%PHP_BIN%" artisan cache:clear >nul 2>&1
 
 "%PHP_BIN%" artisan sims:install
 if %errorLevel% equ 0 goto :INSTALL_OK
