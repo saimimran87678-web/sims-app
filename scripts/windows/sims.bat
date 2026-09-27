@@ -8,10 +8,15 @@ cd /d "%~dp0"
 for %%I in ("%~dp0..\..") do set "ROOT_DIR=%%~fI"
 if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
 
-:: Fallback if executed from C:\Windows\System32
+:: Fallback if executed from C:\Windows\System32 or outside root
 if not exist "%ROOT_DIR%\sims-app\artisan" (
     if defined SIMS_HOME (
         set "ROOT_DIR=%SIMS_HOME%"
+    )
+)
+if not exist "%ROOT_DIR%\sims-app\artisan" (
+    for %%D in (H D E F G C) do (
+        if exist "%%D:\SIMS\sims-app\artisan" set "ROOT_DIR=%%D:\SIMS"
     )
 )
 

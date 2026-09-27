@@ -223,10 +223,23 @@ Route::get('/ping', function () {
 
 Route::get('/ping-internal', function () {
     abort_unless(in_array(request()->ip(), ['127.0.0.1', '::1']), 403);
+    $opcacheStatus = function_exists('opcache_get_status') ? @opcache_get_status(false) : null;
+    $isOpcacheActive = is_array($opcacheStatus) && !empty($opcacheStatus['opcache_enabled']);
+
     return response()->json([
         'status' => 'alive',
         'version' => config('app.version', '0.0.0'),
         'database' => \Illuminate\Support\Facades\DB::select('SELECT 1')[0] ? 'ok' : 'fail',
+        'opcache' => [
+            'enabled' => $isOpcacheActive,
+            'cached_scripts' => $isOpcacheActive ? ($opcacheStatus['opcache_statistics']['num_cached_scripts'] ?? 0) : 0,
+            'hit_rate' => $isOpcacheActive && isset($opcacheStatus['opcache_statistics']['opcache_hit_rate'])
+                ? round($opcacheStatus['opcache_statistics']['opcache_hit_rate'], 1) . '%'
+                : 'N/A',
+            'used_memory' => $isOpcacheActive && isset($opcacheStatus['memory_usage']['used_memory'])
+                ? round($opcacheStatus['memory_usage']['used_memory'] / 1024 / 1024, 1) . ' MB'
+                : 'N/A',
+        ],
     ]);
 })->name('ping.internal');
 

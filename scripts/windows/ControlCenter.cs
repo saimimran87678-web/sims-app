@@ -694,6 +694,13 @@ namespace Adminova.ControlCenter
             string phpCgi = Path.Combine(rootDir, "runtime", "php", "php-cgi.exe");
             string phpIni = Path.Combine(rootDir, "runtime", "php", "php.ini");
 
+            // Automatically sync application php.ini into runtime if updated by patch
+            string appIni = Path.Combine(appDir, "php.ini");
+            if (File.Exists(appIni))
+            {
+                try { File.Copy(appIni, phpIni, true); } catch { }
+            }
+
             if (!File.Exists(phpCgi)) return;
 
             // Dynamically load configured FastCGI ports from Caddyfile (fallback to 9000 & 9001)

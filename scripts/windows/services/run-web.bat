@@ -40,6 +40,11 @@ set "PHP_CGI=%RUNTIME_DIR%\php\php-cgi.exe"
 set "PHP_INI=%RUNTIME_DIR%\php\php.ini"
 set "PHP_FCGI_MAX_REQUESTS=0"
 
+:: Sync application php.ini into runtime directory if updated by patch
+if exist "%APP_DIR%\php.ini" (
+    copy /y "%APP_DIR%\php.ini" "%PHP_INI%" >nul 2>&1
+)
+
 if exist "%PHP_CGI%" (
     for %%P in (9000 9001) do (
         netstat -ano 2>nul | findstr "127.0.0.1:%%P " >nul 2>&1
