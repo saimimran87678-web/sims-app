@@ -428,7 +428,7 @@
             <!-- Content Area -->
             <div class="flex-1 p-4 overflow-y-auto md:p-8 relative custom-scrollbar smooth-scroll-container">
                 <!-- Modern color blending mesh background -->
-                <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10 select-none gpu-layer" style="contain: strict;">
+                <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10 select-none">
                     <div class="absolute top-[-15%] left-[-15%] w-[60%] h-[60%] rounded-full bg-gradient-to-tr from-blue-200/20 to-sky-200/30 blur-[130px]"></div>
                     <div class="absolute bottom-[-15%] right-[-15%] w-[70%] h-[70%] rounded-full bg-gradient-to-br from-indigo-200/25 to-violet-200/20 blur-[150px]"></div>
                     <div class="absolute top-[30%] right-[20%] w-[40%] h-[40%] rounded-full bg-pink-100/15 blur-[120px]"></div>

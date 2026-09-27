@@ -1,7 +1,7 @@
 <style>
     .stat-card {
         background-color: #ffffff !important;
-        border: 1px solid #f1f5f9 !important;
+        border: 1px solid #e2e8f0 !important;
         border-radius: 1rem !important;
         padding: 0.875rem !important;
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.02) !important;
@@ -18,7 +18,7 @@
     }
     .dash-card {
         background-color: #ffffff !important;
-        border: 1px solid #f1f5f9 !important;
+        border: 1px solid #e2e8f0 !important;
         border-radius: 1rem !important;
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.02) !important;
         padding: 1rem !important;
@@ -36,7 +36,7 @@
         gap: 0.5rem !important;
         padding: 0.75rem !important;
         border-radius: 0.75rem !important;
-        border: 1px solid #f1f5f9 !important;
+        border: 1px solid #e2e8f0 !important;
         background-color: #ffffff !important;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
         transition: all 0.15s ease-in-out !important;
