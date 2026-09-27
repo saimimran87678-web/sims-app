@@ -366,6 +366,15 @@ class SimsUpdate extends Command
 
             // Automatically optimize session & cache drivers to eliminate SQLite database locks
             $this->ensureFastEnvironment();
+
+            // Refresh global CLI shim and PATH on Windows
+            if (PHP_OS_FAMILY === 'Windows') {
+                $root = dirname(base_path());
+                $regBat = $root . DIRECTORY_SEPARATOR . 'register-path.bat';
+                if (file_exists($regBat)) {
+                    @exec("cmd /c \"\"{$regBat}\" --silent\" >nul 2>&1");
+                }
+            }
         }
 
         // Update checksum and version records in SQLite Settings

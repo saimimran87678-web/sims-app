@@ -191,11 +191,11 @@ schtasks /run /tn "SIMS-Scheduler" >nul 2>&1
 set "WAIT_TRIES=0"
 :CHECK_PORT_LOOP
 ping 127.0.0.1 -n 2 >nul
-netstat -ano 2>nul | findstr ":80 " >nul 2>&1
+netstat -ano -p tcp 2>nul | findstr /R /C:":80 .*LISTENING" >nul 2>&1
 if %errorLevel% equ 0 goto :PORT_ONLINE
-netstat -ano 2>nul | findstr ":443 " >nul 2>&1
+netstat -ano -p tcp 2>nul | findstr /R /C:":443 .*LISTENING" >nul 2>&1
 if %errorLevel% equ 0 goto :PORT_ONLINE
-netstat -ano 2>nul | findstr ":8000 " >nul 2>&1
+netstat -ano -p tcp 2>nul | findstr /R /C:":8000 .*LISTENING" >nul 2>&1
 if %errorLevel% equ 0 goto :PORT_ONLINE
 set /a WAIT_TRIES+=1
 if %WAIT_TRIES% lss 6 goto :CHECK_PORT_LOOP
@@ -207,11 +207,11 @@ if exist "%SERVICES_DIR%\run-web.bat" (
 )
 
 :PORT_ONLINE
-netstat -ano 2>nul | findstr ":443 " >nul 2>&1
+netstat -ano -p tcp 2>nul | findstr /R /C:":443 .*LISTENING" >nul 2>&1
 if %errorLevel% equ 0 goto :PRINT_ONLINE_443
-netstat -ano 2>nul | findstr ":80 " >nul 2>&1
+netstat -ano -p tcp 2>nul | findstr /R /C:":80 .*LISTENING" >nul 2>&1
 if %errorLevel% equ 0 goto :PRINT_ONLINE_80
-netstat -ano 2>nul | findstr ":8000 " >nul 2>&1
+netstat -ano -p tcp 2>nul | findstr /R /C:":8000 .*LISTENING" >nul 2>&1
 if %errorLevel% equ 0 goto :PRINT_ONLINE_8000
 echo [NOTICE] Web server is starting up in the background.
 goto :REGISTER_CLI
@@ -234,9 +234,12 @@ if exist "%SERVICES_DIR%\trust-cert.bat" (
     call "%SERVICES_DIR%\trust-cert.bat"
 )
 
-setx SIMS_HOME "%ROOT_DIR%" /m >nul 2>&1
-if exist "%ROOT_DIR%\sims.bat" (
-    copy /y "%ROOT_DIR%\sims.bat" "%WINDIR%\System32\sims.bat" >nul 2>&1
+if exist "%ROOT_DIR%\register-path.bat" (
+    echo [INFO] Registering SIMS CLI globally in Windows PATH...
+    call "%ROOT_DIR%\register-path.bat" --silent
+) else if exist "%~dp0register-path.bat" (
+    echo [INFO] Registering SIMS CLI globally in Windows PATH...
+    call "%~dp0register-path.bat" --silent
 )
 
 if not exist "%ROOT_DIR%\Adminova-Control-Center.exe" (
@@ -265,16 +268,15 @@ if not "%UNATTENDED%"=="1" (
 )
 
 echo.
-echo Primary Access Addresses:
+echo Primary Access Addresses (This Computer):
 echo   - [HTTPS] https://localhost         (Secured with Local Certificate)
-echo   - [HTTPS] https://sims.local
 echo   - [HTTP]  http://localhost          (Redirects to HTTPS)
 echo.
-echo Local School Network Access:
-echo   - [HTTP]  http://%COMPUTERNAME%
-echo   - [HTTPS] https://%COMPUTERNAME%.local
+echo Local School Network Access (Other Devices / Wi-Fi):
+echo   - [Device Name]  http://%COMPUTERNAME%
+echo   - [mDNS Domain]  http://%COMPUTERNAME%.local
 echo.
-echo Detected Local Network IP Addresses:
+echo Detected Local Network IP Addresses (Recommended for Mobile/Tablets):
 ipconfig 2>nul | findstr /i "IPv4"
 echo.
 if "%UNATTENDED%"=="1" exit /b 0

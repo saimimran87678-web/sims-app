@@ -66,11 +66,16 @@ Source: "..\..\..\sims.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\manifest.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\..\control-center.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\..\register-path.bat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 ; Environment configuration templates
 Source: "..\..\..\sims-app\.env.example"; DestDir: "{app}\sims-app"; DestName: ".env.example"; Flags: ignoreversion
 Source: "..\..\..\sims-app\.env.example"; DestDir: "{app}\sims-app"; DestName: ".env"; Flags: onlyifdoesntexist
 ; Application Source
 Source: "..\..\..\sims-app\*"; DestDir: "{app}\sims-app"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: ".env, .env.backup*, .env.local, .env.testing, database\database.sqlite*, storage\logs\*, storage\caddy\*, tests\*, node_modules\*"
+
+[Registry]
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "SIMS_HOME"; ValueData: "{app}"; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "SOFTWARE\Adminova\SIMS"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletekey
 
 [Icons]
 Name: "{group}\Adminova Control Center"; Filename: "{app}\Adminova-Control-Center.exe"; IconFilename: "{app}\resources\icons\adminova.ico"

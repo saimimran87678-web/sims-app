@@ -18,18 +18,29 @@ echo         Stopping All SIMS Windows Services
 echo ====================================================
 echo.
 
-echo [1/2] Stopping background scheduled tasks...
+echo [1/3] Stopping background scheduled tasks...
 schtasks /end /tn "SIMS-Web" >nul 2>&1
 schtasks /end /tn "SIMS-Queue" >nul 2>&1
 schtasks /end /tn "SIMS-Scheduler" >nul 2>&1
 
-echo [2/2] Terminating any remaining PHP and FrankenPHP processes...
-taskkill /F /IM frankenphp.exe /IM php.exe /IM php-cgi.exe >nul 2>&1
+echo [2/3] Terminating PHP, FrankenPHP, and Control Center processes...
+taskkill /F /T /IM frankenphp.exe >nul 2>&1
+taskkill /F /T /IM php-cgi.exe >nul 2>&1
+taskkill /F /T /IM php.exe >nul 2>&1
+taskkill /F /T /IM Adminova-Control-Center.exe >nul 2>&1
+
+echo [3/3] Freeing network listening ports (443, 80, 8000, 9000, 9001)...
+for %%P in (443 80 8000 9000 9001) do (
+    for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":%%P "') do (
+        if not "%%a"=="0" taskkill /F /PID %%a >nul 2>&1
+    )
+)
+ping 127.0.0.1 -n 2 >nul
 
 echo.
 echo ====================================================
-echo  [OK] All SIMS services have been completely stopped.
-echo       You can now safely move, edit, or delete files.
+echo  [OK] All SIMS services and network ports are released.
+echo       You can now safely move, edit, update, or delete files.
 echo ====================================================
 echo.
 pause
