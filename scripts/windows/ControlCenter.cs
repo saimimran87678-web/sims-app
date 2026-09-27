@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Net;
@@ -7,6 +8,7 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using System.Threading;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Adminova.ControlCenter
 {
@@ -694,7 +696,34 @@ namespace Adminova.ControlCenter
 
             if (!File.Exists(phpCgi)) return;
 
-            int[] ports = new int[] { 9000, 9001 };
+            // Dynamically load configured FastCGI ports from Caddyfile (fallback to 9000 & 9001)
+            List<int> portList = new List<int>();
+            string caddyPath = Path.Combine(appDir, "Caddyfile");
+            if (File.Exists(caddyPath))
+            {
+                try
+                {
+                    string content = File.ReadAllText(caddyPath);
+                    MatchCollection matches = Regex.Matches(content, @"127\.0\.0\.1:(\d+)");
+                    foreach (Match m in matches)
+                    {
+                        int p;
+                        if (int.TryParse(m.Groups[1].Value, out p) && !portList.Contains(p))
+                        {
+                            portList.Add(p);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (portList.Count == 0)
+            {
+                portList.Add(9000);
+                portList.Add(9001);
+            }
+
+            int[] ports = portList.ToArray();
             foreach (int port in ports)
             {
                 if (!IsPortOpen("127.0.0.1", port, 150))
