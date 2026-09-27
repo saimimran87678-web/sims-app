@@ -162,6 +162,7 @@ $PhpIniLines = @(
     'extension_dir = "ext"',
     '',
     '; Core required extensions for SIMS',
+    'zend_extension=opcache',
     'extension=curl',
     'extension=fileinfo',
     'extension=mbstring',

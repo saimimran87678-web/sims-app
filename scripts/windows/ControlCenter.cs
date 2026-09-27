@@ -694,7 +694,7 @@ namespace Adminova.ControlCenter
 
             if (!File.Exists(phpCgi)) return;
 
-            int[] ports = new int[] { 9000, 9001, 9002, 9003 };
+            int[] ports = new int[] { 9000, 9001 };
             foreach (int port in ports)
             {
                 if (!IsPortOpen("127.0.0.1", port, 150))

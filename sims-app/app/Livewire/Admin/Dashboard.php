@@ -266,7 +266,18 @@ class Dashboard extends Component
             $activityFeed = array_slice($activityFeed, 0, 7);
         }
 
-        // ─── Class Distribution ────────────────────────────────────
+            return [
+                'stats'           => $stats,
+                'financials'      => $financials,
+                'attendanceTrend' => $attendanceTrend,
+                'chartPoints'     => $chartPoints,
+                'svgPath'         => $svgPath,
+                'svgFillPath'     => $svgFillPath,
+                'activityFeed'    => $activityFeed,
+            ];
+        });
+
+        // ─── Class Distribution (direct query to avoid heavy model serialization) ──
         $classDistribution = [];
         if ($activeSessionId) {
             $classDistributionQuery = Classes::withoutGlobalScope('active_session')
@@ -290,9 +301,10 @@ class Dashboard extends Component
                 ->get();
         }
 
-        // ─── Unpaid Students List (accessibility modal) ────────────
+        // ─── Unpaid Students List (direct lightweight query) ────────────
         $unpaidStudents = collect();
         if ($activeSessionId) {
+            $currentMonth = date('Y-m');
             $unpaidStudentIdsQuery = DB::table('fee_records')
                 ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
                 ->where('fee_records.academic_session_id', $activeSessionId)
@@ -307,7 +319,8 @@ class Dashboard extends Component
 
             $unpaidStudentIds = $unpaidStudentIdsQuery->pluck('fee_records.student_id');
 
-            $unpaidStudents = Student::with('class')
+            $unpaidStudents = Student::select('id', 'name', 'roll_no', 'class_id')
+                ->with('class:id,name')
                 ->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
                     $q->where('academic_session_id', $activeSessionId)->active();
                     if ($shiftType !== 'both') {
@@ -321,21 +334,10 @@ class Dashboard extends Component
                 ->sortKeys();
         }
 
-            return [
-                'stats'             => $stats,
-                'financials'        => $financials,
-                'attendanceTrend'   => $attendanceTrend,
-                'chartPoints'       => $chartPoints,
-                'svgPath'           => $svgPath,
-                'svgFillPath'       => $svgFillPath,
-                'activityFeed'      => $activityFeed,
-                'classDistribution' => $classDistribution,
-                'unpaidStudents'    => $unpaidStudents,
-            ];
-        });
-
         return view('livewire.admin.dashboard', array_merge([
-            'activeSession' => $activeSession,
+            'activeSession'     => $activeSession,
+            'classDistribution' => $classDistribution,
+            'unpaidStudents'    => $unpaidStudents,
         ], $metrics))->layout('components.layouts.admin', ['title' => 'Dashboard']);
     }
 }

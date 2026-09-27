@@ -121,6 +121,7 @@ default_socket_timeout = 60
 extension_dir = "ext"
 
 ; Core required extensions for SIMS
+zend_extension=opcache
 extension=curl
 extension=fileinfo
 extension=mbstring

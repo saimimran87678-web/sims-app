@@ -35,13 +35,13 @@ echo Web Server:        %FRANKEN%
 echo Logging to:        %LOG_FILE%
 echo.
 
-:: 2. Start bundled PHP FastCGI Engine pool (ports 9000-9003) if not already running
+:: 2. Start bundled PHP FastCGI Engine pool (ports 9000-9001) if not already running
 set "PHP_CGI=%RUNTIME_DIR%\php\php-cgi.exe"
 set "PHP_INI=%RUNTIME_DIR%\php\php.ini"
 set "PHP_FCGI_MAX_REQUESTS=0"
 
 if exist "%PHP_CGI%" (
-    for %%P in (9000 9001 9002 9003) do (
+    for %%P in (9000 9001) do (
         netstat -ano 2>nul | findstr "127.0.0.1:%%P " >nul 2>&1
         if !errorLevel! neq 0 (
             echo [INFO] Starting bundled PHP 8.2 FastCGI Engine on port %%P...
