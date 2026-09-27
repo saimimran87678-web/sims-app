@@ -1,10 +1,10 @@
 {
   "version": "2.5.2",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
-  "checksum": "ba9c6526b2d60af15243f71a5e1ec4cf1f92b648455261975806637f819ac3fc",
-  "sha256": "ba9c6526b2d60af15243f71a5e1ec4cf1f92b648455261975806637f819ac3fc",
+  "checksum": "22116012bead717e6b634f67f086a78cba4a683400f0491ebffb64cc32712c36",
+  "sha256": "22116012bead717e6b634f67f086a78cba4a683400f0491ebffb64cc32712c36",
   "min_php_version": "8.2.0",
-  "changelog": "add database performance indexes, OPcache monitoring, php.ini syncing, and robust Windows path auto-discovery",
-  "size_bytes": 1185945,
-  "released_at": "2026-09-27T17:53:38Z"
+  "changelog": "feat: add global CLI path registration and improve Windows path resolution and service termination",
+  "size_bytes": 1191382,
+  "released_at": "2026-09-27T18:28:14Z"
 }
