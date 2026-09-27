@@ -81,17 +81,7 @@ dialog#livewire-error {
 }
 body > div[style*="z-index: 2147483647"],
 body > div[style*="z-index:2147483647"] {
-    background: transparent !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-}
-body > div[style*="z-index: 2147483647"] > div,
-body > div[style*="z-index:2147483647"] > div {
-    background: transparent !important;
-}
-body > div[style*="z-index: 2147483647"] iframe,
-body > div[style*="z-index:2147483647"] iframe {
-    background: transparent !important;
+    display: none !important;
 }
 
 /* Waving hand animation */

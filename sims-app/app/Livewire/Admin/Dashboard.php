@@ -10,6 +10,7 @@ use App\Models\FeeRecord;
 use App\Models\FeePayment;
 use App\Models\AcademicSession;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class Dashboard extends Component
 {
@@ -20,7 +21,9 @@ class Dashboard extends Component
         $isRegular = ($activeSession && $activeSession->shift_type === 'Regular');
         $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
-        // ─── Core Stats ────────────────────────────────────────────
+        $cacheKey = "admin_dashboard_metrics_{$activeSessionId}_{$shiftType}";
+        $metrics = Cache::remember($cacheKey, 30, function () use ($activeSessionId, $activeSession, $shiftType) {
+            // ─── Core Stats ────────────────────────────────────────────
         $classesCount = $activeSessionId
             ? Classes::withoutGlobalScope('active_session')
                 ->where('academic_session_id', $activeSessionId)
@@ -318,17 +321,21 @@ class Dashboard extends Component
                 ->sortKeys();
         }
 
-        return view('livewire.admin.dashboard', [
-            'activeSession'     => $activeSession,
-            'stats'             => $stats,
-            'financials'        => $financials,
-            'attendanceTrend'   => $attendanceTrend,
-            'chartPoints'       => $chartPoints,
-            'svgPath'           => $svgPath,
-            'svgFillPath'       => $svgFillPath,
-            'activityFeed'      => $activityFeed,
-            'classDistribution' => $classDistribution,
-            'unpaidStudents'    => $unpaidStudents,
-        ])->layout('components.layouts.admin', ['title' => 'Dashboard']);
+            return [
+                'stats'             => $stats,
+                'financials'        => $financials,
+                'attendanceTrend'   => $attendanceTrend,
+                'chartPoints'       => $chartPoints,
+                'svgPath'           => $svgPath,
+                'svgFillPath'       => $svgFillPath,
+                'activityFeed'      => $activityFeed,
+                'classDistribution' => $classDistribution,
+                'unpaidStudents'    => $unpaidStudents,
+            ];
+        });
+
+        return view('livewire.admin.dashboard', array_merge([
+            'activeSession' => $activeSession,
+        ], $metrics))->layout('components.layouts.admin', ['title' => 'Dashboard']);
     }
 }

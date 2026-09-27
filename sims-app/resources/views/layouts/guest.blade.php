@@ -62,10 +62,14 @@
             .glass-card {
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
                 border-radius: 24px;
                 box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
                 position: relative;
                 z-index: 10;
+                transform: translateZ(0);
+                will-change: transform;
+                contain: paint;
             }
             
             .input-modern {
@@ -74,7 +78,7 @@
                 border: 2px solid #e2e8f0;
                 border-radius: 12px;
                 font-size: 15px;
-                transition: all 0.3s ease;
+                transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
                 background: #f8fafc;
             }
             
