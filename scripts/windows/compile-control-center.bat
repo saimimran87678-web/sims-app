@@ -54,6 +54,10 @@ if exist "%ICON_FILE%" (
     set ICON_FLAG=/win32icon:"%ICON_FILE%"
 )
 
+:: Release Windows file locks by closing running instances of Control Center
+taskkill /F /IM Adminova-Control-Center.exe >nul 2>&1
+taskkill /F /IM ControlCenter.exe >nul 2>&1
+
 echo [INFO] Compiling executable...
 "%CSC%" /target:winexe /optimize+ /platform:anycpu %ICON_FLAG% /out:"%OUT_EXE%" /r:System.dll,System.Windows.Forms.dll,System.Drawing.dll "%SRC_FILE%"
 set "COMP_ERR=%errorLevel%"

@@ -124,6 +124,16 @@ foreach ($Dir in $DirsToInclude) {
     }
 }
 
+# Root application configs
+foreach ($File in @("Caddyfile", "php.ini", ".env.example")) {
+    $Src = Join-Path $AppDir $File
+    $Dst = Join-Path $SourceAppDir $File
+    if (Test-Path $Src) {
+        Copy-Item -Path $Src -Destination $Dst -Force
+        Write-Success "Included: sims-app\$File"
+    }
+}
+
 # Bundle updated operational scripts
 $ScriptsSrc = Join-Path $RootDir "scripts"
 $ScriptsDst = Join-Path $StagingDir "scripts"

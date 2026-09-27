@@ -58,6 +58,14 @@ for DIR in app resources routes database/migrations config public/build; do
     fi
 done
 
+# Include root application configs
+for FILE in Caddyfile php.ini .env.example; do
+    if [ -f "${APP_DIR}/${FILE}" ]; then
+        cp "${APP_DIR}/${FILE}" "${STAGING_DIR}/sims-app/${FILE}"
+        echo "  - Included: sims-app/${FILE}"
+    fi
+done
+
 # Include operational scripts
 if [ -d "${ROOT_DIR}/scripts" ]; then
     cp -r "${ROOT_DIR}/scripts" "${STAGING_DIR}/scripts"

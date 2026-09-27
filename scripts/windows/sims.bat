@@ -41,6 +41,7 @@ if /i "%ACTION%"=="start" goto :CHECK_ELEVATION
 if /i "%ACTION%"=="stop" goto :CHECK_ELEVATION
 if /i "%ACTION%"=="restart" goto :CHECK_ELEVATION
 if /i "%ACTION%"=="update" goto :DO_UPDATE
+if /i "%ACTION%"=="compile" goto :DO_COMPILE
 
 echo [ERROR] Unknown command: '%ACTION%'
 echo.
@@ -59,6 +60,7 @@ echo   sims start               - Start all background services (HTTPS and HTTP)
 echo   sims stop                - Stop all services and release folder locks
 echo   sims restart             - Completely restart all services
 echo   sims update              - Check and apply automated delta updates safely
+echo   sims compile             - Recompile Adminova Control Center executable
 echo ====================================================
 exit /b 0
 
@@ -80,9 +82,10 @@ echo  [5] Refresh service status
 echo  [6] Open SIMS in web browser
 echo  [7] Trust SSL Certificate in Windows
 echo  [8] Check and Apply System Updates
+echo  [9] Recompile Control Center Native App
 echo  [0] Exit
 echo ====================================================
-set /p "CHOICE=Enter choice (0-8): "
+set /p "CHOICE=Enter choice (0-9): "
 
 if "%CHOICE%"=="1" (
     set "ACTION=start"
@@ -113,6 +116,11 @@ if "%CHOICE%"=="8" (
     pause
     goto :INTERACTIVE_MENU
 )
+if "%CHOICE%"=="9" (
+    echo.
+    call :DO_COMPILE
+    goto :INTERACTIVE_MENU
+)
 if "%CHOICE%"=="7" (
     echo.
     if exist "%SERVICES_DIR%\trust-cert.bat" call "%SERVICES_DIR%\trust-cert.bat"
@@ -136,14 +144,38 @@ if /i "%ACTION%"=="stop" goto :DO_STOP
 if /i "%ACTION%"=="restart" goto :DO_RESTART
 exit /b 0
 
+:DO_COMPILE
+echo ====================================================
+echo     Recompiling Adminova Native Control Center
+echo ====================================================
+if exist "%ROOT_DIR%\scripts\windows\compile-control-center.bat" (
+    call "%ROOT_DIR%\scripts\windows\compile-control-center.bat"
+) else (
+    echo [ERROR] compile-control-center.bat not found!
+    pause
+)
+if defined INTERACTIVE (
+    pause
+    goto :INTERACTIVE_MENU
+)
+exit /b %errorLevel%
+
 :DO_UPDATE
 echo ====================================================
 echo             SIMS Safe System Update Manager
 echo ====================================================
 cd /d "%APP_DIR%"
 "%PHP_BIN%" artisan sims:update %2 %3 %4 %5
+set "UPDATE_EXIT=%errorLevel%"
+
+if %UPDATE_EXIT% equ 0 (
+    if exist "%ROOT_DIR%\scripts\windows\compile-control-center.bat" (
+        echo [INFO] Recompiling Control Center with latest updates...
+        call "%ROOT_DIR%\scripts\windows\compile-control-center.bat" >nul 2>&1
+    )
+)
 echo ====================================================
-exit /b %errorLevel%
+exit /b %UPDATE_EXIT%
 
 :DO_ACTIVATE
 echo ====================================================
