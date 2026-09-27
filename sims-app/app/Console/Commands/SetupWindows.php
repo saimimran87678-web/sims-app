@@ -87,6 +87,8 @@ class SetupWindows extends Command
                 "@echo off\r\n" .
                 "cd /d \"{$appPath}\"\r\n" .
                 "set \"FRANKEN={$frankenBinary}\"\r\n" .
+                "set \"CADDY_DATA_DIR={$appPath}\\storage\\caddy\"\r\n" .
+                "set \"CADDY_CONFIG_DIR={$appPath}\\storage\\caddy\\config\"\r\n" .
                 "set \"PHP_FCGI_MAX_REQUESTS=0\"\r\n" .
                 "if not exist \"%FRANKEN%\" set \"FRANKEN=frankenphp.exe\"\r\n" .
                 "\"%FRANKEN%\" run --config \"{$appPath}\\Caddyfile\" >> \"{$appPath}\\storage\\logs\\web-server.log\" 2>&1\r\n"

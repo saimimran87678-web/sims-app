@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
 :: Check if unattended / silent execution is requested
 set "UNATTENDED=0"
@@ -88,7 +88,18 @@ netsh advfirewall firewall delete rule name="SIMS-Web-HTTP" >nul 2>&1
 netsh advfirewall firewall add rule name="SIMS-Web-HTTP" dir=in action=allow protocol=TCP localport=80 >nul 2>&1
 netsh advfirewall firewall delete rule name="SIMS-Web-HTTPS" >nul 2>&1
 netsh advfirewall firewall add rule name="SIMS-Web-HTTPS" dir=in action=allow protocol=TCP localport=443 >nul 2>&1
-echo [OK] Network ports and firewall configured.
+netsh advfirewall firewall delete rule name="SIMS-Web-Alt" >nul 2>&1
+netsh advfirewall firewall add rule name="SIMS-Web-Alt" dir=in action=allow protocol=TCP localport=8000 >nul 2>&1
+
+:: Enable Network Discovery & Local Name Resolution (mDNS / LLMNR / NetBIOS)
+netsh advfirewall firewall set rule group="Network Discovery" new enable=Yes >nul 2>&1
+netsh advfirewall firewall delete rule name="SIMS-mDNS" >nul 2>&1
+netsh advfirewall firewall add rule name="SIMS-mDNS" dir=in action=allow protocol=UDP localport=5353 >nul 2>&1
+netsh advfirewall firewall delete rule name="SIMS-LLMNR" >nul 2>&1
+netsh advfirewall firewall add rule name="SIMS-LLMNR" dir=in action=allow protocol=UDP localport=5355 >nul 2>&1
+netsh advfirewall firewall delete rule name="SIMS-NetBIOS" >nul 2>&1
+netsh advfirewall firewall add rule name="SIMS-NetBIOS" dir=in action=allow protocol=UDP localport=137 >nul 2>&1
+echo [OK] Network ports, firewall, and network discovery configured.
 
 :: 4. Ensure .env file is present
 if exist "%APP_DIR%\.env" goto :ENV_OK
@@ -135,6 +146,7 @@ if not exist "%APP_DIR%\storage\logs" mkdir "%APP_DIR%\storage\logs" >nul 2>&1
 if not exist "%APP_DIR%\storage\framework\views" mkdir "%APP_DIR%\storage\framework\views" >nul 2>&1
 if not exist "%APP_DIR%\storage\framework\sessions" mkdir "%APP_DIR%\storage\framework\sessions" >nul 2>&1
 if not exist "%APP_DIR%\storage\framework\cache\data" mkdir "%APP_DIR%\storage\framework\cache\data" >nul 2>&1
+if not exist "%APP_DIR%\storage\caddy" mkdir "%APP_DIR%\storage\caddy" >nul 2>&1
 if not exist "%APP_DIR%\bootstrap\cache" mkdir "%APP_DIR%\bootstrap\cache" >nul 2>&1
 if not exist "%APP_DIR%\database" mkdir "%APP_DIR%\database" >nul 2>&1
 
@@ -181,7 +193,7 @@ cd /d "%ROOT_DIR%"
 schtasks /end /tn "SIMS-Web" >nul 2>&1
 schtasks /end /tn "SIMS-Queue" >nul 2>&1
 schtasks /end /tn "SIMS-Scheduler" >nul 2>&1
-taskkill /F /IM frankenphp.exe /IM php-cgi.exe >nul 2>&1
+taskkill /F /T /IM frankenphp.exe /IM php-cgi.exe /IM php.exe >nul 2>&1
 ping 127.0.0.1 -n 2 >nul
 
 schtasks /run /tn "SIMS-Web" >nul 2>&1
@@ -267,12 +279,16 @@ if not "%UNATTENDED%"=="1" (
     start https://localhost
 )
 
+call :DETECT_LAN_IP
+
 echo.
 echo Primary Access Addresses (This Computer):
 echo   - [HTTPS] https://localhost         (Secured with Local Certificate)
 echo   - [HTTP]  http://localhost          (Redirects to HTTPS)
 echo.
 echo Local School Network Access (Other Devices / Wi-Fi):
+echo   - [Recommended]  http://!LAN_IP!       (Direct HTTP - no cert warnings on phones)
+echo   - [Secure HTTPS] https://!LAN_IP!      (Encrypted HTTPS)
 echo   - [Device Name]  http://%COMPUTERNAME%
 echo   - [mDNS Domain]  http://%COMPUTERNAME%.local
 echo.
@@ -282,3 +298,22 @@ echo.
 if "%UNATTENDED%"=="1" exit /b 0
 pause
 exit /b 0
+
+:DETECT_LAN_IP
+if defined LAN_IP goto :eof
+set "LAN_IP="
+for /f "tokens=2 delims=:" %%I in ('ipconfig ^| findstr /i "IPv4" 2^>nul') do (
+    if not defined LAN_IP (
+        set "IP_CANDIDATE=%%I"
+        set "IP_CANDIDATE=!IP_CANDIDATE: =!"
+        if not "!IP_CANDIDATE!"=="" (
+            if not "!IP_CANDIDATE:~0,4!"=="127." (
+                if not "!IP_CANDIDATE:~0,8!"=="169.254." (
+                    set "LAN_IP=!IP_CANDIDATE!"
+                )
+            )
+        )
+    )
+)
+if not defined LAN_IP set "LAN_IP=127.0.0.1"
+goto :eof

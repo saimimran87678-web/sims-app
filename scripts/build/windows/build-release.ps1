@@ -233,7 +233,7 @@ Set-Content -Path (Join-Path $TargetAppDir ".env.example") -Value $SanitizedEnv 
 Write-Host "[*] Copying organized scripts and root quick-launchers..." -ForegroundColor Blue
 
 # 5a. Root Quick Launchers
-$RootFiles = @("install.bat", "install.sh", "sims.bat")
+$RootFiles = @("install.bat", "install.sh", "sims.bat", "register-path.bat", "control-center.bat", "Adminova-Control-Center.exe")
 foreach ($f in $RootFiles) {
     $src = Join-Path $RootDir $f
     if (Test-Path $src) {

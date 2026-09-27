@@ -12,10 +12,13 @@ set "APP_DIR=%ROOT_DIR%\sims-app"
 set "APP_PUBLIC=%APP_DIR%\public"
 set "RUNTIME_DIR=%ROOT_DIR%\runtime"
 set "LOG_FILE=%APP_DIR%\storage\logs\web-server.log"
+set "CADDY_DATA_DIR=%APP_DIR%\storage\caddy"
+set "CADDY_CONFIG_DIR=%APP_DIR%\storage\caddy\config"
 
 set "PATH=%RUNTIME_DIR%\php;%RUNTIME_DIR%;%PATH%"
 
 if not exist "%APP_DIR%\storage\logs" mkdir "%APP_DIR%\storage\logs" >nul 2>&1
+if not exist "%APP_DIR%\storage\caddy" mkdir "%APP_DIR%\storage\caddy" >nul 2>&1
 
 cd /d "%APP_DIR%"
 

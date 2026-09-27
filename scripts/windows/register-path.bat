@@ -31,8 +31,9 @@ set "IS_ADMIN=0"
 if %errorLevel% equ 0 set "IS_ADMIN=1"
 
 :: 2. Set SIMS_HOME in Current User Environment
-echo [1/4] Configuring SIMS_HOME environment variable...
+echo [1/5] Configuring SIMS_HOME environment variable...
 reg add "HKCU\Environment" /v SIMS_HOME /t REG_SZ /d "%ROOT_DIR%" /f >nul 2>&1
+reg add "HKCU\SOFTWARE\Adminova\SIMS" /v InstallPath /t REG_SZ /d "%ROOT_DIR%" /f >nul 2>&1
 setx SIMS_HOME "%ROOT_DIR%" >nul 2>&1
 
 :: If Admin, set SIMS_HOME and InstallPath system-wide
@@ -46,7 +47,7 @@ if "%IS_ADMIN%"=="1" (
 )
 
 :: 3. Add ROOT_DIR to Windows PATH (User PATH + System PATH if elevated)
-echo [2/4] Registering installation folder in Windows PATH...
+echo [2/5] Registering installation folder in Windows PATH...
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$root = '%ROOT_DIR%';" ^
     "$userPath = [Environment]::GetEnvironmentVariable('Path', 'User');" ^
@@ -69,8 +70,13 @@ if "%IS_ADMIN%"=="1" (
 )
 
 :: 4. Deploy universal shim to Windows system/app execution paths
-echo [3/4] Installing universal command shims...
+echo [3/5] Installing universal command shims...
 set "SHIM_SRC=%ROOT_DIR%\sims.bat"
+if not exist "%SHIM_SRC%" (
+    if exist "%ROOT_DIR%\scripts\windows\sims.bat" (
+        set "SHIM_SRC=%ROOT_DIR%\scripts\windows\sims.bat"
+    )
+)
 
 :: User-level WindowsApps folder (included in Windows 10/11 default User PATH, no admin required)
 if defined LOCALAPPDATA (
@@ -89,8 +95,23 @@ if "%IS_ADMIN%"=="1" (
     )
 )
 
-:: 5. Refresh Environment Variables in Current Session
-echo [4/4] Refreshing active environment variables...
+:: 5. Ensure Firewall and Local Network Discovery rules are active
+if "%IS_ADMIN%"=="1" (
+    echo [4/5] Configuring firewall and local network discovery rules...
+    netsh http add urlacl url=http://+:80/ user=Everyone >nul 2>&1
+    netsh http add urlacl url=https://+:443/ user=Everyone >nul 2>&1
+    netsh advfirewall firewall add rule name="SIMS-Web-HTTP" dir=in action=allow protocol=TCP localport=80 >nul 2>&1
+    netsh advfirewall firewall add rule name="SIMS-Web-HTTPS" dir=in action=allow protocol=TCP localport=443 >nul 2>&1
+    netsh advfirewall firewall add rule name="SIMS-Web-Alt" dir=in action=allow protocol=TCP localport=8000 >nul 2>&1
+    netsh advfirewall firewall set rule group="Network Discovery" new enable=Yes >nul 2>&1
+    netsh advfirewall firewall add rule name="SIMS-mDNS" dir=in action=allow protocol=UDP localport=5353 >nul 2>&1
+    netsh advfirewall firewall add rule name="SIMS-LLMNR" dir=in action=allow protocol=UDP localport=5355 >nul 2>&1
+    netsh advfirewall firewall add rule name="SIMS-NetBIOS" dir=in action=allow protocol=UDP localport=137 >nul 2>&1
+    echo [OK] Network ports, firewall, and network discovery verified.
+)
+
+:: 6. Refresh Environment Variables in Current Session
+echo [5/5] Refreshing active environment variables...
 set "SIMS_HOME=%ROOT_DIR%"
 set "PATH=%ROOT_DIR%;%PATH%"
 

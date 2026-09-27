@@ -150,6 +150,11 @@ cp "${ROOT_DIR}/install.bat" "${STAGING_DIR}/install.bat"
 cp "${ROOT_DIR}/install.sh" "${STAGING_DIR}/install.sh"
 chmod +x "${STAGING_DIR}/install.sh"
 cp "${ROOT_DIR}/sims.bat" "${STAGING_DIR}/sims.bat"
+for F in register-path.bat control-center.bat Adminova-Control-Center.exe; do
+    if [ -f "${ROOT_DIR}/${F}" ]; then
+        cp "${ROOT_DIR}/${F}" "${STAGING_DIR}/${F}"
+    fi
+done
 
 # Modular Client Scripts (excluding build pipelines)
 mkdir -p "${STAGING_DIR}/scripts/windows"

@@ -160,7 +160,9 @@ net session >nul 2>&1
 if %errorLevel% neq 0 (
     echo [INFO] Administrator privileges required for 'sims %ACTION%'.
     echo Requesting elevation...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList '%*' -Verb RunAs -Wait"
+    set "ELEVATE_ARGS=%ACTION%"
+    if not "%~2"=="" set "ELEVATE_ARGS=%ACTION% %~2 %~3 %~4"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList '!ELEVATE_ARGS!' -Verb RunAs -Wait"
     exit /b 0
 )
 if /i "%ACTION%"=="start" goto :DO_START
@@ -250,9 +252,9 @@ if defined INTERACTIVE (
 exit /b %errorLevel%
 
 :PRINT_SERVICE_STATUS
-:: 1. Live Application Health Probe (Queries Laravel /ping-internal directly)
+:: 1. Live Application Health Probe (Queries Laravel /ping-internal directly via TLS 1.2)
 set "APP_PROBE="
-for /f "usebackq delims=" %%H in (`powershell -NoProfile -Command "[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; try { $r = Invoke-RestMethod -Uri 'https://localhost/ping-internal' -TimeoutSec 2; Write-Host ('ONLINE (v' + $r.version + ' | DB: ' + $r.database + ' | OPcache: ' + $r.opcache.hit_rate + ' | ' + $r.opcache.cached_scripts + ' scripts)') } catch { try { $r2 = Invoke-RestMethod -Uri 'http://localhost/ping-internal' -TimeoutSec 2; Write-Host ('ONLINE (v' + $r2.version + ' | DB: ' + $r2.database + ')') } catch { Write-Host 'OFFLINE (Web server not responding)' } }" 2^>nul`) do (
+for /f "usebackq delims=" %%H in (`powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; try { $r = Invoke-RestMethod -Uri 'https://127.0.0.1/ping-internal' -Headers @{Host='localhost'} -TimeoutSec 2; Write-Host ('ONLINE - v' + $r.version + ' | DB: ' + $r.database + ' | OPcache: ' + $r.opcache.hit_rate + ' | ' + $r.opcache.cached_scripts + ' scripts') } catch { try { $r2 = Invoke-RestMethod -Uri 'http://127.0.0.1/ping-internal' -Headers @{Host='localhost'} -TimeoutSec 2; Write-Host ('ONLINE - v' + $r2.version + ' | DB: ' + $r2.database + ')') } catch { Write-Host 'OFFLINE - Web server not responding' } }" 2^>nul`) do (
     set "APP_PROBE=%%H"
 )
 if defined APP_PROBE (
@@ -261,40 +263,34 @@ if defined APP_PROBE (
 
 :: 2. Check Port 443 (HTTPS) - Verify LISTENING state and process ownership
 set "PORT_443_PID="
-set "PORT_443_PROC="
 for /f "tokens=5" %%B in ('netstat -ano -p tcp 2^>nul ^| findstr /R /C:":443 .*LISTENING"') do (
     set "PORT_443_PID=%%B"
 )
 if defined PORT_443_PID (
-    for /f "tokens=1" %%P in ('tasklist /fi "PID eq !PORT_443_PID!" /fo csv /nh 2^>nul') do set "PORT_443_PROC=%%~P"
-    if /i "!PORT_443_PROC!"=="frankenphp.exe" (
-        echo [HTTPS Port 443]   ONLINE  (frankenphp.exe listening, PID: !PORT_443_PID! - SSL Active)
-    ) else if not "!PORT_443_PROC!"=="" (
-        echo [HTTPS Port 443]   CONFLICT (!PORT_443_PROC! listening, PID: !PORT_443_PID! - NOT SIMS)
+    tasklist /fi "PID eq !PORT_443_PID!" 2>nul | findstr /i "frankenphp.exe" >nul 2>&1
+    if !errorLevel! equ 0 (
+        echo [HTTPS Port 443]   ONLINE  - frankenphp.exe listening, PID: !PORT_443_PID! [SSL Active]
     ) else (
-        echo [HTTPS Port 443]   LISTENING (Port 443 active, PID: !PORT_443_PID!)
+        echo [HTTPS Port 443]   ONLINE  - Listening on Port 443, PID: !PORT_443_PID!
     )
 ) else (
-    echo [HTTPS Port 443]   OFFLINE (Port 443 closed)
+    echo [HTTPS Port 443]   OFFLINE - Port 443 closed
 )
 
 :: 3. Check Port 80 (HTTP) - Verify LISTENING state and process ownership
 set "PORT_80_PID="
-set "PORT_80_PROC="
 for /f "tokens=5" %%B in ('netstat -ano -p tcp 2^>nul ^| findstr /R /C:":80 .*LISTENING"') do (
     set "PORT_80_PID=%%B"
 )
 if defined PORT_80_PID (
-    for /f "tokens=1" %%P in ('tasklist /fi "PID eq !PORT_80_PID!" /fo csv /nh 2^>nul') do set "PORT_80_PROC=%%~P"
-    if /i "!PORT_80_PROC!"=="frankenphp.exe" (
-        echo [HTTP Port 80]     ONLINE  (frankenphp.exe listening, PID: !PORT_80_PID!)
-    ) else if not "!PORT_80_PROC!"=="" (
-        echo [HTTP Port 80]     CONFLICT (!PORT_80_PROC! listening, PID: !PORT_80_PID! - NOT SIMS)
+    tasklist /fi "PID eq !PORT_80_PID!" 2>nul | findstr /i "frankenphp.exe" >nul 2>&1
+    if !errorLevel! equ 0 (
+        echo [HTTP Port 80]     ONLINE  - frankenphp.exe listening, PID: !PORT_80_PID!
     ) else (
-        echo [HTTP Port 80]     LISTENING (Port 80 active, PID: !PORT_80_PID!)
+        echo [HTTP Port 80]     ONLINE  - Listening on Port 80, PID: !PORT_80_PID!
     )
 ) else (
-    echo [HTTP Port 80]     OFFLINE (Port 80 closed)
+    echo [HTTP Port 80]     OFFLINE - Port 80 closed
 )
 
 :: 4. Check Port 8000 (Fallback Web Server)
@@ -303,7 +299,7 @@ for /f "tokens=5" %%B in ('netstat -ano -p tcp 2^>nul ^| findstr /R /C:":8000 .*
     set "PORT_8000_PID=%%B"
 )
 if defined PORT_8000_PID (
-    echo [Fallback Port 8000] ONLINE (Listening, PID: !PORT_8000_PID!)
+    echo [Fallback Port 8000] ONLINE - Listening, PID: !PORT_8000_PID!
 )
 
 :: 5. Check PHP FastCGI Worker Pool (Ports 9000 & 9001)
@@ -312,51 +308,55 @@ set "FCGI_9001="
 for /f "tokens=5" %%B in ('netstat -ano -p tcp 2^>nul ^| findstr /R /C:":9000 .*LISTENING"') do set "FCGI_9000=%%B"
 for /f "tokens=5" %%B in ('netstat -ano -p tcp 2^>nul ^| findstr /R /C:":9001 .*LISTENING"') do set "FCGI_9001=%%B"
 if defined FCGI_9000 (
-    echo [PHP FastCGI:9000] ONLINE  (Worker 1 ready, PID: !FCGI_9000!)
+    echo [PHP FastCGI:9000] ONLINE  - Worker 1 ready, PID: !FCGI_9000!
 ) else (
-    echo [PHP FastCGI:9000] OFFLINE (Port 9000 closed)
+    echo [PHP FastCGI:9000] OFFLINE - Port 9000 closed
 )
 if defined FCGI_9001 (
-    echo [PHP FastCGI:9001] ONLINE  (Worker 2 ready, PID: !FCGI_9001!)
+    echo [PHP FastCGI:9001] ONLINE  - Worker 2 ready, PID: !FCGI_9001!
 ) else (
-    echo [PHP FastCGI:9001] OFFLINE (Port 9001 closed)
+    echo [PHP FastCGI:9001] OFFLINE - Port 9001 closed
 )
 
 :: 6. Check Active Process Counts
 set "CGI_COUNT=0"
 for /f %%C in ('tasklist /fi "imagename eq php-cgi.exe" /nh 2^>nul ^| find /c /i "php-cgi.exe"') do set "CGI_COUNT=%%C"
 if !CGI_COUNT! gtr 0 (
-    echo [FastCGI Pool]     ACTIVE  (!CGI_COUNT! php-cgi.exe worker processes)
+    echo [FastCGI Pool]     ACTIVE  - !CGI_COUNT! php-cgi.exe worker processes
 ) else (
-    echo [FastCGI Pool]     STOPPED (0 php-cgi.exe worker processes)
+    echo [FastCGI Pool]     STOPPED - 0 php-cgi.exe worker processes
 )
 
 set "PHP_CLI_COUNT=0"
 for /f %%C in ('tasklist /fi "imagename eq php.exe" /nh 2^>nul ^| find /c /i "php.exe"') do set "PHP_CLI_COUNT=%%C"
 if !PHP_CLI_COUNT! gtr 0 (
-    echo [PHP Background]   ACTIVE  (!PHP_CLI_COUNT! CLI worker/scheduler process running)
+    echo [PHP Background]   ACTIVE  - !PHP_CLI_COUNT! CLI worker/scheduler processes running
 ) else (
-    echo [PHP Background]   IDLE    (No background CLI processes running)
+    echo [PHP Background]   IDLE    - No background CLI processes running
 )
 
 :: 7. Check Windows Task Scheduler Tasks
 schtasks /query /tn "SIMS-Web" 2>nul | findstr /i "Running" >nul 2>&1
 if !errorLevel! equ 0 (
-    echo [Service: Web]      RUNNING (Task Scheduler)
+    echo [Service: Web]      RUNNING [Task Scheduler]
 ) else (
-    echo [Service: Web]      STANDBY / STOPPED
+    if defined PORT_443_PID (
+        echo [Service: Web]      RUNNING [Interactive / Control Center]
+    ) else (
+        echo [Service: Web]      STANDBY / STOPPED
+    )
 )
 
 schtasks /query /tn "SIMS-Queue" 2>nul | findstr /i "Running" >nul 2>&1
 if !errorLevel! equ 0 (
-    echo [Service: Queue]    RUNNING (Task Scheduler)
+    echo [Service: Queue]    RUNNING [Task Scheduler]
 ) else (
     echo [Service: Queue]    STANDBY / STOPPED
 )
 
 schtasks /query /tn "SIMS-Scheduler" 2>nul | findstr /i "Running" >nul 2>&1
 if !errorLevel! equ 0 (
-    echo [Service: Schedule] RUNNING (Task Scheduler)
+    echo [Service: Schedule] RUNNING [Task Scheduler]
 ) else (
     echo [Service: Schedule] STANDBY / STOPPED
 )

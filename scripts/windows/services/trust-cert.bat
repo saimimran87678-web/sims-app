@@ -18,7 +18,12 @@ set "CRT_TRIES=0"
 if exist "%APP_DIR%\storage\caddy\pki\authorities\local\root.crt" set "ROOT_CRT=%APP_DIR%\storage\caddy\pki\authorities\local\root.crt"
 if not defined ROOT_CRT if exist "%APPDATA%\caddy\pki\authorities\local\root.crt" set "ROOT_CRT=%APPDATA%\caddy\pki\authorities\local\root.crt"
 if not defined ROOT_CRT if exist "%LOCALAPPDATA%\caddy\pki\authorities\local\root.crt" set "ROOT_CRT=%LOCALAPPDATA%\caddy\pki\authorities\local\root.crt"
+if not defined ROOT_CRT if exist "%USERPROFILE%\AppData\Roaming\caddy\pki\authorities\local\root.crt" set "ROOT_CRT=%USERPROFILE%\AppData\Roaming\caddy\pki\authorities\local\root.crt"
+if not defined ROOT_CRT if exist "%ProgramData%\caddy\pki\authorities\local\root.crt" set "ROOT_CRT=%ProgramData%\caddy\pki\authorities\local\root.crt"
 if not defined ROOT_CRT if exist "%WINDIR%\System32\config\systemprofile\AppData\Roaming\caddy\pki\authorities\local\root.crt" set "ROOT_CRT=%WINDIR%\System32\config\systemprofile\AppData\Roaming\caddy\pki\authorities\local\root.crt"
+if not defined ROOT_CRT (
+    for /f "delims=" %%F in ('dir /s /b "%APP_DIR%\storage\caddy\root.crt" 2^>nul') do set "ROOT_CRT=%%F"
+)
 
 if defined ROOT_CRT goto :FOUND_CRT
 

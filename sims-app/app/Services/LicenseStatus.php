@@ -120,12 +120,19 @@ class LicenseStatus
                     
                     $currentHost = explode(':', strtolower(request()->getHost()))[0];
 
+                    $isPrivateIp = filter_var($currentHost, FILTER_VALIDATE_IP) && 
+                                   !filter_var($currentHost, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+
                     $isLocalOrTunnel = $currentHost === 'localhost' || 
                                        $currentHost === '127.0.0.1' || 
+                                       $currentHost === '::1' ||
+                                       $isPrivateIp ||
+                                       !str_contains($currentHost, '.') || // Local computer name (e.g. NetBIOS)
+                                       str_ends_with($currentHost, '.local') || // mDNS
+                                       str_ends_with($currentHost, '.lan') ||
                                        str_ends_with($currentHost, '.ngrok-free.dev') ||
                                        str_ends_with($currentHost, '.ngrok.io') ||
-                                       str_ends_with($currentHost, '.trycloudflare.com') ||
-                                       str_ends_with($currentHost, '.local');
+                                       str_ends_with($currentHost, '.trycloudflare.com');
 
                     if (!$isLocalOrTunnel && !in_array($currentHost, $allowedList)) {
                         return array_merge($baseStatus, [

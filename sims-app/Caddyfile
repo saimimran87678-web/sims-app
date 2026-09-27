@@ -20,8 +20,10 @@
     import sims_common
 }
 
-# HTTPS on Port 443: Secure access with trusted local TLS certificates
-:443, localhost, 127.0.0.1, sims.local {
+# HTTPS on Port 443: Universal secure access with trusted local TLS certificates
+:443 {
     import sims_common
-    tls internal
+    tls internal {
+        on_demand
+    }
 }

@@ -156,7 +156,7 @@ if (Test-Path $IconsSrc) {
 }
 
 # Copy top-level launcher stubs (runtime runners only, excluding fresh installers)
-foreach ($Launcher in @("sims.bat", "control-center.bat")) {
+foreach ($Launcher in @("sims.bat", "control-center.bat", "register-path.bat")) {
     $LauncherPath = Join-Path $RootDir $Launcher
     if (Test-Path $LauncherPath) {
         Copy-Item -Path $LauncherPath -Destination $StagingDir -Force

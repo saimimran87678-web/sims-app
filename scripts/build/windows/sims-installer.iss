@@ -33,6 +33,7 @@ PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile=app.ico
 UninstallDisplayIcon={app}\resources\icons\adminova.ico
+CloseApplications=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -50,6 +51,7 @@ Name: "{app}\sims-app\storage\framework\views"; Permissions: users-modify authus
 Name: "{app}\sims-app\storage\framework\sessions"; Permissions: users-modify authusers-modify
 Name: "{app}\sims-app\storage\framework\cache"; Permissions: users-modify authusers-modify
 Name: "{app}\sims-app\storage\framework\cache\data"; Permissions: users-modify authusers-modify
+Name: "{app}\sims-app\storage\caddy"; Permissions: users-modify authusers-modify
 Name: "{app}\sims-app\bootstrap\cache"; Permissions: users-modify authusers-modify
 Name: "{app}\sims-app\database"; Permissions: users-modify authusers-modify
 
@@ -63,7 +65,7 @@ Source: "..\..\..\resources\icons\*"; DestDir: "{app}\resources\icons"; Flags: i
 ; Root Launcher scripts
 Source: "..\..\..\install.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\sims.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\..\manifest.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\..\control-center.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\register-path.bat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
@@ -76,6 +78,8 @@ Source: "..\..\..\sims-app\*"; DestDir: "{app}\sims-app"; Flags: ignoreversion r
 [Registry]
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "SIMS_HOME"; ValueData: "{app}"; Flags: uninsdeletevalue
 Root: HKLM; Subkey: "SOFTWARE\Adminova\SIMS"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "SIMS_HOME"; ValueData: "{app}"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "SOFTWARE\Adminova\SIMS"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletekey
 
 [Icons]
 Name: "{group}\Adminova Control Center"; Filename: "{app}\Adminova-Control-Center.exe"; IconFilename: "{app}\resources\icons\adminova.ico"
@@ -85,15 +89,46 @@ Name: "{autodesktop}\Adminova Control Center"; Filename: "{app}\Adminova-Control
 Name: "{autodesktop}\Adminova School Portal"; Filename: "https://localhost"; IconFilename: "{app}\resources\icons\adminova.ico"; Tasks: desktopicon
 
 [Run]
-; Run automated initial installation and service registration in unattended mode
-Filename: "{app}\install.bat"; Parameters: "--unattended"; StatusMsg: "Configuring database, background services, and SSL certificates..."; Flags: runhidden waituntilterminated
-Filename: "{app}\Adminova-Control-Center.exe"; Description: "Launch Adminova Control Center"; Flags: postinstall nowait
+; Run automated initial installation, firewall configuration, service registration, and path setup
+Filename: "{app}\install.bat"; Parameters: "--unattended"; StatusMsg: "Configuring database, background services, firewall, and SSL certificates..."; Flags: runhidden waituntilterminated
+Filename: "{app}\Adminova-Control-Center.exe"; Description: "Launch Adminova Control Center"; Flags: postinstall nowait; Check: FileExists(ExpandConstant('{app}\Adminova-Control-Center.exe'))
 Filename: "https://localhost"; Description: "Open SIMS in web browser"; Flags: postinstall shellexec nowait
+
+[UninstallRun]
+Filename: "taskkill.exe"; Parameters: "/F /T /IM frankenphp.exe /IM php-cgi.exe /IM php.exe /IM Adminova-Control-Center.exe"; Flags: runhidden
+Filename: "schtasks.exe"; Parameters: "/end /tn ""SIMS-Web"""; Flags: runhidden
+Filename: "schtasks.exe"; Parameters: "/end /tn ""SIMS-Queue"""; Flags: runhidden
+Filename: "schtasks.exe"; Parameters: "/end /tn ""SIMS-Scheduler"""; Flags: runhidden
+Filename: "schtasks.exe"; Parameters: "/delete /tn ""SIMS-Web"" /f"; Flags: runhidden
+Filename: "schtasks.exe"; Parameters: "/delete /tn ""SIMS-Queue"" /f"; Flags: runhidden
+Filename: "schtasks.exe"; Parameters: "/delete /tn ""SIMS-Scheduler"" /f"; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SIMS-Web-HTTP"""; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SIMS-Web-HTTPS"""; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SIMS-Web-Alt"""; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SIMS-mDNS"""; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SIMS-LLMNR"""; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""SIMS-NetBIOS"""; Flags: runhidden
+Filename: "cmd.exe"; Parameters: "/c del /f /q ""{sys}\sims.bat"" ""{localappdata}\Microsoft\WindowsApps\sims.bat"""; Flags: runhidden
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}\sims-app\storage\caddy"
+Type: filesandordirs; Name: "{app}\sims-app\storage\logs"
+Type: filesandordirs; Name: "{app}\sims-app\storage\framework"
+Type: filesandordirs; Name: "{app}\sims-app\bootstrap\cache"
 
 [Code]
 var
   TokenPage: TInputQueryWizardPage;
   UserToken: String;
+
+// 0. Pre-installation cleanup to prevent locked file errors
+function InitializeSetup(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Exec('taskkill.exe', '/F /T /IM frankenphp.exe /IM php-cgi.exe /IM php.exe /IM Adminova-Control-Center.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := True;
+end;
 
 // 1. Create Custom Page for One-Time Installation Token
 procedure InitializeWizard;
@@ -138,11 +173,13 @@ begin
       'try {' + #13#10 +
       '  $doc = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 10;' + #13#10 +
       '  $status = $doc.fields.status.stringValue;' + #13#10 +
+      '  $hw = (Get-CimInstance Win32_ComputerSystemProduct).UUID;' + #13#10 +
       '  if ($status -eq "unused") {' + #13#10 +
-      '    $hw = (Get-CimInstance Win32_ComputerSystemProduct).UUID;' + #13#10 +
       '    $patchUrl = $url + "?updateMask.fieldPaths=status&updateMask.fieldPaths=bound_machine_uuid&updateMask.fieldPaths=burned_at";' + #13#10 +
       '    $body = @{ fields = @{ status = @{ stringValue = "burned" }; bound_machine_uuid = @{ stringValue = $hw }; burned_at = @{ stringValue = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") } } } | ConvertTo-Json -Depth 4;' + #13#10 +
       '    Invoke-RestMethod -Uri $patchUrl -Method Patch -Body $body -ContentType "application/json" | Out-Null;' + #13#10 +
+      '    Set-Content -Path "' + TempOutputFile + '" -Value "AUTHORIZED";' + #13#10 +
+      '  } elseif ($status -eq "burned" -and $doc.fields.bound_machine_uuid.stringValue -eq $hw) {' + #13#10 +
       '    Set-Content -Path "' + TempOutputFile + '" -Value "AUTHORIZED";' + #13#10 +
       '  } else {' + #13#10 +
       '    Set-Content -Path "' + TempOutputFile + '" -Value "BURNED";' + #13#10 +
