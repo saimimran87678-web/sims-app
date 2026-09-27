@@ -277,9 +277,9 @@ class Settings extends Component
                 $cleanSource = strtok($manifestSource, '?');
 
                 $candidates = [
+                    'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json' . $cacheBust,
                     'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust,
                     'https://fastly.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust,
-                    'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json' . $cacheBust,
                 ];
 
                 if (!str_contains($cleanSource, 'manifest.json')) {
@@ -309,9 +309,9 @@ class Settings extends Component
 
                 // Native Windows fallback if PHP cURL is blocked or has network issues
                 if (!$manifest && PHP_OS_FAMILY === 'Windows') {
-                    $cdnUrl = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust;
                     $rawUrl = 'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json' . $cacheBust;
-                    $psScript = "\$urls = @('{$cdnUrl}', '{$rawUrl}'); foreach (\$u in \$urls) { try { (Invoke-RestMethod -Uri \$u -TimeoutSec 4 -Headers @{'User-Agent'='SIMS-Updater'}) | ConvertTo-Json -Compress; break } catch {} }";
+                    $cdnUrl = 'https://cdn.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json' . $cacheBust;
+                    $psScript = "\$urls = @('{$rawUrl}', '{$cdnUrl}'); foreach (\$u in \$urls) { try { (Invoke-RestMethod -Uri \$u -TimeoutSec 4 -Headers @{'User-Agent'='SIMS-Updater'}) | ConvertTo-Json -Compress; break } catch {} }";
                     $encoded = base64_encode(mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8'));
                     $psOut = shell_exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded}");
                     if (!empty($psOut)) {

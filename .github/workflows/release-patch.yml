@@ -109,3 +109,8 @@ jobs:
             # Retry push once to handle transient race conditions
             git push origin main || (git pull origin main --rebase && git push origin main)
           fi
+
+      - name: Purge jsDelivr CDN Cache
+        run: |
+          echo "Purging jsDelivr edge cache for manifest.json..."
+          curl -s "https://purge.jsdelivr.net/gh/saimimran87678-web/sims-app@main/manifest.json" || true
