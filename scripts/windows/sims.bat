@@ -252,9 +252,9 @@ if defined INTERACTIVE (
 exit /b %errorLevel%
 
 :PRINT_SERVICE_STATUS
-:: 1. Live Application Health Probe (Queries Laravel /ping-internal directly via TLS 1.2)
+:: 1. Live Application Health Probe (Queries Laravel /ping-internal directly)
 set "APP_PROBE="
-for /f "usebackq delims=" %%H in (`powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; try { $r = Invoke-RestMethod -Uri 'https://127.0.0.1/ping-internal' -Headers @{Host='localhost'} -TimeoutSec 2; Write-Host ('ONLINE - v' + $r.version + ' | DB: ' + $r.database + ' | OPcache: ' + $r.opcache.hit_rate + ' | ' + $r.opcache.cached_scripts + ' scripts') } catch { try { $r2 = Invoke-RestMethod -Uri 'http://127.0.0.1/ping-internal' -Headers @{Host='localhost'} -TimeoutSec 2; Write-Host ('ONLINE - v' + $r2.version + ' | DB: ' + $r2.database + ')') } catch { Write-Host 'OFFLINE - Web server not responding' } }" 2^>nul`) do (
+for /f "usebackq delims=" %%H in (`powershell -NoProfile -Command "try { $r = ConvertFrom-Json (curl.exe -k -s --max-time 2 https://localhost/ping-internal); if ($r.status -eq 'alive') { Write-Host ('ONLINE - v' + $r.version + ' - DB: ' + $r.database + ' - OPcache: ' + $r.opcache.cached_scripts + ' cached scripts') } else { Write-Host 'OFFLINE' } } catch { Write-Host 'OFFLINE - Web server not responding' }"` ) do (
     set "APP_PROBE=%%H"
 )
 if defined APP_PROBE (

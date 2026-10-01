@@ -65,6 +65,8 @@ Source: "..\..\..\resources\icons\*"; DestDir: "{app}\resources\icons"; Flags: i
 ; Root Launcher scripts
 Source: "..\..\..\install.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\..\sims.bat"; DestDir: "{app}"; Flags: ignoreversion
+; Universal CLI Dispatcher Shim in System32 (guarantees global "sims" command from any terminal)
+Source: "..\..\..\sims.bat"; DestDir: "{sys}"; DestName: "sims.bat"; Flags: ignoreversion
 Source: "..\..\..\Adminova-Control-Center.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\..\manifest.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\..\control-center.bat"; DestDir: "{app}"; Flags: ignoreversion
@@ -93,6 +95,11 @@ Name: "{autodesktop}\Adminova School Portal"; Filename: "https://localhost"; Ico
 Filename: "{app}\install.bat"; Parameters: "--unattended"; StatusMsg: "Configuring database, background services, firewall, and SSL certificates..."; Flags: runhidden waituntilterminated
 Filename: "{app}\Adminova-Control-Center.exe"; Description: "Launch Adminova Control Center"; Flags: postinstall nowait; Check: FileExists(ExpandConstant('{app}\Adminova-Control-Center.exe'))
 Filename: "https://localhost"; Description: "Open SIMS in web browser"; Flags: postinstall shellexec nowait
+
+[InstallDelete]
+; Purge stale legacy shims so the new universal dispatcher is always installed clean
+Type: files; Name: "{sys}\sims.bat"
+Type: files; Name: "{localappdata}\Microsoft\WindowsApps\sims.bat"
 
 [UninstallRun]
 Filename: "taskkill.exe"; Parameters: "/F /T /IM frankenphp.exe /IM php-cgi.exe /IM php.exe /IM Adminova-Control-Center.exe"; Flags: runhidden
