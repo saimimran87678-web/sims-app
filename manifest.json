@@ -1,10 +1,10 @@
 {
   "version": "2.5.2",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
-  "checksum": "7c076ccc3df85b622889c194905e941f25744443547589ee3fa7b4cf72cd2956",
-  "sha256": "7c076ccc3df85b622889c194905e941f25744443547589ee3fa7b4cf72cd2956",
+  "checksum": "607ec7632abab5cb72f75d22fdb887e2394151881a3cf4fd9696c1aa8e8dfa22",
+  "sha256": "607ec7632abab5cb72f75d22fdb887e2394151881a3cf4fd9696c1aa8e8dfa22",
   "min_php_version": "8.2.0",
-  "changelog": "feat: improve Windows setup, firewall rules, local IP license validation, and release packaging",
-  "size_bytes": 1192413,
-  "released_at": "2026-09-27T19:11:22Z"
+  "changelog": "bug fixes, and security patches.",
+  "size_bytes": 1195091,
+  "released_at": "2026-10-01T20:03:55Z"
 }
