@@ -65,6 +65,7 @@ if (-not (Test-Path $IssFile)) {
 
 # 1. Locate ISCC.exe
 $IsccPaths = @(
+    "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
     "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
     "C:\Program Files\Inno Setup 6\ISCC.exe",
     "C:\Program Files (x86)\Inno Setup 5\ISCC.exe"

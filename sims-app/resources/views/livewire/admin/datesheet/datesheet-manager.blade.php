@@ -311,7 +311,7 @@
                                         {{-- Display Mode --}}
                                         @if(!$isEditing)
                                             @if($isHoliday)
-                                                <span class="text-amber-600 font-medium text-xs uppercase tracking-wide">Holiday</span>
+                                                <span class="text-amber-600 font-medium text-xs uppercase tracking-wide">-</span>
                                             @elseif($isEmpty)
                                                 <span class="text-gray-300 text-lg">—</span>
                                             @else
