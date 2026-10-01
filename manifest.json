@@ -1,10 +1,10 @@
 {
   "version": "2.5.2",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
-  "checksum": "99957e3fd09b0041a833bd0b85d8420381f4b5410ae27cb9b596f05b3485461d",
-  "sha256": "99957e3fd09b0041a833bd0b85d8420381f4b5410ae27cb9b596f05b3485461d",
+  "checksum": "717a8615e9d7728bdb7b7b1bdd13b4f80cb0b2a0c017da1f238dc886c993a3a2",
+  "sha256": "717a8615e9d7728bdb7b7b1bdd13b4f80cb0b2a0c017da1f238dc886c993a3a2",
   "min_php_version": "8.2.0",
   "changelog": "Datesheet bug fixes, and security patches.",
   "size_bytes": 1195091,
-  "released_at": "2026-10-01T20:49:59Z"
+  "released_at": "2026-10-01T20:51:45Z"
 }
