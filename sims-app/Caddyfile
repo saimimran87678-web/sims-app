@@ -20,6 +20,9 @@
     import sims_common
 }
 
+# Auto-detected local network hosts (LAN IP, Computer Name, sims.local)
+import storage/caddy/lan_hosts.caddy
+
 # HTTPS on Port 443: Universal secure access with trusted local TLS certificates
 :443 {
     import sims_common

@@ -152,9 +152,13 @@ if not exist "%APP_DIR%\database" mkdir "%APP_DIR%\database" >nul 2>&1
 
 :: 2. Grant full write and modify permissions on root, storage, cache, and database (Crucial for in-place updates in C:\Program Files)
 icacls "%ROOT_DIR%" /grant Users:(OI)(CI)M /T /Q >nul 2>&1
+icacls "%ROOT_DIR%" /grant *S-1-5-32-545:(OI)(CI)M /T /Q >nul 2>&1
 icacls "%APP_DIR%\storage" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1
+icacls "%APP_DIR%\storage" /grant *S-1-1-0:(OI)(CI)F /T /Q >nul 2>&1
 icacls "%APP_DIR%\bootstrap\cache" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1
+icacls "%APP_DIR%\bootstrap\cache" /grant *S-1-1-0:(OI)(CI)F /T /Q >nul 2>&1
 icacls "%APP_DIR%\database" /grant Everyone:(OI)(CI)F /T /Q >nul 2>&1
+icacls "%APP_DIR%\database" /grant *S-1-1-0:(OI)(CI)F /T /Q >nul 2>&1
 
 :: 3. Ensure database.sqlite file exists before booting Laravel
 if not exist "%APP_DIR%\database\database.sqlite" (
@@ -163,6 +167,7 @@ if not exist "%APP_DIR%\database\database.sqlite" (
 
 del /q /f "%APP_DIR%\bootstrap\cache\*.php" >nul 2>&1
 del /q /f "%APP_DIR%\storage\framework\views\*.php" >nul 2>&1
+del /q /f "%APP_DIR%\storage\framework\views\*.tmp" >nul 2>&1
 "%PHP_BIN%" artisan config:clear >nul 2>&1
 "%PHP_BIN%" artisan route:clear >nul 2>&1
 "%PHP_BIN%" artisan view:clear >nul 2>&1

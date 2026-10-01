@@ -67,10 +67,45 @@ if exist "%SERVICES_DIR%\trust-cert.bat" (
     start "" /b cmd.exe /c "%SERVICES_DIR%\trust-cert.bat" >nul 2>&1
 )
 
+:: 3. Detect active LAN IPv4 addresses and generate local network TLS configuration
+set "DETECTED_IPS="
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike '*Loopback*' -and $_.IPAddress -notlike '169.254*' -and $_.IPAddress -notlike '127*' }).IPAddress" 2^>nul`) do (
+    if defined DETECTED_IPS (
+        set "DETECTED_IPS=!DETECTED_IPS!, %%I"
+    ) else (
+        set "DETECTED_IPS=%%I"
+    )
+)
+
+set "HOSTS_LIST=localhost, 127.0.0.1, sims.local"
+if defined COMPUTERNAME (
+    set "HOSTS_LIST=!HOSTS_LIST!, %COMPUTERNAME%, %COMPUTERNAME%.local"
+)
+if defined DETECTED_IPS (
+    set "HOSTS_LIST=!HOSTS_LIST!, !DETECTED_IPS!"
+)
+
+(
+    echo # Auto-generated local network HTTPS configuration
+    echo !HOSTS_LIST! {
+    echo     import sims_common
+    echo     tls internal
+    echo }
+) > "%CADDY_DATA_DIR%\lan_hosts.caddy"
+
 echo.
 echo [INFO] Starting Web Server with Caddyfile (HTTPS :443 & HTTP :80)...
-echo [URL] HTTP  (Direct) : http://localhost
-echo [URL] HTTPS (Secure) : https://localhost
+echo [URL] Localhost (HTTP)  : http://localhost
+echo [URL] Localhost (HTTPS) : https://localhost
+if defined DETECTED_IPS (
+    for %%A in (!DETECTED_IPS!) do (
+        echo [URL] LAN Access (HTTPS): https://%%A
+        echo [URL] LAN Access (HTTP) : http://%%A
+    )
+)
+if defined COMPUTERNAME (
+    echo [URL] Machine Name      : https://%COMPUTERNAME%.local
+)
 echo.
 
 where "%FRANKEN%" >nul 2>&1

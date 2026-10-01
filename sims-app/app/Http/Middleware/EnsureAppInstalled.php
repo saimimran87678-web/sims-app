@@ -19,6 +19,7 @@ class EnsureAppInstalled
         'license-blocked',
         'domain-blocked',
         'license/sync',
+        'cert',
         'up',
     ];
 

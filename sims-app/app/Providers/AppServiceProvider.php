@@ -12,6 +12,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         require_once app_path('helpers.php');
+
+        // Windows-resilient Filesystem to eliminate Win32 "rename(): Access is denied (code: 5)" collisions
+        $this->app->singleton('files', function () {
+            return new \App\Support\WindowsSafeFilesystem;
+        });
     }
 
     /**
@@ -19,6 +24,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Cleanup any leftover .tmp files from previous Windows lock collisions
+        $viewsPath = storage_path('framework/views');
+        if (is_dir($viewsPath)) {
+            foreach (glob($viewsPath . DIRECTORY_SEPARATOR . '*.tmp') ?: [] as $tmpFile) {
+                @unlink($tmpFile);
+            }
+        }
         // Ensure SQLite database file exists automatically if configured
         if (config('database.default') === 'sqlite') {
             $dbPath = config('database.connections.sqlite.database');

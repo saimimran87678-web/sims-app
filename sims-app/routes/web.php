@@ -243,6 +243,25 @@ Route::get('/ping-internal', function () {
     ]);
 })->name('ping.internal');
 
+Route::get('/cert', function () {
+    $possiblePaths = [
+        base_path('../sims-ssl-root-cert.crt'),
+        storage_path('caddy/pki/authorities/local/root.crt'),
+        base_path('storage/caddy/pki/authorities/local/root.crt'),
+    ];
+
+    foreach ($possiblePaths as $path) {
+        if (file_exists($path)) {
+            return response()->download($path, 'sims-ssl-root-cert.crt', [
+                'Content-Type' => 'application/x-x509-ca-cert',
+                'Content-Disposition' => 'attachment; filename="sims-ssl-root-cert.crt"',
+            ]);
+        }
+    }
+
+    return response('Certificate not generated yet. Please start SIMS services first.', 404);
+})->name('cert.download');
+
 Route::get('/refresh-csrf', function () {
     return response()->json(['token' => csrf_token()]);
 })->name('csrf.refresh');

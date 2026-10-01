@@ -22,6 +22,7 @@ class VerifyLicense
         'license-blocked',
         'domain-blocked',
         'license/sync',
+        'cert',
         '_debugbar',
         'up', // Laravel health check
     ];
@@ -42,6 +43,17 @@ class VerifyLicense
 
         // ── 1. Check exempt paths BEFORE any DB/cache access ────────────────
         if ($this->isExempt($path)) {
+            // If license is blocked, login and register should redirect to activation screen (except in automated test runner)
+            if (!app()->runningUnitTests() && ($path === 'login' || $path === 'register')) {
+                $status = LicenseStatus::getStatus();
+                if ($status['stage'] === LicenseStatus::STAGE_BLOCKED) {
+                    if ($status['reason'] === 'invalid_domain') {
+                        return redirect()->route('domain.blocked');
+                    }
+                    return redirect()->route('license.blocked');
+                }
+            }
+
             // Prevent routing loop/bleed if they visit blocks manually
             if ($path === 'license-blocked' || $path === 'domain-blocked') {
                 $status = LicenseStatus::getStatus();
