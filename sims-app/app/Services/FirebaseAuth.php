@@ -47,10 +47,10 @@ class FirebaseAuth
      * Query the Firestore REST API to retrieve license details.
      *
      * @param string $licenseKey
-     * @param string $idToken
+     * @param string|null $idToken
      * @return array|null
      */
-    public static function queryLicenseFirestore(string $licenseKey, string $idToken): ?array
+    public static function queryLicenseFirestore(string $licenseKey, ?string $idToken = null): ?array
     {
         $projectId = config('services.firebase.project_id');
         if (empty($projectId)) {
@@ -61,7 +61,12 @@ class FirebaseAuth
         try {
             $url = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/licenses/{$licenseKey}";
             
-            $response = Http::withoutVerifying()->withToken($idToken)->get($url);
+            $request = Http::withoutVerifying();
+            if (!empty($idToken)) {
+                $request = $request->withToken($idToken);
+            }
+
+            $response = $request->get($url);
 
             if ($response->successful()) {
                 $fields = $response->json('fields');

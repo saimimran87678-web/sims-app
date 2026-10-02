@@ -246,6 +246,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                                 <div class="flex gap-2 justify-end items-center">
+                                    @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
                                     <a
                                         href="{{ route('admin.fee.ledger', $student->id) }}"
                                         class="text-emerald-600 hover:text-emerald-950 p-1 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -253,6 +254,7 @@
                                     >
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     </a>
+                                    @endif
                                     <button
                                         wire:click="view({{ $student->id }})"
                                         class="text-gray-600 hover:text-gray-900 p-1 hover:bg-gray-100 rounded-lg transition-colors"
@@ -351,9 +353,11 @@
                              {{ ucfirst($student->status) }}
                           </div>
                          <div class="flex gap-2 items-center">
+                             @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
                              <a href="{{ route('admin.fee.ledger', $student->id) }}" class="text-gray-400 hover:text-emerald-600 p-1 flex items-center" title="Fee Ledger">
                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 12-2h5.586a1 1 0 0 1.707.293l5.414 5.414a1 1 0 0 1.293.707V19a2 2 0 0 1-2 2z"></path></svg>
                              </a>
+                             @endif
                              <button wire:click="view({{ $student->id }})" class="text-gray-400 hover:text-blue-600 p-1" title="View Bio-Data">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
                              </button>

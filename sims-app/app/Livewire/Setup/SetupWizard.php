@@ -126,32 +126,41 @@ class SetupWizard extends Component
                 }
             }
 
-            if (empty($refreshToken)) {
-                $authRes = Http::timeout(10)->withoutVerifying()->post(
-                    "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}",
-                    ['returnSecureToken' => true]
-                );
-
-                if (!$authRes->successful()) {
-                    $this->license_error = 'Could not establish connection to the license server. Please verify your internet connection.';
-                    return;
+            $idToken = null;
+            $newRefreshToken = $refreshToken;
+            if (!empty($refreshToken)) {
+                $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
+                if ($tokenData) {
+                    $idToken = $tokenData['id_token'];
+                    $newRefreshToken = $tokenData['refresh_token'];
                 }
-
-                $refreshToken = $authRes->json('refreshToken');
             }
 
-            // 2. Exchange for ID token
-            $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
-            if (!$tokenData) {
-                $this->license_error = 'Could not authenticate session with license server. Please try again.';
-                return;
-            }
-
-            $idToken = $tokenData['id_token'];
-            $newRefreshToken = $tokenData['refresh_token'];
-
-            // 3. Query Firestore for license record
+            // 2. Query Firestore directly (works unauthenticated via public get rule or with idToken)
             $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
+
+            // Optional fallback to anonymous session only if direct lookup didn't find it
+            if (!$firebaseLic && empty($idToken)) {
+                try {
+                    $authRes = Http::timeout(10)->withoutVerifying()->post(
+                        "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}",
+                        ['returnSecureToken' => true]
+                    );
+
+                    if ($authRes->successful()) {
+                        $refreshToken = $authRes->json('refreshToken');
+                        $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
+                        if ($tokenData) {
+                            $idToken = $tokenData['id_token'];
+                            $newRefreshToken = $tokenData['refresh_token'];
+                            $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Ignore fallback session error
+                }
+            }
+
             if (!$firebaseLic) {
                 $this->license_error = "License key \"{$licenseKey}\" was not found on the license server. Please check the key.";
                 return;
@@ -210,7 +219,7 @@ class SetupWizard extends Component
             DB::table('software_licenses')->insert([
                 'license_key'             => encrypt($licenseKey),
                 'school_id'               => $firebaseLic['school_id'],
-                'firebase_refresh_token'  => encrypt($newRefreshToken),
+                'firebase_refresh_token'  => encrypt($newRefreshToken ?: 'direct_public_session'),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
                 'allowed_domains'         => encrypt($allowedDomains),
@@ -218,6 +227,9 @@ class SetupWizard extends Component
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $integrityHash,
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,
+                'enabled_modules'         => json_encode($firebaseLic['enabled_modules'] ?? ['fees', 'exams', 'attendance', 'whatsapp', 'reports']),
+                'broadcast_announcement'  => $firebaseLic['broadcast_announcement'] ?? null,
+                'config_version'          => $firebaseLic['config_version'] ?? 1,
                 'last_online_verified_at' => Carbon::now(),
                 'created_at'              => Carbon::now(),
                 'updated_at'              => Carbon::now(),

@@ -65,7 +65,7 @@ class Dashboard extends Component
         // ─── Financial Overview ────────────────────────────────────
         $currentMonth = date('Y-m');
         $financials = ['generated' => 0, 'collected' => 0, 'pending' => 0, 'collection_rate' => 0];
-        if ($activeSessionId) {
+        if ($activeSessionId && \App\Services\LicenseStatus::isModuleEnabled('fees')) {
             $finQuery = FeeRecord::where('fee_records.academic_session_id', $activeSessionId)
                 ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')
                 ->where('enrollments.academic_session_id', $activeSessionId)
@@ -91,7 +91,7 @@ class Dashboard extends Component
         $paidCount          = 0;
         $unpaidCount        = 0;
         $vouchersIssued     = false;
-        if ($activeSessionId) {
+        if ($activeSessionId && \App\Services\LicenseStatus::isModuleEnabled('fees')) {
             $vouchersIssued = DB::table('fee_records')
                 ->where('academic_session_id', $activeSessionId)
                 ->where('period', $currentMonth)
@@ -217,28 +217,30 @@ class Dashboard extends Component
         // ─── Activity Feed ─────────────────────────────────────────
         $activityFeed = [];
         if ($activeSessionId) {
-            $paymentsQuery = FeePayment::with(['student', 'record.class'])
-                ->join('enrollments', 'fee_payments.student_id', '=', 'enrollments.student_id')
-                ->where('enrollments.academic_session_id', $activeSessionId)
-                ->where('enrollments.status', 'active')
-                ->select('fee_payments.*');
+            if (\App\Services\LicenseStatus::isModuleEnabled('fees')) {
+                $paymentsQuery = FeePayment::with(['student', 'record.class'])
+                    ->join('enrollments', 'fee_payments.student_id', '=', 'enrollments.student_id')
+                    ->where('enrollments.academic_session_id', $activeSessionId)
+                    ->where('enrollments.status', 'active')
+                    ->select('fee_payments.*');
 
-            if ($shiftType !== 'both') {
-                $paymentsQuery->where('enrollments.shift_type', $shiftType);
-            }
+                if ($shiftType !== 'both') {
+                    $paymentsQuery->where('enrollments.shift_type', $shiftType);
+                }
 
-            $payments = $paymentsQuery->latest('fee_payments.created_at')->limit(5)->get();
+                $payments = $paymentsQuery->latest('fee_payments.created_at')->limit(5)->get();
 
-            foreach ($payments as $p) {
-                $activityFeed[] = [
-                    'type'        => 'payment',
-                    'icon'        => 'check',
-                    'color'       => 'emerald',
-                    'title'       => ($p->student->name ?? '—'),
-                    'description' => 'Rs. ' . number_format($p->amount_paid, 0) . ' via ' . $p->payment_method,
-                    'meta'        => $p->record->class->name ?? '',
-                    'time'        => $p->created_at,
-                ];
+                foreach ($payments as $p) {
+                    $activityFeed[] = [
+                        'type'        => 'payment',
+                        'icon'        => 'check',
+                        'color'       => 'emerald',
+                        'title'       => ($p->student->name ?? '—'),
+                        'description' => 'Rs. ' . number_format($p->amount_paid, 0) . ' via ' . $p->payment_method,
+                        'meta'        => $p->record->class->name ?? '',
+                        'time'        => $p->created_at,
+                    ];
+                }
             }
 
             $admissionsQuery = Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
@@ -303,7 +305,7 @@ class Dashboard extends Component
 
         // ─── Unpaid Students List (direct lightweight query) ────────────
         $unpaidStudents = collect();
-        if ($activeSessionId) {
+        if ($activeSessionId && \App\Services\LicenseStatus::isModuleEnabled('fees')) {
             $currentMonth = date('Y-m');
             $unpaidStudentIdsQuery = DB::table('fee_records')
                 ->join('enrollments', 'fee_records.student_id', '=', 'enrollments.student_id')

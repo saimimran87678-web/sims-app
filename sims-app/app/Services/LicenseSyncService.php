@@ -32,14 +32,16 @@ class LicenseSyncService
                 return false;
             }
 
-            // Step 1 - Exchange for ID token
-            $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
-            if (!$tokenData) {
-                return false;
+            // Step 1 - Exchange for ID token if refresh token is available
+            $idToken = null;
+            $newRefreshToken = $refreshToken;
+            if (!empty($refreshToken)) {
+                $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
+                if ($tokenData) {
+                    $idToken = $tokenData['id_token'];
+                    $newRefreshToken = $tokenData['refresh_token'];
+                }
             }
-
-            $idToken = $tokenData['id_token'];
-            $newRefreshToken = $tokenData['refresh_token'];
 
             // Step 2 - Fetch license from Firestore
             $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
@@ -74,7 +76,7 @@ class LicenseSyncService
             DB::table('software_licenses')->insert([
                 'license_key'             => encrypt($licenseKey),
                 'school_id'               => $firebaseLic['school_id'],
-                'firebase_refresh_token'  => encrypt($newRefreshToken),
+                'firebase_refresh_token'  => encrypt($newRefreshToken ?: 'direct_public_session'),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
                 'allowed_domains'         => encrypt($allowedDomains),

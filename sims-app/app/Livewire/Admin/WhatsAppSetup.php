@@ -122,17 +122,19 @@ class WhatsAppSetup extends Component
         $valLate = \App\Models\Setting::get("whatsapp_template_late_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_late'));
         $this->templateLate = (!is_null($valLate) && trim($valLate) !== '') ? $valLate : $defaultLate;
 
-        $defaultPayment = "*Payment Confirmation*\n\nDear Parents,\nWe have received a payment of Rs. {amount} for {student_name} for the period {period}.\nRemaining Balance: Rs. {balance}\n\nView updated receipt:\n{challan_link}\n\nThank you.\n- {school_name} Administration";
-        $valPayment = \App\Models\Setting::get("whatsapp_template_payment_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_payment'));
-        $this->templatePayment = (!is_null($valPayment) && trim($valPayment) !== '') ? $valPayment : $defaultPayment;
+        if (\App\Services\LicenseStatus::isModuleEnabled('fees')) {
+            $defaultPayment = "*Payment Confirmation*\n\nDear Parents,\nWe have received a payment of Rs. {amount} for {student_name} for the period {period}.\nRemaining Balance: Rs. {balance}\n\nView updated receipt:\n{challan_link}\n\nThank you.\n- {school_name} Administration";
+            $valPayment = \App\Models\Setting::get("whatsapp_template_payment_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_payment'));
+            $this->templatePayment = (!is_null($valPayment) && trim($valPayment) !== '') ? $valPayment : $defaultPayment;
 
-        $defaultIssuance = "*Fee Voucher Issued*\n\nDear Parents,\nFee voucher of Rs. {amount} for {student_name} for the period {period} has been issued. Due date: {due_date}.\n\nView digital voucher:\n{challan_link}\n\n- {school_name} Administration";
-        $valIssuance = \App\Models\Setting::get("whatsapp_template_issuance_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_issuance'));
-        $this->templateIssuance = (!is_null($valIssuance) && trim($valIssuance) !== '') ? $valIssuance : $defaultIssuance;
+            $defaultIssuance = "*Fee Voucher Issued*\n\nDear Parents,\nFee voucher of Rs. {amount} for {student_name} for the period {period} has been issued. Due date: {due_date}.\n\nView digital voucher:\n{challan_link}\n\n- {school_name} Administration";
+            $valIssuance = \App\Models\Setting::get("whatsapp_template_issuance_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_issuance'));
+            $this->templateIssuance = (!is_null($valIssuance) && trim($valIssuance) !== '') ? $valIssuance : $defaultIssuance;
 
-        $defaultReminder = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher:\n{challan_link}\n\n- {school_name} Administration";
-        $valReminder = \App\Models\Setting::get("whatsapp_template_reminder_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_reminder'));
-        $this->templateReminder = (!is_null($valReminder) && trim($valReminder) !== '') ? $valReminder : $defaultReminder;
+            $defaultReminder = "*Fee Reminder*\n\nDear Parents,\nThis is a friendly reminder that a fee balance of Rs. {balance} is pending for {student_name} for the period {period}.\nPlease pay by {due_date} to avoid late charges.\n\nView voucher:\n{challan_link}\n\n- {school_name} Administration";
+            $valReminder = \App\Models\Setting::get("whatsapp_template_reminder_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_reminder'));
+            $this->templateReminder = (!is_null($valReminder) && trim($valReminder) !== '') ? $valReminder : $defaultReminder;
+        }
 
         $this->refreshStatus();
     }
@@ -328,9 +330,12 @@ class WhatsAppSetup extends Component
         \App\Models\Setting::set("whatsapp_template_absent_{$scopedShift}", $this->templateAbsent);
         \App\Models\Setting::set("whatsapp_template_leave_{$scopedShift}", $this->templateLeave);
         \App\Models\Setting::set("whatsapp_template_late_{$scopedShift}", $this->templateLate);
-        \App\Models\Setting::set("whatsapp_template_payment_{$scopedShift}", $this->templatePayment);
-        \App\Models\Setting::set("whatsapp_template_issuance_{$scopedShift}", $this->templateIssuance);
-        \App\Models\Setting::set("whatsapp_template_reminder_{$scopedShift}", $this->templateReminder);
+        
+        if (\App\Services\LicenseStatus::isModuleEnabled('fees')) {
+            \App\Models\Setting::set("whatsapp_template_payment_{$scopedShift}", $this->templatePayment);
+            \App\Models\Setting::set("whatsapp_template_issuance_{$scopedShift}", $this->templateIssuance);
+            \App\Models\Setting::set("whatsapp_template_reminder_{$scopedShift}", $this->templateReminder);
+        }
 
         session()->flash('message', 'All WhatsApp message templates saved successfully.');
     }

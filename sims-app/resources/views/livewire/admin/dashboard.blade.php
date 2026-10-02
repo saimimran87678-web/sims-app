@@ -169,7 +169,7 @@
     </div>
 
     {{-- ═══ STAT CARDS ══════════════════════════════════════════════════════════ --}}
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'xl:grid-cols-6' : 'xl:grid-cols-4' }} gap-4">
 
         {{-- Students --}}
         <div class="stat-card col-span-1">
@@ -220,6 +220,7 @@
         </div>
 
         {{-- Paid This Month --}}
+        @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
         @can('fees.manage')
         <div class="stat-card col-span-1">
             <div class="flex items-start justify-between mb-3">
@@ -231,8 +232,10 @@
             <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Paid / Month</p>
         </div>
         @endcan
+        @endif
 
         {{-- Unpaid --}}
+        @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
         @can('fees.manage')
         <div class="stat-card col-span-1">
             <div class="flex items-start justify-between mb-3">
@@ -246,7 +249,7 @@
                         <span>Show Names</span>
                     </button>
                 @elseif(!$stats['vouchers_issued'])
-                    <button type="button" @click="showUnpaidModal = true"
+                    <button type="button" @click="showUnpaidModal = true" 
                             class="text-[9px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 px-2 py-0.5 rounded-full transition-colors focus:outline-none"
                             title="Click to view info">
                         <span>No Vouchers</span>
@@ -266,9 +269,11 @@
             <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Unpaid</p>
         </div>
         @endcan
+        @endif
     </div>
 
     {{-- ═══ FINANCIALS ══════════════════════════════════════════════════════════ --}}
+    @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
     @can('fees.manage')
     <div class="dash-card">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
@@ -314,6 +319,7 @@
         </div>
     </div>
     @endcan
+    @endif
 
     {{-- ═══ MAIN GRID ═══════════════════════════════════════════════════════════ --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -531,6 +537,7 @@
                         <span class="text-[10px] font-bold text-slate-600">Classes</span>
                     </a>
                     @endcan
+                    @if(\App\Services\LicenseStatus::isModuleEnabled('attendance'))
                     @can('students.manage')
                     <a href="{{ route('admin.attendance') }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -539,6 +546,8 @@
                         <span class="text-[10px] font-bold text-slate-600">Attendance</span>
                     </a>
                     @endcan
+                    @endif
+                    @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
                     @can('fees.manage')
                     <a href="{{ route('admin.fee.record-payment') }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -547,6 +556,8 @@
                         <span class="text-[10px] font-bold text-slate-600">Record Fee</span>
                     </a>
                     @endcan
+                    @endif
+                    @if(\App\Services\LicenseStatus::isModuleEnabled('whatsapp'))
                     @can('students.manage')
                     <a href="{{ route('admin.whatsapp-setup') }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
@@ -555,6 +566,8 @@
                         <span class="text-[10px] font-bold text-slate-600">WhatsApp</span>
                     </a>
                     @endcan
+                    @endif
+                    @if(\App\Services\LicenseStatus::isModuleEnabled('reports'))
                     @can('reports.view')
                     <a href="{{ route('admin.reports') }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
@@ -563,6 +576,7 @@
                         <span class="text-[10px] font-bold text-slate-600">Reports</span>
                     </a>
                     @endcan
+                    @endif
                 </div>
             </div>
             @endif
@@ -606,6 +620,7 @@
     </div>
 
     {{-- ═══ UNPAID STUDENTS MODAL ═══════════════════════════════════════════════ --}}
+    @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
     <div x-show="showUnpaidModal"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
@@ -696,4 +711,5 @@
             </div>
         </div>
     </div>
+    @endif
 </div>

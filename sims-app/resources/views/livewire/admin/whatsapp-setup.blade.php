@@ -250,7 +250,7 @@
                         <span class="font-extrabold text-base sm:text-lg">WhatsApp Connected & Active</span>
                     </div>
                     <p class="text-gray-600 text-sm font-medium">WhatsApp web session is active and linked to the automated notification queue.</p>
-                    <p class="text-xs text-gray-400">Parent fee reminders, attendance alerts, and payment receipts will be dispatched automatically.</p>
+                    <p class="text-xs text-gray-400">Parent {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'fee reminders, ' : '' }}attendance alerts{{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? ', and payment receipts' : '' }} will be dispatched automatically.</p>
                     
                     <div class="pt-4 border-t border-gray-100 flex flex-wrap justify-center gap-3">
                         <button 
@@ -381,7 +381,7 @@
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6">
                 <div>
                     <h3 class="text-lg font-extrabold text-gray-900">Message Queue Dispatcher</h3>
-                    <p class="text-xs text-gray-500 mt-0.5">Monitor and control automated fee reminders, attendance, and receipt notifications</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Monitor and control automated {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'fee reminders, ' : '' }}attendance{{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? ', and receipt' : '' }} notifications</p>
                 </div>
             </div>
             
@@ -651,18 +651,22 @@
                     Available Message Variables (Placeholders)
                 </div>
                 <p class="text-xs text-purple-700 mb-3">
-                    These tags will automatically be replaced with real student and fee details when messages are dispatched:
+                    These tags will automatically be replaced with real student{{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? ' and fee' : '' }} details when messages are dispatched:
                 </p>
                 <div class="flex flex-wrap gap-2">
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{student_name}</span>
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{roll_no}</span>
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{date}</span>
+                    @if(\App\Services\LicenseStatus::isModuleEnabled('attendance'))
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{time} <span class="text-gray-400 font-sans text-[10px]">(Late only)</span></span>
+                    @endif
+                    @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{amount} <span class="text-gray-400 font-sans text-[10px]">(Payment only)</span></span>
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{balance} <span class="text-gray-400 font-sans text-[10px]">(Fee only)</span></span>
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{period} <span class="text-gray-400 font-sans text-[10px]">(Fee only)</span></span>
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{due_date} <span class="text-gray-400 font-sans text-[10px]">(Reminder only)</span></span>
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{challan_link} <span class="text-gray-400 font-sans text-[10px]">(Voucher Link)</span></span>
+                    @endif
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{school_name}</span>
                     <span class="px-2.5 py-1 bg-white border border-purple-200 rounded-lg text-purple-700 font-mono text-xs font-bold shadow-xs">{relation} <span class="text-gray-400 font-sans text-[10px]">(son/daughter/child)</span></span>
                 </div>
@@ -670,6 +674,7 @@
 
             <!-- Template Editors Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                @if(\App\Services\LicenseStatus::isModuleEnabled('attendance'))
                 {{-- Absent Template --}}
                 <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
                     <div>
@@ -714,7 +719,9 @@
                     </div>
                     <p class="text-[11px] text-gray-400 mt-2">Dispatched when a student arrives late after initial marking.</p>
                 </div>
+                @endif
 
+                @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
                 {{-- Fee Payment Template --}}
                 <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
                     <div>
@@ -759,6 +766,7 @@
                     </div>
                     <p class="text-[11px] text-gray-400 mt-2">Dispatched for single and bulk fee reminders to defaulters with digital voucher links.</p>
                 </div>
+                @endif
             </div>
 
             <!-- Save Action Bar -->

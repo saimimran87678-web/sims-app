@@ -68,7 +68,7 @@ class LicenseController extends Controller
             ], 500);
         }
 
-        // Step 1 — Reuse existing Firebase session or establish new one
+        // Step 1 — Check existing Firebase session if present
         $refreshToken = null;
         $existingRecord = DB::table('software_licenses')->first();
         if ($existingRecord && !empty($existingRecord->firebase_refresh_token)) {
@@ -79,7 +79,21 @@ class LicenseController extends Controller
             }
         }
 
-        if (empty($refreshToken)) {
+        $idToken = null;
+        $newRefreshToken = $refreshToken;
+        if (!empty($refreshToken)) {
+            $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
+            if ($tokenData) {
+                $idToken = $tokenData['id_token'];
+                $newRefreshToken = $tokenData['refresh_token'];
+            }
+        }
+
+        // Step 2 — Fetch license from Firestore (Direct unauthenticated or authenticated GET)
+        $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
+
+        // Optional anonymous fallback only if direct lookup didn't succeed and no session
+        if (!$firebaseLic && empty($idToken)) {
             try {
                 $response = Http::withoutVerifying()->post(
                     "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}",
@@ -88,34 +102,18 @@ class LicenseController extends Controller
 
                 if ($response->successful()) {
                     $refreshToken = $response->json('refreshToken');
-                } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Could not reach the SIMS License Server. Please check your internet connection and try again.',
-                    ], 400);
+                    $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
+                    if ($tokenData) {
+                        $idToken = $tokenData['id_token'];
+                        $newRefreshToken = $tokenData['refresh_token'];
+                        $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
+                    }
                 }
             } catch (\Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No internet connection. Please connect to the internet and try again.',
-                ], 500);
+                // Ignore fallback failure
             }
         }
 
-        // Step 2 — Exchange for ID token
-        $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
-        if (!$tokenData) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Could not establish a secure session with our servers. Please try again.',
-            ], 400);
-        }
-
-        $idToken        = $tokenData['id_token'];
-        $newRefreshToken = $tokenData['refresh_token'];
-
-        // Step 3 — Fetch license from Firestore
-        $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
         if (!$firebaseLic) {
             return response()->json([
                 'success' => false,
@@ -154,7 +152,7 @@ class LicenseController extends Controller
             DB::table('software_licenses')->insert([
                 'license_key'             => encrypt($licenseKey),
                 'school_id'               => $firebaseLic['school_id'],
-                'firebase_refresh_token'  => encrypt($newRefreshToken),
+                'firebase_refresh_token'  => encrypt($newRefreshToken ?: 'direct_public_session'),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
                 'allowed_domains'         => encrypt($allowedDomains),

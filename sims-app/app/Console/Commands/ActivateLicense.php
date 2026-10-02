@@ -90,9 +90,24 @@ class ActivateLicense extends Command
             return 1;
         }
 
-        // 1. Get Refresh Token (Anonymous sign-in fallback if not provided)
-        if (empty($refreshToken)) {
-            $this->info("🌐 No refresh token provided. Generating anonymous Firebase session...");
+        // 1. Resolve Session Token (if available)
+        $idToken = null;
+        $newRefreshToken = $refreshToken;
+
+        if (!empty($refreshToken)) {
+            $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
+            if ($tokenData) {
+                $idToken = $tokenData['id_token'];
+                $newRefreshToken = $tokenData['refresh_token'];
+            }
+        }
+
+        // 2. Fetch License Metadata from Firestore (works authenticated or via public get rule)
+        $this->info("📡 Fetching license metadata from Firestore...");
+        $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
+
+        // Fallback: If not found and no session token, attempt anonymous session
+        if (!$firebaseLic && empty($idToken)) {
             try {
                 $response = Http::withoutVerifying()->post("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}", [
                     'returnSecureToken' => true
@@ -100,31 +115,18 @@ class ActivateLicense extends Command
 
                 if ($response->successful()) {
                     $refreshToken = $response->json('refreshToken');
-                    $this->info("✓ Anonymous Firebase session established.");
-                } else {
-                    $this->error("❌ Failed to register anonymous session: " . $response->body());
-                    return 1;
+                    $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
+                    if ($tokenData) {
+                        $idToken = $tokenData['id_token'];
+                        $newRefreshToken = $tokenData['refresh_token'];
+                        $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
+                    }
                 }
             } catch (\Exception $e) {
-                $this->error("❌ Firebase Connection failed: " . $e->getMessage());
-                return 1;
+                // Ignore fallback session error
             }
         }
 
-        // 2. Fetch ID Token
-        $this->info("🔑 Exchanging refresh token for secure session token...");
-        $tokenData = FirebaseAuth::fetchIdToken($refreshToken);
-        if (!$tokenData) {
-            $this->error("❌ Token exchange failed. Please check your internet connection or refresh token.");
-            return 1;
-        }
-
-        $idToken = $tokenData['id_token'];
-        $newRefreshToken = $tokenData['refresh_token'];
-
-        // 3. Query Firestore
-        $this->info("📡 Fetching license metadata from Firestore...");
-        $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
         if (!$firebaseLic) {
             $this->error("❌ License not found in Firestore. Please verify the License Key is correct.");
             return 1;
@@ -185,7 +187,7 @@ class ActivateLicense extends Command
             DB::table('software_licenses')->insert([
                 'license_key'             => encrypt($licenseKey),
                 'school_id'               => $firebaseLic['school_id'],
-                'firebase_refresh_token'  => encrypt($newRefreshToken),
+                'firebase_refresh_token'  => encrypt($newRefreshToken ?: 'direct_public_session'),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
                 'allowed_domains'         => encrypt($allowedDomains),
@@ -193,6 +195,9 @@ class ActivateLicense extends Command
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $newHash,
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,
+                'enabled_modules'         => json_encode($firebaseLic['enabled_modules'] ?? ['fees', 'exams', 'attendance', 'whatsapp', 'reports']),
+                'broadcast_announcement'  => $firebaseLic['broadcast_announcement'] ?? null,
+                'config_version'          => $firebaseLic['config_version'] ?? 1,
                 'last_online_verified_at' => Carbon::now(),
                 'created_at'              => Carbon::now(),
                 'updated_at'              => Carbon::now(),
