@@ -167,5 +167,6 @@
             Powered by Adminova • School ID: <span class="font-mono text-slate-700">{{ config('services.license.school_id') }}</span>
         </div>
     </div>
+    <x-license-realtime-listener />
 </body>
 </html>

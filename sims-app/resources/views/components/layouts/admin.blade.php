@@ -719,5 +719,6 @@
             }
         }
     </script>
+    <x-license-realtime-listener />
 </body>
 </html>

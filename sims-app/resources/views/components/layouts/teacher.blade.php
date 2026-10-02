@@ -330,5 +330,6 @@
     @stack('scripts')
     @livewireScripts
     <x-security-scripts />
+    <x-license-realtime-listener />
 </body>
 </html>
