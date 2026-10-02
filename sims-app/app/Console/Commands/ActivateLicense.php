@@ -60,6 +60,16 @@ class ActivateLicense extends Command
         }
 
         $refreshToken = $this->option('refresh-token');
+        if (empty($refreshToken)) {
+            $record = DB::table('software_licenses')->first();
+            if ($record && !empty($record->firebase_refresh_token)) {
+                try {
+                    $refreshToken = decrypt($record->firebase_refresh_token);
+                } catch (\Exception $e) {
+                    $refreshToken = null;
+                }
+            }
+        }
 
         $this->info("🔑 Starting SIMS License Activation Process...");
         $this->line("License Key: {$licenseKey}");

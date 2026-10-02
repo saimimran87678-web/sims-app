@@ -181,6 +181,9 @@ begin
       '  $doc = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 10;' + #13#10 +
       '  $status = $doc.fields.status.stringValue;' + #13#10 +
       '  $hw = (Get-CimInstance Win32_ComputerSystemProduct).UUID;' + #13#10 +
+      '  if ($doc.fields.license_key -and $doc.fields.license_key.stringValue) {' + #13#10 +
+      '    Set-Content -Path "' + ExpandConstant('{tmp}\extracted_license.txt') + '" -Value $doc.fields.license_key.stringValue;' + #13#10 +
+      '  }' + #13#10 +
       '  if ($status -eq "unused") {' + #13#10 +
       '    $patchUrl = $url + "?updateMask.fieldPaths=status&updateMask.fieldPaths=bound_machine_uuid&updateMask.fieldPaths=burned_at";' + #13#10 +
       '    $body = @{ fields = @{ status = @{ stringValue = "burned" }; bound_machine_uuid = @{ stringValue = $hw }; burned_at = @{ stringValue = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") } } } | ConvertTo-Json -Depth 4;' + #13#10 +
@@ -225,7 +228,38 @@ begin
   end;
 end;
 
-// 3. Post-Install Self-Destruct Routine (Deletes installer .exe from disk on close)
+// 3. Post-Install Automatic License Injection into .env
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ExtractedKeyFile: String;
+  ExtractedKey: AnsiString;
+  EnvPath: String;
+  EnvContent: AnsiString;
+  KeyStr: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    ExtractedKeyFile := ExpandConstant('{tmp}\extracted_license.txt');
+    if LoadStringFromFile(ExtractedKeyFile, ExtractedKey) then
+    begin
+      KeyStr := Trim(String(ExtractedKey));
+      if Length(KeyStr) > 0 then
+      begin
+        EnvPath := ExpandConstant('{app}\sims-app\.env');
+        if FileExists(EnvPath) then
+        begin
+          if LoadStringFromFile(EnvPath, EnvContent) then
+          begin
+            StringChange(EnvContent, 'LICENSE_KEY=', 'LICENSE_KEY=' + KeyStr);
+            SaveStringToFile(EnvPath, EnvContent, False);
+          end;
+        end;
+      end;
+    end;
+  end;
+end;
+
+// 4. Post-Install Self-Destruct Routine (Deletes installer .exe from disk on close)
 procedure DeinitializeSetup();
 var
   SelfDeleteBat: String;

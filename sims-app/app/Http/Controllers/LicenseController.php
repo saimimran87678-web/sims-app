@@ -68,26 +68,38 @@ class LicenseController extends Controller
             ], 500);
         }
 
-        // Step 1 — Establish anonymous Firebase session
-        try {
-            $response = Http::withoutVerifying()->post(
-                "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}",
-                ['returnSecureToken' => true]
-            );
+        // Step 1 — Reuse existing Firebase session or establish new one
+        $refreshToken = null;
+        $existingRecord = DB::table('software_licenses')->first();
+        if ($existingRecord && !empty($existingRecord->firebase_refresh_token)) {
+            try {
+                $refreshToken = decrypt($existingRecord->firebase_refresh_token);
+            } catch (\Exception $e) {
+                $refreshToken = null;
+            }
+        }
 
-            if ($response->successful()) {
-                $refreshToken = $response->json('refreshToken');
-            } else {
+        if (empty($refreshToken)) {
+            try {
+                $response = Http::withoutVerifying()->post(
+                    "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}",
+                    ['returnSecureToken' => true]
+                );
+
+                if ($response->successful()) {
+                    $refreshToken = $response->json('refreshToken');
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Could not reach the SIMS License Server. Please check your internet connection and try again.',
+                    ], 400);
+                }
+            } catch (\Exception $e) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Could not reach the SIMS License Server. Please check your internet connection and try again.',
-                ], 400);
+                    'message' => 'No internet connection. Please connect to the internet and try again.',
+                ], 500);
             }
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No internet connection. Please connect to the internet and try again.',
-            ], 500);
         }
 
         // Step 2 — Exchange for ID token
@@ -150,6 +162,9 @@ class LicenseController extends Controller
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $newHash,
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,
+                'enabled_modules'         => json_encode($firebaseLic['enabled_modules'] ?? ['fees', 'exams', 'attendance', 'whatsapp', 'reports']),
+                'broadcast_announcement'  => $firebaseLic['broadcast_announcement'] ?? null,
+                'config_version'          => $firebaseLic['config_version'] ?? 1,
                 'last_online_verified_at' => Carbon::now(),
                 'created_at'              => Carbon::now(),
                 'updated_at'              => Carbon::now(),

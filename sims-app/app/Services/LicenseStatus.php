@@ -42,6 +42,31 @@ class LicenseStatus
     }
 
     /**
+     * Check if a specific feature module is enabled via remote licensing policy.
+     *
+     * @param string $module Module name (e.g. 'fees', 'exams', 'attendance', 'whatsapp', 'reports')
+     * @return bool
+     */
+    public static function isModuleEnabled(string $module): bool
+    {
+        try {
+            $record = self::getLicenseRecord();
+            if (!$record || empty($record->enabled_modules)) {
+                return true; // Default to enabled if not configured
+            }
+
+            $modules = json_decode($record->enabled_modules, true);
+            if (!is_array($modules)) {
+                return true;
+            }
+
+            return in_array(strtolower($module), array_map('strtolower', $modules));
+        } catch (\Exception $e) {
+            return true;
+        }
+    }
+
+    /**
      * Compute the current license stage by executing security checks.
      *
      * @return array Returns ['stage' => string, 'reason' => string, 'details' => array]

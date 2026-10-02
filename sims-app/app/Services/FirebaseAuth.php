@@ -72,6 +72,14 @@ class FirebaseAuth
                     return $field['stringValue'] ?? $field['integerValue'] ?? $field['booleanValue'] ?? null;
                 };
 
+                // Helper to extract typed array values from Firestore JSON payload
+                $extractArray = function ($field) {
+                    if (empty($field['arrayValue']['values'])) return null;
+                    return array_map(function ($item) {
+                        return $item['stringValue'] ?? null;
+                    }, $field['arrayValue']['values']);
+                };
+
                 return [
                     'status' => $extractValue($fields['status'] ?? null),
                     'plan' => $extractValue($fields['plan'] ?? null),
@@ -80,6 +88,9 @@ class FirebaseAuth
                     'school_id' => $extractValue($fields['school_id'] ?? null),
                     'allowed_domain' => $extractValue($fields['allowed_domain'] ?? null),
                     'offline_grace' => isset($fields['offline_grace']) ? intval($extractValue($fields['offline_grace'])) : 7,
+                    'enabled_modules' => $extractArray($fields['enabled_modules'] ?? null) ?: ['fees', 'exams', 'attendance', 'whatsapp', 'reports'],
+                    'broadcast_announcement' => $extractValue($fields['broadcast_announcement'] ?? null),
+                    'config_version' => isset($fields['config_version']) ? intval($extractValue($fields['config_version'])) : 1,
                 ];
             }
 

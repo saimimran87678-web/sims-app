@@ -115,18 +115,30 @@ class SetupWizard extends Component
         }
 
         try {
-            // 1. Establish secure Firebase anonymous session
-            $authRes = Http::timeout(10)->withoutVerifying()->post(
-                "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}",
-                ['returnSecureToken' => true]
-            );
-
-            if (!$authRes->successful()) {
-                $this->license_error = 'Could not establish connection to the license server. Please verify your internet connection.';
-                return;
+            // 1. Reuse existing Firebase session or establish new one
+            $refreshToken = null;
+            $record = LicenseStatus::getLicenseRecord();
+            if ($record && !empty($record->firebase_refresh_token)) {
+                try {
+                    $refreshToken = decrypt($record->firebase_refresh_token);
+                } catch (\Exception $e) {
+                    $refreshToken = null;
+                }
             }
 
-            $refreshToken = $authRes->json('refreshToken');
+            if (empty($refreshToken)) {
+                $authRes = Http::timeout(10)->withoutVerifying()->post(
+                    "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={$apiKey}",
+                    ['returnSecureToken' => true]
+                );
+
+                if (!$authRes->successful()) {
+                    $this->license_error = 'Could not establish connection to the license server. Please verify your internet connection.';
+                    return;
+                }
+
+                $refreshToken = $authRes->json('refreshToken');
+            }
 
             // 2. Exchange for ID token
             $tokenData = FirebaseAuth::fetchIdToken($refreshToken);

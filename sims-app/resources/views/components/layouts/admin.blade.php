@@ -135,7 +135,7 @@
                 @endcan
 
                 <!-- Fee Management -->
-                @if((\App\Services\LicenseStatus::getStatus()['plan'] ?? 'basic') !== 'basic')
+                @if((\App\Services\LicenseStatus::getStatus()['plan'] ?? 'basic') !== 'basic' && \App\Services\LicenseStatus::isModuleEnabled('fees'))
                 <div x-data="{ feeOpen: {{ request()->routeIs('admin.fee.*') ? 'true' : 'false' }} }" class="space-y-1">
                     <button type="button" @click="feeOpen = !feeOpen" class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:text-amber-700 hover:bg-amber-50 transition-colors {{ request()->routeIs('admin.fee.*') ? 'bg-amber-50 text-amber-700' : '' }}">
                         <div class="flex items-center gap-3">
@@ -162,41 +162,49 @@
                 @endcan
 
                 <!-- Attendance -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('attendance'))
                 @can('students.manage')
                 <x-nav-link :href="route('admin.attendance')" :active="request()->routeIs('admin.attendance')" color="teal">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
                     <span class="font-medium">Attendance</span>
                 </x-nav-link>
+                @endcan
+                @endif
                 
-                <!-- WhatsApp Setup -->
-                <!-- WhatsApp Setup -->
+                <!-- WhatsApp Setup & Hub -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('whatsapp'))
                 <x-nav-link :href="route('admin.whatsapp-setup')" :active="request()->routeIs('admin.whatsapp-setup') || request()->routeIs('admin.whatsapp-templates')" color="emerald">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                     <span class="font-medium">WhatsApp Setup</span>
                 </x-nav-link>
 
-                <!-- Communication Hub -->
+                @can('students.manage')
                 <x-nav-link :href="route('admin.communication-hub')" :active="request()->routeIs('admin.communication-hub')" color="purple">
                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                      <span class="font-medium">Communication Hub</span>
                 </x-nav-link>
                 @endcan
+                @endif
 
-                 <!-- Reports -->
+                <!-- Reports -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('reports'))
                 @can('reports.view')
                 <x-nav-link :href="route('admin.reports')" :active="request()->routeIs('admin.reports')" color="rose">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
                     <span class="font-medium">Reports</span>
                 </x-nav-link>
                 @endcan
+                @endif
 
                 <!-- Exams -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('exams'))
                 @can('exams.manage')
                 <x-nav-link :href="route('admin.exams')" :active="request()->routeIs('admin.exams')" color="red">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                     <span class="font-medium">Exams</span>
                 </x-nav-link>
                 @endcan
+                @endif
 
                 <!-- Schedule Management Entry -->
                 @can('schedule.manage')

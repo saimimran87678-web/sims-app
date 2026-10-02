@@ -67,11 +67,13 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::get('/dashboard', \App\Livewire\Admin\Dashboard::class)->name('dashboard');
 
     Route::get('/users', \App\Livewire\Admin\UserManager::class)->name('users');
-    Route::get('/exams', \App\Livewire\Admin\ExamManager::class)->name('exams');
     
-    // Datesheet System
-    Route::get('/datesheet/{examId}', \App\Livewire\Admin\Datesheet\DatesheetManager::class)->name('datesheet.manage');
-    Route::get('/datesheet/{examId}/print', [\App\Http\Controllers\DatesheetController::class, 'print'])->name('datesheet.print');
+    // Exams & Datesheet System (Remotely Gated)
+    Route::middleware(['feature:exams'])->group(function () {
+        Route::get('/exams', \App\Livewire\Admin\ExamManager::class)->name('exams');
+        Route::get('/datesheet/{examId}', \App\Livewire\Admin\Datesheet\DatesheetManager::class)->name('datesheet.manage');
+        Route::get('/datesheet/{examId}/print', [\App\Http\Controllers\DatesheetController::class, 'print'])->name('datesheet.print');
+    });
     
     Route::get('/schedule', \App\Livewire\Admin\ScheduleManager::class)->name('schedule');
     Route::get('/substitutions', \App\Livewire\Admin\SubstitutionManager::class)->name('substitutions');
@@ -89,18 +91,25 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::get('/students', \App\Livewire\Admin\StudentManager::class)->name('students');
     Route::get('/students/import', \App\Livewire\Admin\StudentImportManager::class)->name('students.import');
     Route::get('/academic-sessions', \App\Livewire\Admin\AcademicSessionManager::class)->name('academic-sessions');
-    Route::get('/reports', \App\Livewire\Admin\Reports\ReportManager::class)->name('reports');
+    
+    // Reports System (Remotely Gated)
+    Route::get('/reports', \App\Livewire\Admin\Reports\ReportManager::class)->name('reports')->middleware('feature:reports');
     
     // Global Management
     Route::get('/grades', \App\Livewire\Admin\GradeManager::class)->name('grades');
-    Route::get('/attendance', \App\Livewire\Admin\AttendanceManager::class)->name('attendance');
-    Route::get('/whatsapp-setup', \App\Livewire\Admin\WhatsAppSetup::class)->name('whatsapp-setup');
-    Route::redirect('/whatsapp-templates', '/admin/whatsapp-setup')->name('whatsapp-templates');
-    Route::get('/communication-hub', \App\Livewire\Admin\CommunicationHub::class)->name('communication-hub');
+    Route::get('/attendance', \App\Livewire\Admin\AttendanceManager::class)->name('attendance')->middleware('feature:attendance');
+    
+    // WhatsApp & Communication Hub (Remotely Gated)
+    Route::middleware(['feature:whatsapp'])->group(function () {
+        Route::get('/whatsapp-setup', \App\Livewire\Admin\WhatsAppSetup::class)->name('whatsapp-setup');
+        Route::redirect('/whatsapp-templates', '/admin/whatsapp-setup')->name('whatsapp-templates');
+        Route::get('/communication-hub', \App\Livewire\Admin\CommunicationHub::class)->name('communication-hub');
+    });
+    
     Route::get('/settings', \App\Livewire\Admin\Settings::class)->name('settings');
 
-    // Fee Management System
-    Route::prefix('fee')->name('fee.')->group(function () {
+    // Fee Management System (Remotely Gated)
+    Route::prefix('fee')->name('fee.')->middleware('feature:fees')->group(function () {
         Route::get('/invoice-generator', \App\Livewire\Admin\Fee\InvoiceGenerator::class)->name('generator');
         Route::get('/collect', \App\Livewire\Admin\Fee\RecordPayment::class)->name('record-payment');
         Route::get('/defaulters', \App\Livewire\Admin\Fee\DefaulterList::class)->name('defaulters');
