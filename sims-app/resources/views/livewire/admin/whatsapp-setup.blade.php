@@ -1,4 +1,4 @@
-<div class="space-y-6 max-w-6xl mx-auto" x-data="{ currentTab: @entangle('activeTab').live }">
+<div class="space-y-6 max-w-6xl mx-auto" x-data="{ currentTab: @entangle('activeTab').live }" wire:init="refreshStatus">
     <!-- Page Header & Shifter Style Tab Navigation -->
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 pb-5">
         <div>
@@ -24,7 +24,7 @@
         <div class="w-full md:w-auto shrink-0">
             <div class="grid grid-cols-3 sm:flex bg-gray-200/80 p-1 rounded-xl border border-gray-200 shadow-inner w-full sm:w-auto">
                 <button 
-                    @click="currentTab = 'setup'" 
+                    @click="currentTab = 'setup'; $wire.refreshStatus(true);" 
                     type="button"
                     :class="currentTab === 'setup' ? 'bg-white text-purple-700 shadow-md font-black ring-1 ring-black/5' : 'text-gray-600 hover:text-gray-900 font-bold'"
                     class="flex-1 sm:flex-initial px-2.5 sm:px-5 py-2 rounded-lg text-xs transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap text-center cursor-pointer select-none"

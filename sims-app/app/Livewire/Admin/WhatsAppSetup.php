@@ -60,6 +60,9 @@ class WhatsAppSetup extends Component
     {
         $this->activeTab = $tab;
         $this->resetPage();
+        if ($tab === 'setup') {
+            $this->refreshStatus(true);
+        }
     }
 
     public function updatingSearch()
@@ -135,8 +138,6 @@ class WhatsAppSetup extends Component
             $valReminder = \App\Models\Setting::get("whatsapp_template_reminder_{$scopedShift}", \App\Models\Setting::get('whatsapp_template_reminder'));
             $this->templateReminder = (!is_null($valReminder) && trim($valReminder) !== '') ? $valReminder : $defaultReminder;
         }
-
-        $this->refreshStatus();
     }
 
     public function enableApiKeyEdit()
@@ -198,15 +199,21 @@ class WhatsAppSetup extends Component
         }
     }
 
-    public function refreshStatus()
+    public function refreshStatus(bool $force = false)
     {
+        // Don't query gateway if user is on templates or queue tabs, unless forced
+        if (!$force && $this->activeTab !== 'setup') {
+            return;
+        }
+
         try {
             $whatsapp = new WhatsAppService();
             $this->status = $whatsapp->getStatus();
             $this->isConnected = $this->status['ready'] ?? $this->status['isReady'] ?? false;
             $this->errorMessage = $this->status['error'] ?? null;
 
-            if (!$this->isConnected) {
+            // Only query QR endpoint if gateway is alive and waiting for device pairing
+            if (!$this->isConnected && empty($this->status['error']) && ($this->status['hasQr'] ?? true)) {
                 $qrResponse = $whatsapp->getQrCode();
                 $this->qrData = $qrResponse['qr'] ?? null;
             } else {
@@ -215,6 +222,7 @@ class WhatsAppSetup extends Component
         } catch (\Exception $e) {
             $this->errorMessage = 'Cannot connect to WhatsApp service. Is it running?';
             $this->isConnected = false;
+            $this->qrData = null;
         }
     }
 

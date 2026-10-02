@@ -275,4 +275,8 @@ Route::get('/refresh-csrf', function () {
     return response()->json(['token' => csrf_token()]);
 })->name('csrf.refresh');
 
+Route::post('/session/unlock', [\App\Http\Controllers\Auth\SessionUnlockController::class, 'unlock'])
+    ->middleware('throttle:5,1')
+    ->name('session.unlock');
+
 require __DIR__.'/auth.php';

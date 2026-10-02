@@ -24,7 +24,8 @@ class WhatsAppService
      */
     protected function client(int $timeoutMultiplier = 1)
     {
-        return Http::timeout($this->timeout * $timeoutMultiplier)
+        return Http::connectTimeout(2.0)
+            ->timeout($this->timeout * $timeoutMultiplier)
             ->withHeaders([
                 'x-api-key' => $this->apiKey,
                 'Accept' => 'application/json'
@@ -40,7 +41,8 @@ class WhatsAppService
         $targetKey = $apiKey !== null ? $apiKey : $this->apiKey;
 
         try {
-            $response = Http::timeout(8)
+            $response = Http::connectTimeout(2.0)
+                ->timeout(5.0)
                 ->withHeaders([
                     'x-api-key' => $targetKey,
                     'Accept' => 'application/json'
@@ -100,7 +102,14 @@ class WhatsAppService
     public function getStatus(): array
     {
         try {
-            $response = $this->client()->get("{$this->baseUrl}/status");
+            // Fast connect timeout: 1.0s, request timeout: 1.5s
+            // An active local gateway responds in ~2ms. If offline/closed port, fail fast within 1s.
+            $response = Http::connectTimeout(1.0)
+                ->timeout(1.5)
+                ->withHeaders([
+                    'x-api-key' => $this->apiKey,
+                    'Accept' => 'application/json'
+                ])->get("{$this->baseUrl}/status");
             
             if ($response->successful()) {
                 return $response->json();
@@ -108,7 +117,7 @@ class WhatsAppService
             
             return ['ready' => false, 'hasQr' => false, 'error' => 'Messaging engine is unresponsive.'];
         } catch (\Exception $e) {
-            Log::error('WhatsApp Status Check Failed: ' . $e->getMessage());
+            Log::warning('WhatsApp Status Check Failed: ' . $e->getMessage());
             return ['ready' => false, 'hasQr' => false, 'error' => 'Messaging engine is currently offline. Please ensure the gateway application is running.'];
         }
     }
@@ -121,7 +130,12 @@ class WhatsAppService
     public function getQrCode(): array
     {
         try {
-            $response = $this->client()->get("{$this->baseUrl}/qr");
+            $response = Http::connectTimeout(1.0)
+                ->timeout(2.0)
+                ->withHeaders([
+                    'x-api-key' => $this->apiKey,
+                    'Accept' => 'application/json'
+                ])->get("{$this->baseUrl}/qr");
             
             if ($response->successful()) {
                 return $response->json();
@@ -129,7 +143,7 @@ class WhatsAppService
             
             return ['success' => false, 'message' => 'Failed to get QR code'];
         } catch (\Exception $e) {
-            Log::error('WhatsApp QR Fetch Failed: ' . $e->getMessage());
+            Log::warning('WhatsApp QR Fetch Failed: ' . $e->getMessage());
             return ['success' => false, 'message' => 'WhatsApp service server is offline. Could not fetch QR code.'];
         }
     }
