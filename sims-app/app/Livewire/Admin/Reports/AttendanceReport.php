@@ -113,17 +113,22 @@ class AttendanceReport extends Component
             $weekendMode = \App\Models\Setting::get('weekend_mode', 'sat_sun');
             $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
-            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode, $activeSessionId) {
+            // Pre-fetch holidays in a single query to eliminate N+1 database queries
+            $holidays = \App\Models\Holiday::where('academic_session_id', $activeSessionId)
+                ->where('shift_type', $classShift)
+                ->where('start_date', '<=', $endOfMonth)
+                ->where('end_date', '>=', $startOfMonth)
+                ->get();
+
+            $teachingDates = $records->pluck('date')->unique()->filter(function ($date) use ($weekendMode, $holidays) {
                 $d = \Carbon\Carbon::parse($date);
                 $isWeekend = $weekendMode === 'sun_only'
                     ? $d->isSunday()
                     : $d->isWeekend();
 
-                $isHoliday = \App\Models\Holiday::whereDate('start_date', '<=', $date)
-                    ->whereDate('end_date', '>=', $date)
-                    ->where('academic_session_id', $activeSessionId)
-                    ->where('shift_type', $classShift)
-                    ->exists();
+                $isHoliday = $holidays->contains(function ($h) use ($date) {
+                    return $date >= $h->start_date && $date <= $h->end_date;
+                });
 
                 return !$isWeekend && !$isHoliday;
             });

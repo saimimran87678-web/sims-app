@@ -81,8 +81,15 @@ class Setting extends Model
         }
 
         try {
-            $setting = self::where('key', $key)->whereNull('academic_session_id')->first();
-            $val = $setting ? $setting->value : null;
+            $val = \Illuminate\Support\Facades\Cache::remember("app_setting_global_{$key}", 3600, function () use ($key) {
+                $setting = self::where('key', $key)->whereNull('academic_session_id')->first();
+                return $setting ? $setting->value : '__NOT_SET__';
+            });
+
+            if ($val === '__NOT_SET__') {
+                $val = null;
+            }
+
             self::$runtimeCache[$cacheKey] = $val;
             return $val ?? $default;
         } catch (\Throwable $e) {
@@ -97,6 +104,7 @@ class Setting extends Model
     {
         $cacheKey = "global_{$key}";
         self::$runtimeCache[$cacheKey] = $value;
+        \Illuminate\Support\Facades\Cache::forget("app_setting_global_{$key}");
 
         return self::updateOrCreate(
             ['key' => $key, 'academic_session_id' => null],

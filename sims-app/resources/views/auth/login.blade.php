@@ -1,20 +1,21 @@
 <x-guest-layout>
+    @php
+        $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+        $instituteName = \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2');
+    @endphp
     <div class="glass-card p-8">
         {{-- School Logo & Title --}}
         <div class="text-center mb-8">
-            <div class="school-logo" style="{{ \App\Models\Setting::getGlobal('institute_logo') ? 'background: #ffffff;' : '' }}">
-                @php
-                    $logoPath = \App\Models\Setting::getGlobal('institute_logo');
-                @endphp
+            <div class="school-logo" style="{{ $logoPath ? 'background: #ffffff;' : '' }}">
                 @if($logoPath && file_exists(public_path($logoPath)))
-                    <img src="{{ '/' . $logoPath }}" style="width: 100%; height: 100%; object-fit: contain; padding: 6px; border-radius: 20px;">
+                    <img src="{{ '/' . $logoPath }}" style="width: 100%; height: 100%; object-fit: contain; padding: 6px; border-radius: 20px;" alt="{{ $instituteName }}">
                 @else
                     <svg width="40" height="40" fill="white" viewBox="0 0 24 24">
                         <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
                     </svg>
                 @endif
             </div>
-            <h1 style="font-size: 22px; font-weight: 700; color: #1e3a5f; margin: 0;">{{ \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2') }}</h1>
+            <h1 style="font-size: 22px; font-weight: 700; color: #1e3a5f; margin: 0;">{{ $instituteName }}</h1>
             <p style="font-size: 13px; color: #64748b; margin-top: 5px;">Information Management System</p>
         </div>
 
@@ -74,13 +75,24 @@
             </div>
 
             {{-- Login Button --}}
-            <button type="submit" class="btn-login" onclick="sessionStorage.setItem('sims_tab_auth', 'active');">
-                <span style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <button type="submit" id="btn-login-submit" class="btn-login" onclick="sessionStorage.setItem('sims_tab_auth', 'active');">
+                <span id="btn-login-content" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
                     Sign In
                 </span>
             </button>
         </form>
+        <script>
+            document.querySelector('form')?.addEventListener('submit', function() {
+                var btn = document.getElementById('btn-login-submit');
+                var content = document.getElementById('btn-login-content');
+                if (btn && content) {
+                    btn.style.opacity = '0.85';
+                    btn.style.pointerEvents = 'none';
+                    content.innerHTML = '<svg style="width: 18px; height: 18px; animation: spin 1s linear infinite;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle style="opacity: 0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity: 0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>Signing In...</span>';
+                }
+            });
+        </script>
 
         {{-- Register Link --}}
         <div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
