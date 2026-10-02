@@ -66,6 +66,41 @@
                 }
             }
 
+            // Real-time Push Notification to Bell Dropdown
+            if (newBroadcast && newBroadcast !== lastKnownBroadcast && !isInitialLoad) {
+                window.dispatchEvent(new CustomEvent('sims-cloud-notification', {
+                    detail: {
+                        id: 'broadcast_' + Math.abs(newBroadcast.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)),
+                        type: 'broadcast',
+                        title: '📢 Adminova Cloud Notice',
+                        message: newBroadcast,
+                        action_url: null,
+                        action_label: null,
+                        badge: 'Broadcast',
+                        badge_color: 'bg-purple-100 text-purple-800 border-purple-200',
+                        icon_bg: 'bg-gradient-to-br from-indigo-500 to-purple-600',
+                        created_at: 'Just now'
+                    }
+                }));
+            }
+
+            if (cloudData.latest_version && cloudData.latest_version !== '{{ config("app.version", "2.5.2") }}') {
+                window.dispatchEvent(new CustomEvent('sims-cloud-notification', {
+                    detail: {
+                        id: 'update_' + cloudData.latest_version,
+                        type: 'update',
+                        title: '🚀 New Update Available (v' + cloudData.latest_version + ')',
+                        message: cloudData.patch_notes || 'A newer version or hotfix is available for your system.',
+                        action_url: '{{ route("admin.settings") }}',
+                        action_label: 'Review & Install',
+                        badge: 'v' + cloudData.latest_version,
+                        badge_color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                        icon_bg: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+                        created_at: 'Update Notice'
+                    }
+                }));
+            }
+
             if (isInitialLoad) {
                 isInitialLoad = false;
                 lastKnownSignature = newSig;
