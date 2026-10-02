@@ -211,12 +211,12 @@ begin
       end
       else if AuthStatus = 'BURNED' then
       begin
-        MsgBox('❌ Installation Blocked: This token has already been consumed on another computer.' + #13#10 + #13#10 + 'Each token is valid for 1 installation only. Please contact support.', mbCriticalError, MB_OK);
+        MsgBox('Installation Blocked: This token has already been consumed on another computer.' + #13#10 + #13#10 + 'Each token is valid for 1 installation only. Please contact support.', mbCriticalError, MB_OK);
         Result := False;
       end
       else
       begin
-        MsgBox('❌ Invalid Token: Token not found or unable to connect to authorization server.' + #13#10 + 'Please check your internet connection or verify your token.', mbError, MB_OK);
+        MsgBox('Invalid Token: Token not found or unable to connect to authorization server.' + #13#10 + 'Please check your internet connection or verify your token.', mbError, MB_OK);
         Result := False;
       end;
     end
@@ -235,6 +235,7 @@ var
   ExtractedKey: AnsiString;
   EnvPath: String;
   EnvContent: AnsiString;
+  EnvStr: String;
   KeyStr: String;
 begin
   if CurStep = ssPostInstall then
@@ -250,8 +251,9 @@ begin
         begin
           if LoadStringFromFile(EnvPath, EnvContent) then
           begin
-            StringChange(EnvContent, 'LICENSE_KEY=', 'LICENSE_KEY=' + KeyStr);
-            SaveStringToFile(EnvPath, EnvContent, False);
+            EnvStr := String(EnvContent);
+            StringChange(EnvStr, 'LICENSE_KEY=', 'LICENSE_KEY=' + KeyStr);
+            SaveStringToFile(EnvPath, AnsiString(EnvStr), False);
           end;
         end;
       end;
