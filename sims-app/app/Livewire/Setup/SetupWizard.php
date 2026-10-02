@@ -83,6 +83,13 @@ class SetupWizard extends Component
                 // Ignore and require verification
             }
         }
+
+        // Auto-fetch and verify on first installation if key was injected into .env
+        if ($this->license_verified) {
+            $this->currentStep = 2;
+        } elseif (!empty($this->license_key)) {
+            $this->verifyLicense();
+        }
     }
 
     /**
@@ -204,6 +211,26 @@ class SetupWizard extends Component
                 }
             }
 
+            // 5.5 Hardware UUID Verification & Binding
+            $localUuid = \App\Services\HardwareIdentifier::getMachineUuid();
+            $hostname  = \App\Services\HardwareIdentifier::getHostname();
+            $netTelemetry = \App\Services\HardwareIdentifier::getNetworkTelemetry();
+
+            $remoteUuid = $firebaseLic['bound_machine_uuid'] ?? null;
+            if (!empty($remoteUuid) && $remoteUuid !== $localUuid) {
+                Log::warning("Hardware mismatch during setup wizard! Bound: [{$remoteUuid}], Current PC: [{$localUuid}]");
+                $this->license_error = '🔒 Hardware Mismatch: This license is already locked to another computer hardware. Please reset the hardware binding in the Adminova Portal before setting up on this PC.';
+                return;
+            }
+
+            // Send Telemetry Heartbeat to Firestore
+            FirebaseAuth::sendTelemetryHeartbeat($licenseKey, array_merge($netTelemetry, [
+                'bound_machine_uuid' => $localUuid,
+                'hostname'           => $hostname,
+                'last_active_at'     => Carbon::now()->toIso8601String(),
+                'installed_version'  => '2.5.2',
+            ]), $idToken);
+
             // 6. Compute HMAC integrity hash with local unique APP_KEY
             $allowedDomains = $firebaseLic['allowed_domain'] ?? 'localhost';
             $integrityHash = LicenseVerifier::computeIntegrityHash(
@@ -219,11 +246,12 @@ class SetupWizard extends Component
             DB::table('software_licenses')->insert([
                 'license_key'             => encrypt($licenseKey),
                 'school_id'               => $firebaseLic['school_id'],
+                'bound_machine_uuid'      => $localUuid,
                 'firebase_refresh_token'  => encrypt($newRefreshToken ?: 'direct_public_session'),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
                 'allowed_domains'         => encrypt($allowedDomains),
-                'expires_at'              => $firebaseLic['expires_at'] ? Carbon::parse($firebaseLic['expires_at']) : null,
+                'expires_at'              => LicenseVerifier::normalizeExpiresAt($firebaseLic['expires_at']),
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $integrityHash,
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,

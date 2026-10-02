@@ -181,13 +181,28 @@ begin
       '  $doc = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 10;' + #13#10 +
       '  $status = $doc.fields.status.stringValue;' + #13#10 +
       '  $hw = (Get-CimInstance Win32_ComputerSystemProduct).UUID;' + #13#10 +
+      '  $hostName = $env:COMPUTERNAME;' + #13#10 +
+      '  $ip = ""; $loc = ""; $isp = "";' + #13#10 +
+      '  try {' + #13#10 +
+      '    $geo = Invoke-RestMethod -Uri "http://ip-api.com/json/" -TimeoutSec 3;' + #13#10 +
+      '    if ($geo -and $geo.query) { $ip = $geo.query; $loc = ($geo.city + ", " + $geo.country); $isp = $geo.isp; }' + #13#10 +
+      '  } catch {' + #13#10 +
+      '    try { $ip = (Invoke-RestMethod -Uri "https://api.ipify.org?format=json" -TimeoutSec 2).ip; } catch {}' + #13#10 +
+      '  }' + #13#10 +
       '  if ($doc.fields.license_key -and $doc.fields.license_key.stringValue) {' + #13#10 +
       '    Set-Content -Path "' + ExpandConstant('{tmp}\extracted_license.txt') + '" -Value $doc.fields.license_key.stringValue;' + #13#10 +
       '  }' + #13#10 +
       '  if ($status -eq "unused") {' + #13#10 +
-      '    $patchUrl = $url + "?updateMask.fieldPaths=status&updateMask.fieldPaths=bound_machine_uuid&updateMask.fieldPaths=burned_at";' + #13#10 +
-      '    $body = @{ fields = @{ status = @{ stringValue = "burned" }; bound_machine_uuid = @{ stringValue = $hw }; burned_at = @{ stringValue = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") } } } | ConvertTo-Json -Depth 4;' + #13#10 +
+      '    $nowIso = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");' + #13#10 +
+      '    $patchUrl = $url + "?updateMask.fieldPaths=status&updateMask.fieldPaths=bound_machine_uuid&updateMask.fieldPaths=burned_at&updateMask.fieldPaths=hostname&updateMask.fieldPaths=public_ip&updateMask.fieldPaths=location&updateMask.fieldPaths=isp";' + #13#10 +
+      '    $body = @{ fields = @{ status = @{ stringValue = "burned" }; bound_machine_uuid = @{ stringValue = $hw }; burned_at = @{ stringValue = $nowIso }; hostname = @{ stringValue = $hostName }; public_ip = @{ stringValue = $ip }; location = @{ stringValue = $loc }; isp = @{ stringValue = $isp } } } | ConvertTo-Json -Depth 4;' + #13#10 +
       '    Invoke-RestMethod -Uri $patchUrl -Method Patch -Body $body -ContentType "application/json" | Out-Null;' + #13#10 +
+      '    if ($doc.fields.license_key -and $doc.fields.license_key.stringValue) {' + #13#10 +
+      '      $licKey = $doc.fields.license_key.stringValue;' + #13#10 +
+      '      $licPatchUrl = "https://firestore.googleapis.com/v1/projects/sims-licensing/databases/(default)/documents/licenses/" + $licKey + "?updateMask.fieldPaths=bound_machine_uuid&updateMask.fieldPaths=hostname&updateMask.fieldPaths=public_ip&updateMask.fieldPaths=location&updateMask.fieldPaths=isp&updateMask.fieldPaths=last_active_at&updateMask.fieldPaths=telemetry";' + #13#10 +
+      '      $licBody = @{ fields = @{ bound_machine_uuid = @{ stringValue = $hw }; hostname = @{ stringValue = $hostName }; public_ip = @{ stringValue = $ip }; location = @{ stringValue = $loc }; isp = @{ stringValue = $isp }; last_active_at = @{ stringValue = $nowIso }; telemetry = @{ mapValue = @{ fields = @{ bound_machine_uuid = @{ stringValue = $hw }; hostname = @{ stringValue = $hostName }; public_ip = @{ stringValue = $ip }; location = @{ stringValue = $loc }; isp = @{ stringValue = $isp }; last_active_at = @{ stringValue = $nowIso } } } } } } | ConvertTo-Json -Depth 6;' + #13#10 +
+      '      try { Invoke-RestMethod -Uri $licPatchUrl -Method Patch -Body $licBody -ContentType "application/json" | Out-Null; } catch {}' + #13#10 +
+      '    }' + #13#10 +
       '    Set-Content -Path "' + TempOutputFile + '" -Value "AUTHORIZED";' + #13#10 +
       '  } elseif ($status -eq "burned" -and $doc.fields.bound_machine_uuid.stringValue -eq $hw) {' + #13#10 +
       '    Set-Content -Path "' + TempOutputFile + '" -Value "AUTHORIZED";' + #13#10 +

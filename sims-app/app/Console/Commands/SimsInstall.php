@@ -171,6 +171,22 @@ class SimsInstall extends Command
             $this->info("🔖 Seeded default version metadata: v{$ver}");
         }
 
+        // 4c. Auto-fetch and bind school license if configured in .env from installer token
+        $configuredKey = config('services.license.key') ?: env('LICENSE_KEY');
+        if (!empty($configuredKey)) {
+            $this->info("🔑 Auto-fetching and binding school license ({$configuredKey})...");
+            try {
+                $synced = \App\Services\LicenseSyncService::syncBackground();
+                if ($synced) {
+                    $this->info("✅ School license verified and hardware bound successfully!");
+                } else {
+                    $this->warn("⚠️ License auto-fetch will complete on first application launch.");
+                }
+            } catch (\Throwable $e) {
+                $this->warn("⚠️ License auto-fetch note: " . $e->getMessage());
+            }
+        }
+
         // 5. Ensure storage symlink exists
         try {
             Artisan::call('storage:link', ['--force' => true]);

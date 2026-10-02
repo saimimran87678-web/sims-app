@@ -223,7 +223,7 @@ Route::get('/domain-blocked', function () {
 Route::post('/license-blocked/activate', [\App\Http\Controllers\LicenseController::class, 'activate'])
     ->name('license.activate.post');
 
-Route::post('/license/sync', [\App\Http\Controllers\LicenseController::class, 'sync'])
+Route::match(['GET', 'POST'], '/license/sync', [\App\Http\Controllers\LicenseController::class, 'sync'])
     ->name('license.sync');
 
 Route::get('/ping', function () {

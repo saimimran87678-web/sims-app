@@ -19,6 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Register VerifyLicense globally for all web traffic
         $middleware->appendToGroup('web', \App\Http\Middleware\VerifyLicense::class);
+
+        // Exempt license endpoints from CSRF so manual/browser sync and activation never fail with 419 Page Expired
+        $middleware->validateCsrfTokens(except: [
+            'license/sync',
+            'license-blocked/activate',
+        ]);
         
         $middleware->alias([
             'isAdmin' => \App\Http\Middleware\IsAdmin::class,

@@ -169,6 +169,27 @@ class ActivateLicense extends Command
             }
         }
 
+        // 5.5 Hardware UUID Verification & Binding
+        $localUuid = \App\Services\HardwareIdentifier::getMachineUuid();
+        $hostname  = \App\Services\HardwareIdentifier::getHostname();
+        $netTelemetry = \App\Services\HardwareIdentifier::getNetworkTelemetry();
+
+        $remoteUuid = $firebaseLic['bound_machine_uuid'] ?? null;
+        if (!empty($remoteUuid) && $remoteUuid !== $localUuid) {
+            $this->error("🔒 Hardware Mismatch: This license is already bound to another computer hardware.");
+            $this->line("Bound Machine UUID: {$remoteUuid}");
+            $this->line("Current Machine UUID: {$localUuid}");
+            return 1;
+        }
+
+        // Send Telemetry Heartbeat to Firestore
+        FirebaseAuth::sendTelemetryHeartbeat($licenseKey, array_merge($netTelemetry, [
+            'bound_machine_uuid' => $localUuid,
+            'hostname'           => $hostname,
+            'last_active_at'     => Carbon::now()->toIso8601String(),
+            'installed_version'  => '2.5.2',
+        ]), $idToken);
+
         // 6. Compute Integrity Hash
         $allowedDomains = $firebaseLic['allowed_domain'] ?? 'localhost';
         $newHash = LicenseVerifier::computeIntegrityHash(
@@ -182,16 +203,17 @@ class ActivateLicense extends Command
         // 7. Write to SQLite Cache
         $this->info("💾 Seeding local SQLite cache database...");
         try {
-            DB::table('software_licenses')->delete();
+            DB::table('software_licenses')->truncate();
             
             DB::table('software_licenses')->insert([
                 'license_key'             => encrypt($licenseKey),
                 'school_id'               => $firebaseLic['school_id'],
+                'bound_machine_uuid'      => $localUuid,
                 'firebase_refresh_token'  => encrypt($newRefreshToken ?: 'direct_public_session'),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
                 'allowed_domains'         => encrypt($allowedDomains),
-                'expires_at'              => $firebaseLic['expires_at'] ? Carbon::parse($firebaseLic['expires_at']) : null,
+                'expires_at'              => LicenseVerifier::normalizeExpiresAt($firebaseLic['expires_at']),
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $newHash,
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,

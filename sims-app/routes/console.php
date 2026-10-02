@@ -10,10 +10,10 @@ Artisan::command('inspire', function () {
 use Illuminate\Support\Facades\Schedule;
 Schedule::command('whatsapp:process-queue')->everyMinute()->withoutOverlapping();
 
-// Daily background sync for licenses at midnight ("every day starting")
+// Periodic background sync for licenses & telemetry heartbeat every 5 minutes
 Schedule::call(function () {
     \App\Services\LicenseSyncService::syncBackground();
-})->daily();
+})->everyFiveMinutes()->name('sims-license-heartbeat')->withoutOverlapping();
 
 // Daily SIMS Auto-Update & Maintenance at 02:00 AM
 Schedule::command('sims:update')->dailyAt('02:00')->withoutOverlapping();

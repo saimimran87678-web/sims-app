@@ -184,6 +184,7 @@
                     'Content-Type'     : 'application/json',
                     'X-CSRF-TOKEN'     : document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                     'X-Requested-With' : 'XMLHttpRequest',
+                    'Accept'           : 'application/json',
                 },
             })
             .then(r => r.json())
@@ -214,14 +215,39 @@
             });
         }
 
+        window.simsLicenseSync = simsLicenseSync;
+
         function simsModalClose() {
-            document.getElementById('sims-sync-modal').style.display = 'none';
+            const modal = document.getElementById('sims-sync-modal');
+            if (modal) modal.style.display = 'none';
         }
+
+        window.simsModalClose = simsModalClose;
 
         // Close modal on backdrop click
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('sims-sync-modal').addEventListener('click', function(e) {
-                if (e.target === this) simsModalClose();
+            const modal = document.getElementById('sims-sync-modal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) simsModalClose();
+                });
+            }
+
+            // Auto-sync heartbeat when user returns to tab if more than 2 minutes elapsed
+            let lastTabSync = Date.now();
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && Date.now() - lastTabSync > 2 * 60 * 1000) {
+                    lastTabSync = Date.now();
+                    fetch('{{ route("license.sync") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        }
+                    }).catch(() => {});
+                }
             });
         });
     </script>

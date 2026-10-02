@@ -418,6 +418,11 @@
                                 </svg>
                                 Take Product Tour
                             </button>
+
+                            <button type="button" onclick="triggerManualLicenseSync(this)" class="w-full flex items-center px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors group">
+                                <svg class="w-4 h-4 mr-3 text-emerald-600 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                <span>Sync License & Cloud</span>
+                            </button>
                             
                             <div class="h-px bg-gray-100 my-1"></div>
                             
@@ -664,5 +669,55 @@
         window.SIMS_LAUNCH_TOUR = {{ \App\Models\Setting::getGlobal('launch_first_tour', false) ? 'true' : 'false' }};
     </script>
     <script src="{{ asset('js/tour.js') }}"></script>
+
+    <!-- License Synchronization Handler -->
+    <script>
+        function triggerManualLicenseSync(btn) {
+            if (btn) {
+                btn.disabled = true;
+                const icon = btn.querySelector('svg');
+                if (icon) icon.classList.add('animate-spin');
+            }
+
+            if (typeof window.simsLicenseSync === 'function') {
+                window.simsLicenseSync();
+                if (btn) {
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        const icon = btn.querySelector('svg');
+                        if (icon) icon.classList.remove('animate-spin');
+                    }, 1500);
+                }
+            } else {
+                fetch('{{ route("license.sync") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (btn) {
+                        btn.disabled = false;
+                        const icon = btn.querySelector('svg');
+                        if (icon) icon.classList.remove('animate-spin');
+                    }
+                    alert(data.message || (data.success ? 'License synchronized successfully!' : 'Sync failed.'));
+                    if (data.success) location.reload();
+                })
+                .catch(err => {
+                    if (btn) {
+                        btn.disabled = false;
+                        const icon = btn.querySelector('svg');
+                        if (icon) icon.classList.remove('animate-spin');
+                    }
+                    alert('Could not sync license: ' + (err.message || 'Network error'));
+                });
+            }
+        }
+    </script>
 </body>
 </html>

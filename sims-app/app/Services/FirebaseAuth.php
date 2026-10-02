@@ -96,6 +96,7 @@ class FirebaseAuth
                     'enabled_modules' => $extractArray($fields['enabled_modules'] ?? null) ?: ['fees', 'exams', 'attendance', 'whatsapp', 'reports'],
                     'broadcast_announcement' => $extractValue($fields['broadcast_announcement'] ?? null),
                     'config_version' => isset($fields['config_version']) ? intval($extractValue($fields['config_version'])) : 1,
+                    'bound_machine_uuid' => $extractValue($fields['bound_machine_uuid'] ?? null) ?: $extractValue($fields['telemetry']['mapValue']['fields']['bound_machine_uuid'] ?? null),
                 ];
             }
 
@@ -105,5 +106,74 @@ class FirebaseAuth
         }
 
         return null;
+    }
+
+    /**
+     * Report telemetry heartbeat (machine UUID, hostname, IP, location) to Firestore.
+     *
+     * @param string $licenseKey
+     * @param array $telemetry
+     * @param string|null $idToken
+     * @return bool
+     */
+    public static function sendTelemetryHeartbeat(string $licenseKey, array $telemetry, ?string $idToken = null): bool
+    {
+        $projectId = config('services.firebase.project_id');
+        if (empty($projectId) || empty($licenseKey)) {
+            return false;
+        }
+
+        try {
+            $url = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/licenses/{$licenseKey}";
+
+            $fieldPaths = [
+                'bound_machine_uuid',
+                'hostname',
+                'public_ip',
+                'location',
+                'isp',
+                'last_active_at',
+                'installed_version',
+                'telemetry',
+            ];
+
+            $queryString = implode('&', array_map(fn($p) => "updateMask.fieldPaths=" . urlencode($p), $fieldPaths));
+            $fullUrl = "{$url}?{$queryString}";
+
+            $now = \Carbon\Carbon::now()->toIso8601String();
+            $firestoreFields = [
+                'bound_machine_uuid' => ['stringValue' => (string) ($telemetry['bound_machine_uuid'] ?? '')],
+                'hostname'           => ['stringValue' => (string) ($telemetry['hostname'] ?? '')],
+                'public_ip'          => ['stringValue' => (string) ($telemetry['public_ip'] ?? '')],
+                'location'           => ['stringValue' => (string) ($telemetry['location'] ?? '')],
+                'isp'                => ['stringValue' => (string) ($telemetry['isp'] ?? '')],
+                'last_active_at'     => ['stringValue' => (string) ($telemetry['last_active_at'] ?? $now)],
+                'installed_version'  => ['stringValue' => (string) ($telemetry['installed_version'] ?? '2.5.2')],
+                'telemetry'          => [
+                    'mapValue' => [
+                        'fields' => [
+                            'bound_machine_uuid' => ['stringValue' => (string) ($telemetry['bound_machine_uuid'] ?? '')],
+                            'hostname'           => ['stringValue' => (string) ($telemetry['hostname'] ?? '')],
+                            'public_ip'          => ['stringValue' => (string) ($telemetry['public_ip'] ?? '')],
+                            'location'           => ['stringValue' => (string) ($telemetry['location'] ?? '')],
+                            'isp'                => ['stringValue' => (string) ($telemetry['isp'] ?? '')],
+                            'last_active_at'     => ['stringValue' => (string) ($telemetry['last_active_at'] ?? $now)],
+                            'installed_version'  => ['stringValue' => (string) ($telemetry['installed_version'] ?? '2.5.2')],
+                        ],
+                    ],
+                ],
+            ];
+
+            $request = Http::withoutVerifying();
+            if (!empty($idToken)) {
+                $request = $request->withToken($idToken);
+            }
+
+            $response = $request->patch($fullUrl, ['fields' => $firestoreFields]);
+            return $response->successful();
+        } catch (\Throwable $e) {
+            Log::debug('Telemetry heartbeat sync failed: ' . $e->getMessage());
+            return false;
+        }
     }
 }

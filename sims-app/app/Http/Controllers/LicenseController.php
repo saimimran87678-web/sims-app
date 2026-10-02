@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\FirebaseAuth;
+use App\Services\HardwareIdentifier;
 use App\Services\LicenseStatus;
 use App\Services\LicenseVerifier;
 use Illuminate\Support\Facades\DB;
@@ -20,16 +21,43 @@ class LicenseController extends Controller
      */
     public function sync(Request $request)
     {
-        $licenseKey = trim(config('services.license.key', ''));
+        $licenseKey = trim($request->input('license_key', ''));
 
         if (empty($licenseKey)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No LICENSE_KEY is configured on this PC. Please enter your license key below.',
-            ], 422);
+            $licenseKey = trim(config('services.license.key', ''));
         }
 
-        return $this->runActivation($licenseKey);
+        if (empty($licenseKey)) {
+            $record = DB::table('software_licenses')->first();
+            if ($record && !empty($record->license_key)) {
+                try {
+                    $licenseKey = trim(decrypt($record->license_key));
+                } catch (\Exception $e) {}
+            }
+        }
+
+        if (empty($licenseKey)) {
+            $msg = 'No LICENSE_KEY is configured on this PC. Please enter your license key below.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $msg,
+                ], 422);
+            }
+            return redirect()->route('license.blocked')->with('error', $msg);
+        }
+
+        $response = $this->runActivation($licenseKey);
+
+        if (!$request->expectsJson() && !$request->ajax()) {
+            $data = $response->getData(true);
+            if ($response->isSuccessful() && ($data['success'] ?? false) && ($data['status'] ?? '') === 'active') {
+                return redirect()->route('dashboard')->with('success', $data['message'] ?? 'License synced successfully!');
+            }
+            return redirect()->route('license.blocked')->with('error', $data['message'] ?? 'License sync failed.');
+        }
+
+        return $response;
     }
 
     /**
@@ -136,6 +164,28 @@ class LicenseController extends Controller
             ], 400);
         }
 
+        // Step 4.5 — Hardware UUID Verification & Binding
+        $localUuid = HardwareIdentifier::getMachineUuid();
+        $hostname  = HardwareIdentifier::getHostname();
+        $netTelemetry = HardwareIdentifier::getNetworkTelemetry();
+
+        $remoteUuid = $firebaseLic['bound_machine_uuid'] ?? null;
+        if (!empty($remoteUuid) && $remoteUuid !== $localUuid) {
+            Log::warning("Hardware mismatch during UI license activation! Bound: [{$remoteUuid}], Current PC: [{$localUuid}]");
+            return response()->json([
+                'success' => false,
+                'message' => '🔒 Hardware Mismatch: This license is already bound to another computer hardware. Please reset the hardware binding in the Adminova License Portal before activating on this PC.',
+            ], 403);
+        }
+
+        // Send Telemetry Heartbeat to Firestore
+        FirebaseAuth::sendTelemetryHeartbeat($licenseKey, array_merge($netTelemetry, [
+            'bound_machine_uuid' => $localUuid,
+            'hostname'           => $hostname,
+            'last_active_at'     => Carbon::now()->toIso8601String(),
+            'installed_version'  => '2.5.2',
+        ]), $idToken);
+
         // Step 5 — Compute integrity hash
         $allowedDomains = $firebaseLic['allowed_domain'] ?? 'localhost';
         $newHash = LicenseVerifier::computeIntegrityHash(
@@ -152,11 +202,12 @@ class LicenseController extends Controller
             DB::table('software_licenses')->insert([
                 'license_key'             => encrypt($licenseKey),
                 'school_id'               => $firebaseLic['school_id'],
+                'bound_machine_uuid'      => $localUuid,
                 'firebase_refresh_token'  => encrypt($newRefreshToken ?: 'direct_public_session'),
                 'status'                  => encrypt($firebaseLic['status']),
                 'plan'                    => encrypt($firebaseLic['plan']),
                 'allowed_domains'         => encrypt($allowedDomains),
-                'expires_at'              => $firebaseLic['expires_at'] ? Carbon::parse($firebaseLic['expires_at']) : null,
+                'expires_at'              => LicenseVerifier::normalizeExpiresAt($firebaseLic['expires_at']),
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $newHash,
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,

@@ -123,6 +123,26 @@ class LicenseStatus
             ]);
         }
 
+        // Layer 2.5: Hardware Binding / Machine UUID Verification
+        if (!empty($record->bound_machine_uuid)) {
+            $currentUuid = HardwareIdentifier::getMachineUuid();
+            if ($currentUuid !== $record->bound_machine_uuid) {
+                return array_merge($baseStatus, [
+                    'stage' => self::STAGE_BLOCKED,
+                    'reason' => 'hardware_mismatch',
+                    'message' => 'This license is bound to a different computer hardware. Please contact support or reset binding in Adminova Portal.',
+                ]);
+            }
+        }
+
+        if ($status === 'hardware_mismatch') {
+            return array_merge($baseStatus, [
+                'stage' => self::STAGE_BLOCKED,
+                'reason' => 'hardware_mismatch',
+                'message' => 'This license is bound to a different computer hardware. Please contact support or reset binding in Adminova Portal.',
+            ]);
+        }
+
         // Layer 6: Domain Verification Check
         if ((!app()->runningInConsole() || app()->environment('testing')) && isset($record->allowed_domains)) {
             try {

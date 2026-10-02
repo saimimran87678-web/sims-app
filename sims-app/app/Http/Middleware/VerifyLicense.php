@@ -128,8 +128,8 @@ class VerifyLicense
             $lastVerified = \Carbon\Carbon::parse($record->last_online_verified_at);
             $now = \Carbon\Carbon::now();
 
-            // Sync if more than 60 mins passed OR if it's a new day
-            if ($now->diffInMinutes($lastVerified) >= 60 || !$lastVerified->isSameDay($now)) {
+            // Sync if more than 3 mins passed OR if it's a new day
+            if ($now->diffInMinutes($lastVerified) >= 3 || !$lastVerified->isSameDay($now)) {
                 \App\Services\LicenseSyncService::syncBackground();
             }
         }

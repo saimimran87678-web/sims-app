@@ -115,17 +115,25 @@
                     const data = await response.json();
 
                     if (response.ok && data.success) {
-                        successDiv.textContent = '✓ ' + data.message + ' Redirecting...';
-                        successDiv.classList.remove('hidden');
-                        btnText.textContent = 'Success!';
-                        btnSpinner.classList.add('hidden');
-                        submitBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-                        submitBtn.classList.add('bg-green-600');
-                        
-                        // Redirect to dashboard after a short delay
-                        setTimeout(() => {
-                            window.location.href = "{{ route('dashboard') }}";
-                        }, 1500);
+                        if (data.status === 'active' || data.redirect) {
+                            successDiv.textContent = '✓ ' + data.message + ' Redirecting to dashboard...';
+                            successDiv.classList.remove('hidden');
+                            btnText.textContent = 'Success!';
+                            btnSpinner.classList.add('hidden');
+                            submitBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                            submitBtn.classList.add('bg-green-600');
+                            
+                            // Redirect to dashboard after a short delay
+                            setTimeout(() => {
+                                window.location.href = data.redirect || "{{ route('dashboard') }}";
+                            }, 1500);
+                        } else {
+                            errorDiv.textContent = data.message;
+                            errorDiv.classList.remove('hidden');
+                            submitBtn.disabled = false;
+                            btnSpinner.classList.add('hidden');
+                            btnText.textContent = 'Validate & Activate';
+                        }
                     } else {
                         throw new Error(data.message || 'Verification failed. Please try again.');
                     }
