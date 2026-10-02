@@ -47,6 +47,26 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
+        // Dynamically bootstrap SMTP configuration from database Setting table
+        try {
+            $mailUser = \App\Models\Setting::getGlobal('mail_username');
+            $mailPass = \App\Models\Setting::getGlobal('mail_password');
+            if (!empty($mailUser) && !empty($mailPass)) {
+                config([
+                    'mail.default' => 'smtp',
+                    'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                    'mail.mailers.smtp.port' => 465,
+                    'mail.mailers.smtp.encryption' => 'ssl',
+                    'mail.mailers.smtp.username' => $mailUser,
+                    'mail.mailers.smtp.password' => $mailPass,
+                    'mail.from.address' => $mailUser,
+                    'mail.from.name' => \App\Models\Setting::getGlobal('institute_name', config('app.name')),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Ignore during early bootstrap or migration runs
+        }
+
         // Guarantee $errors is always available to every Blade view, preventing Undefined variable $errors
         \Illuminate\Support\Facades\View::composer('*', function ($view) {
             if (!\Illuminate\Support\Facades\View::shared('errors')) {

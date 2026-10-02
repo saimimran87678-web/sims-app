@@ -316,6 +316,180 @@
                 </div>
             </div>
 
+            <div class="border-t border-gray-100"></div>
+
+            {{-- ── Section: Email & SMTP Service ── --}}
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            System Email & SMTP Service
+                        </h2>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Configure your school's Gmail or SMTP credentials to dispatch security verification OTPs, password reset codes, and system alerts.
+                        </p>
+                    </div>
+
+                    @if($has_existing_smtp && !$is_replacing_smtp)
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold border border-emerald-200">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            Active & Protected
+                        </span>
+                    @endif
+                </div>
+
+                {{-- Test Email Feedback Banners --}}
+                @if($testEmailStatus)
+                    <div class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs flex items-center gap-2">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>{{ $testEmailStatus }}</span>
+                    </div>
+                @endif
+
+                @if($testEmailError)
+                    <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>{{ $testEmailError }}</span>
+                    </div>
+                @endif
+
+                @if($has_existing_smtp && !$is_replacing_smtp)
+                    {{-- Masked & Hidden Display Mode --}}
+                    <div class="p-5 bg-gray-50 rounded-2xl border border-gray-200/80 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206"/></svg>
+                                    Configured Sender Email
+                                </label>
+                                <div class="relative">
+                                    <input
+                                        type="text"
+                                        readonly
+                                        value="{{ $smtp_email }}"
+                                        class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 font-mono text-sm cursor-not-allowed select-none"
+                                    >
+                                    <span class="absolute right-3 top-3 text-[11px] text-gray-400 font-medium">Hidden</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    App Password
+                                </label>
+                                <div class="relative">
+                                    <input
+                                        type="password"
+                                        readonly
+                                        value="••••••••••••••••"
+                                        class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 font-mono text-sm cursor-not-allowed select-none tracking-widest"
+                                    >
+                                    <span class="absolute right-3 top-3 text-[11px] text-gray-400 font-medium">Hidden</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-3 border-t border-gray-200/60">
+                            <span class="text-xs text-gray-500 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                Credentials securely encrypted. Click Replace to update.
+                            </span>
+
+                            <div class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    wire:click="sendTestEmail"
+                                    wire:loading.attr="disabled"
+                                    class="px-3.5 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg transition-all shadow-sm flex items-center gap-1.5"
+                                >
+                                    <span wire:loading.remove wire:target="sendTestEmail">✉️ Send Test Email</span>
+                                    <span wire:loading wire:target="sendTestEmail">Sending...</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    wire:click="startReplacingSmtp"
+                                    class="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-all border border-blue-200 flex items-center gap-1"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                    Replace Credentials
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    {{-- Editable Mode (Replacing or Initial Setup) --}}
+                    <div class="p-5 bg-blue-50/40 rounded-2xl border-2 border-blue-100 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                {{ $has_existing_smtp ? 'Replace Existing SMTP Credentials' : 'Set Up SMTP Credentials' }}
+                            </span>
+                            @if($has_existing_smtp)
+                                <button
+                                    type="button"
+                                    wire:click="cancelReplacingSmtp"
+                                    class="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                                >
+                                    Cancel
+                                </button>
+                            @endif
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="smtp_email" class="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                                    Sender Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    id="smtp_email"
+                                    wire:model.defer="smtp_email"
+                                    placeholder="e.g. school.admin@gmail.com"
+                                    class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:outline-none focus:border-blue-600 transition-colors text-sm text-gray-800"
+                                    required
+                                >
+                                <p class="text-[11px] text-gray-500 mt-1">
+                                    The email address from which OTP and system notices will be sent.
+                                </p>
+                                @error('smtp_email')
+                                    <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label for="smtp_app_password" class="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                                    Google App Password
+                                </label>
+                                <input
+                                    type="password"
+                                    id="smtp_app_password"
+                                    wire:model.defer="smtp_app_password"
+                                    placeholder="16-character App Password"
+                                    class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:outline-none focus:border-blue-600 transition-colors text-sm text-gray-800 font-mono"
+                                    required
+                                >
+                                <p class="text-[11px] text-gray-500 mt-1">
+                                    Generated from Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords.
+                                </p>
+                                @error('smtp_app_password')
+                                    <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-white/80 rounded-xl border border-blue-200/60 text-xs text-blue-800 flex items-center gap-2">
+                            <svg class="w-4 h-4 flex-shrink-0 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Upon clicking <strong>Save Changes</strong> below, credentials will be verified, saved locally, and immediately masked as protected.</span>
+                        </div>
+                    </div>
+                @endif
+            </div>
+
             {{-- Save Button --}}
             <div class="pt-4 border-t border-gray-100 flex justify-end">
                 <button

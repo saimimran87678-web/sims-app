@@ -22,6 +22,14 @@ class Settings extends Component
     public $admin_action_pin = '';
     public $successMessage = '';
 
+    // Email & SMTP Configuration Properties
+    public $smtp_email = '';
+    public $smtp_app_password = '';
+    public $has_existing_smtp = false;
+    public $is_replacing_smtp = false;
+    public $testEmailStatus = '';
+    public $testEmailError = '';
+
     // System Update Properties
     public $currentVersion = '2.5.2';
     public $lastUpdateChecksum = 'Initial Installation';
@@ -83,6 +91,46 @@ class Settings extends Component
         $this->currentVersion = $dbVer;
         $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'None (Initial Installation)');
         $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', 'Initial Installation');
+
+        // Initialize Email & SMTP configuration
+        $savedMailUser = Setting::getGlobal('mail_username');
+        $savedMailPass = Setting::getGlobal('mail_password');
+
+        if (empty($savedMailUser)) {
+            $envUser = env('MAIL_USERNAME', config('mail.mailers.smtp.username'));
+            $envPass = env('MAIL_PASSWORD', config('mail.mailers.smtp.password'));
+
+            if (empty($envUser) && file_exists(base_path('.env'))) {
+                $envContent = @file_get_contents(base_path('.env')) ?: '';
+                if (preg_match('/^MAIL_USERNAME=(.*)$/m', $envContent, $m)) {
+                    $envUser = trim(trim($m[1]), '"\'');
+                }
+                if (preg_match('/^MAIL_PASSWORD=(.*)$/m', $envContent, $m)) {
+                    $envPass = trim(trim($m[1]), '"\'');
+                }
+            }
+
+            if (!empty($envUser) && $envUser !== 'null' && $envUser !== '""') {
+                $savedMailUser = $envUser;
+                Setting::setGlobal('mail_username', $envUser);
+            }
+            if (!empty($envPass) && $envPass !== 'null' && $envPass !== '""') {
+                $savedMailPass = $envPass;
+                Setting::setGlobal('mail_password', $envPass);
+            }
+        }
+
+        if (!empty($savedMailUser) && $savedMailUser !== 'null') {
+            $this->has_existing_smtp = true;
+            $this->smtp_email = 'xxxxxxxx';
+            $this->smtp_app_password = '••••••••••••';
+            $this->is_replacing_smtp = false;
+        } else {
+            $this->has_existing_smtp = false;
+            $this->smtp_email = '';
+            $this->smtp_app_password = '';
+            $this->is_replacing_smtp = true;
+        }
     }
 
     public function updatedAdminActionPinEnabled($value)
@@ -120,6 +168,21 @@ class Settings extends Component
         ]);
 
         try {
+            $mailUser = Setting::getGlobal('mail_username') ?: env('MAIL_USERNAME');
+            $mailPass = Setting::getGlobal('mail_password') ?: env('MAIL_PASSWORD');
+            if (!empty($mailUser) && !empty($mailPass)) {
+                config([
+                    'mail.default' => 'smtp',
+                    'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                    'mail.mailers.smtp.port' => 465,
+                    'mail.mailers.smtp.encryption' => 'ssl',
+                    'mail.mailers.smtp.username' => $mailUser,
+                    'mail.mailers.smtp.password' => $mailPass,
+                    'mail.from.address' => $mailUser,
+                    'mail.from.name' => Setting::getGlobal('institute_name', config('app.name')),
+                ]);
+            }
+
             $instituteName = Setting::get('institute_name', 'IMCB G-6/2');
             \Illuminate\Support\Facades\Mail::send([], [], function ($message) use ($user, $instituteName) {
                 $message->to($user->email)
@@ -238,7 +301,129 @@ class Settings extends Component
         Setting::set('admin_action_pin_enabled', $this->admin_action_pin_enabled);
         Setting::set('admin_action_pin', $this->admin_action_pin_enabled ? $this->admin_action_pin : '');
 
+        // Handle Email & SMTP updates if currently replacing
+        if ($this->is_replacing_smtp) {
+            if (!empty($this->smtp_email) && $this->smtp_email !== 'xxxxxxxx') {
+                $this->validate([
+                    'smtp_email' => 'required|email',
+                    'smtp_app_password' => 'required|string|min:6',
+                ], [
+                    'smtp_email.required' => 'Please enter a valid sender email address.',
+                    'smtp_email.email' => 'Please provide a valid email format (e.g. school@gmail.com).',
+                    'smtp_app_password.required' => 'Please provide the 16-character Google App Password.',
+                    'smtp_app_password.min' => 'The App Password must be at least 6 characters.',
+                ]);
+
+                $cleanEmail = trim($this->smtp_email);
+                $cleanPass = str_replace(' ', '', trim($this->smtp_app_password));
+
+                Setting::setGlobal('mail_username', $cleanEmail);
+                Setting::setGlobal('mail_password', $cleanPass);
+
+                $this->updateEnvFile('MAIL_MAILER', 'smtp');
+                $this->updateEnvFile('MAIL_HOST', 'smtp.gmail.com');
+                $this->updateEnvFile('MAIL_PORT', '465');
+                $this->updateEnvFile('MAIL_ENCRYPTION', 'ssl');
+                $this->updateEnvFile('MAIL_USERNAME', $cleanEmail);
+                $this->updateEnvFile('MAIL_PASSWORD', $cleanPass);
+                $this->updateEnvFile('MAIL_FROM_ADDRESS', $cleanEmail);
+
+                config([
+                    'mail.default' => 'smtp',
+                    'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                    'mail.mailers.smtp.port' => 465,
+                    'mail.mailers.smtp.encryption' => 'ssl',
+                    'mail.mailers.smtp.username' => $cleanEmail,
+                    'mail.mailers.smtp.password' => $cleanPass,
+                    'mail.from.address' => $cleanEmail,
+                ]);
+
+                $this->has_existing_smtp = true;
+                $this->is_replacing_smtp = false;
+                $this->smtp_email = 'xxxxxxxx';
+                $this->smtp_app_password = '••••••••••••';
+            }
+        }
+
         session()->flash('status', 'Settings updated successfully!');
+    }
+
+    public function startReplacingSmtp()
+    {
+        $this->is_replacing_smtp = true;
+        $this->smtp_email = '';
+        $this->smtp_app_password = '';
+        $this->testEmailStatus = '';
+        $this->testEmailError = '';
+    }
+
+    public function cancelReplacingSmtp()
+    {
+        if ($this->has_existing_smtp) {
+            $this->is_replacing_smtp = false;
+            $this->smtp_email = 'xxxxxxxx';
+            $this->smtp_app_password = '••••••••••••';
+            $this->testEmailStatus = '';
+            $this->testEmailError = '';
+        }
+    }
+
+    protected function updateEnvFile(string $key, string $value): void
+    {
+        $path = base_path('.env');
+        if (!file_exists($path)) return;
+
+        $content = file_get_contents($path);
+        $pattern = "/^{$key}=(.*)$/m";
+        $replacement = "{$key}=\"{$value}\"";
+
+        $content = preg_match($pattern, $content)
+            ? preg_replace($pattern, $replacement, $content)
+            : $content . "\n{$key}=\"{$value}\"\n";
+
+        @file_put_contents($path, $content);
+    }
+
+    public function sendTestEmail()
+    {
+        $this->testEmailStatus = '';
+        $this->testEmailError = '';
+
+        $currentUser = auth()->user();
+        if (!$currentUser || empty($currentUser->email)) {
+            $this->testEmailError = 'No valid recipient email address found on your current admin account.';
+            return;
+        }
+
+        $mailUser = Setting::getGlobal('mail_username');
+        $mailPass = Setting::getGlobal('mail_password');
+
+        if (empty($mailUser) || empty($mailPass)) {
+            $this->testEmailError = 'No email credentials found. Please configure and save an Email and App Password first.';
+            return;
+        }
+
+        try {
+            config([
+                'mail.default' => 'smtp',
+                'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                'mail.mailers.smtp.port' => 465,
+                'mail.mailers.smtp.encryption' => 'ssl',
+                'mail.mailers.smtp.username' => $mailUser,
+                'mail.mailers.smtp.password' => $mailPass,
+                'mail.from.address' => $mailUser,
+                'mail.from.name' => Setting::getGlobal('institute_name', config('app.name')),
+            ]);
+
+            \Illuminate\Support\Facades\Mail::raw("Congratulations! This test email confirms that your SIMS email system and Google App Password are functional and properly configured.", function ($msg) use ($currentUser, $mailUser) {
+                $msg->to($currentUser->email)
+                    ->subject('SIMS SMTP Test Email - Connection Successful');
+            });
+
+            $this->testEmailStatus = "Test email sent successfully to {$currentUser->email}!";
+        } catch (\Throwable $e) {
+            $this->testEmailError = 'Failed to send test email: ' . $e->getMessage();
+        }
     }
 
     public function removeLogo()
