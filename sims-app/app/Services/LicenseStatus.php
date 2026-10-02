@@ -359,4 +359,20 @@ class LicenseStatus
 
         return in_array($stage, [self::STAGE_ACTIVE, self::STAGE_WARNING, self::STAGE_GRACE]);
     }
+
+    /**
+     * Get the active vendor broadcast announcement from SQLite if present.
+     *
+     * @return string|null
+     */
+    public static function getBroadcastAnnouncement(): ?string
+    {
+        try {
+            $record = self::getLicenseRecord();
+            if ($record && !empty($record->broadcast_announcement)) {
+                return trim($record->broadcast_announcement);
+            }
+        } catch (\Throwable) {}
+        return null;
+    }
 }

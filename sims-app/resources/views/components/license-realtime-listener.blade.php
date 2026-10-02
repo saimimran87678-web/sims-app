@@ -37,6 +37,7 @@
         let lastKnownBoundUuid = null;
         let lastKnownExpiresAt = null;
         let lastKnownUpdatedAt = null;
+        let lastKnownBroadcast = null;
 
         // Establish persistent WebSocket snapshot listener with Google Firestore
         db.collection('licenses').doc(licenseKey).onSnapshot((docSnapshot) => {
@@ -49,6 +50,21 @@
             const newBoundUuid = cloudData.bound_machine_uuid || '';
             const newExpiresAt = cloudData.expires_at || '';
             const newUpdatedAt = cloudData.updated_at || '';
+            const newBroadcast = (cloudData.broadcast_announcement || '').trim();
+
+            // Real-time DOM update for Broadcast Banner
+            const bannerEl = document.getElementById('sims-broadcast-banner');
+            const textEl = document.getElementById('sims-broadcast-text');
+            if (bannerEl && textEl) {
+                if (newBroadcast) {
+                    textEl.textContent = newBroadcast;
+                    bannerEl.classList.remove('hidden');
+                    bannerEl.style.display = 'block';
+                } else {
+                    bannerEl.style.display = 'none';
+                    bannerEl.classList.add('hidden');
+                }
+            }
 
             if (isInitialLoad) {
                 isInitialLoad = false;
@@ -58,16 +74,18 @@
                 lastKnownBoundUuid = newBoundUuid;
                 lastKnownExpiresAt = newExpiresAt;
                 lastKnownUpdatedAt = newUpdatedAt;
+                lastKnownBroadcast = newBroadcast;
                 return;
             }
 
-            // Detect if admin changed status, modules, expiry, machine binding, or signature in the portal
+            // Detect if admin changed status, modules, expiry, machine binding, announcement, or signature
             const hasChanged = (newSig !== lastKnownSignature) || 
                                (newStatus !== lastKnownStatus) || 
                                (newVer !== lastKnownConfigVer) ||
                                (newBoundUuid !== lastKnownBoundUuid) ||
                                (newExpiresAt !== lastKnownExpiresAt) ||
-                               (newUpdatedAt !== lastKnownUpdatedAt);
+                               (newUpdatedAt !== lastKnownUpdatedAt) ||
+                               (newBroadcast !== lastKnownBroadcast);
 
             if (hasChanged) {
                 console.log('⚡ Real-time license snapshot received from Adminova Cloud:', cloudData);
@@ -77,6 +95,7 @@
                 lastKnownBoundUuid = newBoundUuid;
                 lastKnownExpiresAt = newExpiresAt;
                 lastKnownUpdatedAt = newUpdatedAt;
+                lastKnownBroadcast = newBroadcast;
 
                 // Sync locally via /license/sync to verify RSA & update SQLite
                 fetch('{{ route("license.sync") }}', {

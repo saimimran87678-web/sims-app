@@ -310,6 +310,7 @@
 
             <!-- Content Area -->
             <div class="flex-1 p-4 overflow-y-auto md:p-8 relative custom-scrollbar smooth-scroll-container">
+                <x-broadcast-banner />
                 {{ $slot }}
             </div>
 

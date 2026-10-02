@@ -447,6 +447,9 @@
                     <div class="absolute top-[30%] right-[20%] w-[40%] h-[40%] rounded-full bg-pink-100/15 blur-[120px]"></div>
                 </div>
 
+                {{-- Adminova Cloud Broadcast Alert Banner --}}
+                <x-broadcast-banner />
+
                 {{ $slot }}
             </div>
 

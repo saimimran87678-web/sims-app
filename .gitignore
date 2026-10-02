@@ -18,3 +18,6 @@
 /adminova-license-portal/
 
 /firestore.rules
+
+*.log
+php_errors.log
