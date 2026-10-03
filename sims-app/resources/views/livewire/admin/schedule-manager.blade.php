@@ -149,7 +149,8 @@
                                     @php $schedules = $this->getSchedule($class->id, $period->period_no); @endphp
                                     <td
                                         wire:click="openModal({{ $class->id }}, {{ $period->period_no }})"
-                                        class="px-2 py-2 cursor-pointer hover:bg-blue-50 transition-colors border-l border-gray-100"
+                                        class="px-2 py-2 cursor-pointer border-l border-gray-100 {{ $schedules->isNotEmpty() ? 'hover:bg-blue-50/80' : 'hover:bg-emerald-50/70' }} transition-all group"
+                                        title="{{ $schedules->isNotEmpty() ? 'Edit assignment for ' . $class->name . ' in ' . $period->label : 'Assign period for ' . $class->name . ' in ' . $period->label }}"
                                     >
                                         @if($schedules->isNotEmpty())
                                             <div class="flex flex-col gap-1">
@@ -168,7 +169,11 @@
                                                 @endforeach
                                             </div>
                                         @else
-                                            <div class="text-center text-gray-300 text-xs py-2">+ Assign</div>
+                                            <div class="flex items-center justify-center h-full">
+                                                <span class="text-[11px] text-emerald-600 bg-emerald-50 group-hover:bg-emerald-100 group-hover:text-emerald-700 px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1 border border-emerald-200/60 shadow-xs">
+                                                    <span class="text-xs font-bold leading-none">+</span> Assign
+                                                </span>
+                                            </div>
                                         @endif
                                     </td>
                                 @endif
@@ -214,6 +219,10 @@
                                 </div>
                             </th>
                         @endforeach
+                        <th class="px-3 py-3 text-center text-xs font-bold text-indigo-800 uppercase bg-indigo-50/50 border-l border-indigo-100 min-w-[95px] sticky right-0">
+                            <div>Total</div>
+                            <div class="text-[10px] text-indigo-500 font-medium lowercase">Periods</div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-100">
@@ -293,10 +302,17 @@
                                     @endif
                                 @endif
                             @endforeach
+
+                            {{-- Total Assigned Periods Column --}}
+                            <td class="px-3 py-2 text-center border-l border-indigo-100/70 bg-indigo-50/10 sticky right-0">
+                                <span class="inline-flex items-center justify-center min-w-[32px] h-7 px-2.5 rounded-full text-xs font-bold transition-all {{ $teacherPeriodCount > 0 ? 'bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-xs' : 'bg-gray-100 text-gray-400' }}" title="{{ $teacher->name }}: {{ $teacherPeriodCount }} assigned period{{ $teacherPeriodCount !== 1 ? 's' : '' }}">
+                                    {{ $teacherPeriodCount }}
+                                </span>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ count($periods) + 1 }}" class="px-6 py-10 text-center text-gray-400">
+                            <td colspan="{{ count($periods) + 2 }}" class="px-6 py-10 text-center text-gray-400">
                                 No teachers found for the selected session/shift.
                             </td>
                         </tr>
