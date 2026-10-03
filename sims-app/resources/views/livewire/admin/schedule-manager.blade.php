@@ -192,10 +192,10 @@
             <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <span><strong>Teacher View</strong> — rows are teachers, columns are periods. Click any assigned cell to edit.</span>
+            <span><strong>Teacher View</strong> — rows are teachers, columns are periods. Click any cell to assign or edit a class period.</span>
             <span class="ml-auto flex items-center gap-3">
                 <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-100 border border-indigo-300"></span> Assigned</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-green-100 border border-green-300"></span> Free</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300"></span> Free (Click to assign)</span>
                 <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-purple-100 border border-purple-300"></span> Divided</span>
             </span>
         </div>
@@ -250,10 +250,11 @@
                                     @endphp
 
                                     @if(count($cellRows) > 0)
-                                        {{-- Assigned Cell — clickable to edit the first entry's class --}}
+                                        {{-- Assigned Cell — clickable to edit the assignment --}}
                                         <td
-                                            wire:click="openModal({{ $cellRows[0]->class_id }}, {{ $period->period_no }})"
-                                            class="px-2 py-2 cursor-pointer border-l border-gray-100 hover:bg-indigo-50 transition-colors"
+                                            wire:click="openModal({{ $cellRows[0]->class_id }}, {{ $period->period_no }}, {{ $teacher->id }})"
+                                            class="px-2 py-2 cursor-pointer border-l border-gray-100 hover:bg-indigo-50/80 transition-all"
+                                            title="Edit assignment for {{ $teacher->name }} in {{ $period->label }}"
                                         >
                                             <div class="flex flex-col gap-1">
                                                 @foreach($cellRows as $idx => $row)
@@ -277,10 +278,16 @@
                                             </div>
                                         </td>
                                     @else
-                                        {{-- Free Cell — read-only in teacher view --}}
-                                        <td class="px-2 py-2 border-l border-gray-100">
+                                        {{-- Free Cell — clickable to assign a class to this teacher --}}
+                                        <td
+                                            wire:click="openModal(null, {{ $period->period_no }}, {{ $teacher->id }})"
+                                            class="px-2 py-2 cursor-pointer border-l border-gray-100 hover:bg-emerald-50/70 transition-all group"
+                                            title="Assign class for {{ $teacher->name }} in {{ $period->label }}"
+                                        >
                                             <div class="flex items-center justify-center h-full">
-                                                <span class="text-[11px] text-green-400 bg-green-50 px-2 py-0.5 rounded-full font-medium">Free</span>
+                                                <span class="text-[11px] text-emerald-600 bg-emerald-50 group-hover:bg-emerald-100 group-hover:text-emerald-700 px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1 border border-emerald-200/60 shadow-xs">
+                                                    <span class="text-xs font-bold leading-none">+</span> Assign
+                                                </span>
                                             </div>
                                         </td>
                                     @endif
@@ -307,9 +314,13 @@
             <div class="p-6">
                 <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h2 class="text-xl font-bold text-gray-800">Assign Period</h2>
+                        <h2 class="text-xl font-bold text-gray-800">{{ $editingId ? 'Edit Period Assignment' : 'Assign Period' }}</h2>
                         <p class="text-sm text-gray-500">
-                            {{ $classes->firstWhere('id', $modalClassId)?->name ?? '' }} • 
+                            @if($modalClassId && $classes->firstWhere('id', $modalClassId))
+                                <span class="font-semibold text-gray-700">{{ $classes->firstWhere('id', $modalClassId)->name }}</span> •
+                            @elseif($selectedTeacherId && $teachers->firstWhere('id', $selectedTeacherId))
+                                <span class="font-semibold text-indigo-700">{{ $teachers->firstWhere('id', $selectedTeacherId)->name }}</span> •
+                            @endif
                             @if($selectedDay === 'Everyday')
                                 <span class="text-green-600 font-medium">All Days</span>
                             @else
@@ -323,11 +334,46 @@
                     </button>
                 </div>
 
+                @if(session()->has('error'))
+                    <div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                        <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>{{ session('error') }}</span>
+                    </div>
+                @endif
+
                 <div class="space-y-4">
+                    {{-- Class Selection (Selectable in Teacher View, or whenever class not yet selected) --}}
+                    @if($viewMode === 'teacher' || empty($modalClassId))
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Class <span class="text-red-500">*</span>
+                            </label>
+                            <select wire:model.live="modalClassId" class="w-full px-4 py-2 rounded-xl border {{ empty($modalClassId) ? 'border-amber-400 ring-2 ring-amber-100' : 'border-gray-200' }} focus:ring-2 focus:ring-blue-500 outline-none bg-white font-semibold text-gray-800">
+                                <option value="">-- Select Class --</option>
+                                @foreach($classes as $c)
+                                    @php
+                                        $isClassBusy = in_array($c->id, $this->busyClassIds);
+                                    @endphp
+                                    <option value="{{ $c->id }}">
+                                        {{ $c->name }}{{ $isClassBusy && $c->id != $modalClassId ? ' (Busy in this period)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @if(empty($modalClassId))
+                                <p class="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    Please select a class to load its available subjects
+                                </p>
+                            @endif
+                        </div>
+                    @endif
+
                     {{-- Main Assignment --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Teacher</label>
-                        <select wire:model.live="selectedTeacherId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Teacher <span class="text-red-500">*</span>
+                        </label>
+                        <select wire:model.live="selectedTeacherId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800">
                             <option value="">Select Teacher</option>
                             @foreach($availableTeachers as $teacher)
                                 <option value="{{ $teacher->id }}">{{ $teacher->name }}</option>
@@ -337,7 +383,7 @@
                     </div>
 
                     {{-- Optional Class Teacher Assignment --}}
-                    @if($selectedTeacherId)
+                    @if($selectedTeacherId && $modalClassId)
                         <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-3 transition-all">
                             <label class="flex items-start gap-2.5 cursor-pointer">
                                 <input type="checkbox" wire:model.live="setAsClassTeacher" class="mt-0.5 w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500" />
@@ -366,16 +412,18 @@
                     @endif
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                        <select wire:model.live="selectedSubjectId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="">Select Subject</option>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Subject <span class="text-red-500">*</span>
+                        </label>
+                        <select wire:model.live="selectedSubjectId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800" {{ empty($modalClassId) ? 'disabled' : '' }}>
+                            <option value="">{{ empty($modalClassId) ? 'Select a Class first' : 'Select Subject' }}</option>
                             @foreach($availableSubjects as $subject)
                                 <option value="{{ $subject->id }}">{{ $subject->name }}</option>
                             @endforeach
                         </select>
-                        <p class="text-xs text-gray-400 mt-1">Excludes subjects already assigned today</p>
-                    </div>
-
+                        <p class="text-xs text-gray-400 mt-1">
+                            {{ empty($modalClassId) ? 'Class selection is required to display subjects' : 'Excludes subjects already assigned to this class today' }}
+                        </p>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
                         <input type="text" wire:model="room" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Room/Lab" />

@@ -187,40 +187,94 @@ class ScheduleManager extends Component
         return $this->timetables[$classId . '_' . $periodNo] ?? collect();
     }
 
-    public function openModal($classId, $periodNo)
+    public function openModal($classId = null, $periodNo = null, $teacherId = null)
     {
         $period = $this->periods->firstWhere('period_no', $periodNo);
         if ($period && ($period->is_break || $period->is_assembly)) return;
 
         $this->resetModal();
 
-        $this->modalClassId = $classId;
+        $this->modalClassId = $classId ?: null;
         $this->modalPeriodNo = $periodNo;
         $this->modalPeriodLabel = $period->label ?? "Period $periodNo";
 
-        // Get class name for default room
-        $class = $this->classes->firstWhere('id', $classId);
-        $this->room = $class->name ?? '';
-
-        // Load existing if editing
-        $existingSchedules = $this->getSchedule($classId, $periodNo);
-        if ($existingSchedules->isNotEmpty()) {
-            $existing = $existingSchedules->first();
-            $this->editingId = $existing->id;
-            $this->selectedTeacherId = $existing->teacher_id;
-            $this->selectedSubjectId = $existing->subject_id;
-            $this->room = $existing->room;
-            $this->isDivided = $existing->is_divided;
-
-            if ($this->isDivided && $existingSchedules->count() > 1) {
-                $second = $existingSchedules->last();
-                $this->editingId2 = $second->id;
-                $this->selectedTeacherId2 = $second->teacher_id;
-                $this->selectedSubjectId2 = $second->subject_id;
-            }
+        if ($teacherId) {
+            $this->selectedTeacherId = $teacherId;
         }
 
-        // Load current class teacher for this class in this academic session
+        if ($this->modalClassId) {
+            // Get class name for default room
+            $class = $this->classes->firstWhere('id', $this->modalClassId);
+            $this->room = $class->name ?? '';
+
+            // Load existing if editing
+            $existingSchedules = $this->getSchedule($this->modalClassId, $periodNo);
+            if ($existingSchedules->isNotEmpty()) {
+                $existing = $existingSchedules->first();
+                $this->editingId = $existing->id;
+                $this->selectedTeacherId = $existing->teacher_id;
+                $this->selectedSubjectId = $existing->subject_id;
+                $this->room = $existing->room;
+                $this->isDivided = $existing->is_divided;
+
+                if ($this->isDivided && $existingSchedules->count() > 1) {
+                    $second = $existingSchedules->last();
+                    $this->editingId2 = $second->id;
+                    $this->selectedTeacherId2 = $second->teacher_id;
+                    $this->selectedSubjectId2 = $second->subject_id;
+                }
+            }
+
+            // Load current class teacher for this class in this academic session
+            $this->loadClassTeacherInfo($this->modalClassId);
+
+            // Load available subjects
+            $this->loadAvailableSubjects();
+        } else {
+            $this->availableSubjects = collect();
+            $this->availableSubjects2 = collect();
+        }
+
+        // Load smart dropdowns
+        $this->loadAvailableTeachers();
+
+        $this->showModal = true;
+    }
+
+    public function updatedModalClassId($value)
+    {
+        $this->modalClassId = $value ?: null;
+        $this->selectedSubjectId = '';
+        $this->selectedSubjectId2 = '';
+
+        if ($this->modalClassId) {
+            $class = $this->classes->firstWhere('id', $this->modalClassId);
+            if (empty($this->room) || $this->classes->pluck('name')->contains($this->room)) {
+                $this->room = $class->name ?? '';
+            }
+
+            $this->loadClassTeacherInfo($this->modalClassId);
+            $this->loadAvailableSubjects();
+        } else {
+            $this->availableSubjects = collect();
+            $this->availableSubjects2 = collect();
+            $this->currentClassTeacherId = null;
+            $this->currentClassTeacherName = null;
+            $this->setAsClassTeacher = false;
+        }
+
+        $this->loadAvailableTeachers();
+    }
+
+    public function loadClassTeacherInfo($classId)
+    {
+        if (!$classId) {
+            $this->currentClassTeacherId = null;
+            $this->currentClassTeacherName = null;
+            $this->setAsClassTeacher = false;
+            return;
+        }
+
         $currentClassTeacher = DB::table('session_user')
             ->join('users', 'session_user.user_id', '=', 'users.id')
             ->where('session_user.academic_session_id', $this->selectedSessionId)
@@ -237,12 +291,6 @@ class ScheduleManager extends Component
         } else {
             $this->setAsClassTeacher = false;
         }
-
-        // Load smart dropdowns
-        $this->loadAvailableTeachers();
-        $this->loadAvailableSubjects();
-
-        $this->showModal = true;
     }
 
     public function updatedSelectedTeacherId($value)
@@ -252,6 +300,23 @@ class ScheduleManager extends Component
         } else {
             $this->setAsClassTeacher = false;
         }
+    }
+
+    public function getBusyClassIdsProperty()
+    {
+        if (!$this->modalPeriodNo) return [];
+        $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
+
+        return DB::table('timetables')
+            ->join('classes', 'timetables.class_id', '=', 'classes.id')
+            ->where('classes.academic_session_id', $this->selectedSessionId)
+            ->where('timetables.day', $dayToCheck)
+            ->where('timetables.period_no', $this->modalPeriodNo)
+            ->where('timetables.is_substitute', false)
+            ->when($this->editingId, fn($q) => $q->where('timetables.id', '!=', $this->editingId))
+            ->when($this->editingId2 ?? false, fn($q) => $q->where('timetables.id', '!=', $this->editingId2))
+            ->pluck('timetables.class_id')
+            ->toArray();
     }
 
     public function closeModal()
@@ -279,15 +344,15 @@ class ScheduleManager extends Component
         $this->currentClassTeacherName = null;
     }
 
-
-
     public function loadAvailableTeachers()
     {
+        $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
+
         // Get teachers already assigned in this period on this day within the selected session
         $busyTeacherIds = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->where('classes.academic_session_id', $this->selectedSessionId)
-            ->where('timetables.day', $this->selectedDay)
+            ->where('timetables.day', $dayToCheck)
             ->where('timetables.period_no', $this->modalPeriodNo)
             ->where('timetables.is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('timetables.id', '!=', $this->editingId))
@@ -296,19 +361,26 @@ class ScheduleManager extends Component
             ->toArray();
 
         $this->availableTeachers = collect($this->teachers)
-            ->filter(fn($t) => !in_array($t->id, $busyTeacherIds))
+            ->filter(fn($t) => !in_array($t->id, $busyTeacherIds) || ($this->selectedTeacherId && $t->id == $this->selectedTeacherId))
             ->values();
     }
 
     public function loadAvailableSubjects()
     {
+        if (!$this->modalClassId) {
+            $this->availableSubjects = collect();
+            $this->availableSubjects2 = collect();
+            return;
+        }
+
         // Get subjects for this class
         $classSubjects = Subject::where('class_id', $this->modalClassId)->get();
 
         // Get subjects already assigned to this class on this day
+        $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
         $usedSubjectIds = DB::table('timetables')
             ->where('class_id', $this->modalClassId)
-            ->where('day', $this->selectedDay)
+            ->where('day', $dayToCheck)
             ->where('is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
             ->when($this->editingId2 ?? false, fn($q) => $q->where('id', '!=', $this->editingId2))
@@ -329,8 +401,30 @@ class ScheduleManager extends Component
 
     public function save()
     {
+        if (!$this->modalClassId) {
+            session()->flash('error', 'Please select a class.');
+            return;
+        }
+
         if (!$this->selectedTeacherId || !$this->selectedSubjectId) {
             session()->flash('error', 'Please select teacher and subject.');
+            return;
+        }
+
+        // Check if class already has a period assigned at this time (unless editing same or divided)
+        $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
+        $existingClassEntry = DB::table('timetables')
+            ->where('class_id', $this->modalClassId)
+            ->where('day', $dayToCheck)
+            ->where('period_no', $this->modalPeriodNo)
+            ->where('is_substitute', false)
+            ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
+            ->when($this->editingId2 ?? false, fn($q) => $q->where('id', '!=', $this->editingId2))
+            ->first();
+
+        if ($existingClassEntry && !$this->isDivided) {
+            $existingTeacher = collect($this->teachers)->firstWhere('id', $existingClassEntry->teacher_id)?->name ?? 'Another teacher';
+            session()->flash('error', "Class already has an assigned period with {$existingTeacher} in Period {$this->modalPeriodNo}. Enable 'Divided Class' to co-teach.");
             return;
         }
 
