@@ -301,7 +301,7 @@ class SubstitutionManager extends Component
         $shiftType = $this->getActiveShiftType();
         $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
 
-        // Save status to DB immediately
+        // Save status to DB immediately for the changed teacher
         TeacherAttendance::updateOrCreate(
             [
                 'teacher_id' => $teacherId, 
@@ -315,6 +315,8 @@ class SubstitutionManager extends Component
             ]
         );
 
+        $this->teacherStatuses[$teacherId] = $value;
+
         if ($value !== 'Present') {
             $this->loadExistingSubstitutions($teacherId);
         } else {
@@ -322,6 +324,69 @@ class SubstitutionManager extends Component
             unset($this->substitutions[$teacherId]);
             unset($this->showAllTeachersToggle[$teacherId]);
             $this->clearSubstitutionsForTeacher($teacherId);
+        }
+
+        // Auto-mark remaining unmarked teachers as Present in the database
+        // without overwriting anyone already marked as Leave, Absent, Short Leave, Official Duty, etc.
+        $this->autoMarkRemainingTeachersAsPresent($teacherId);
+    }
+
+    /**
+     * When any teacher status is changed to Leave, Absent, etc.,
+     * auto-mark remaining teachers as Present in DB whose attendance has not been updated or marked yet.
+     * Never overwrites teachers who are already marked as Leave, Absent, Short Leave, Official Duty, etc.
+     */
+    public function autoMarkRemainingTeachersAsPresent($excludeTeacherId = null)
+    {
+        $shiftType = $this->getActiveShiftType();
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
+
+        // Fetch teachers who already have an attendance record in DB for this date/session/shift
+        $existingTeacherIds = TeacherAttendance::whereDate('date', $selectedDate)
+            ->where('academic_session_id', $this->selectedSessionId)
+            ->where('shift_type', $shiftType)
+            ->pluck('teacher_id')
+            ->map(fn($id) => (string)$id)
+            ->toArray();
+
+        $toInsert = [];
+        $now = now();
+
+        foreach ($this->teachers as $teacher) {
+            $tId = (string) $teacher->id;
+
+            // Skip the teacher explicitly being modified
+            if ($excludeTeacherId && $tId === (string) $excludeTeacherId) {
+                continue;
+            }
+
+            // If teacher already has an attendance record in DB, do not touch it
+            if (in_array($tId, $existingTeacherIds, true)) {
+                continue;
+            }
+
+            // Do not overwrite teachers who have been chosen as Leave, Absent, Short Leave, Official Duty in local state
+            $localStatus = $this->teacherStatuses[$teacher->id] ?? null;
+            if ($localStatus && $localStatus !== 'Present') {
+                continue;
+            }
+
+            $toInsert[] = [
+                'teacher_id' => $teacher->id,
+                'date' => $selectedDate,
+                'status' => 'Present',
+                'remarks' => $this->teacherRemarks[$teacher->id] ?? null,
+                'academic_session_id' => $this->selectedSessionId,
+                'shift_type' => $shiftType,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
+            $this->teacherStatuses[$teacher->id] = 'Present';
+        }
+
+        if (!empty($toInsert)) {
+            TeacherAttendance::insert($toInsert);
         }
     }
 
@@ -343,6 +408,8 @@ class SubstitutionManager extends Component
             ]
         );
 
+        $this->autoMarkRemainingTeachersAsPresent($teacherId);
+
         session()->flash('message', 'Remark saved.');
     }
 
@@ -353,7 +420,27 @@ class SubstitutionManager extends Component
 
         DB::beginTransaction();
         try {
+            // Find existing non-present records in DB for this date/session/shift
+            $existingNonPresent = TeacherAttendance::whereDate('date', $selectedDate)
+                ->where('academic_session_id', $this->selectedSessionId)
+                ->where('shift_type', $shiftType)
+                ->where('status', '!=', 'Present')
+                ->pluck('teacher_id')
+                ->map(fn($id) => (string)$id)
+                ->toArray();
+
             foreach ($this->teachers as $teacher) {
+                $tId = (string) $teacher->id;
+
+                // Preserve teachers who are already marked as Leave, Absent, Short Leave, Official Duty, etc.
+                if (in_array($tId, $existingNonPresent, true)) {
+                    continue;
+                }
+                $currentLocalStatus = $this->teacherStatuses[$teacher->id] ?? null;
+                if ($currentLocalStatus && $currentLocalStatus !== 'Present') {
+                    continue;
+                }
+
                 TeacherAttendance::updateOrCreate(
                     [
                         'teacher_id' => $teacher->id, 
@@ -370,7 +457,7 @@ class SubstitutionManager extends Component
             }
             DB::commit();
             $this->loadData();
-            session()->flash('message', 'All teachers marked present successfully.');
+            session()->flash('message', 'All remaining teachers marked present successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Error marking all present: ' . $e->getMessage());
@@ -1080,10 +1167,16 @@ class SubstitutionManager extends Component
                 ];
             }
 
-            // Attendance percentage formula: (Present + OD + (SL * 0.5)) / max(1, workingDays) * 100
-            $effectivePresent = $pCount + $odCount + ($slCount * 0.5);
-            $percentage = $workingDaysCount > 0 ? round(($effectivePresent / $workingDaysCount) * 100, 1) : 0;
-            if ($percentage > 100) $percentage = 100;
+            // Only Absent ($aCount) loses/deducts percentage of attendance
+            // Present, Leave, Official Duty, and Short Leave are all credited
+            $creditedDays = $pCount + $lCount + $odCount + $slCount;
+            $markedDays = $creditedDays + $aCount;
+            $isCurrentMonth = Carbon::parse($this->selectedMonth)->isCurrentMonth();
+            $basis = ($isCurrentMonth && $markedDays < $workingDaysCount) 
+                ? $markedDays 
+                : max($workingDaysCount, $markedDays);
+
+            $percentage = $basis > 0 ? min(100, round(($creditedDays / $basis) * 100, 1)) : 0;
 
             $totalPresentAll += $pCount;
             $totalLeavesAll += ($lCount + $slCount);
@@ -1245,9 +1338,20 @@ class SubstitutionManager extends Component
         }
 
         $workingDaysCount = $this->monthlyStats['working_days'] ?? 0;
-        $effectivePresent = $pCount + $odCount + ($slCount * 0.5);
-        $percentage = $workingDaysCount > 0 ? round(($effectivePresent / $workingDaysCount) * 100, 1) : 0;
-        if ($percentage > 100) $percentage = 100;
+        if ($workingDaysCount === 0 && !empty($this->monthlyDays)) {
+            $workingDaysCount = collect($this->monthlyDays)->where('is_weekend', false)->where('is_holiday', false)->count();
+        }
+
+        // Only Absent ($aCount) loses/deducts percentage of attendance
+        // Present, Leave, Official Duty, and Short Leave are all credited
+        $creditedDays = $pCount + $lCount + $odCount + $slCount;
+        $markedDays = $creditedDays + $aCount;
+        $isCurrentMonth = Carbon::parse($this->selectedMonth)->isCurrentMonth();
+        $basis = ($isCurrentMonth && $markedDays < $workingDaysCount) 
+            ? $markedDays 
+            : max($workingDaysCount, $markedDays);
+
+        $percentage = $basis > 0 ? min(100, round(($creditedDays / $basis) * 100, 1)) : 0;
 
         return [
             'teacher' => $teacher,

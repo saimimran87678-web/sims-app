@@ -164,7 +164,7 @@
                     <button 
                         type="button"
                         wire:click="markAllPresent" 
-                        wire:confirm="Are you sure you want to mark all teachers as Present for today?"
+                        wire:confirm="Are you sure you want to mark all remaining teachers as Present for today? (Existing leaves and absences will be preserved)"
                         class="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-semibold text-sm flex items-center gap-2 shadow-sm shadow-emerald-200 transition-all"
                     >
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
