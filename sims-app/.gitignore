@@ -35,6 +35,7 @@ Thumbs.db
 /debug_plan.md
 /tests_output.txt
 /scratch
+scratch_*
 /storage/framework/whatsapp_queue.lock
 .sims-server.state
 
