@@ -126,13 +126,22 @@
             .main-table th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
             .period-no { background: #e5e5e5 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
         }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-    <div class="no-print" style="text-align: right; margin-bottom: 20px;">
-        <button onclick="window.print()" style="padding: 8px 16px; background: #16a34a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(22,163,74,0.2);">Print / Save PDF</button>
-        <button onclick="downloadPdf()" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-left: 8px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">Download PDF</button>
-        <button onclick="window.close()" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; cursor: pointer; margin-left: 8px;">Close Window</button>
+    <div class="no-print" style="max-width: 900px; margin: 0 auto 15px auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div id="download-status" style="display: none; padding: 8px 16px; border-radius: 8px; color: white; font-weight: 600; font-size: 13px; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: all 0.3s ease;">
+        </div>
+        <div style="margin-left: auto;">
+            <button onclick="window.print()" style="padding: 8px 16px; background: #16a34a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(22,163,74,0.2);">Print / Save PDF</button>
+            <button onclick="downloadPdf()" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-left: 8px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">Download PDF</button>
+            <button onclick="window.close()" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; cursor: pointer; margin-left: 8px;">Close Window</button>
+        </div>
     </div>
 
     <div id="report-content" style="padding: 40px; background: white; max-width: 900px; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
@@ -164,8 +173,41 @@
         </table>
     </div>
 
+    {{-- Closed / Merged Classroom Notices --}}
+    @if(!empty($closedClasses) || !empty($mergedClasses))
+        <div style="margin-bottom: 20px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 15px;">
+            <div style="font-size: 11px; font-weight: bold; color: #1e293b; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">
+                Special Classroom Arrangements &amp; Status for Today
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    @if(!empty($closedClasses))
+                        <td style="vertical-align: top; width: 50%; padding-right: 10px;">
+                            <span style="font-size: 11px; font-weight: bold; color: #b91c1c;">● Closed Classrooms:</span>
+                            <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 11px; color: #334155;">
+                                @foreach($closedClasses as $c)
+                                    <li><strong>{{ $c['class_name'] }}</strong>: {{ $c['reason'] ?: 'Closed for today' }}</li>
+                                @endforeach
+                            </ul>
+                        </td>
+                    @endif
+                    @if(!empty($mergedClasses))
+                        <td style="vertical-align: top; width: 50%; padding-left: 10px;">
+                            <span style="font-size: 11px; font-weight: bold; color: #4338ca;">● Combined / Merged Classrooms:</span>
+                            <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 11px; color: #334155;">
+                                @foreach($mergedClasses as $m)
+                                    <li><strong>{{ $m['source_class_name'] }}</strong> merged into <strong>{{ $m['target_class_name'] }}</strong> ({{ $m['periods_count'] }} period(s))</li>
+                                @endforeach
+                            </ul>
+                        </td>
+                    @endif
+                </tr>
+            </table>
+        </div>
+    @endif
+
     @if(empty($data))
-        <p style="margin-top: 50px; text-align: center; color: #64748b; font-style: italic;">No arrangements recorded for this date.</p>
+        <p style="margin-top: 30px; text-align: center; color: #64748b; font-style: italic;">No teacher substitutions recorded for this date.</p>
     @else
         <table class="main-table">
             <thead>
@@ -185,6 +227,9 @@
                         <td class="teacher-col">
                             <div class="teacher-name">{{ $teacher['teacher_name'] }}</div>
                             <div class="teacher-status">Status: <span class="{{ $statusColorClass }}">{{ $teacher['status'] }}</span></div>
+                            @if(!empty($teacher['remarks']))
+                                <div style="font-size: 10px; color: #64748b; font-style: italic; margin-top: 3px;">&ldquo;{{ $teacher['remarks'] }}&rdquo;</div>
+                            @endif
                         </td>
                         <td class="arrangements-col">
                             @foreach($teacher['periods'] as $period)
@@ -192,7 +237,11 @@
                                     <div class="period-no">{{ $period['period_no'] }}</div>
                                     <div class="arrangement-details">
                                         <strong>{{ $period['class_name'] }} - {{ $period['subject_name'] }} : </strong>
-                                        @if($period['substitute_name'] === 'Unassigned')
+                                        @if(!empty($period['is_closed']))
+                                            <span style="color: #b91c1c; font-weight: bold; background: #fee2e2; padding: 2px 6px; border-radius: 4px; font-size: 11px;">{{ $period['substitute_name'] }}</span>
+                                        @elseif(!empty($period['is_merged_away']))
+                                            <span style="color: #4338ca; font-weight: bold; background: #e0e7ff; padding: 2px 6px; border-radius: 4px; font-size: 11px;">{{ $period['substitute_name'] }}</span>
+                                        @elseif($period['substitute_name'] === 'Unassigned')
                                             <span class="unassigned">Unassigned</span>
                                         @else
                                             <span class="substitute-name">{{ $period['substitute_name'] }}</span>
@@ -212,25 +261,69 @@
     </div>
     </div> <!-- end report-content -->
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    {{-- Client-side PDF Generation with Local Bundle first + CDN fallback --}}
+    <script src="{{ asset('js/html2pdf.bundle.min.js') }}"></script>
     <script>
         if (typeof html2pdf === 'undefined') {
-            document.write('<script src="{{ asset('js/html2pdf.bundle.min.js') }}"><\/script>');
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"><\/script>');
         }
     </script>
     <script>
+        var isGenerating = false;
+
         function downloadPdf() {
+            if (isGenerating) return;
+            isGenerating = true;
+
+            var statusBox = document.getElementById('download-status');
+            if (statusBox) {
+                statusBox.style.display = 'inline-block';
+                statusBox.style.background = '#1e3a8a';
+                statusBox.innerHTML = '<span style="display:inline-block; animation:spin 1s linear infinite; margin-right:8px;">⏳</span> Preparing and downloading Teacher Arrangement PDF... Please wait...';
+            }
+
             var element = document.getElementById('report-content');
             var opt = {
                 margin:       [10, 10, 10, 10],
                 filename:     'Teacher_Arrangement_{{ $date }}.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, allowTaint: true },
+                html2canvas:  { scale: 2, useCORS: true, allowTaint: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-            
-            html2pdf().set(opt).from(element).save();
+
+            if (typeof html2pdf === 'function') {
+                html2pdf().set(opt).from(element).save().then(function() {
+                    isGenerating = false;
+                    if (statusBox) {
+                        statusBox.style.background = '#16a34a';
+                        statusBox.innerHTML = '✅ Teacher Arrangement PDF downloaded successfully! You can also print or keep this tab open.';
+                        setTimeout(function() {
+                            statusBox.style.opacity = '0';
+                            setTimeout(function() { statusBox.style.display = 'none'; statusBox.style.opacity = '1'; }, 500);
+                        }, 5000);
+                    }
+                }).catch(function(err) {
+                    console.error('PDF generation error:', err);
+                    isGenerating = false;
+                    if (statusBox) {
+                        statusBox.style.background = '#b91c1c';
+                        statusBox.innerHTML = '⚠️ Note: Direct browser download encountered an issue. Please use the "Print / Save PDF" button above.';
+                    }
+                });
+            } else {
+                isGenerating = false;
+                window.print();
+            }
         }
+
+        @if(!isset($autoDownload) || $autoDownload)
+        // Automatically start browser-side PDF rendering & download once assets are loaded
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                downloadPdf();
+            }, 400);
+        });
+        @endif
     </script>
 </body>
 </html>

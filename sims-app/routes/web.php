@@ -93,6 +93,9 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
             'data' => $manager->prepareReportData(),
             'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
             'shiftType' => $manager->getActiveShiftType(),
+            'closedClasses' => $manager->closedClassesList,
+            'mergedClasses' => $manager->mergedClassesList,
+            'autoDownload' => request()->boolean('auto_download', request()->has('download') || request()->has('auto') || true),
         ]);
     })->name('substitutions.print');
 
@@ -116,6 +119,30 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
             'shiftType' => $manager->getActiveShiftType(),
         ]);
     })->name('substitutions.monthly_attendance.print');
+
+    Route::get('/substitutions/teacher-attendance/print', function() {
+        $user = request()->user();
+        $isAdmin = $user && ($user->role === 'admin' || $user->hasRole('Super Admin'));
+        if (!$isAdmin) {
+            abort_if(!$user || ($user->cannot('schedule.manage') && $user->cannot('substitutions.manage')), 403);
+        }
+        $manager = new \App\Livewire\Admin\SubstitutionManager();
+        $manager->selectedMonth = request('month', now()->format('Y-m'));
+        $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
+        $manager->loadData();
+        $manager->selectedTeacherId = request('teacher_id') ?: ($manager->teachers->first()?->id);
+        $manager->loadMonthlyAttendanceData();
+        $details = $manager->getSelectedTeacherMonthlyDetails();
+        
+        return view('pdf.teacher-individual-attendance', [
+            'month' => $manager->selectedMonth,
+            'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
+            'shiftType' => $manager->getActiveShiftType(),
+            'teacher' => $details['teacher'] ?? null,
+            'summary' => $details['summary'] ?? [],
+            'days' => $details['days'] ?? [],
+        ]);
+    })->name('substitutions.teacher_attendance.print');
     Route::get('/classes', \App\Livewire\Admin\ClassManager::class)->name('classes');
     Route::get('/students', \App\Livewire\Admin\StudentManager::class)->name('students');
     Route::get('/students/import', \App\Livewire\Admin\StudentImportManager::class)->name('students.import');
@@ -217,7 +244,15 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
             $manager->selectedDate = request('date', now()->format('Y-m-d'));
             $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
             $manager->loadData();
-            return view('pdf.daily-substitutions', ['date' => $manager->selectedDate, 'data' => $manager->prepareReportData()]);
+            return view('pdf.daily-substitutions', [
+                'date' => $manager->selectedDate, 
+                'data' => $manager->prepareReportData(),
+                'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
+                'shiftType' => $manager->getActiveShiftType(),
+                'closedClasses' => $manager->closedClassesList,
+                'mergedClasses' => $manager->mergedClassesList,
+                'autoDownload' => request()->boolean('auto_download', request()->has('download') || request()->has('auto') || true),
+            ]);
         })->name('shared.substitutions.print');
 
         Route::get('/shared/substitutions/monthly-attendance/print', function() {
@@ -235,6 +270,25 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
                 'shiftType' => $manager->getActiveShiftType(),
             ]);
         })->name('shared.substitutions.monthly_attendance.print');
+
+        Route::get('/shared/substitutions/teacher-attendance/print', function() {
+            $manager = new \App\Livewire\Admin\SubstitutionManager();
+            $manager->selectedMonth = request('month', now()->format('Y-m'));
+            $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
+            $manager->loadData();
+            $manager->selectedTeacherId = request('teacher_id') ?: ($manager->teachers->first()?->id);
+            $manager->loadMonthlyAttendanceData();
+            $details = $manager->getSelectedTeacherMonthlyDetails();
+            
+            return view('pdf.teacher-individual-attendance', [
+                'month' => $manager->selectedMonth,
+                'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
+                'shiftType' => $manager->getActiveShiftType(),
+                'teacher' => $details['teacher'] ?? null,
+                'summary' => $details['summary'] ?? [],
+                'days' => $details['days'] ?? [],
+            ]);
+        })->name('shared.substitutions.teacher_attendance.print');
     });
 
     Route::middleware(['permission:fees.manage'])->group(function () {
