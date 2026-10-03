@@ -369,16 +369,24 @@ class ScheduleManager extends Component
 
     public function getAvailableMergeClassesProperty()
     {
-        if (!$this->modalClassId) return collect();
-        $currentClass = $this->classes->firstWhere('id', $this->modalClassId);
-        if (!$currentClass) return collect();
+        $classId = (int) $this->modalClassId;
 
-        return $this->classes
-            ->where('id', '!=', $this->modalClassId)
-            ->when($currentClass->shift_type && $currentClass->shift_type !== 'regular', function($c) use ($currentClass) {
-                return $c->where('shift_type', $currentClass->shift_type);
-            })
-            ->values();
+        $query = Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $this->selectedSessionId);
+
+        if ($classId) {
+            $query->where('id', '!=', $classId);
+
+            $currentClass = Classes::withoutGlobalScope('active_session')->find($classId);
+            if ($currentClass && !empty($currentClass->shift_type) && !in_array($currentClass->shift_type, ['regular', 'both'])) {
+                $query->where(function($q) use ($currentClass) {
+                    $q->where('shift_type', $currentClass->shift_type)
+                      ->orWhereNull('shift_type');
+                });
+            }
+        }
+
+        return $query->orderBy('numeric_value')->orderBy('name')->get();
     }
 
     public function updatedIsDivided($value)

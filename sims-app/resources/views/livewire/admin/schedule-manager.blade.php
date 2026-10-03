@@ -541,18 +541,31 @@
                     @endif
 
                     {{-- Period Merge --}}
-                    @if($modalClassId && $this->availableMergeClasses->isNotEmpty())
-                        <div class="border-t border-gray-100 pt-4">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" wire:model.live="isMerged" class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500" />
-                                <span class="text-sm font-medium text-gray-700">Merge with Other Section(s)</span>
-                            </label>
-                            <p class="text-xs text-gray-400 ml-6">Teacher will appear in merged sections' timetables simultaneously for this period</p>
-                        </div>
+                    <div class="border-t border-gray-100 pt-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                wire:model.live="isMerged"
+                                class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                                {{ empty($modalClassId) ? 'disabled' : '' }}
+                            />
+                            <span class="text-sm font-medium text-gray-700">Merge with Other Section(s)</span>
+                        </label>
+                        <p class="text-xs text-gray-400 ml-6">
+                            @if(empty($modalClassId))
+                                Select a class above first to merge with other sections
+                            @else
+                                Teacher will appear in merged sections' timetables simultaneously for this period
+                            @endif
+                        </p>
+                    </div>
 
-                        @if($isMerged)
-                            <div class="bg-teal-50 border border-teal-100 rounded-xl p-4">
-                                <p class="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-3">Select Partner Section(s) to Merge</p>
+                    @if($isMerged && $modalClassId)
+                        <div class="bg-teal-50 border border-teal-100 rounded-xl p-4">
+                            <p class="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-3">Select Partner Section(s) to Merge</p>
+                            @if($this->availableMergeClasses->isEmpty())
+                                <p class="text-xs text-teal-700 italic">No other sections or classes available in this session to merge with.</p>
+                            @else
                                 <div class="space-y-2 max-h-40 overflow-y-auto">
                                     @foreach($this->availableMergeClasses as $mergeClass)
                                         <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-teal-100 transition-all">
@@ -570,12 +583,15 @@
                                     @endforeach
                                 </div>
                                 @if(!empty($mergedClassIds))
+                                    @php
+                                        $partnerNames = \App\Models\Classes::withoutGlobalScope('active_session')->whereIn('id', $mergedClassIds)->pluck('name')->join(', ');
+                                    @endphp
                                     <div class="mt-3 text-xs text-teal-700 bg-teal-100 rounded-lg p-2">
-                                        ✅ Teacher will appear in timetables of: <strong>{{ $classes->whereIn('id', $mergedClassIds)->pluck('name')->join(', ') }}</strong>
+                                        ✅ Teacher will appear in timetables of: <strong>{{ $partnerNames }}</strong>
                                     </div>
                                 @endif
-                            </div>
-                        @endif
+                            @endif
+                        </div>
                     @endif
                 </div>
 
