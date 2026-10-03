@@ -13,6 +13,7 @@ class TeacherAttendance extends Model
         'teacher_id',
         'date',
         'status',
+        'remarks',
         'academic_session_id',
         'shift_type',
     ];
@@ -20,5 +21,10 @@ class TeacherAttendance extends Model
     public function teacher()
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function substitutions()
+    {
+        return $this->hasMany(Substitution::class, 'teacher_attendance_id');
     }
 }

@@ -99,21 +99,36 @@ class Dashboard extends Component
                 ->select('timetables.*', 'classes.name as class_name', 'subjects.name as subject_name')
                 ->get();
                 
-            // Also fetch substitute duties for today!
-            $substitutes = DB::table('timetables')
-                ->join('classes', 'timetables.class_id', '=', 'classes.id')
-                ->join('subjects', 'timetables.subject_id', '=', 'subjects.id')
-                ->where('teacher_id', $user->id)
-                ->where('classes.academic_session_id', $activeSessionId)
-                ->where('is_substitute', 1)
-                ->where('substitute_date', $now->format('Y-m-d'))
-                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
-                    $q->where('classes.shift_type', $shiftType);
-                })
-                ->select('timetables.*', 'classes.name as class_name', 'subjects.name as subject_name')
-                ->get();
-                
-            $todaySchedule = $todaySchedule->merge($substitutes)->keyBy('period_no');
+            // Fetch substitute duties for today from dedicated substitutions table
+            $substitutions = \App\Models\Substitution::where('date', $now->format('Y-m-d'))
+                ->where('substitute_teacher_id', $user->id)
+                ->with(['classRoom', 'subject', 'absentTeacher'])
+                ->get()
+                ->map(function ($sub) {
+                    return (object) [
+                        'id' => 'sub_' . $sub->id,
+                        'period_no' => $sub->period_no,
+                        'class_id' => $sub->class_id,
+                        'subject_id' => $sub->subject_id,
+                        'teacher_id' => $sub->substitute_teacher_id,
+                        'day' => $sub->date ? $sub->date->format('l') : now()->format('l'),
+                        'is_substitute' => 1,
+                        'class_name' => $sub->classRoom?->name ?? 'N/A',
+                        'subject_name' => ($sub->subject?->name ?? 'Arrangement') . ($sub->absentTeacher ? ' (Sub for ' . $sub->absentTeacher->name . ')' : ''),
+                    ];
+                });
+
+            // Check if user is absent or has a substitute covering their periods today
+            $relievedPeriods = \App\Models\Substitution::where('date', $now->format('Y-m-d'))
+                ->where('absent_teacher_id', $user->id)
+                ->pluck('period_no')
+                ->toArray();
+
+            $todaySchedule = $todaySchedule->reject(function ($item) use ($relievedPeriods) {
+                return in_array($item->period_no, $relievedPeriods);
+            });
+
+            $todaySchedule = $todaySchedule->merge($substitutions)->keyBy('period_no');
         }
 
         $stats = [

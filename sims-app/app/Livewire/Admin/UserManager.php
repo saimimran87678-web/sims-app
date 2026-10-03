@@ -437,38 +437,6 @@ class UserManager extends Component
                 }
             } elseif ($user->role === 'teacher') {
                 $user->syncRoles(['Teacher']);
-                
-                // If created or updated from admin panel, enable all features (Spatie permissions)
-                // for the active session, except for access control permissions.
-                $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-                if ($activeSessionId) {
-                    $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-                    $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-                    $shiftsToInsert = $isRegular ? ['regular'] : ['morning', 'evening'];
-
-                    $allPermissions = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
-                    $insertData = [];
-                    foreach ($shiftsToInsert as $st) {
-                        foreach ($allPermissions as $perm) {
-                            if (in_array($perm, ['access-control.manage', 'permissions.assign'])) {
-                                continue;
-                            }
-                            $insertData[] = [
-                                'user_id'             => $user->id,
-                                'academic_session_id' => $activeSessionId,
-                                'permission_name'     => $perm,
-                                'shift_type'          => $st,
-                                'created_at'          => now(),
-                                'updated_at'          => now(),
-                            ];
-                        }
-                    }
-                    DB::table('session_user_permissions')
-                        ->where('user_id', $user->id)
-                        ->where('academic_session_id', $activeSessionId)
-                        ->delete();
-                    DB::table('session_user_permissions')->insert($insertData);
-                }
             }
 
             DB::commit();

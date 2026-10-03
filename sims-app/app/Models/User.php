@@ -102,4 +102,19 @@ class User extends Authenticatable
             ->withPivot('class_id', 'class_subject', 'is_active')
             ->withTimestamps();
     }
+
+    public function teacherAttendances()
+    {
+        return $this->hasMany(TeacherAttendance::class, 'teacher_id');
+    }
+
+    public function substitutionsAsAbsent()
+    {
+        return $this->hasMany(Substitution::class, 'absent_teacher_id');
+    }
+
+    public function substitutionsAsSubstitute()
+    {
+        return $this->hasMany(Substitution::class, 'substitute_teacher_id');
+    }
 }
