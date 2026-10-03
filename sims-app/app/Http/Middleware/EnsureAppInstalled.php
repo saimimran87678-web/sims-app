@@ -21,6 +21,8 @@ class EnsureAppInstalled
         'license/sync',
         'cert',
         'up',
+        'session/unlock',
+        'refresh-csrf',
     ];
 
     /**

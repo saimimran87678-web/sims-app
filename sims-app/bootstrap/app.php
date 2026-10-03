@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'license/sync',
             'license-blocked/activate',
             'session/unlock',
+            'session/unlock/*',
+            'refresh-csrf',
         ]);
         
         $middleware->alias([

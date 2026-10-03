@@ -249,52 +249,72 @@
                 `;
                 errorDiv.classList.add('hidden');
                 
-                // High-performance single POST unlock request (zero redirect, zero CSRF lag)
-                fetch(unlockUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        email: currentUserEmail,
-                        password: passwordInput.value
+                // High-performance resilient POST unlock request with auto CSRF recovery
+                const performUnlock = (token = '', isRetry = false) => {
+                    let currentCsrf = token || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    
+                    return fetch(unlockUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': currentCsrf
+                        },
+                        body: JSON.stringify({
+                            email: currentUserEmail,
+                            password: passwordInput.value,
+                            _token: currentCsrf
+                        })
                     })
-                })
-                .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
-                .then(({ ok, status, data }) => {
-                    if (ok && data.success) {
-                        // Session restored successfully!
-                        let freshToken = data.token;
-                        let meta = document.querySelector('meta[name="csrf-token"]');
-                        if (meta && freshToken) meta.setAttribute('content', freshToken);
-                        if (window.Livewire && freshToken) {
-                            window.Livewire.csrf = freshToken;
-                        }
+                    .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
+                    .then(({ ok, status, data }) => {
+                        if (ok && data.success) {
+                            // Session restored successfully!
+                            let freshToken = data.token;
+                            let meta = document.querySelector('meta[name="csrf-token"]');
+                            if (meta && freshToken) meta.setAttribute('content', freshToken);
+                            if (window.Livewire && freshToken) {
+                                window.Livewire.csrf = freshToken;
+                            }
 
-                        lastLoginTime = Date.now();
-                        
-                        let modal = document.getElementById('session-expired-modal');
-                        if (modal) modal.remove();
-                        
-                        sessionStorage.setItem('sims_tab_auth', 'active');
-                        lastActivityTime = Date.now();
-                        isModalOpen = false;
-                        isExpired = false;
-                        
-                        showToast('Session restored successfully. You can continue working.');
-                        
-                        // Restart inactivity checker ticker
-                        startChecker();
-                    } else if (status === 422) {
-                        let errMsg = data.message || (data.errors && data.errors.password ? data.errors.password[0] : 'Authentication failed. Please verify your password.');
-                        throw new Error(errMsg);
-                    } else if (status === 429) {
-                        throw new Error('Too many attempts. Please wait a minute and try again.');
-                    } else {
-                        throw new Error(data.message || 'An error occurred. Please try again.');
-                    }
-                })
+                            lastLoginTime = Date.now();
+                            
+                            let modal = document.getElementById('session-expired-modal');
+                            if (modal) modal.remove();
+                            
+                            sessionStorage.setItem('sims_tab_auth', 'active');
+                            lastActivityTime = Date.now();
+                            isModalOpen = false;
+                            isExpired = false;
+                            
+                            showToast('Session restored successfully. You can continue working.');
+                            
+                            // Restart inactivity checker ticker
+                            startChecker();
+                        } else if (status === 419 && !isRetry) {
+                            // CSRF mismatch fallback: refresh token once and retry automatically
+                            return fetch(refreshCsrfUrl)
+                                .then(r => r.json())
+                                .then(csrfData => {
+                                    if (csrfData && csrfData.token) {
+                                        let meta = document.querySelector('meta[name="csrf-token"]');
+                                        if (meta) meta.setAttribute('content', csrfData.token);
+                                        return performUnlock(csrfData.token, true);
+                                    }
+                                    throw new Error('Session could not be synchronized. Please refresh the page.');
+                                });
+                        } else if (status === 422) {
+                            let errMsg = data.message || (data.errors && data.errors.password ? data.errors.password[0] : 'Authentication failed. Please verify your password.');
+                            throw new Error(errMsg);
+                        } else if (status === 429) {
+                            throw new Error('Too many attempts. Please wait a minute and try again.');
+                        } else {
+                            throw new Error(data.message || 'An error occurred. Please try again.');
+                        }
+                    });
+                };
+
+                performUnlock()
                 .catch(err => {
                     submitBtn.disabled = false;
                     btnText.innerText = 'Unlock Session';
