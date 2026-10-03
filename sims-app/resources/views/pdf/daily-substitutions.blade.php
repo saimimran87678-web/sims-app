@@ -130,17 +130,18 @@
 </head>
 <body>
     <div class="no-print" style="text-align: right; margin-bottom: 20px;">
-        <button onclick="downloadPdf()" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">Download PDF</button>
-        <button onclick="window.close()" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; cursor: pointer; margin-left: 10px;">Close Window</button>
+        <button onclick="window.print()" style="padding: 8px 16px; background: #16a34a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(22,163,74,0.2);">Print / Save PDF</button>
+        <button onclick="downloadPdf()" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-left: 8px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">Download PDF</button>
+        <button onclick="window.close()" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; cursor: pointer; margin-left: 8px;">Close Window</button>
     </div>
 
     <div id="report-content" style="padding: 40px; background: white; max-width: 900px; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
     {{-- Dynamic Institute Header --}}
     <div style="margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; font-family: 'Helvetica', 'Arial', sans-serif;">
         @php
-            $logoPath = \App\Models\Setting::getGlobal('institute_logo');
-            $formalName = \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS'));
-            $address = \App\Models\Setting::getGlobal('institute_address');
+            $logoPath = \App\Models\Setting::get('institute_logo', \App\Models\Setting::getGlobal('institute_logo'));
+            $instituteName = \App\Models\Setting::get('institute_name', \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2'));
+            $address = \App\Models\Setting::get('institute_address', \App\Models\Setting::getGlobal('institute_address'));
         @endphp
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
@@ -150,7 +151,7 @@
                     </td>
                 @endif
                 <td style="text-align: left; vertical-align: middle;">
-                    <div style="font-size: 20px; font-weight: bold; text-transform: uppercase; color: #0f172a; line-height: 1.2; letter-spacing: 0.5px;">{{ $formalName }}</div>
+                    <div style="font-size: 20px; font-weight: bold; text-transform: uppercase; color: #0f172a; line-height: 1.2; letter-spacing: 0.5px;">{{ $instituteName }}</div>
                     @if($address)
                         <div style="font-size: 11px; color: #475569; margin-top: 3px; font-weight: 500;">{{ $address }}</div>
                     @endif
@@ -228,21 +229,8 @@
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             
-            // New Promise-based usage:
-            html2pdf().set(opt).from(element).save().then(function() {
-                // Auto close after downloading
-                setTimeout(function() {
-                    window.close();
-                }, 500);
-            });
+            html2pdf().set(opt).from(element).save();
         }
-
-        // Auto-download on load
-        window.onload = function() {
-            setTimeout(function() {
-                downloadPdf();
-            }, 600);
-        };
     </script>
 </body>
 </html>

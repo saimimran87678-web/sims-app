@@ -26,9 +26,18 @@ class Substitution extends Model
     ];
 
     protected $casts = [
-        'date' => 'date',
         'period_no' => 'integer',
     ];
+
+    public function setDateAttribute($value)
+    {
+        $this->attributes['date'] = $value ? \Carbon\Carbon::parse($value)->format('Y-m-d') : null;
+    }
+
+    public function getDateAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->format('Y-m-d') : null;
+    }
 
     public function academicSession()
     {

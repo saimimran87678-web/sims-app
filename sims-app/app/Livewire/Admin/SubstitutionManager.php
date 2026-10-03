@@ -147,11 +147,12 @@ class SubstitutionManager extends Component
     public function loadTeacherAssignedSubs()
     {
         $shiftType = $this->getActiveShiftType();
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
 
         // Load assigned substitutions from dedicated substitutions table
         $subs = Substitution::with('class')
             ->where('academic_session_id', $this->selectedSessionId)
-            ->where('date', $this->selectedDate)
+            ->whereDate('date', $selectedDate)
             ->where('shift_type', $shiftType)
             ->whereNotNull('substitute_teacher_id')
             ->get();
@@ -171,7 +172,7 @@ class SubstitutionManager extends Component
 
         // ── Daily workload counter from substitutions table ──
         $this->dailySubCounts = Substitution::where('academic_session_id', $this->selectedSessionId)
-            ->where('date', $this->selectedDate)
+            ->whereDate('date', $selectedDate)
             ->where('shift_type', $shiftType)
             ->whereNotNull('substitute_teacher_id')
             ->groupBy('substitute_teacher_id')
@@ -213,8 +214,10 @@ class SubstitutionManager extends Component
             ->orderBy('name')
             ->get();
         
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
+
         // Load attendances with remarks
-        $attendances = TeacherAttendance::where('date', $this->selectedDate)
+        $attendances = TeacherAttendance::whereDate('date', $selectedDate)
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
             ->get()->keyBy('teacher_id');
@@ -242,12 +245,13 @@ class SubstitutionManager extends Component
     public function updatedTeacherStatuses($value, $teacherId)
     {
         $shiftType = $this->getActiveShiftType();
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
 
         // Save status to DB immediately
         TeacherAttendance::updateOrCreate(
             [
                 'teacher_id' => $teacherId, 
-                'date' => $this->selectedDate,
+                'date' => $selectedDate,
                 'academic_session_id' => $this->selectedSessionId,
                 'shift_type' => $shiftType,
             ],
@@ -270,11 +274,12 @@ class SubstitutionManager extends Component
     public function updatedTeacherRemarks($value, $teacherId)
     {
         $shiftType = $this->getActiveShiftType();
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
 
         TeacherAttendance::updateOrCreate(
             [
                 'teacher_id' => $teacherId, 
-                'date' => $this->selectedDate,
+                'date' => $selectedDate,
                 'academic_session_id' => $this->selectedSessionId,
                 'shift_type' => $shiftType,
             ],
@@ -290,6 +295,7 @@ class SubstitutionManager extends Component
     public function markAllPresent()
     {
         $shiftType = $this->getActiveShiftType();
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
 
         DB::beginTransaction();
         try {
@@ -297,7 +303,7 @@ class SubstitutionManager extends Component
                 TeacherAttendance::updateOrCreate(
                     [
                         'teacher_id' => $teacher->id, 
-                        'date' => $this->selectedDate,
+                        'date' => $selectedDate,
                         'academic_session_id' => $this->selectedSessionId,
                         'shift_type' => $shiftType,
                     ],
@@ -320,10 +326,11 @@ class SubstitutionManager extends Component
     public function clearSubstitutionsForTeacher($teacherId)
     {
         $shiftType = $this->getActiveShiftType();
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
 
         Substitution::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->where('date', $this->selectedDate)
+            ->whereDate('date', $selectedDate)
             ->where('absent_teacher_id', $teacherId)
             ->delete();
 
@@ -332,6 +339,7 @@ class SubstitutionManager extends Component
 
     public function loadExistingSubstitutions($teacherId)
     {
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
         $dayOfWeek = Carbon::parse($this->selectedDate)->format('l');
         $shiftType = $this->getActiveShiftType();
 
@@ -358,7 +366,7 @@ class SubstitutionManager extends Component
                 ->where('shift_type', $shiftType)
                 ->where('class_id', $schedule->class_id)
                 ->where('period_no', $schedule->period_no)
-                ->where('date', $this->selectedDate)
+                ->whereDate('date', $selectedDate)
                 ->first();
 
             $this->substitutions[$teacherId][$schedule->period_no] = $existingSub ? $existingSub->substitute_teacher_id : '';
@@ -371,6 +379,7 @@ class SubstitutionManager extends Component
     public function assignSubstitute($absentTeacherId, $periodNo, $classId, $subjectId, $timetableId = null)
     {
         $shiftType = $this->getActiveShiftType();
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
         $substituteTeacherId = $this->substitutions[$absentTeacherId][$periodNo] ?? null;
         $this->warningMessage = '';
 
@@ -380,7 +389,7 @@ class SubstitutionManager extends Component
                 ->where('shift_type', $shiftType)
                 ->where('class_id', $classId)
                 ->where('period_no', $periodNo)
-                ->where('date', $this->selectedDate)
+                ->whereDate('date', $selectedDate)
                 ->delete();
             
             $this->substitutions[$absentTeacherId][$periodNo] = '';
@@ -397,7 +406,7 @@ class SubstitutionManager extends Component
 
         // Link with attendance record if available
         $attendanceRecord = TeacherAttendance::where('teacher_id', $absentTeacherId)
-            ->where('date', $this->selectedDate)
+            ->whereDate('date', $selectedDate)
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
             ->first();
@@ -405,13 +414,13 @@ class SubstitutionManager extends Component
         // Create or update in dedicated substitutions table
         Substitution::updateOrCreate(
             [
-                'date' => $this->selectedDate,
+                'academic_session_id' => $this->selectedSessionId,
+                'shift_type' => $shiftType,
+                'date' => $selectedDate,
                 'class_id' => $classId,
                 'period_no' => $periodNo,
             ],
             [
-                'academic_session_id' => $this->selectedSessionId,
-                'shift_type' => $shiftType,
                 'subject_id' => $subjectId,
                 'timetable_id' => $timetableId,
                 'absent_teacher_id' => $absentTeacherId,

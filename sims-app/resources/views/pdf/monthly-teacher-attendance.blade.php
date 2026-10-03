@@ -184,7 +184,34 @@
     </div>
 
     <div class="header">
-        <h1>Monthly Teacher Attendance Register</h1>
+        @php
+            $instituteLogo = \App\Models\Setting::get('institute_logo', \App\Models\Setting::getGlobal('institute_logo'));
+            $instituteName = \App\Models\Setting::get('institute_name', \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2'));
+            $instituteAddress = \App\Models\Setting::get('institute_address', \App\Models\Setting::getGlobal('institute_address'));
+        @endphp
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
+            <tr>
+                @if($instituteLogo)
+                    <td style="width: 60px; text-align: left; vertical-align: middle; padding-right: 12px;">
+                        <img src="{{ '/' . $instituteLogo }}" style="height: 48px; max-width: 60px; object-fit: contain;">
+                    </td>
+                @endif
+                <td style="text-align: center; vertical-align: middle;">
+                    <h1 style="margin: 0 0 2px 0; font-size: 19px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">{{ $instituteName }}</h1>
+                    @if($instituteAddress)
+                        <div style="font-size: 10px; color: #475569; margin-bottom: 3px;">{{ $instituteAddress }}</div>
+                    @endif
+                    <div style="font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Monthly Teacher Attendance Register
+                    </div>
+                </td>
+                @if($instituteLogo)
+                    <td style="width: 60px;"></td>
+                @endif
+            </tr>
+        </table>
+
         <div class="sub-header">
             Month: {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }} 
             &nbsp;&bull;&nbsp; Shift: {{ ucfirst($shiftType) }}

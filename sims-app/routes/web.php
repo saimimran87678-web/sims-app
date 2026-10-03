@@ -79,18 +79,29 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::get('/substitutions', \App\Livewire\Admin\SubstitutionManager::class)->name('substitutions');
     Route::get('/substitutions/print', function() {
         $user = request()->user();
-        abort_if($user->cannot('schedule.manage') && $user->cannot('substitutions.manage'), 403);
+        $isAdmin = $user && ($user->role === 'admin' || $user->hasRole('Super Admin'));
+        if (!$isAdmin) {
+            abort_if(!$user || ($user->cannot('schedule.manage') && $user->cannot('substitutions.manage')), 403);
+        }
         $manager = new \App\Livewire\Admin\SubstitutionManager();
         $manager->selectedDate = request('date', now()->format('Y-m-d'));
         // Load the session requested by the user, fallback to active session
         $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
         $manager->loadData();
-        return view('pdf.daily-substitutions', ['date' => $manager->selectedDate, 'data' => $manager->prepareReportData()]);
+        return view('pdf.daily-substitutions', [
+            'date' => $manager->selectedDate, 
+            'data' => $manager->prepareReportData(),
+            'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
+            'shiftType' => $manager->getActiveShiftType(),
+        ]);
     })->name('substitutions.print');
 
     Route::get('/substitutions/monthly-attendance/print', function() {
         $user = request()->user();
-        abort_if($user->cannot('schedule.manage') && $user->cannot('substitutions.manage'), 403);
+        $isAdmin = $user && ($user->role === 'admin' || $user->hasRole('Super Admin'));
+        if (!$isAdmin) {
+            abort_if(!$user || ($user->cannot('schedule.manage') && $user->cannot('substitutions.manage')), 403);
+        }
         $manager = new \App\Livewire\Admin\SubstitutionManager();
         $manager->selectedMonth = request('month', now()->format('Y-m'));
         $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
