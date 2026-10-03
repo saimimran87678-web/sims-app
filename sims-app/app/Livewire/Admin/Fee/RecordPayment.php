@@ -152,10 +152,20 @@ class RecordPayment extends Component
 
     public function updatedAmount($value)
     {
+        if (!$this->recordId) {
+            return;
+        }
+
+        // Re-fetch items fresh — Livewire re-hydration drops eager-loaded relations from JSON
+        $record = FeeRecord::with('items')->find($this->recordId);
+        if (!$record) {
+            return;
+        }
+
         $value = (float)$value;
         $remaining = $value;
         
-        foreach ($this->record->items as $item) {
+        foreach ($record->items as $item) {
             if ($item->amount <= 0) {
                 continue;
             }

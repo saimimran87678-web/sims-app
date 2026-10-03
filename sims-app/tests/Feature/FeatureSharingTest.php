@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 use Livewire\Livewire;
 use App\Livewire\Admin\AccessControl\FeatureSharingManager;
+use PHPUnit\Framework\Attributes\Test;
 
 class FeatureSharingTest extends TestCase
 {
@@ -58,7 +59,7 @@ class FeatureSharingTest extends TestCase
     // 1. SIDEBAR VISIBILITY: section hidden when no shared permissions exist
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function teacher_sidebar_hides_shared_features_section_when_no_permissions_granted(): void
     {
         $this->actingAs($this->teacher);
@@ -72,7 +73,7 @@ class FeatureSharingTest extends TestCase
     // 2. SIDEBAR VISIBILITY: section appears once any permission is granted
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function teacher_sidebar_shows_shared_features_section_after_permission_is_granted(): void
     {
         // Grant fees.manage to the teacher for the active session
@@ -96,7 +97,7 @@ class FeatureSharingTest extends TestCase
     // 3. GATE: teacher with fees.manage can access protected routes
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function teacher_with_fees_manage_permission_can_access_shared_fee_routes(): void
     {
         DB::table('session_user_permissions')->insert([
@@ -117,7 +118,7 @@ class FeatureSharingTest extends TestCase
     // 4. GATE: teacher without fees.manage is denied
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function teacher_without_fees_manage_permission_is_denied_fee_routes(): void
     {
         $this->actingAs($this->teacher);
@@ -130,7 +131,7 @@ class FeatureSharingTest extends TestCase
     // 5. ADMIN: accesses own admin fee routes (no session_user_permissions needed)
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function admin_can_access_admin_fee_routes_without_session_permissions(): void
     {
         $this->actingAs($this->admin);
@@ -145,7 +146,7 @@ class FeatureSharingTest extends TestCase
     // 6. SESSION ISOLATION: permission in session A does not bleed into session B
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function permission_granted_in_one_session_does_not_affect_another_session(): void
     {
         $sessionB = AcademicSession::create([
@@ -178,7 +179,7 @@ class FeatureSharingTest extends TestCase
     // 7. LIVEWIRE: FeatureSharingManager renders and lists enrolled teachers
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function feature_sharing_manager_renders_for_admin(): void
     {
         $this->actingAs($this->admin);
@@ -192,7 +193,7 @@ class FeatureSharingTest extends TestCase
     // 8. LIVEWIRE: togglePermission grants and writes to session_user_permissions
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function toggle_permission_inserts_record_into_session_user_permissions(): void
     {
         $this->actingAs($this->admin);
@@ -212,7 +213,7 @@ class FeatureSharingTest extends TestCase
     // 9. LIVEWIRE: togglePermission revokes a previously granted permission
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function toggle_permission_removes_existing_record_from_session_user_permissions(): void
     {
         // Pre-grant
@@ -241,7 +242,7 @@ class FeatureSharingTest extends TestCase
     // 10. LIVEWIRE: toggleGroup bulk-enables all permissions in a group
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function toggle_group_enable_inserts_all_permissions_for_group(): void
     {
         $this->actingAs($this->admin);
@@ -268,7 +269,7 @@ class FeatureSharingTest extends TestCase
     // 11. LIVEWIRE: toggleGroup disable removes all permissions in a group
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function toggle_group_disable_removes_all_permissions_for_group(): void
     {
         // Pre-grant both
@@ -294,7 +295,7 @@ class FeatureSharingTest extends TestCase
     // 12. LIVEWIRE: loadUserPermissions reflects DB state correctly
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function load_user_permissions_reflects_database_state(): void
     {
         DB::table('session_user_permissions')->insert([
@@ -316,7 +317,7 @@ class FeatureSharingTest extends TestCase
     // 13. GATE returns false when session_user_permissions row is absent
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function gate_denies_teacher_when_no_session_permission_row_exists(): void
     {
         $this->actingAs($this->teacher);
@@ -328,7 +329,7 @@ class FeatureSharingTest extends TestCase
     // 14. GATE grants teacher once the session_user_permissions row is present
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function gate_allows_teacher_when_session_permission_row_exists(): void
     {
         DB::table('session_user_permissions')->insert([
@@ -348,7 +349,7 @@ class FeatureSharingTest extends TestCase
     // 15. SHARED ACADEMIC SESSIONS TESTS
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function teacher_with_sessions_manage_can_access_shared_sessions_route_but_cannot_delete(): void
     {
         DB::table('session_user_permissions')->insert([
@@ -377,7 +378,7 @@ class FeatureSharingTest extends TestCase
             ->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function teacher_without_sessions_manage_is_denied_sessions_route(): void
     {
         $this->actingAs($this->teacher);
@@ -386,7 +387,7 @@ class FeatureSharingTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function sessions_manage_shows_link_in_teacher_profile_dropdown(): void
     {
         // Without permission
@@ -407,7 +408,7 @@ class FeatureSharingTest extends TestCase
         $response->assertSee('Manage Sessions');
     }
 
-    /** @test */
+    #[Test]
     public function sessions_manage_hides_delete_button_for_teachers(): void
     {
         DB::table('session_user_permissions')->insert([
@@ -426,7 +427,7 @@ class FeatureSharingTest extends TestCase
         $response->assertDontSee('Delete');
     }
 
-    /** @test */
+    #[Test]
     public function feature_sharing_manager_scopes_users_and_classes_by_shift(): void
     {
         $this->actingAs($this->admin);
@@ -517,7 +518,7 @@ class FeatureSharingTest extends TestCase
     // 6. Registration Flow: First user becomes Super Admin, subsequent are staff
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function registration_assigns_super_admin_role_to_first_user_only_and_attaches_session(): void
     {
         // Clear all users first to test first user registration
@@ -577,7 +578,7 @@ class FeatureSharingTest extends TestCase
     // 7. UserManager: Admin created from panel has all features, Teacher has all features
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function admin_created_from_user_manager_is_staff_admin_with_all_permissions_except_access_control(): void
     {
         $this->actingAs($this->admin);
@@ -608,7 +609,7 @@ class FeatureSharingTest extends TestCase
         $this->assertFalse($newUser->can('access-control.manage'));
     }
 
-    /** @test */
+    #[Test]
     public function teacher_created_from_user_manager_has_teacher_role_and_all_permissions_except_access_control(): void
     {
         $this->actingAs($this->admin);
@@ -640,7 +641,7 @@ class FeatureSharingTest extends TestCase
         $this->assertFalse($newUser->can('access-control.manage'));
     }
 
-    /** @test */
+    #[Test]
     public function owner_user_with_id_1_cannot_be_deleted_or_disabled(): void
     {
         // Assert that $this->admin has ID 1
@@ -683,7 +684,7 @@ class FeatureSharingTest extends TestCase
         $this->assertTrue((bool)$isActive);
     }
 
-    /** @test */
+    #[Test]
     public function features_are_scoped_by_shift_for_dual_sessions(): void
     {
         // Act as the Super Admin (bypass scoping, has access control permissions)
@@ -713,7 +714,7 @@ class FeatureSharingTest extends TestCase
         $this->assertFalse($this->teacher->can('students.manage'));
     }
 
-    /** @test */
+    #[Test]
     public function features_work_well_for_regular_sessions(): void
     {
         $this->actingAs($this->admin);

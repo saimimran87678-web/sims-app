@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Carbon\Carbon;
+use PHPUnit\Framework\Attributes\Test;
 
 class LicenseSystemTest extends TestCase
 {
@@ -98,7 +99,7 @@ class LicenseSystemTest extends TestCase
 
     // ── Tests ─────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function it_identifies_unlicensed_state_when_database_is_empty()
     {
         DB::table('software_licenses')->truncate();
@@ -109,7 +110,7 @@ class LicenseSystemTest extends TestCase
         $this->assertEquals('unlicensed', $status['reason']);
     }
 
-    /** @test */
+    #[Test]
     public function it_detects_database_integrity_tampering()
     {
         $licenseKey = 'test-lic-key';
@@ -137,7 +138,7 @@ class LicenseSystemTest extends TestCase
         $this->assertEquals('tampered_hash', $status['reason']);
     }
 
-    /** @test */
+    #[Test]
     public function it_blocks_license_when_host_is_not_authorized()
     {
         // 1. Host is not in allowed domains list
@@ -174,7 +175,7 @@ class LicenseSystemTest extends TestCase
         $this->assertEquals(LicenseStatus::STAGE_ACTIVE, $status['stage']);
     }
 
-    /** @test */
+    #[Test]
     public function it_gathers_timeline_stages_correctly()
     {
         $licenseKey = 'valid-key';
@@ -218,7 +219,7 @@ class LicenseSystemTest extends TestCase
         $this->assertEquals(LicenseStatus::STAGE_BLOCKED, LicenseStatus::computeStatus()['stage']);
     }
 
-    /** @test */
+    #[Test]
     public function it_blocks_writes_in_locked_stage()
     {
         Cache::put(LicenseStatus::CACHE_KEY, [
@@ -231,7 +232,7 @@ class LicenseSystemTest extends TestCase
         $this->assertFalse(\canWrite());
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_writes_in_active_stage()
     {
         Cache::put(LicenseStatus::CACHE_KEY, [
@@ -243,7 +244,7 @@ class LicenseSystemTest extends TestCase
         $this->assertTrue(\canWrite());
     }
 
-    /** @test */
+    #[Test]
     public function it_exposes_the_activation_endpoint_and_validates_payload()
     {
         $response = $this->postJson(route('license.activate.post'), [
@@ -253,7 +254,7 @@ class LicenseSystemTest extends TestCase
         $response->assertStatus(422); // Validation error
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_error_for_invalid_license_key_format()
     {
         \Illuminate\Support\Facades\Http::fake([
@@ -269,7 +270,7 @@ class LicenseSystemTest extends TestCase
         $response->assertStatus(404); // Because key doesn't exist, returns 404
     }
 
-    /** @test */
+    #[Test]
     public function it_blocks_database_writes_via_query_listener_when_cannot_write()
     {
         config(['services.license.test_write_block' => true]);
@@ -294,7 +295,7 @@ class LicenseSystemTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_database_writes_to_exempt_tables_when_cannot_write()
     {
         config(['services.license.test_write_block' => true]);
