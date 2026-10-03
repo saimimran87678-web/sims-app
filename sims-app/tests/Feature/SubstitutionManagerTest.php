@@ -151,8 +151,8 @@ class SubstitutionManagerTest extends TestCase
             ]
         ]);
 
-        // After 1 substitution, the substitute teacher has 1 sub today => label becomes "Substitute Teacher [1t/0m]  (Class 10A: P2)"
-        $comp->assertSee('Substitute Teacher [1t/0m]  (Class 10A: P2)');
+        // After 1 substitution, the substitute teacher has 1 sub today => label becomes "Substitute Teacher [1t/1m]  (Class 10A: P2)"
+        $comp->assertSee('Substitute Teacher [1t/1m]  (Class 10A: P2)');
 
         // Now, assign another substitution for Period 4
         // Create another timetable entry for absent teacher on Period 4
@@ -187,8 +187,8 @@ class SubstitutionManagerTest extends TestCase
             ]
         ]);
 
-        // With 2 substitutions, the label becomes "Substitute Teacher [2t/0m]  (Class 10A: P2, Class 10A: P4)"
-        $comp->assertSee('Substitute Teacher [2t/0m]  (Class 10A: P2, Class 10A: P4)');
+        // With 2 substitutions, the label becomes "Substitute Teacher [2t/2m]  (Class 10A: P2, Class 10A: P4)"
+        $comp->assertSee('Substitute Teacher [2t/2m]  (Class 10A: P2, Class 10A: P4)');
 
         // Remove the substitution for Period 2
         $comp->set('substitutions.' . $this->absentTeacher->id . '.2', '')
@@ -204,8 +204,8 @@ class SubstitutionManagerTest extends TestCase
             ]
         ]);
 
-        // After removing P2, 1 sub remains today => "Substitute Teacher [1t/0m]  (Class 10A: P4)"
-        $comp->assertSee('Substitute Teacher [1t/0m]  (Class 10A: P4)');
-        $comp->assertDontSee('Substitute Teacher [2t/0m]  (Class 10A: P2, Class 10A: P4)');
+        // After removing P2, 1 sub remains today => "Substitute Teacher [1t/1m]  (Class 10A: P4)"
+        $comp->assertSee('Substitute Teacher [1t/1m]  (Class 10A: P4)');
+        $comp->assertDontSee('Substitute Teacher [2t/2m]  (Class 10A: P2, Class 10A: P4)');
     }
 }

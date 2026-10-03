@@ -59,7 +59,7 @@ class FeeRecord extends Model
 
     public function items()
     {
-        return $this->hasMany(FeeRecordItem::class);
+        return $this->hasMany(FeeRecordItem::class)->orderBy('id', 'asc');
     }
 
     public function payments()
