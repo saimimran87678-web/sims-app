@@ -829,18 +829,147 @@
                     $selTeacherObj = $teacherDetails['teacher'] ?? null;
                     $selSummary = $teacherDetails['summary'] ?? [];
                     $selDays = $teacherDetails['days'] ?? [];
+                    $teachersListJson = collect($teachers)->map(fn($t) => [
+                        'id' => (string) $t->id,
+                        'name' => $t->name,
+                    ])->values()->toJson();
                 @endphp
                 <div class="space-y-6">
                     {{-- Controls Bar: Teacher Selector, Month, Print --}}
                     <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="flex flex-wrap items-center gap-3">
-                            <div>
+                            {{-- Searchable Teacher Dropdown --}}
+                            <div 
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: @entangle('selectedTeacherId').live,
+                                    teachers: {{ $teachersListJson }},
+                                    get selectedTeacher() {
+                                        return this.teachers.find(t => String(t.id) === String(this.selectedId)) || null;
+                                    },
+                                    get filteredTeachers() {
+                                        if (!this.search.trim()) return this.teachers;
+                                        const term = this.search.toLowerCase();
+                                        return this.teachers.filter(t => t.name.toLowerCase().includes(term));
+                                    },
+                                    select(id) {
+                                        this.selectedId = id;
+                                        this.open = false;
+                                        this.search = '';
+                                    },
+                                    selectFirstMatch() {
+                                        if (this.filteredTeachers.length > 0) {
+                                            this.select(this.filteredTeachers[0].id);
+                                        }
+                                    }
+                                }"
+                                class="relative"
+                                @click.outside="open = false"
+                                @keydown.escape.window="open = false"
+                            >
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Select Teacher</label>
-                                <select wire:model.live="selectedTeacherId" class="px-3.5 py-2 border border-gray-200 rounded-xl text-sm font-bold bg-white focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm min-w-[200px]">
-                                    @foreach($teachers as $t)
-                                        <option value="{{ $t->id }}">{{ $t->name }}</option>
-                                    @endforeach
-                                </select>
+                                
+                                {{-- Trigger Button --}}
+                                <button 
+                                    type="button" 
+                                    @click="open = !open; if(open) { $nextTick(() => $refs.teacherSearchInput.focus()); }"
+                                    class="flex items-center justify-between gap-2.5 px-3.5 py-2 border border-gray-200 rounded-xl text-sm font-bold bg-white hover:bg-gray-50/80 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm min-w-[220px] sm:min-w-[260px] text-left transition-all"
+                                    :class="{ 'ring-2 ring-indigo-500 border-indigo-400': open }"
+                                >
+                                    <div class="flex items-center gap-2 truncate">
+                                        <div class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                            <span x-text="selectedTeacher ? selectedTeacher.name.charAt(0).toUpperCase() : '?'"></span>
+                                        </div>
+                                        <span class="truncate text-gray-800" x-text="selectedTeacher ? selectedTeacher.name : 'Select a teacher...'"></span>
+                                    </div>
+                                    <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+
+                                {{-- Search Popover --}}
+                                <div 
+                                    x-show="open" 
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 translate-y-1 scale-95"
+                                    x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                                    x-transition:leave="transition ease-in duration-100"
+                                    x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                                    x-transition:leave-end="opacity-0 translate-y-1 scale-95"
+                                    class="absolute left-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+                                    style="display: none;"
+                                >
+                                    <!-- Search Input Header -->
+                                    <div class="p-2.5 bg-gray-50/80 border-b border-gray-100">
+                                        <div class="relative">
+                                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                            </span>
+                                            <input 
+                                                type="text" 
+                                                x-ref="teacherSearchInput"
+                                                x-model="search"
+                                                placeholder="Search teacher by name..." 
+                                                class="w-full pl-9 pr-7 py-1.5 text-xs font-semibold bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-800 placeholder-gray-400"
+                                                @keydown.enter.prevent="selectFirstMatch()"
+                                            />
+                                            <button 
+                                                type="button" 
+                                                x-show="search.length > 0" 
+                                                @click="search = ''; $refs.teacherSearchInput.focus()"
+                                                class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="flex items-center justify-between mt-1.5 px-1 text-[10px] text-gray-400 font-medium">
+                                            <span>Showing <strong class="text-gray-600" x-text="filteredTeachers.length"></strong> of <span x-text="teachers.length"></span></span>
+                                            <span x-show="search.length > 0" class="text-indigo-600 font-semibold cursor-pointer hover:underline" @click="search = ''">Clear filter</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Teachers List -->
+                                    <div class="max-h-60 overflow-y-auto divide-y divide-gray-50 p-1">
+                                        <template x-for="t in filteredTeachers" :key="t.id">
+                                            <button 
+                                                type="button"
+                                                @click="select(t.id)"
+                                                class="w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors group"
+                                                :class="String(t.id) === String(selectedId) ? 'bg-indigo-50 text-indigo-900 font-bold' : 'hover:bg-gray-50 text-gray-700 font-medium'"
+                                            >
+                                                <div class="flex items-center gap-2.5 truncate">
+                                                    <div 
+                                                        class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition-colors"
+                                                        :class="String(t.id) === String(selectedId) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-700'"
+                                                    >
+                                                        <span x-text="t.name.charAt(0).toUpperCase()"></span>
+                                                    </div>
+                                                    <span class="truncate" x-text="t.name"></span>
+                                                </div>
+
+                                                <template x-if="String(t.id) === String(selectedId)">
+                                                    <svg class="w-4 h-4 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                </template>
+                                            </button>
+                                        </template>
+
+                                        <!-- Empty state if search has no results -->
+                                        <div x-show="filteredTeachers.length === 0" class="py-6 px-4 text-center">
+                                            <svg class="w-8 h-8 text-gray-300 mx-auto mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            <p class="text-xs font-semibold text-gray-500">No teachers found</p>
+                                            <p class="text-[10px] text-gray-400 mt-0.5">Try searching with a different name</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
@@ -850,6 +979,17 @@
                                     wire:model.live="selectedMonth" 
                                     class="px-3.5 py-2 border border-gray-200 rounded-xl text-sm font-bold bg-white focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
                                 >
+                            </div>
+
+                            <div class="flex items-center gap-2 pt-1 md:pt-5">
+                                <label class="flex items-center gap-2 cursor-pointer select-none bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 transition-all shadow-xs">
+                                    <input 
+                                        type="checkbox" 
+                                        wire:model.live="excludeWeekends" 
+                                        class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                    <span>Exclude Weekends</span>
+                                </label>
                             </div>
                         </div>
 
@@ -907,9 +1047,16 @@
                         <div class="bg-white border border-gray-150 rounded-2xl shadow-sm overflow-hidden">
                             <div class="p-4 bg-gray-50/75 border-b border-gray-150 flex items-center justify-between">
                                 <div>
-                                    <h4 class="text-base font-bold text-gray-800">
-                                        {{ $selTeacherObj->name }} &mdash; Daily Log &amp; Remarks ({{ \Carbon\Carbon::parse($selectedMonth.'-01')->format('F Y') }})
-                                    </h4>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h4 class="text-base font-bold text-gray-800">
+                                            {{ $selTeacherObj->name }} &mdash; Daily Log &amp; Remarks ({{ \Carbon\Carbon::parse($selectedMonth.'-01')->format('F Y') }})
+                                        </h4>
+                                        @if($excludeWeekends)
+                                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                Weekends Excluded
+                                            </span>
+                                        @endif
+                                    </div>
                                     <p class="text-xs text-gray-500">Chronological attendance status, daily remarks, and period substitution duties</p>
                                 </div>
                             </div>

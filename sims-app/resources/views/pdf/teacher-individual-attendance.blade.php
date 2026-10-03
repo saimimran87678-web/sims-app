@@ -201,10 +201,19 @@
     </style>
 </head>
 <body>
-    <div class="no-print">
-        <button onclick="window.print()" class="btn btn-print">Print Dossier</button>
-        <button onclick="downloadPdf()" class="btn btn-dl">Download PDF</button>
-        <button onclick="window.close()" class="btn btn-close">Close</button>
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+        <div>
+            @if(!empty($excludeWeekends))
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: #f0fdf4; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; border: 1px solid #bbf7d0;">
+                    ✓ Weekends Excluded (Optimized)
+                </span>
+            @endif
+        </div>
+        <div>
+            <button onclick="window.print()" class="btn btn-print">Print Dossier</button>
+            <button onclick="downloadPdf()" class="btn btn-dl">Download PDF</button>
+            <button onclick="window.close()" class="btn btn-close">Close</button>
+        </div>
     </div>
 
     <div id="report-content" style="max-width: 820px; margin: 0 auto; background: white; padding: 10px;">
@@ -227,7 +236,12 @@
                         @if($instituteAddress)
                             <div class="institute-sub">{{ $instituteAddress }}</div>
                         @endif
-                        <div class="report-title">Teacher Monthly Attendance &amp; Remarks Dossier</div>
+                        <div class="report-title">
+                            Teacher Monthly Attendance &amp; Remarks Dossier
+                            @if(!empty($excludeWeekends))
+                                <span style="font-size: 10px; font-weight: 600; color: #16a34a; text-transform: none; margin-left: 6px;">(Weekends Excluded)</span>
+                            @endif
+                        </div>
                     </td>
                     <td style="text-align: right; vertical-align: middle; width: 180px;">
                         <div style="font-weight: 700; color: #0f172a; font-size: 12px;">{{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}</div>

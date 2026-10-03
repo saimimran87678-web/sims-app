@@ -24,6 +24,7 @@ class SubstitutionManager extends Component
     public $reportTab = 'monthly_attendance';
     // Selected teacher for Individual Teacher Attendance & Remarks Report
     public $selectedTeacherId = null;
+    public $excludeWeekends = true; // Exclude weekend days from Daily Log & Remarks by default
 
     public $selectedDate;
     public $selectedSessionId;
@@ -1185,6 +1186,10 @@ class SubstitutionManager extends Component
             $statusCode = '-';
             $remarks = $rec?->remarks ?? '';
 
+            if ($this->excludeWeekends && $dayInfo['is_weekend']) {
+                continue;
+            }
+
             if ($dayInfo['is_weekend']) {
                 $statusText = 'Weekend';
                 $statusCode = 'W';
@@ -1270,7 +1275,8 @@ class SubstitutionManager extends Component
         return route($routeName, [
             'teacher_id' => $tId,
             'month' => $this->selectedMonth,
-            'session_id' => $this->selectedSessionId
+            'session_id' => $this->selectedSessionId,
+            'exclude_weekends' => $this->excludeWeekends ? 1 : 0,
         ]);
     }
 

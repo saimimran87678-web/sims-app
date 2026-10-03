@@ -131,6 +131,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
         $manager->loadData();
         $manager->selectedTeacherId = request('teacher_id') ?: ($manager->teachers->first()?->id);
+        $manager->excludeWeekends = request()->boolean('exclude_weekends', true);
         $manager->loadMonthlyAttendanceData();
         $details = $manager->getSelectedTeacherMonthlyDetails();
         
@@ -141,6 +142,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
             'teacher' => $details['teacher'] ?? null,
             'summary' => $details['summary'] ?? [],
             'days' => $details['days'] ?? [],
+            'excludeWeekends' => $manager->excludeWeekends,
         ]);
     })->name('substitutions.teacher_attendance.print');
     Route::get('/classes', \App\Livewire\Admin\ClassManager::class)->name('classes');
@@ -277,6 +279,7 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
             $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
             $manager->loadData();
             $manager->selectedTeacherId = request('teacher_id') ?: ($manager->teachers->first()?->id);
+            $manager->excludeWeekends = request()->boolean('exclude_weekends', true);
             $manager->loadMonthlyAttendanceData();
             $details = $manager->getSelectedTeacherMonthlyDetails();
             
@@ -287,6 +290,7 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
                 'teacher' => $details['teacher'] ?? null,
                 'summary' => $details['summary'] ?? [],
                 'days' => $details['days'] ?? [],
+                'excludeWeekends' => $manager->excludeWeekends,
             ]);
         })->name('shared.substitutions.teacher_attendance.print');
     });
