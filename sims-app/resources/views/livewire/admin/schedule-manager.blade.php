@@ -154,20 +154,24 @@
                                     >
                                         @if($schedules->isNotEmpty())
                                             <div class="flex flex-col gap-1">
-                                                @foreach($schedules as $schedule)
-                                                    @php
-                                                        $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
-                                                        $subject = \App\Models\Subject::find($schedule->subject_id);
-                                                    @endphp
-                                                    <div class="text-xs space-y-0.5 {{ $loop->index > 0 ? 'border-t border-gray-200 pt-1' : '' }}">
-                                                        <div class="font-bold text-blue-700 truncate">{{ $subject->name ?? '-' }}</div>
-                                                        <div class="text-gray-500 truncate">{{ $teacher->name ?? '-' }}</div>
-                                                        @if($schedule->is_divided && $loop->last)
-                                                            <span class="text-[10px] text-purple-600 bg-purple-50 px-1 rounded">Divided</span>
-                                                        @endif
-                                                    </div>
-                                                @endforeach
+                                        @foreach($schedules as $schedule)
+                                            @php
+                                                $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
+                                                $subject = \App\Models\Subject::find($schedule->subject_id);
+                                                $partnerLabel = $mergedPartnerClassesMap[$schedule->id] ?? null;
+                                            @endphp
+                                            <div class="text-xs space-y-0.5 {{ $loop->index > 0 ? 'border-t border-gray-200 pt-1' : '' }}">
+                                                <div class="font-bold text-blue-700 truncate">{{ $subject->name ?? '-' }}</div>
+                                                <div class="text-gray-500 truncate">{{ $teacher->name ?? '-' }}</div>
+                                                @if($schedule->is_merged && $partnerLabel)
+                                                    <span class="text-[10px] text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded-full border border-teal-200" title="Merged with {{ $partnerLabel }}">🔗 +{{ $partnerLabel }}</span>
+                                                @endif
+                                                @if($schedule->is_divided && $loop->last)
+                                                    <span class="text-[10px] text-purple-600 bg-purple-50 px-1 rounded">Divided</span>
+                                                @endif
                                             </div>
+                                        @endforeach
+                                    </div>
                                         @else
                                             <div class="flex items-center justify-center h-full">
                                                 <span class="text-[11px] text-emerald-600 bg-emerald-50 group-hover:bg-emerald-100 group-hover:text-emerald-700 px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1 border border-emerald-200/60 shadow-xs">
@@ -278,6 +282,9 @@
                                                         <div class="text-gray-500 truncate">{{ $subject->name ?? '—' }}</div>
                                                         @if($row->is_divided)
                                                             <span class="text-[10px] text-purple-600 bg-purple-50 px-1 rounded">Divided</span>
+                                                        @endif
+                                                        @if($row->is_merged && ($mergedPartnerClassesMap[$row->id] ?? null))
+                                                            <span class="text-[10px] text-teal-700 bg-teal-50 px-1 rounded">🔗 +{{ $mergedPartnerClassesMap[$row->id] }}</span>
                                                         @endif
                                                         @if($row->room)
                                                             <div class="text-[10px] text-gray-400">{{ $row->room }}</div>
@@ -440,6 +447,7 @@
                         <p class="text-xs text-gray-400 mt-1">
                             {{ empty($modalClassId) ? 'Class selection is required to display subjects' : 'Excludes subjects already assigned to this class today' }}
                         </p>
+                    </div>{{-- close subject div --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
                         <input type="text" wire:model="room" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Room/Lab" />
@@ -464,40 +472,110 @@
                         </div>
                     @endif
 
-                    {{-- Divided Class --}}
+                    {{-- Divided Class: Dynamic Slots Repeater --}}
                     <div class="border-t border-gray-100 pt-4">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" wire:model.live="isDivided" class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500" />
-                            <span class="text-sm font-medium text-gray-700">Divided Class (2 Teachers)</span>
+                            <span class="text-sm font-medium text-gray-700">Divided Class (Multiple Teachers)</span>
                         </label>
-                        <p class="text-xs text-gray-400 ml-6">For split groups like Bio/Computer students</p>
+                        <p class="text-xs text-gray-400 ml-6">For split groups like Bio/Computer/Arts/PE students — each teacher grades their own group</p>
                     </div>
 
                     @if($isDivided)
-                        <div class="bg-purple-50 p-4 rounded-xl space-y-3">
-                            <div>
-                                <label class="block text-sm font-medium text-purple-700 mb-1">Teacher 2</label>
-                                <select wire:model="selectedTeacherId2" class="w-full px-4 py-2 rounded-xl border border-purple-200 focus:ring-2 focus:ring-purple-500 outline-none bg-white">
-                                    <option value="">Select Second Teacher</option>
-                                    @foreach($availableTeachers as $teacher)
-                                        @if($teacher->id != $selectedTeacherId)
-                                            <option value="{{ $teacher->id }}">{{ $teacher->name }}</option>
+                        <div class="bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-4">
+                            <p class="text-xs font-semibold text-purple-700 uppercase tracking-wide">Additional Teacher Slots</p>
+
+                            @foreach($dividedSlots as $slotIndex => $slot)
+                                <div class="bg-white border border-purple-200 rounded-xl p-3 space-y-2 relative">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs font-semibold text-purple-700">Teacher {{ $slotIndex + 2 }}</span>
+                                        @if(count($dividedSlots) > 0)
+                                            <button wire:click="removeDividedSlot({{ $slotIndex }})" type="button" class="text-red-400 hover:text-red-600 text-xs flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                Remove
+                                            </button>
                                         @endif
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-purple-700 mb-1">Subject 2</label>
-                                <select wire:model="selectedSubjectId2" class="w-full px-4 py-2 rounded-xl border border-purple-200 focus:ring-2 focus:ring-purple-500 outline-none bg-white">
-                                    <option value="">Select Second Subject</option>
-                                    @foreach($availableSubjects2 as $subject)
-                                        @if($subject->id != $selectedSubjectId)
-                                            <option value="{{ $subject->id }}">{{ $subject->name }}</option>
-                                        @endif
-                                    @endforeach
-                                </select>
-                            </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Teacher</label>
+                                        <select
+                                            wire:model.live="dividedSlots.{{ $slotIndex }}.teacher_id"
+                                            class="w-full px-3 py-1.5 rounded-lg border border-purple-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white text-sm"
+                                        >
+                                            <option value="">Select Teacher</option>
+                                            @foreach($availableTeachers as $teacher)
+                                                @if($teacher->id != $selectedTeacherId)
+                                                    <option value="{{ $teacher->id }}" {{ ($slot['teacher_id'] ?? '') == $teacher->id ? 'selected' : '' }}>{{ $teacher->name }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                                        <select
+                                            wire:model.live="dividedSlots.{{ $slotIndex }}.subject_id"
+                                            class="w-full px-3 py-1.5 rounded-lg border border-purple-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white text-sm"
+                                        >
+                                            <option value="">Select Subject</option>
+                                            @foreach($availableSubjects as $subject)
+                                                @if($subject->id != $selectedSubjectId)
+                                                    <option value="{{ $subject->id }}" {{ ($slot['subject_id'] ?? '') == $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Room (optional)</label>
+                                        <input type="text" wire:model="dividedSlots.{{ $slotIndex }}.room" placeholder="Room / Lab" class="w-full px-3 py-1.5 rounded-lg border border-purple-200 focus:ring-2 focus:ring-purple-400 outline-none text-sm" />
+                                    </div>
+                                </div>
+                            @endforeach
+
+                            @if(count($dividedSlots) < 4)
+                                <button wire:click="addDividedSlot" type="button" class="w-full py-2 border-2 border-dashed border-purple-300 text-purple-600 rounded-xl text-sm font-medium hover:bg-purple-50 hover:border-purple-400 transition-all flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    Add Another Teacher Slot ({{ count($dividedSlots) + 2 }}/{{ 5 }} max)
+                                </button>
+                            @endif
                         </div>
+                    @endif
+
+                    {{-- Period Merge --}}
+                    @if($modalClassId && $availableMergeClasses->isNotEmpty())
+                        <div class="border-t border-gray-100 pt-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" wire:model.live="isMerged" class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500" />
+                                <span class="text-sm font-medium text-gray-700">Merge with Other Section(s)</span>
+                            </label>
+                            <p class="text-xs text-gray-400 ml-6">Teacher will appear in merged sections' timetables simultaneously for this period</p>
+                        </div>
+
+                        @if($isMerged)
+                            <div class="bg-teal-50 border border-teal-100 rounded-xl p-4">
+                                <p class="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-3">Select Partner Section(s) to Merge</p>
+                                <div class="space-y-2 max-h-40 overflow-y-auto">
+                                    @foreach($availableMergeClasses as $mergeClass)
+                                        <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-teal-100 transition-all">
+                                            <input
+                                                type="checkbox"
+                                                value="{{ $mergeClass->id }}"
+                                                wire:model.live="mergedClassIds"
+                                                class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                                            />
+                                            <span class="text-sm font-medium text-teal-900">{{ $mergeClass->name }}</span>
+                                            @if(in_array($mergeClass->id, $busyClassIds))
+                                                <span class="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded ml-auto">Has period (will be overwritten)</span>
+                                            @endif
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @if(!empty($mergedClassIds))
+                                    <div class="mt-3 text-xs text-teal-700 bg-teal-100 rounded-lg p-2">
+                                        ✅ Teacher will appear in timetables of: <strong>{{ $classes->whereIn('id', $mergedClassIds)->pluck('name')->join(', ') }}</strong>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
                     @endif
                 </div>
 

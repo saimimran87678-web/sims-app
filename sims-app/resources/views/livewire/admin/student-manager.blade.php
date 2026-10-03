@@ -149,7 +149,7 @@
                             <select wire:model="bulkSubjectId" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-blue-500 bg-white text-gray-700 font-semibold outline-none">
                                 <option value="">Choose Elective...</option>
                                 @foreach($this->bulkSubjects as $sub)
-                                    <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                    <option value="{{ $sub->id }}">{{ $sub->name }}{{ $sub->teacher_name ? ' (' . $sub->teacher_name . ')' : '' }}</option>
                                 @endforeach
                             </select>
                             <div class="flex gap-1 shrink-0">
@@ -220,6 +220,9 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father's Name</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        @if($selectedClassId && $this->bulkSubjects->isNotEmpty())
+                            <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Elective / Teacher</th>
+                        @endif
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -244,6 +247,21 @@
                                     {{ ucfirst($student->status) }}
                                 </span>
                             </td>
+                            @if($selectedClassId && $this->bulkSubjects->isNotEmpty())
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <select
+                                        wire:change="assignStudentSubject({{ $student->id }}, $event.target.value ? Number($event.target.value) : null)"
+                                        class="px-2 py-1 text-xs rounded-lg border border-purple-200 focus:ring-1 focus:ring-purple-500 bg-white text-gray-700 outline-none min-w-[140px]"
+                                    >
+                                        <option value="">-- No Elective --</option>
+                                        @foreach($this->bulkSubjects as $sub)
+                                            <option value="{{ $sub->id }}" {{ ($studentElectiveMap[$student->id] ?? null) == $sub->id ? 'selected' : '' }}>
+                                                {{ $sub->name }}{{ $sub->teacher_name ? ' (' . $sub->teacher_name . ')' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                            @endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                                 <div class="flex gap-2 justify-end items-center">
                                     @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))

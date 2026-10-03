@@ -40,8 +40,13 @@ class ScheduleManager extends Component
     public $selectedSubjectId = '';
     public $room = '';
     public $isDivided = false;
+    public $dividedSlots = []; // Dynamic slots: [['id' => null, 'teacher_id' => '', 'subject_id' => '', 'room' => '']]
     public $selectedTeacherId2 = '';
     public $selectedSubjectId2 = '';
+    public $isMerged = false;
+    public $mergeGroupId = null;
+    public $mergedClassIds = [];
+    public $mergedPartnerClassesMap = [];
     public $availableSubjects = [];
     public $availableSubjects2 = [];
     public $availableTeachers = [];
@@ -170,6 +175,18 @@ class ScheduleManager extends Component
             if (!$row->teacher_id) continue;
             $this->teacherGridMap[$row->teacher_id][$row->period_no][] = $row;
         }
+
+        // Map merged partners for display
+        $this->mergedPartnerClassesMap = [];
+        $mergedGroups = $rawRows->where('is_merged', true)->groupBy('merge_group_id');
+        foreach ($mergedGroups as $groupId => $groupRows) {
+            if (!$groupId) continue;
+            $classNames = $groupRows->pluck('class_name', 'class_id')->unique();
+            foreach ($groupRows as $row) {
+                $otherNames = $classNames->except($row->class_id)->values()->all();
+                $this->mergedPartnerClassesMap[$row->id] = implode(', ', $otherNames);
+            }
+        }
     }
 
     public function updatedSelectedDay()
@@ -215,13 +232,40 @@ class ScheduleManager extends Component
                 $this->selectedTeacherId = $existing->teacher_id;
                 $this->selectedSubjectId = $existing->subject_id;
                 $this->room = $existing->room;
-                $this->isDivided = $existing->is_divided;
+                $this->isDivided = (bool)$existing->is_divided;
+                $this->isMerged = (bool)($existing->is_merged ?? false);
+                $this->mergeGroupId = $existing->merge_group_id ?? null;
 
                 if ($this->isDivided && $existingSchedules->count() > 1) {
-                    $second = $existingSchedules->last();
-                    $this->editingId2 = $second->id;
-                    $this->selectedTeacherId2 = $second->teacher_id;
-                    $this->selectedSubjectId2 = $second->subject_id;
+                    $this->dividedSlots = [];
+                    $extraSchedules = $existingSchedules->slice(1)->values();
+                    foreach ($extraSchedules as $slotIdx => $sched) {
+                        $this->dividedSlots[] = [
+                            'id' => $sched->id,
+                            'teacher_id' => $sched->teacher_id,
+                            'subject_id' => $sched->subject_id,
+                            'room' => $sched->room ?? '',
+                        ];
+                        if ($slotIdx === 0) {
+                            $this->editingId2 = $sched->id;
+                            $this->selectedTeacherId2 = $sched->teacher_id;
+                            $this->selectedSubjectId2 = $sched->subject_id;
+                        }
+                    }
+                } elseif ($this->isDivided) {
+                    $this->dividedSlots = [
+                        ['id' => null, 'teacher_id' => '', 'subject_id' => '', 'room' => '']
+                    ];
+                }
+
+                if ($this->isMerged && $this->mergeGroupId) {
+                    $this->mergedClassIds = DB::table('timetables')
+                        ->where('merge_group_id', $this->mergeGroupId)
+                        ->where('class_id', '!=', $this->modalClassId)
+                        ->where('is_substitute', false)
+                        ->pluck('class_id')
+                        ->unique()
+                        ->toArray();
                 }
             }
 
@@ -315,8 +359,81 @@ class ScheduleManager extends Component
             ->where('timetables.is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('timetables.id', '!=', $this->editingId))
             ->when($this->editingId2 ?? false, fn($q) => $q->where('timetables.id', '!=', $this->editingId2))
+            ->when($this->mergeGroupId, fn($q) => $q->where(function($subQ) {
+                $subQ->whereNull('timetables.merge_group_id')
+                     ->orWhere('timetables.merge_group_id', '!=', $this->mergeGroupId);
+            }))
             ->pluck('timetables.class_id')
             ->toArray();
+    }
+
+    public function getAvailableMergeClassesProperty()
+    {
+        if (!$this->modalClassId) return collect();
+        $currentClass = $this->classes->firstWhere('id', $this->modalClassId);
+        if (!$currentClass) return collect();
+
+        return $this->classes
+            ->where('id', '!=', $this->modalClassId)
+            ->when($currentClass->shift_type && $currentClass->shift_type !== 'regular', function($c) use ($currentClass) {
+                return $c->where('shift_type', $currentClass->shift_type);
+            })
+            ->values();
+    }
+
+    public function updatedIsDivided($value)
+    {
+        if ($value && empty($this->dividedSlots)) {
+            $this->dividedSlots = [
+                [
+                    'id' => $this->editingId2 ?: null,
+                    'teacher_id' => $this->selectedTeacherId2 ?: '',
+                    'subject_id' => $this->selectedSubjectId2 ?: '',
+                    'room' => '',
+                ]
+            ];
+        }
+    }
+
+    public function addDividedSlot()
+    {
+        if (count($this->dividedSlots) < 5) {
+            $this->dividedSlots[] = [
+                'id' => null,
+                'teacher_id' => '',
+                'subject_id' => '',
+                'room' => '',
+            ];
+        }
+    }
+
+    public function removeDividedSlot($index)
+    {
+        if (isset($this->dividedSlots[$index])) {
+            unset($this->dividedSlots[$index]);
+            $this->dividedSlots = array_values($this->dividedSlots);
+            $this->selectedTeacherId2 = $this->dividedSlots[0]['teacher_id'] ?? '';
+            $this->selectedSubjectId2 = $this->dividedSlots[0]['subject_id'] ?? '';
+            $this->editingId2 = $this->dividedSlots[0]['id'] ?? null;
+        }
+    }
+
+    public function updatedSelectedTeacherId2($value)
+    {
+        if (empty($this->dividedSlots)) {
+            $this->dividedSlots = [['id' => $this->editingId2, 'teacher_id' => $value, 'subject_id' => $this->selectedSubjectId2, 'room' => '']];
+        } else {
+            $this->dividedSlots[0]['teacher_id'] = $value;
+        }
+    }
+
+    public function updatedSelectedSubjectId2($value)
+    {
+        if (empty($this->dividedSlots)) {
+            $this->dividedSlots = [['id' => $this->editingId2, 'teacher_id' => $this->selectedTeacherId2, 'subject_id' => $value, 'room' => '']];
+        } else {
+            $this->dividedSlots[0]['subject_id'] = $value;
+        }
     }
 
     public function closeModal()
@@ -336,8 +453,12 @@ class ScheduleManager extends Component
         $this->selectedSubjectId = '';
         $this->room = '';
         $this->isDivided = false;
+        $this->dividedSlots = [];
         $this->selectedTeacherId2 = '';
         $this->selectedSubjectId2 = '';
+        $this->isMerged = false;
+        $this->mergeGroupId = null;
+        $this->mergedClassIds = [];
         $this->applyToAllDays = false;
         $this->setAsClassTeacher = false;
         $this->currentClassTeacherId = null;
@@ -349,16 +470,42 @@ class ScheduleManager extends Component
         $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
 
         // Get teachers already assigned in this period on this day within the selected session
-        $busyTeacherIds = DB::table('timetables')
+        $busyQuery = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->where('classes.academic_session_id', $this->selectedSessionId)
             ->where('timetables.day', $dayToCheck)
             ->where('timetables.period_no', $this->modalPeriodNo)
-            ->where('timetables.is_substitute', false)
-            ->when($this->editingId, fn($q) => $q->where('timetables.id', '!=', $this->editingId))
-            ->when($this->editingId2 ?? false, fn($q) => $q->where('timetables.id', '!=', $this->editingId2))
-            ->pluck('timetables.teacher_id')
-            ->toArray();
+            ->where('timetables.is_substitute', false);
+
+        if ($this->editingId) {
+            $busyQuery->where('timetables.id', '!=', $this->editingId);
+        }
+
+        if (!empty($this->dividedSlots)) {
+            $dividedIds = array_filter(array_column($this->dividedSlots, 'id'));
+            if (!empty($dividedIds)) {
+                $busyQuery->whereNotIn('timetables.id', $dividedIds);
+            }
+        }
+
+        if ($this->editingId2) {
+            $busyQuery->where('timetables.id', '!=', $this->editingId2);
+        }
+
+        // If editing an existing merged period, allow the teacher in partner classes of the same merge group
+        if ($this->mergeGroupId) {
+            $busyQuery->where(function($q) {
+                $q->whereNull('timetables.merge_group_id')
+                  ->orWhere('timetables.merge_group_id', '!=', $this->mergeGroupId);
+            });
+        }
+
+        // If currently selecting partner classes to merge, exclude those partner classes from busy check
+        if ($this->isMerged && !empty($this->mergedClassIds)) {
+            $busyQuery->whereNotIn('timetables.class_id', $this->mergedClassIds);
+        }
+
+        $busyTeacherIds = $busyQuery->pluck('timetables.teacher_id')->toArray();
 
         $this->availableTeachers = collect($this->teachers)
             ->filter(fn($t) => !in_array($t->id, $busyTeacherIds) || ($this->selectedTeacherId && $t->id == $this->selectedTeacherId))
@@ -411,25 +558,42 @@ class ScheduleManager extends Component
             return;
         }
 
-        // Check if class already has a period assigned at this time (unless editing same or divided)
+        // Validate divided slots: all slots that have a teacher must also have a subject
+        foreach ($this->dividedSlots as $idx => $slot) {
+            if (!empty($slot['teacher_id']) && empty($slot['subject_id'])) {
+                session()->flash('error', 'Each divided teacher slot must have a subject assigned.');
+                return;
+            }
+        }
+
         $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
-        $existingClassEntry = DB::table('timetables')
+
+        // Collect IDs of divided slots being edited (to exclude from conflict check)
+        $editingDividedIds = array_filter(array_column($this->dividedSlots, 'id'));
+
+        // Check if class already has a period assigned at this time (unless editing same or divided)
+        $existingClassEntries = DB::table('timetables')
             ->where('class_id', $this->modalClassId)
             ->where('day', $dayToCheck)
             ->where('period_no', $this->modalPeriodNo)
             ->where('is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
-            ->when($this->editingId2 ?? false, fn($q) => $q->where('id', '!=', $this->editingId2))
-            ->first();
+            ->when(!empty($editingDividedIds), fn($q) => $q->whereNotIn('id', $editingDividedIds))
+            ->get();
 
-        if ($existingClassEntry && !$this->isDivided) {
-            $existingTeacher = collect($this->teachers)->firstWhere('id', $existingClassEntry->teacher_id)?->name ?? 'Another teacher';
+        if ($existingClassEntries->isNotEmpty() && !$this->isDivided) {
+            $existingTeacher = collect($this->teachers)->firstWhere('id', $existingClassEntries->first()->teacher_id)?->name ?? 'Another teacher';
             session()->flash('error', "Class already has an assigned period with {$existingTeacher} in Period {$this->modalPeriodNo}. Enable 'Divided Class' to co-teach.");
             return;
         }
 
+        // Resolve merge group ID
+        $mergeGroupId = null;
+        if ($this->isMerged && !empty($this->mergedClassIds)) {
+            $mergeGroupId = $this->mergeGroupId ?: (string) \Illuminate\Support\Str::uuid();
+        }
+
         // Determine which days to save to
-        // In "Everyday" mode, automatically apply to all days
         if ($this->selectedDay === 'Everyday') {
             $daysToSave = $this->days;
         } elseif ($this->applyToAllDays) {
@@ -438,70 +602,145 @@ class ScheduleManager extends Component
             $daysToSave = [$this->selectedDay];
         }
 
+        // Build full list of slots: primary slot + divided slots
+        $allSlots = [
+            [
+                'id'         => $this->editingId,
+                'teacher_id' => $this->selectedTeacherId,
+                'subject_id' => $this->selectedSubjectId,
+                'room'       => $this->room,
+                'is_primary' => true,
+            ]
+        ];
+        if ($this->isDivided) {
+            foreach ($this->dividedSlots as $slot) {
+                if (!empty($slot['teacher_id']) && !empty($slot['subject_id'])) {
+                    $allSlots[] = [
+                        'id'         => $slot['id'] ?? null,
+                        'teacher_id' => $slot['teacher_id'],
+                        'subject_id' => $slot['subject_id'],
+                        'room'       => $slot['room'] ?? $this->room,
+                        'is_primary' => false,
+                    ];
+                }
+            }
+        }
+
+        // IDs of slots we will save/update (only for the selected day)
+        $savedIds = [];
+
         foreach ($daysToSave as $day) {
-            // Check if entry already exists for this day (when applying to all)
-            $existingEntry = null;
-            if ($this->applyToAllDays && $day !== $this->selectedDay) {
-                $existingEntry = DB::table('timetables')
+            foreach ($allSlots as $slotDef) {
+                $data = [
+                    'class_id'       => $this->modalClassId,
+                    'subject_id'     => $slotDef['subject_id'],
+                    'teacher_id'     => $slotDef['teacher_id'],
+                    'day'            => $day,
+                    'period_no'      => $this->modalPeriodNo,
+                    'room'           => $slotDef['room'],
+                    'is_divided'     => $this->isDivided,
+                    'is_merged'      => $this->isMerged,
+                    'merge_group_id' => $mergeGroupId,
+                    'is_substitute'  => false,
+                    'substitute_date'=> null,
+                    'start_time'     => null,
+                    'end_time'       => null,
+                    'updated_at'     => now(),
+                ];
+
+                if ($slotDef['id'] && $day === $this->selectedDay) {
+                    DB::table('timetables')->where('id', $slotDef['id'])->update($data);
+                    $savedIds[] = $slotDef['id'];
+                } else {
+                    // For "apply to all days" we look for an existing entry on that day
+                    $existingForDay = null;
+                    if ($this->applyToAllDays && $day !== $this->selectedDay) {
+                        // Try to find matching slot on that day for this teacher+subject
+                        $existingForDay = DB::table('timetables')
+                            ->where('class_id', $this->modalClassId)
+                            ->where('period_no', $this->modalPeriodNo)
+                            ->where('day', $day)
+                            ->where('teacher_id', $slotDef['teacher_id'])
+                            ->where('is_substitute', false)
+                            ->first();
+                    }
+                    if ($existingForDay) {
+                        DB::table('timetables')->where('id', $existingForDay->id)->update($data);
+                    } else {
+                        $data['created_at'] = now();
+                        DB::table('timetables')->insert($data);
+                    }
+                }
+            }
+
+            // Remove old divided sibling rows for this class/period/day that are no longer in our slot list
+            if ($day === $this->selectedDay) {
+                $keepIds = array_filter(array_column($allSlots, 'id'));
+                DB::table('timetables')
                     ->where('class_id', $this->modalClassId)
                     ->where('period_no', $this->modalPeriodNo)
                     ->where('day', $day)
                     ->where('is_substitute', false)
-                    ->first();
+                    ->when(!empty($keepIds), fn($q) => $q->whereNotIn('id', $keepIds))
+                    ->when(empty($keepIds), fn($q) => $q->where('id', '!=', $this->editingId ?? 0))
+                    ->delete();
             }
 
-            $data = [
-                'class_id' => $this->modalClassId,
-                'subject_id' => $this->selectedSubjectId,
-                'teacher_id' => $this->selectedTeacherId,
-                'day' => $day,
-                'period_no' => $this->modalPeriodNo,
-                'room' => $this->room,
-                'is_divided' => $this->isDivided,
-                'is_substitute' => false,
-                'substitute_date' => null,
-                'start_time' => null,
-                'end_time' => null,
-                'updated_at' => now(),
-            ];
+            // ── PERIOD MERGE: sync partner classes ──────────────────────────────
+            if ($this->isMerged && $mergeGroupId && !empty($this->mergedClassIds)) {
+                foreach ($this->mergedClassIds as $partnerClassId) {
+                    $partnerData = [
+                        'class_id'       => $partnerClassId,
+                        'subject_id'     => $this->selectedSubjectId,
+                        'teacher_id'     => $this->selectedTeacherId,
+                        'day'            => $day,
+                        'period_no'      => $this->modalPeriodNo,
+                        'room'           => $this->room,
+                        'is_divided'     => false,
+                        'is_merged'      => true,
+                        'merge_group_id' => $mergeGroupId,
+                        'is_substitute'  => false,
+                        'substitute_date'=> null,
+                        'start_time'     => null,
+                        'end_time'       => null,
+                        'updated_at'     => now(),
+                    ];
 
-            if ($this->editingId && $day === $this->selectedDay) {
-                DB::table('timetables')->where('id', $this->editingId)->update($data);
-            } elseif ($existingEntry) {
-                DB::table('timetables')->where('id', $existingEntry->id)->update($data);
-            } else {
-                $data['created_at'] = now();
-                DB::table('timetables')->insert($data);
-            }
+                    $existingPartner = DB::table('timetables')
+                        ->where('class_id', $partnerClassId)
+                        ->where('period_no', $this->modalPeriodNo)
+                        ->where('day', $day)
+                        ->where('is_substitute', false)
+                        ->first();
 
-            // Handle divided class (second entry)
-            if ($this->isDivided && $this->selectedTeacherId2 && $this->selectedSubjectId2) {
-                $data2 = [
-                    'class_id' => $this->modalClassId,
-                    'subject_id' => $this->selectedSubjectId2,
-                    'teacher_id' => $this->selectedTeacherId2,
-                    'day' => $day,
-                    'period_no' => $this->modalPeriodNo,
-                    'room' => $this->room,
-                    'is_divided' => true,
-                    'is_substitute' => false,
-                    'substitute_date' => null,
-                    'start_time' => null,
-                    'end_time' => null,
-                    'updated_at' => now(),
-                ];
-                
-                if ($this->editingId2 && $day === $this->selectedDay) {
-                    DB::table('timetables')->where('id', $this->editingId2)->update($data2);
-                } else {
-                    $data2['created_at'] = now();
-                    DB::table('timetables')->insert($data2);
+                    if ($existingPartner) {
+                        DB::table('timetables')->where('id', $existingPartner->id)->update($partnerData);
+                    } else {
+                        $partnerData['created_at'] = now();
+                        DB::table('timetables')->insert($partnerData);
+                    }
+
+                    // Sync subject_allocations for partner class
+                    DB::table('subject_allocations')->updateOrInsert(
+                        ['class_id' => $partnerClassId, 'subject_id' => $this->selectedSubjectId],
+                        ['user_id' => $this->selectedTeacherId, 'updated_at' => now()]
+                    );
                 }
-            } else {
-                // If it was divided but is no longer divided, delete the second entry
-                if ($this->editingId2 && $day === $this->selectedDay) {
-                    DB::table('timetables')->where('id', $this->editingId2)->delete();
-                }
+            } elseif (!$this->isMerged && $this->mergeGroupId) {
+                // Admin un-merged: remove partner entries that share the old merge group
+                DB::table('timetables')
+                    ->where('merge_group_id', $this->mergeGroupId)
+                    ->where('class_id', '!=', $this->modalClassId)
+                    ->where('day', $day)
+                    ->delete();
+
+                // Clear merge columns on primary entry
+                DB::table('timetables')
+                    ->where('class_id', $this->modalClassId)
+                    ->where('period_no', $this->modalPeriodNo)
+                    ->where('day', $day)
+                    ->where('is_substitute', false)
+                    ->update(['is_merged' => false, 'merge_group_id' => null, 'updated_at' => now()]);
             }
         }
 
@@ -573,30 +812,24 @@ class ScheduleManager extends Component
         }
 
         // Sync Subject Allocation for Gradebook, Results, and Teacher Portal
+        // Primary slot
         if ($this->selectedTeacherId && $this->selectedSubjectId && $this->modalClassId) {
             DB::table('subject_allocations')->updateOrInsert(
-                [
-                    'class_id' => $this->modalClassId,
-                    'subject_id' => $this->selectedSubjectId,
-                ],
-                [
-                    'user_id' => $this->selectedTeacherId,
-                    'updated_at' => now(),
-                ]
+                ['class_id' => $this->modalClassId, 'subject_id' => $this->selectedSubjectId],
+                ['user_id' => $this->selectedTeacherId, 'updated_at' => now()]
             );
         }
 
-        if ($this->isDivided && $this->selectedTeacherId2 && $this->selectedSubjectId2 && $this->modalClassId) {
-            DB::table('subject_allocations')->updateOrInsert(
-                [
-                    'class_id' => $this->modalClassId,
-                    'subject_id' => $this->selectedSubjectId2,
-                ],
-                [
-                    'user_id' => $this->selectedTeacherId2,
-                    'updated_at' => now(),
-                ]
-            );
+        // All divided slots
+        if ($this->isDivided) {
+            foreach ($this->dividedSlots as $slot) {
+                if (!empty($slot['teacher_id']) && !empty($slot['subject_id'])) {
+                    DB::table('subject_allocations')->updateOrInsert(
+                        ['class_id' => $this->modalClassId, 'subject_id' => $slot['subject_id']],
+                        ['user_id' => $slot['teacher_id'], 'updated_at' => now()]
+                    );
+                }
+            }
         }
 
         session()->flash('message', 'Schedule saved successfully!');
@@ -606,42 +839,57 @@ class ScheduleManager extends Component
 
     public function delete()
     {
-        if ($this->editingId) {
-            $entry = DB::table('timetables')->where('id', $this->editingId)->first();
-            DB::table('timetables')->where('id', $this->editingId)->delete();
+        if (!$this->editingId) return;
 
-            // Re-evaluate subject allocation for this class & subject
-            if ($entry && $entry->class_id && $entry->subject_id) {
-                $remainingTeacher = DB::table('timetables')
+        $entry = DB::table('timetables')->where('id', $this->editingId)->first();
+        if (!$entry) return;
+
+        // Delete primary entry
+        DB::table('timetables')->where('id', $this->editingId)->delete();
+
+        // Delete all sibling divided entries for same class/period/day
+        if ($entry->is_divided) {
+            DB::table('timetables')
+                ->where('class_id', $entry->class_id)
+                ->where('period_no', $entry->period_no)
+                ->where('day', $entry->day)
+                ->where('is_divided', true)
+                ->where('is_substitute', false)
+                ->delete();
+        }
+
+        // Delete all partner merged entries for the same merge group
+        if ($entry->merge_group_id) {
+            DB::table('timetables')
+                ->where('merge_group_id', $entry->merge_group_id)
+                ->where('is_substitute', false)
+                ->delete();
+        }
+
+        // Re-evaluate subject allocation for this class & subject
+        if ($entry->class_id && $entry->subject_id) {
+            $remainingTeacher = DB::table('timetables')
+                ->where('class_id', $entry->class_id)
+                ->where('subject_id', $entry->subject_id)
+                ->where('is_substitute', false)
+                ->value('teacher_id');
+
+            if ($remainingTeacher) {
+                DB::table('subject_allocations')->updateOrInsert(
+                    ['class_id' => $entry->class_id, 'subject_id' => $entry->subject_id],
+                    ['user_id' => $remainingTeacher, 'updated_at' => now()]
+                );
+            } else {
+                DB::table('subject_allocations')
                     ->where('class_id', $entry->class_id)
                     ->where('subject_id', $entry->subject_id)
-                    ->where('is_substitute', false)
-                    ->value('teacher_id');
-
-                if ($remainingTeacher) {
-                    DB::table('subject_allocations')->updateOrInsert(
-                        [
-                            'class_id' => $entry->class_id,
-                            'subject_id' => $entry->subject_id,
-                        ],
-                        [
-                            'user_id' => $remainingTeacher,
-                            'updated_at' => now(),
-                        ]
-                    );
-                } else {
-                    // No teacher scheduled for this subject in this class anymore
-                    DB::table('subject_allocations')
-                        ->where('class_id', $entry->class_id)
-                        ->where('subject_id', $entry->subject_id)
-                        ->delete();
-                }
+                    ->delete();
             }
-
-            session()->flash('message', 'Schedule entry deleted.');
-            $this->closeModal();
-            $this->loadData();
         }
+
+        session()->flash('message', 'Schedule entry deleted.');
+        $this->closeModal();
+        $this->loadData();
     }
 
     public function copyToAllDays()

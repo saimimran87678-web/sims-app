@@ -785,7 +785,60 @@ class StudentManager extends Component
             ->unique()
             ->toArray();
 
-        return \App\Models\Subject::whereIn('id', $dividedSubjectIds)->get();
+        if (empty($dividedSubjectIds)) {
+            return collect();
+        }
+
+        // Join with subject_allocations to get the assigned teacher name
+        return DB::table('subjects')
+            ->leftJoin('subject_allocations', function ($join) {
+                $join->on('subjects.id', '=', 'subject_allocations.subject_id')
+                     ->where('subject_allocations.class_id', '=', $this->selectedClassId);
+            })
+            ->leftJoin('users', 'subject_allocations.user_id', '=', 'users.id')
+            ->whereIn('subjects.id', $dividedSubjectIds)
+            ->select('subjects.id', 'subjects.name', 'users.name as teacher_name')
+            ->get();
+    }
+
+    public function assignStudentSubject(int $studentId, ?int $subjectId)
+    {
+        if (!$subjectId) {
+            // Remove any existing divided-subject assignment for this student in this class
+            $dividedSubjectIds = DB::table('timetables')
+                ->where('class_id', $this->selectedClassId)
+                ->where('is_divided', true)
+                ->pluck('subject_id')
+                ->unique()
+                ->toArray();
+
+            DB::table('student_subject')
+                ->where('student_id', $studentId)
+                ->whereIn('subject_id', $dividedSubjectIds)
+                ->delete();
+            return;
+        }
+
+        // Remove old divided-subject assignment for this student in this class
+        $dividedSubjectIds = DB::table('timetables')
+            ->where('class_id', $this->selectedClassId)
+            ->where('is_divided', true)
+            ->pluck('subject_id')
+            ->unique()
+            ->toArray();
+
+        DB::table('student_subject')
+            ->where('student_id', $studentId)
+            ->whereIn('subject_id', $dividedSubjectIds)
+            ->delete();
+
+        // Insert the new assignment
+        DB::table('student_subject')->insert([
+            'student_id' => $studentId,
+            'subject_id' => $subjectId,
+        ]);
+
+        session()->flash('message', 'Elective subject assigned.');
     }
 
     public function bulkAssignSubject()
@@ -1247,11 +1300,27 @@ class StudentManager extends Component
         $sportsOptions = \App\Models\DefinedOption::sports()->get();
         $activityOptions = \App\Models\DefinedOption::activities()->get();
 
+        // Build per-student elective subject map for inline dropdown (divided classes only)
+        $studentElectiveMap = [];
+        if ($this->selectedClassId && $this->bulkSubjects->isNotEmpty()) {
+            $dividedSubjectIds = $this->bulkSubjects->pluck('id')->toArray();
+            $studentIds = $students->pluck('id')->toArray();
+            $rows = DB::table('student_subject')
+                ->whereIn('student_id', $studentIds)
+                ->whereIn('subject_id', $dividedSubjectIds)
+                ->select('student_id', 'subject_id')
+                ->get();
+            foreach ($rows as $row) {
+                $studentElectiveMap[$row->student_id] = $row->subject_id;
+            }
+        }
+
         return view('livewire.admin.student-manager', [
             'students' => $students,
             'classes' => $viewClasses,
             'sportsOptions' => $sportsOptions,
-            'activityOptions' => $activityOptions
+            'activityOptions' => $activityOptions,
+            'studentElectiveMap' => $studentElectiveMap,
         ])->layout($layout, ['title' => 'Student Management']);
     }
 }
