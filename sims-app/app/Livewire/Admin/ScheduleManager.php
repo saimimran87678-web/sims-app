@@ -40,6 +40,11 @@ class ScheduleManager extends Component
     public $availableSubjects2 = [];
     public $availableTeachers = [];
 
+    // Class Teacher Sync
+    public $setAsClassTeacher = false;
+    public $currentClassTeacherId = null;
+    public $currentClassTeacherName = null;
+
     // Session Management
     public $selectedSessionId;
     // public $academicSessions = []; // Actually needed for View. 
@@ -85,11 +90,17 @@ class ScheduleManager extends Component
             $this->periods = PeriodConfig::where('shift_type', $shiftType)->orderBy('period_no')->get();
 
             $this->classes = Classes::withoutGlobalScope('active_session')
-                ->where('academic_session_id', $this->selectedSessionId)
-                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
-                    $q->where('shift_type', $shiftType);
+                ->leftJoin('session_user', function ($join) {
+                    $join->on('classes.id', '=', 'session_user.class_id')
+                         ->where('session_user.academic_session_id', '=', $this->selectedSessionId);
                 })
-                ->orderBy('numeric_value')
+                ->leftJoin('users', 'session_user.user_id', '=', 'users.id')
+                ->where('classes.academic_session_id', $this->selectedSessionId)
+                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                    $q->where('classes.shift_type', $shiftType);
+                })
+                ->select('classes.*', 'users.name as class_teacher_name')
+                ->orderBy('classes.numeric_value')
                 ->get();
             $this->teachers = \App\Models\User::where('role', 'teacher')
                 ->whereExists(function ($query) use ($shiftType) {
@@ -189,11 +200,38 @@ class ScheduleManager extends Component
             }
         }
 
+        // Load current class teacher for this class in this academic session
+        $currentClassTeacher = DB::table('session_user')
+            ->join('users', 'session_user.user_id', '=', 'users.id')
+            ->where('session_user.academic_session_id', $this->selectedSessionId)
+            ->where('session_user.class_id', $classId)
+            ->select('users.id', 'users.name')
+            ->first();
+
+        $this->currentClassTeacherId = $currentClassTeacher?->id;
+        $this->currentClassTeacherName = $currentClassTeacher?->name;
+
+        // Default checkbox to true if selected teacher is already the active class teacher
+        if ($this->selectedTeacherId && $this->currentClassTeacherId && $this->selectedTeacherId == $this->currentClassTeacherId) {
+            $this->setAsClassTeacher = true;
+        } else {
+            $this->setAsClassTeacher = false;
+        }
+
         // Load smart dropdowns
         $this->loadAvailableTeachers();
         $this->loadAvailableSubjects();
 
         $this->showModal = true;
+    }
+
+    public function updatedSelectedTeacherId($value)
+    {
+        if ($value && $this->currentClassTeacherId && $value == $this->currentClassTeacherId) {
+            $this->setAsClassTeacher = true;
+        } else {
+            $this->setAsClassTeacher = false;
+        }
     }
 
     public function closeModal()
@@ -216,6 +254,9 @@ class ScheduleManager extends Component
         $this->selectedTeacherId2 = '';
         $this->selectedSubjectId2 = '';
         $this->applyToAllDays = false;
+        $this->setAsClassTeacher = false;
+        $this->currentClassTeacherId = null;
+        $this->currentClassTeacherName = null;
     }
 
 
@@ -350,18 +391,142 @@ class ScheduleManager extends Component
             }
         }
 
+        // Sync Class Teacher assignment with session_user and User Management
+        if ($this->setAsClassTeacher && $this->selectedTeacherId && $this->modalClassId) {
+            // 1. Clear previous class teacher for this class in this session if different
+            DB::table('session_user')
+                ->where('academic_session_id', $this->selectedSessionId)
+                ->where('class_id', $this->modalClassId)
+                ->where('user_id', '!=', $this->selectedTeacherId)
+                ->update([
+                    'class_id' => null,
+                    'class_subject' => null,
+                    'updated_at' => now(),
+                ]);
+
+            // 2. Fetch subject name for class_subject
+            $subjectObj = Subject::find($this->selectedSubjectId);
+            $subjectName = $subjectObj ? $subjectObj->name : null;
+
+            // 3. Assign this teacher as class teacher in session_user
+            DB::table('session_user')->updateOrInsert(
+                [
+                    'user_id' => $this->selectedTeacherId,
+                    'academic_session_id' => $this->selectedSessionId,
+                ],
+                [
+                    'class_id' => $this->modalClassId,
+                    'class_subject' => $subjectName,
+                    'is_active' => true,
+                    'updated_at' => now(),
+                ]
+            );
+
+            // 4. Keep users table aligned
+            DB::table('users')->where('id', $this->selectedTeacherId)->update([
+                'class_id' => $this->modalClassId,
+                'class_subject' => $subjectName,
+                'updated_at' => now(),
+            ]);
+
+            if ($this->currentClassTeacherId && $this->currentClassTeacherId != $this->selectedTeacherId) {
+                DB::table('users')->where('id', $this->currentClassTeacherId)->where('class_id', $this->modalClassId)->update([
+                    'class_id' => null,
+                    'class_subject' => null,
+                    'updated_at' => now(),
+                ]);
+            }
+        } elseif (!$this->setAsClassTeacher && $this->currentClassTeacherId && $this->selectedTeacherId == $this->currentClassTeacherId) {
+            // Admin explicitly unchecked the class teacher box for this teacher
+            DB::table('session_user')
+                ->where('academic_session_id', $this->selectedSessionId)
+                ->where('user_id', $this->selectedTeacherId)
+                ->where('class_id', $this->modalClassId)
+                ->update([
+                    'class_id' => null,
+                    'class_subject' => null,
+                    'updated_at' => now(),
+                ]);
+
+            DB::table('users')
+                ->where('id', $this->selectedTeacherId)
+                ->where('class_id', $this->modalClassId)
+                ->update([
+                    'class_id' => null,
+                    'class_subject' => null,
+                    'updated_at' => now(),
+                ]);
+        }
+
+        // Sync Subject Allocation for Gradebook, Results, and Teacher Portal
+        if ($this->selectedTeacherId && $this->selectedSubjectId && $this->modalClassId) {
+            DB::table('subject_allocations')->updateOrInsert(
+                [
+                    'class_id' => $this->modalClassId,
+                    'subject_id' => $this->selectedSubjectId,
+                ],
+                [
+                    'user_id' => $this->selectedTeacherId,
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
+        if ($this->isDivided && $this->selectedTeacherId2 && $this->selectedSubjectId2 && $this->modalClassId) {
+            DB::table('subject_allocations')->updateOrInsert(
+                [
+                    'class_id' => $this->modalClassId,
+                    'subject_id' => $this->selectedSubjectId2,
+                ],
+                [
+                    'user_id' => $this->selectedTeacherId2,
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
         session()->flash('message', 'Schedule saved successfully!');
         $this->closeModal();
-        $this->loadTimetables();
+        $this->loadData();
     }
 
     public function delete()
     {
         if ($this->editingId) {
+            $entry = DB::table('timetables')->where('id', $this->editingId)->first();
             DB::table('timetables')->where('id', $this->editingId)->delete();
+
+            // Re-evaluate subject allocation for this class & subject
+            if ($entry && $entry->class_id && $entry->subject_id) {
+                $remainingTeacher = DB::table('timetables')
+                    ->where('class_id', $entry->class_id)
+                    ->where('subject_id', $entry->subject_id)
+                    ->where('is_substitute', false)
+                    ->value('teacher_id');
+
+                if ($remainingTeacher) {
+                    DB::table('subject_allocations')->updateOrInsert(
+                        [
+                            'class_id' => $entry->class_id,
+                            'subject_id' => $entry->subject_id,
+                        ],
+                        [
+                            'user_id' => $remainingTeacher,
+                            'updated_at' => now(),
+                        ]
+                    );
+                } else {
+                    // No teacher scheduled for this subject in this class anymore
+                    DB::table('subject_allocations')
+                        ->where('class_id', $entry->class_id)
+                        ->where('subject_id', $entry->subject_id)
+                        ->delete();
+                }
+            }
+
             session()->flash('message', 'Schedule entry deleted.');
             $this->closeModal();
-            $this->loadTimetables();
+            $this->loadData();
         }
     }
 
@@ -408,10 +573,24 @@ class ScheduleManager extends Component
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                if ($entry->teacher_id && $entry->subject_id && $entry->class_id) {
+                    DB::table('subject_allocations')->updateOrInsert(
+                        [
+                            'class_id' => $entry->class_id,
+                            'subject_id' => $entry->subject_id,
+                        ],
+                        [
+                            'user_id' => $entry->teacher_id,
+                            'updated_at' => now(),
+                        ]
+                    );
+                }
             }
         }
 
         session()->flash('message', $this->selectedDay . ' schedule copied to all weekdays!');
+        $this->loadData();
     }
 
     public function clearDay()
@@ -425,8 +604,66 @@ class ScheduleManager extends Component
             ->where('is_substitute', false)
             ->delete();
 
+        // Clean up any subject allocations that no longer exist anywhere in the week
+        $remainingTimetables = DB::table('timetables')
+            ->whereIn('class_id', $classIds)
+            ->where('is_substitute', false)
+            ->select('class_id', 'subject_id', 'teacher_id')
+            ->distinct()
+            ->get();
+
+        $activeKeys = $remainingTimetables->map(fn($t) => $t->class_id . '_' . $t->subject_id)->toArray();
+
+        DB::table('subject_allocations')
+            ->whereIn('class_id', $classIds)
+            ->get()
+            ->each(function($alloc) use ($activeKeys) {
+                if (!in_array($alloc->class_id . '_' . $alloc->subject_id, $activeKeys)) {
+                    DB::table('subject_allocations')->where('id', $alloc->id)->delete();
+                }
+            });
+
         session()->flash('message', 'All schedule entries for ' . $this->selectedDay . ' have been cleared.');
-        $this->loadTimetables();
+        $this->loadData();
+    }
+
+    public function syncAllocations()
+    {
+        if (!$this->selectedSessionId) {
+            session()->flash('error', 'No active session selected.');
+            return;
+        }
+
+        $sessionClassIds = Classes::withoutGlobalScope('active_session')
+            ->where('academic_session_id', $this->selectedSessionId)
+            ->pluck('id');
+
+        $timetables = DB::table('timetables')
+            ->whereIn('class_id', $sessionClassIds)
+            ->where('is_substitute', false)
+            ->whereNotNull('teacher_id')
+            ->whereNotNull('subject_id')
+            ->select('class_id', 'subject_id', 'teacher_id')
+            ->distinct()
+            ->get();
+
+        $count = 0;
+        foreach ($timetables as $t) {
+            DB::table('subject_allocations')->updateOrInsert(
+                [
+                    'class_id' => $t->class_id,
+                    'subject_id' => $t->subject_id,
+                ],
+                [
+                    'user_id' => $t->teacher_id,
+                    'updated_at' => now(),
+                ]
+            );
+            $count++;
+        }
+
+        session()->flash('message', "Successfully synchronized {$count} subject allocation(s) from Timetable into Gradebook and User Management!");
+        $this->loadData();
     }
 
     public function render()

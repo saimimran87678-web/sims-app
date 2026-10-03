@@ -38,6 +38,17 @@
         </div>
         <div class="flex gap-2">
             <button
+                wire:click="syncAllocations"
+                wire:confirm="Sync all timetable teacher and subject assignments directly into Gradebook and User Management?"
+                class="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-1.5 shadow-sm font-medium"
+                title="Synchronize all timetable entries into Teacher Gradebook and User Management"
+            >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Sync to Gradebook
+            </button>
+            <button
                 wire:click="copyToAllDays"
                 wire:confirm="Copy {{ $selectedDay }}'s schedule to all other weekdays? This will replace existing schedules."
                 class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
@@ -77,7 +88,15 @@
                 <tbody class="bg-white divide-y divide-gray-100">
                     @foreach($classes as $class)
                         <tr class="hover:bg-gray-50/50">
-                            <td class="px-4 py-3 text-sm font-bold text-gray-800 sticky left-0 bg-white">{{ $class->name }}</td>
+                            <td class="px-4 py-3 text-sm font-bold text-gray-800 sticky left-0 bg-white">
+                                <div>{{ $class->name }}</div>
+                                @if(!empty($class->class_teacher_name))
+                                    <div class="text-[10px] font-medium text-amber-600 truncate flex items-center gap-1 mt-0.5" title="Class Teacher: {{ $class->class_teacher_name }}">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span>
+                                        <span class="truncate">CT: {{ $class->class_teacher_name }}</span>
+                                    </div>
+                                @endif
+                            </td>
                             @foreach($periods as $period)
                                 @if($period->is_break)
                                     <td class="px-2 py-3 bg-yellow-50/50 text-center">
@@ -157,6 +176,35 @@
                         </select>
                         <p class="text-xs text-gray-400 mt-1">Only shows teachers not busy this period</p>
                     </div>
+
+                    {{-- Optional Class Teacher Assignment --}}
+                    @if($selectedTeacherId)
+                        <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-3 transition-all">
+                            <label class="flex items-start gap-2.5 cursor-pointer">
+                                <input type="checkbox" wire:model.live="setAsClassTeacher" class="mt-0.5 w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500" />
+                                <div class="flex-1 text-xs">
+                                    <span class="font-semibold text-amber-900 block text-sm">
+                                        Assign as Class Teacher for {{ $classes->firstWhere('id', $modalClassId)?->name }}
+                                    </span>
+                                    <span class="text-amber-700 mt-0.5 block leading-relaxed">
+                                        Syncs directly with User Management. Grants authority to take attendance & manage roll numbers for this class.
+                                    </span>
+                                    @if($currentClassTeacherName)
+                                        <div class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium {{ $selectedTeacherId == $currentClassTeacherId ? 'text-emerald-700' : 'text-amber-800' }}">
+                                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            @if($selectedTeacherId == $currentClassTeacherId)
+                                                <span>Currently active Class Teacher for this class.</span>
+                                            @else
+                                                <span>Currently assigned to <strong>{{ $currentClassTeacherName }}</strong>. Checking this will reassign the role.</span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            </label>
+                        </div>
+                    @endif
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
