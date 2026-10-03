@@ -529,29 +529,39 @@ class ScheduleManager extends Component
         }
 
         // Get subjects for this class
-        $classSubjects = Subject::where('class_id', $this->modalClassId)->get();
+        $classSubjects = Subject::where('class_id', $this->modalClassId)->orderBy('name')->get();
 
-        // Get subjects already assigned to this class on this day
+        // Get subjects already assigned to this class on this day (for informational period hints)
         $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
-        $usedSubjectIds = DB::table('timetables')
+        $usedSubjectPeriods = DB::table('timetables')
             ->where('class_id', $this->modalClassId)
             ->where('day', $dayToCheck)
             ->where('is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
             ->when($this->editingId2 ?? false, fn($q) => $q->where('id', '!=', $this->editingId2))
-            ->pluck('subject_id')
-            ->toArray();
+            ->select('subject_id', 'period_no')
+            ->get()
+            ->groupBy('subject_id');
 
-        $this->availableSubjects = $classSubjects->filter(fn($s) => !in_array($s->id, $usedSubjectIds))->values();
+        // Allow all class subjects, adding a helpful hint if already scheduled today
+        $this->availableSubjects = $classSubjects->map(function ($s) use ($usedSubjectPeriods) {
+            $periods = $usedSubjectPeriods->get($s->id);
+            if ($periods && $periods->isNotEmpty()) {
+                $pList = $periods->pluck('period_no')->sort()->implode(', P');
+                $s->schedule_hint = " (Assigned in P{$pList})";
+            } else {
+                $s->schedule_hint = '';
+            }
+            return $s;
+        });
+
         $this->availableSubjects2 = $this->availableSubjects;
     }
 
     public function updatedSelectedSubjectId()
     {
-        // Update available subjects for second dropdown (exclude first selection)
-        if ($this->isDivided && $this->selectedSubjectId) {
-            $this->availableSubjects2 = $this->availableSubjects->filter(fn($s) => $s->id != $this->selectedSubjectId)->values();
-        }
+        // Keep all subjects available for divided slots so multiple teachers can co-teach the same subject
+        $this->availableSubjects2 = $this->availableSubjects;
     }
 
     public function save()

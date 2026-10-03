@@ -441,11 +441,11 @@
                         <select wire:model.live="selectedSubjectId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800" {{ empty($modalClassId) ? 'disabled' : '' }}>
                             <option value="">{{ empty($modalClassId) ? 'Select a Class first' : 'Select Subject' }}</option>
                             @foreach($availableSubjects as $subject)
-                                <option value="{{ $subject->id }}">{{ $subject->name }}</option>
+                                <option value="{{ $subject->id }}">{{ $subject->name }}{{ $subject->schedule_hint ?? '' }}</option>
                             @endforeach
                         </select>
                         <p class="text-xs text-gray-400 mt-1">
-                            {{ empty($modalClassId) ? 'Class selection is required to display subjects' : 'Excludes subjects already assigned to this class today' }}
+                            {{ empty($modalClassId) ? 'Class selection is required to display subjects' : 'Multiple periods of the same subject on the same day are supported' }}
                         </p>
                     </div>{{-- close subject div --}}
                     <div>
@@ -518,9 +518,7 @@
                                         >
                                             <option value="">Select Subject</option>
                                             @foreach($availableSubjects as $subject)
-                                                @if($subject->id != $selectedSubjectId)
-                                                    <option value="{{ $subject->id }}" {{ ($slot['subject_id'] ?? '') == $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
-                                                @endif
+                                                <option value="{{ $subject->id }}" {{ ($slot['subject_id'] ?? '') == $subject->id ? 'selected' : '' }}>{{ $subject->name }}{{ $subject->schedule_hint ?? '' }}</option>
                                             @endforeach
                                         </select>
                                     </div>
