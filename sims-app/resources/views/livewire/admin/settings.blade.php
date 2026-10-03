@@ -554,9 +554,9 @@
         @endif
 
         @if ($updateSuccessMessage)
-            <div class="p-4 mb-6 bg-emerald-600 border border-emerald-700 text-white font-semibold rounded-xl text-sm flex items-center gap-2.5 shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div class="p-4 mb-6 bg-green-50 border border-green-200 text-green-800 font-medium rounded-xl text-sm flex items-center gap-2.5 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>{{ $updateSuccessMessage }}</span>
             </div>
@@ -771,19 +771,18 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed bottom-6 right-6 z-[9999] max-w-md p-4 rounded-2xl shadow-2xl flex items-center gap-3 border text-sm font-semibold"
-         :class="success ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-red-600 text-white border-red-700'"
-         :style="success ? 'background-color: #059669 !important; border-color: #047857 !important; color: #ffffff !important;' : 'background-color: #dc2626 !important; border-color: #b91c1c !important; color: #ffffff !important;'"
+         class="fixed bottom-6 right-6 z-[9999] max-w-md p-4 rounded-2xl shadow-xl flex items-center gap-3 border text-sm font-medium"
+         :class="success ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'"
          style="display: none;">
-        <svg x-show="success" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg x-show="success" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <svg x-show="!success" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        <svg x-show="!success" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
-        <span class="flex-1 text-white leading-snug" x-text="message"></span>
-        <button type="button" @click="show = false" class="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors">
-            <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <span class="flex-1 leading-snug" :class="success ? 'text-green-800' : 'text-red-800'" x-text="message"></span>
+        <button type="button" @click="show = false" class="p-1 rounded-lg transition-colors" :class="success ? 'text-green-600 hover:text-green-800 hover:bg-green-100' : 'text-red-600 hover:text-red-800 hover:bg-red-100'">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
         </button>

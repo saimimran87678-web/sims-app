@@ -638,6 +638,7 @@ class ScheduleManager extends Component
         $savedIds = [];
 
         foreach ($daysToSave as $day) {
+            $daySavedIds = [];
             foreach ($allSlots as $slotDef) {
                 $data = [
                     'class_id'       => $this->modalClassId,
@@ -658,7 +659,7 @@ class ScheduleManager extends Component
 
                 if ($slotDef['id'] && $day === $this->selectedDay) {
                     DB::table('timetables')->where('id', $slotDef['id'])->update($data);
-                    $savedIds[] = $slotDef['id'];
+                    $daySavedIds[] = $slotDef['id'];
                 } else {
                     // For "apply to all days" we look for an existing entry on that day
                     $existingForDay = null;
@@ -674,32 +675,45 @@ class ScheduleManager extends Component
                     }
                     if ($existingForDay) {
                         DB::table('timetables')->where('id', $existingForDay->id)->update($data);
+                        $daySavedIds[] = $existingForDay->id;
                     } else {
                         $data['created_at'] = now();
-                        DB::table('timetables')->insert($data);
+                        $newId = DB::table('timetables')->insertGetId($data);
+                        $daySavedIds[] = $newId;
                     }
                 }
             }
 
-            // Remove old divided sibling rows for this class/period/day that are no longer in our slot list
-            if ($day === $this->selectedDay) {
-                $keepIds = array_filter(array_column($allSlots, 'id'));
+            // Remove old divided sibling rows for this class/period/day that are no longer in our saved list
+            if (!empty($daySavedIds)) {
                 DB::table('timetables')
                     ->where('class_id', $this->modalClassId)
                     ->where('period_no', $this->modalPeriodNo)
                     ->where('day', $day)
                     ->where('is_substitute', false)
-                    ->when(!empty($keepIds), fn($q) => $q->whereNotIn('id', $keepIds))
-                    ->when(empty($keepIds), fn($q) => $q->where('id', '!=', $this->editingId ?? 0))
+                    ->whereNotIn('id', $daySavedIds)
                     ->delete();
             }
 
             // ── PERIOD MERGE: sync partner classes ──────────────────────────────
             if ($this->isMerged && $mergeGroupId && !empty($this->mergedClassIds)) {
+                $primarySubject = Subject::find($this->selectedSubjectId);
+
                 foreach ($this->mergedClassIds as $partnerClassId) {
+                    // Find matching subject in partner class
+                    $partnerSubjectId = $this->selectedSubjectId;
+                    if ($primarySubject) {
+                        $matchingSub = Subject::where('class_id', $partnerClassId)
+                            ->where('name', $primarySubject->name)
+                            ->first();
+                        if ($matchingSub) {
+                            $partnerSubjectId = $matchingSub->id;
+                        }
+                    }
+
                     $partnerData = [
                         'class_id'       => $partnerClassId,
-                        'subject_id'     => $this->selectedSubjectId,
+                        'subject_id'     => $partnerSubjectId,
                         'teacher_id'     => $this->selectedTeacherId,
                         'day'            => $day,
                         'period_no'      => $this->modalPeriodNo,
@@ -730,7 +744,7 @@ class ScheduleManager extends Component
 
                     // Sync subject_allocations for partner class
                     DB::table('subject_allocations')->updateOrInsert(
-                        ['class_id' => $partnerClassId, 'subject_id' => $this->selectedSubjectId],
+                        ['class_id' => $partnerClassId, 'subject_id' => $partnerSubjectId],
                         ['user_id' => $this->selectedTeacherId, 'updated_at' => now()]
                     );
                 }
