@@ -27,6 +27,15 @@ class SubstitutionManager extends Component
     // Structure: [teacher_id => [period_no_1, period_no_2, ...]]
     public $teacherAssignedSubs = [];
 
+    // Workload counters — refreshed on every substitute assign/remove
+    // [teacher_id => int]  — how many substitute slots taken TODAY (this date)
+    public $dailySubCounts = [];
+    // [teacher_id => int]  — how many substitute slots taken this calendar MONTH
+    public $monthlySubCounts = [];
+
+    // UI toggle: show/hide monthly count column in the workload panel & dropdown labels
+    public $showMonthlyCount = true;
+
     // Toggles for "Show All Teachers" per period assignment
     // Structure: [teacher_id => [period_no => boolean]]
     public $showAllTeachersToggle = [];
@@ -108,6 +117,35 @@ class SubstitutionManager extends Component
                 'class_name' => $sub->class_name,
             ];
         }
+
+        // ── Daily workload counter: substitutions THIS date (shift-scoped) ──
+        $this->dailySubCounts = DB::table('timetables')
+            ->join('classes', 'timetables.class_id', '=', 'classes.id')
+            ->where('classes.academic_session_id', $this->selectedSessionId)
+            ->where('timetables.substitute_date', $this->selectedDate)
+            ->where('timetables.is_substitute', true)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
+            ->select('timetables.teacher_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('timetables.teacher_id')
+            ->pluck('total', 'teacher_id')
+            ->toArray();
+
+        // ── Monthly workload counter: substitutions THIS calendar month (shift-scoped) ──
+        $this->monthlySubCounts = DB::table('timetables')
+            ->join('classes', 'timetables.class_id', '=', 'classes.id')
+            ->where('classes.academic_session_id', $this->selectedSessionId)
+            ->where('timetables.is_substitute', true)
+            ->whereYear('timetables.substitute_date', \Carbon\Carbon::parse($this->selectedDate)->year)
+            ->whereMonth('timetables.substitute_date', \Carbon\Carbon::parse($this->selectedDate)->month)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('classes.shift_type', $shiftType);
+            })
+            ->select('timetables.teacher_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('timetables.teacher_id')
+            ->pluck('total', 'teacher_id')
+            ->toArray();
     }
 
     public function loadData()

@@ -7,7 +7,6 @@
                 <p class="text-gray-500">Assign teachers to classes for each period</p>
             </div>
         </div>
-
     </div>
 
     @if(session()->has('message'))
@@ -17,9 +16,10 @@
         <div class="bg-red-50 border border-red-100 p-4 rounded-xl text-red-700">{{ session('error') }}</div>
     @endif
 
-    {{-- Day Tabs --}}
+    {{-- Day Tabs + View Toggle --}}
     <div class="flex flex-wrap gap-2 justify-between items-center border-b border-gray-200 pb-3">
-        <div class="flex gap-2 items-center">
+        {{-- Left: Day Tabs --}}
+        <div class="flex gap-2 items-center flex-wrap">
             <button
                 wire:click="$set('selectedDay', 'Everyday')"
                 class="px-4 py-2 rounded-t-lg font-medium transition-colors {{ $selectedDay === 'Everyday' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200' }}"
@@ -36,7 +36,44 @@
                 </button>
             @endforeach
         </div>
-        <div class="flex gap-2">
+
+        {{-- Right: View Toggle + Action Buttons --}}
+        <div class="flex gap-2 items-center flex-wrap">
+
+            {{-- View Mode Toggle --}}
+            <div class="flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5" role="group" aria-label="Grid view mode">
+                <button
+                    wire:click="$set('viewMode', 'class')"
+                    id="view-toggle-class"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150
+                        {{ $viewMode === 'class'
+                            ? 'bg-white text-blue-700 shadow-sm ring-1 ring-blue-200'
+                            : 'text-gray-500 hover:text-gray-700' }}"
+                >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 10h18M3 14h18M10 3v18M14 3v18"/>
+                    </svg>
+                    By Class
+                </button>
+                <button
+                    wire:click="$set('viewMode', 'teacher')"
+                    id="view-toggle-teacher"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150
+                        {{ $viewMode === 'teacher'
+                            ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-200'
+                            : 'text-gray-500 hover:text-gray-700' }}"
+                >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    By Teacher
+                </button>
+            </div>
+
+            <div class="w-px h-6 bg-gray-300"></div>
+
             <button
                 wire:click="syncAllocations"
                 wire:confirm="Sync all timetable teacher and subject assignments directly into Gradebook and User Management?"
@@ -64,11 +101,13 @@
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 Clear Day
             </button>
-            {{-- View Schedule button removed (moved to sidebar) --}}
         </div>
     </div>
 
-    {{-- Schedule Grid --}}
+    {{-- =========================================================== --}}
+    {{-- CLASS VIEW GRID                                              --}}
+    {{-- =========================================================== --}}
+    @if($viewMode === 'class')
     <div class="glass-card rounded-2xl overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -140,6 +179,126 @@
             </table>
         </div>
     </div>
+    @endif
+
+    {{-- =========================================================== --}}
+    {{-- TEACHER VIEW GRID                                            --}}
+    {{-- =========================================================== --}}
+    @if($viewMode === 'teacher')
+    <div class="glass-card rounded-2xl overflow-hidden">
+
+        {{-- Legend --}}
+        <div class="px-4 py-2.5 bg-indigo-50/60 border-b border-indigo-100 flex items-center gap-4 text-xs text-indigo-700">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span><strong>Teacher View</strong> — rows are teachers, columns are periods. Click any assigned cell to edit.</span>
+            <span class="ml-auto flex items-center gap-3">
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-100 border border-indigo-300"></span> Assigned</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-green-100 border border-green-300"></span> Free</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-purple-100 border border-purple-300"></span> Divided</span>
+            </span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50/50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase w-36 sticky left-0 bg-gray-50">Teacher</th>
+                        @foreach($periods as $period)
+                            <th class="px-2 py-3 text-center text-xs font-medium min-w-[130px]
+                                {{ $period->is_break ? 'bg-yellow-50 text-yellow-700' : ($period->is_assembly ? 'bg-purple-50 text-purple-700' : 'text-gray-500') }}">
+                                <div class="font-bold">{{ $period->label }}</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">
+                                    {{ \Carbon\Carbon::parse($period->start_time)->format('h:i') }}–{{ \Carbon\Carbon::parse($period->end_time)->format('h:i') }}
+                                </div>
+                            </th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    @forelse($teachers as $teacher)
+                        <tr class="hover:bg-indigo-50/20 transition-colors">
+                            {{-- Teacher Name Cell --}}
+                            <td class="px-4 py-3 sticky left-0 bg-white z-10">
+                                <div class="text-sm font-bold text-gray-800 truncate max-w-[130px]" title="{{ $teacher->name }}">
+                                    {{ $teacher->name }}
+                                </div>
+                                @php
+                                    $teacherPeriodCount = isset($teacherGridMap[$teacher->id])
+                                        ? count($teacherGridMap[$teacher->id])
+                                        : 0;
+                                @endphp
+                                <div class="text-[10px] text-gray-400 mt-0.5">
+                                    {{ $teacherPeriodCount }} period{{ $teacherPeriodCount !== 1 ? 's' : '' }} assigned
+                                </div>
+                            </td>
+
+                            {{-- Period Cells --}}
+                            @foreach($periods as $period)
+                                @if($period->is_break)
+                                    <td class="px-2 py-3 bg-yellow-50/50 text-center">
+                                        <span class="text-yellow-500 text-xs">Break</span>
+                                    </td>
+                                @elseif($period->is_assembly)
+                                    <td class="px-2 py-3 bg-purple-50/50 text-center">
+                                        <span class="text-purple-500 text-xs">Assembly</span>
+                                    </td>
+                                @else
+                                    @php
+                                        $cellRows = $teacherGridMap[$teacher->id][$period->period_no] ?? [];
+                                    @endphp
+
+                                    @if(count($cellRows) > 0)
+                                        {{-- Assigned Cell — clickable to edit the first entry's class --}}
+                                        <td
+                                            wire:click="openModal({{ $cellRows[0]->class_id }}, {{ $period->period_no }})"
+                                            class="px-2 py-2 cursor-pointer border-l border-gray-100 hover:bg-indigo-50 transition-colors"
+                                        >
+                                            <div class="flex flex-col gap-1">
+                                                @foreach($cellRows as $idx => $row)
+                                                    @php
+                                                        $subject = \App\Models\Subject::find($row->subject_id);
+                                                        $classObj = $classes->firstWhere('id', $row->class_id);
+                                                    @endphp
+                                                    <div class="text-xs {{ $idx > 0 ? 'border-t border-indigo-100 pt-1' : '' }}">
+                                                        <div class="font-bold text-indigo-700 truncate">
+                                                            {{ $classObj->name ?? ('Class #'.$row->class_id) }}
+                                                        </div>
+                                                        <div class="text-gray-500 truncate">{{ $subject->name ?? '—' }}</div>
+                                                        @if($row->is_divided)
+                                                            <span class="text-[10px] text-purple-600 bg-purple-50 px-1 rounded">Divided</span>
+                                                        @endif
+                                                        @if($row->room)
+                                                            <div class="text-[10px] text-gray-400">{{ $row->room }}</div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </td>
+                                    @else
+                                        {{-- Free Cell — read-only in teacher view --}}
+                                        <td class="px-2 py-2 border-l border-gray-100">
+                                            <div class="flex items-center justify-center h-full">
+                                                <span class="text-[11px] text-green-400 bg-green-50 px-2 py-0.5 rounded-full font-medium">Free</span>
+                                            </div>
+                                        </td>
+                                    @endif
+                                @endif
+                            @endforeach
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="{{ count($periods) + 1 }}" class="px-6 py-10 text-center text-gray-400">
+                                No teachers found for the selected session/shift.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
     {{-- Assignment Modal --}}
     @if($showModal)
@@ -187,7 +346,7 @@
                                         Assign as Class Teacher for {{ $classes->firstWhere('id', $modalClassId)?->name }}
                                     </span>
                                     <span class="text-amber-700 mt-0.5 block leading-relaxed">
-                                        Syncs directly with User Management. Grants authority to take attendance & manage roll numbers for this class.
+                                        Syncs directly with User Management. Grants authority to take attendance &amp; manage roll numbers for this class.
                                     </span>
                                     @if($currentClassTeacherName)
                                         <div class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium {{ $selectedTeacherId == $currentClassTeacherId ? 'text-emerald-700' : 'text-amber-800' }}">

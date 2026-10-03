@@ -15,11 +15,17 @@ class ScheduleManager extends Component
     public $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     public $applyToAllDays = false;
 
+    // View Mode: 'class' | 'teacher'
+    public $viewMode = 'class';
+
     // Data
     public $periods = [];
     public $classes = [];
     public $teachers = [];
     public $timetables = [];
+
+    // Teacher-view grid: [teacher_id => [period_no => [rows]]]
+    public $teacherGridMap = [];
 
     // Modal State
     public $showModal = false;
@@ -144,7 +150,7 @@ class ScheduleManager extends Component
             $shiftType = 'morning';
         }
 
-        $this->timetables = DB::table('timetables')
+        $rawRows = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->where('classes.academic_session_id', $this->selectedSessionId)
             ->where('timetables.day', $dayToLoad)
@@ -152,14 +158,28 @@ class ScheduleManager extends Component
             ->when($shiftType !== 'both', function ($q) use ($shiftType) {
                 $q->where('classes.shift_type', $shiftType);
             })
-            ->select('timetables.*')
-            ->get()
-            ->groupBy(fn($t) => $t->class_id . '_' . $t->period_no);
+            ->select('timetables.*', 'classes.name as class_name', 'classes.shift_type as class_shift')
+            ->get();
+
+        // Class-view grid: keyed by class_id_periodno
+        $this->timetables = $rawRows->groupBy(fn($t) => $t->class_id . '_' . $t->period_no);
+
+        // Teacher-view grid: [teacher_id => [period_no => [rows]]]
+        $this->teacherGridMap = [];
+        foreach ($rawRows as $row) {
+            if (!$row->teacher_id) continue;
+            $this->teacherGridMap[$row->teacher_id][$row->period_no][] = $row;
+        }
     }
 
     public function updatedSelectedDay()
     {
         $this->loadTimetables();
+    }
+
+    public function updatedViewMode()
+    {
+        // Grid is rebuilt in render() from $timetables, no extra DB call needed
     }
 
     public function getSchedule($classId, $periodNo)
