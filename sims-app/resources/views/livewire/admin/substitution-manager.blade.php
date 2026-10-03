@@ -38,11 +38,11 @@
 
     {{-- Session / Status Alerts --}}
     @if(session()->has('message'))
-        <div class="bg-green-50 border border-green-200 p-4 rounded-xl text-green-700 text-sm font-medium flex items-center gap-2 shadow-sm">
-            <svg class="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        <div class="bg-emerald-600 border border-emerald-700 text-white font-semibold p-3.5 rounded-xl shadow-md shadow-emerald-200 flex items-center gap-2.5">
+            <svg class="w-5 h-5 text-white shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            {{ session('message') }}
+            <span>{{ session('message') }}</span>
         </div>
     @endif
     @if($warningMessage)
@@ -522,18 +522,7 @@
                                                         >
                                                             <option value="">-- Assign Substitute --</option>
                                                             @foreach($availableList as $t)
-                                                                @php
-                                                                    $assigned = $teacherAssignedSubs[$t->id] ?? [];
-                                                                    $badgeParts = [];
-                                                                    foreach ($assigned as $subItem) {
-                                                                        $badgeParts[] = $subItem['class_name'] . ': P' . $subItem['period_no'];
-                                                                    }
-                                                                    $subBadge = !empty($badgeParts) ? '  (' . implode(', ', $badgeParts) . ')' : '';
-                                                                    $tCount = $dailySubCounts[$t->id] ?? 0;
-                                                                    $mCount = $monthlySubCounts[$t->id] ?? 0;
-                                                                    $workloadTag = ($tCount > 0 || $mCount > 0) ? " [{$tCount}t/{$mCount}m]" : '';
-                                                                @endphp
-                                                                <option value="{{ $t->id }}">{{ $t->name }}{{ $workloadTag }}{{ $subBadge }}</option>
+                                                                <option value="{{ $t->id }}">{{ $t->name }}</option>
                                                             @endforeach
                                                         </select>
 
@@ -547,15 +536,14 @@
                                                                 $assignedDuties = $teacherAssignedSubs[$currentSub] ?? [];
 
                                                                 if ($selDaily >= 3)      $loadBadge = 'text-red-700 bg-red-50 border-red-200';
-                                                                elseif ($selDaily >= 2)  $loadBadge = 'text-orange-700 bg-orange-50 border-orange-200';
-                                                                elseif ($selDaily >= 1)  $loadBadge = 'text-amber-800 bg-amber-50 border-amber-200';
+                                                                elseif ($selDaily == 2)  $loadBadge = 'text-amber-800 bg-amber-50 border-amber-200';
                                                                 else                     $loadBadge = 'text-emerald-700 bg-emerald-50 border-emerald-200';
                                                             @endphp
                                                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                                                 {{-- Workload Badge --}}
                                                                 <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold {{ $loadBadge }}">
-                                                                    <span class="w-2 h-2 rounded-full {{ $selDaily >= 2 ? 'bg-orange-500' : 'bg-emerald-500' }}"></span>
-                                                                    <span><strong>{{ $selDaily }}</strong> sub{{ $selDaily != 1 ? 's' : '' }} today</span>
+                                                                    <span class="w-2 h-2 rounded-full {{ $selDaily >= 3 ? 'bg-red-500' : ($selDaily == 2 ? 'bg-amber-500' : 'bg-emerald-500') }}"></span>
+                                                                    <span class="font-bold">{{ $selDaily }} sub{{ $selDaily != 1 ? 's' : '' }} today</span>
                                                                     @if($showMonthlyCount)
                                                                         <span class="text-gray-400">&bull;</span>
                                                                         <span class="font-normal text-gray-600">{{ $selMonthly }} this month</span>
