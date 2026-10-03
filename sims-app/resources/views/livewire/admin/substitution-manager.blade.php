@@ -522,7 +522,18 @@
                                                         >
                                                             <option value="">-- Assign Substitute --</option>
                                                             @foreach($availableList as $t)
-                                                                <option value="{{ $t->id }}">{{ $t->name }}</option>
+                                                                @php
+                                                                    $assigned = $teacherAssignedSubs[$t->id] ?? [];
+                                                                    $badgeParts = [];
+                                                                    foreach ($assigned as $subItem) {
+                                                                        $badgeParts[] = $subItem['class_name'] . ': P' . $subItem['period_no'];
+                                                                    }
+                                                                    $subBadge = !empty($badgeParts) ? '  (' . implode(', ', $badgeParts) . ')' : '';
+                                                                    $tCount = $dailySubCounts[$t->id] ?? 0;
+                                                                    $mCount = $monthlySubCounts[$t->id] ?? 0;
+                                                                    $workloadTag = ($tCount > 0 || $mCount > 0) ? " [{$tCount}t/{$mCount}m]" : '';
+                                                                @endphp
+                                                                <option value="{{ $t->id }}">{{ $t->name }}{{ $workloadTag }}{{ $subBadge }}</option>
                                                             @endforeach
                                                         </select>
 
