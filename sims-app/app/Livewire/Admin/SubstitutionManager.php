@@ -694,6 +694,7 @@ class SubstitutionManager extends Component
         $shiftType = $this->getActiveShiftType();
         $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
         $substituteTeacherId = $this->substitutions[$absentTeacherId][$periodNo] ?? null;
+        $this->activeTab = 'arrangement';
         $this->warningMessage = '';
 
         if (!$substituteTeacherId) {
