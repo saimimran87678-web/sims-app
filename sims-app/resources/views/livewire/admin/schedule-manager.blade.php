@@ -541,7 +541,7 @@
                     @endif
 
                     {{-- Period Merge --}}
-                    @if($modalClassId && $availableMergeClasses->isNotEmpty())
+                    @if($modalClassId && $this->availableMergeClasses->isNotEmpty())
                         <div class="border-t border-gray-100 pt-4">
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" wire:model.live="isMerged" class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500" />
@@ -554,7 +554,7 @@
                             <div class="bg-teal-50 border border-teal-100 rounded-xl p-4">
                                 <p class="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-3">Select Partner Section(s) to Merge</p>
                                 <div class="space-y-2 max-h-40 overflow-y-auto">
-                                    @foreach($availableMergeClasses as $mergeClass)
+                                    @foreach($this->availableMergeClasses as $mergeClass)
                                         <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-teal-100 transition-all">
                                             <input
                                                 type="checkbox"
@@ -563,7 +563,7 @@
                                                 class="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
                                             />
                                             <span class="text-sm font-medium text-teal-900">{{ $mergeClass->name }}</span>
-                                            @if(in_array($mergeClass->id, $busyClassIds))
+                                            @if(in_array($mergeClass->id, $this->busyClassIds))
                                                 <span class="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded ml-auto">Has period (will be overwritten)</span>
                                             @endif
                                         </label>

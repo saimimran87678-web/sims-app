@@ -185,11 +185,36 @@ class GradeManager extends Component
         $this->passingMarks = $marksConfig->passing_marks ?? 33;
         $this->passingScore = ($this->maxMarks * $this->passingMarks) / 100;
 
-        // Fetch Students (Admins see all active students in the class)
-        $this->students = \App\Models\Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+        // Fetch Students (Filter by divided subject if applicable)
+        $dividedSubjectIds = DB::table('timetables')
+            ->where('class_id', $this->selectedClassId)
+            ->where('is_divided', true)
+            ->pluck('subject_id')
+            ->unique()
+            ->toArray();
+
+        $studentQuery = \App\Models\Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
             ->where('enrollments.class_id', $this->selectedClassId)
             ->where('enrollments.academic_session_id', $this->selectedSessionId)
-            ->where('enrollments.status', 'active')
+            ->where('enrollments.status', 'active');
+
+        if (in_array($this->selectedSubjectId, $dividedSubjectIds)) {
+            $studentQuery->where(function($q) use ($dividedSubjectIds) {
+                $q->whereExists(function($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('student_subject')
+                        ->whereColumn('student_subject.student_id', 'students.id')
+                        ->where('student_subject.subject_id', $this->selectedSubjectId);
+                })->orWhereNotExists(function($sub) use ($dividedSubjectIds) {
+                    $sub->select(DB::raw(1))
+                        ->from('student_subject')
+                        ->whereColumn('student_subject.student_id', 'students.id')
+                        ->whereIn('student_subject.subject_id', $dividedSubjectIds);
+                });
+            });
+        }
+
+        $this->students = $studentQuery
             ->select('students.*', 'enrollments.roll_number as roll_no')
             ->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')
             ->get();
