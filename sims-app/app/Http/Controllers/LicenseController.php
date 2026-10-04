@@ -47,7 +47,7 @@ class LicenseController extends Controller
             return redirect()->route('license.blocked')->with('error', $msg);
         }
 
-        $response = $this->runActivation($licenseKey);
+        $response = $this->runActivation($licenseKey, $request);
 
         if (!$request->expectsJson() && !$request->ajax()) {
             $data = $response->getData(true);
@@ -69,14 +69,14 @@ class LicenseController extends Controller
             'license_key' => 'required|string',
         ]);
 
-        return $this->runActivation(trim($request->input('license_key')));
+        return $this->runActivation(trim($request->input('license_key')), $request);
     }
 
     /**
      * Core activation logic — shared by sync() and activate().
      * Fetches from Firestore, verifies RSA signature, writes to SQLite, clears cache.
      */
-    private function runActivation(string $licenseKey): \Illuminate\Http\JsonResponse
+    private function runActivation(string $licenseKey, ?Request $request = null): \Illuminate\Http\JsonResponse
     {
         $apiKey    = config('services.firebase.api_key');
         $projectId = config('services.firebase.project_id');
@@ -117,8 +117,29 @@ class LicenseController extends Controller
             }
         }
 
-        // Step 2 — Fetch license from Firestore (Direct unauthenticated or authenticated GET)
-        $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
+        // Step 2 — Fetch license from Firestore or accept real-time snapshot payload
+        $firebaseLic = null;
+        if ($request->has('license_payload') && is_array($request->input('license_payload'))) {
+            $raw = $request->input('license_payload');
+            $firebaseLic = [
+                'status'                 => $raw['status'] ?? null,
+                'plan'                   => $raw['plan'] ?? null,
+                'expires_at'             => $raw['expires_at'] ?? null,
+                'rsa_signature'          => $raw['rsa_signature'] ?? null,
+                'school_id'              => $raw['school_id'] ?? null,
+                'allowed_domain'         => $raw['allowed_domain'] ?? null,
+                'offline_grace'          => isset($raw['offline_grace']) ? intval($raw['offline_grace']) : 7,
+                'enabled_modules'        => $raw['enabled_modules'] ?? ['fees', 'exams', 'attendance', 'whatsapp', 'reports'],
+                'broadcast_announcement' => $raw['broadcast_announcement'] ?? null,
+                'schedule_type_policy'   => $raw['schedule_type_policy'] ?? 'configurable',
+                'config_version'         => isset($raw['config_version']) ? intval($raw['config_version']) : 1,
+                'bound_machine_uuid'     => $raw['bound_machine_uuid'] ?? null,
+            ];
+        }
+
+        if (!$firebaseLic) {
+            $firebaseLic = FirebaseAuth::queryLicenseFirestore($licenseKey, $idToken);
+        }
 
         // Optional anonymous fallback only if direct lookup didn't succeed and no session
         if (!$firebaseLic && empty($idToken)) {
@@ -213,6 +234,7 @@ class LicenseController extends Controller
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,
                 'enabled_modules'         => json_encode($firebaseLic['enabled_modules'] ?? ['fees', 'exams', 'attendance', 'whatsapp', 'reports']),
                 'broadcast_announcement'  => $firebaseLic['broadcast_announcement'] ?? null,
+                'schedule_type_policy'    => $firebaseLic['schedule_type_policy'] ?? 'configurable',
                 'config_version'          => $firebaseLic['config_version'] ?? 1,
                 'last_online_verified_at' => Carbon::now(),
                 'created_at'              => Carbon::now(),
@@ -229,10 +251,12 @@ class LicenseController extends Controller
                 : 'N/A';
 
             return response()->json([
-                'success'  => true,
-                'status'   => $firebaseLic['status'],
-                'message'  => "✅ License synced successfully!\n\nStatus: {$statusLabel} | Plan: {$plan} | Expires: {$expiry}",
-                'redirect' => $firebaseLic['status'] === 'active' ? route('dashboard') : null,
+                'success'               => true,
+                'status'                => $firebaseLic['status'],
+                'schedule_type_policy'  => $firebaseLic['schedule_type_policy'] ?? 'configurable',
+                'broadcast'             => $firebaseLic['broadcast_announcement'] ?? null,
+                'message'               => "✅ License synced successfully!\n\nStatus: {$statusLabel} | Plan: {$plan} | Expires: {$expiry}",
+                'redirect'              => $firebaseLic['status'] === 'active' ? route('dashboard') : null,
             ]);
         } catch (\Exception $e) {
             Log::error('License sync error: ' . $e->getMessage());

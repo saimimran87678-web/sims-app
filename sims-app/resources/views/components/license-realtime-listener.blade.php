@@ -8,6 +8,8 @@
     }
     $firebaseApiKey = config('services.firebase.api_key');
     $firebaseProjectId = config('services.firebase.project_id');
+    $initialSchedulePolicy = \App\Services\LicenseStatus::getScheduleTypePolicy();
+    $initialConfigVersion = \Illuminate\Support\Facades\DB::table('software_licenses')->value('config_version') ?? 1;
 @endphp
 
 @if(!empty($licenseKey) && !empty($firebaseApiKey) && !empty($firebaseProjectId))
@@ -33,11 +35,12 @@
         let isInitialLoad = true;
         let lastKnownSignature = null;
         let lastKnownStatus = null;
-        let lastKnownConfigVer = null;
+        let lastKnownConfigVer = {{ (int) $initialConfigVersion }};
         let lastKnownBoundUuid = null;
         let lastKnownExpiresAt = null;
         let lastKnownUpdatedAt = null;
         let lastKnownBroadcast = null;
+        let lastKnownSchedulePolicy = "{{ $initialSchedulePolicy }}";
 
         // Establish persistent WebSocket snapshot listener with Google Firestore
         db.collection('licenses').doc(licenseKey).onSnapshot((docSnapshot) => {
@@ -51,6 +54,7 @@
             const newExpiresAt = cloudData.expires_at || '';
             const newUpdatedAt = cloudData.updated_at || '';
             const newBroadcast = (cloudData.broadcast_announcement || '').trim();
+            const newSchedulePolicy = (cloudData.schedule_type_policy || 'configurable').toLowerCase();
 
             // Real-time DOM update for Broadcast Banner
             const bannerEl = document.getElementById('sims-broadcast-banner');
@@ -101,6 +105,22 @@
                 }));
             }
 
+            // Check if local SQLite needs catch-up on initial load
+            const needsCatchup = isInitialLoad && (
+                newSchedulePolicy !== lastKnownSchedulePolicy ||
+                newVer > lastKnownConfigVer
+            );
+
+            // Detect if admin changed status, modules, expiry, machine binding, announcement, schedule policy, or signature
+            const hasChanged = (newSig !== lastKnownSignature && lastKnownSignature !== null) || 
+                               (newStatus !== lastKnownStatus && lastKnownStatus !== null) || 
+                               (newVer > lastKnownConfigVer) ||
+                               (newBoundUuid !== lastKnownBoundUuid && lastKnownBoundUuid !== null) ||
+                               (newExpiresAt !== lastKnownExpiresAt && lastKnownExpiresAt !== null) ||
+                               (newUpdatedAt !== lastKnownUpdatedAt && lastKnownUpdatedAt !== null) ||
+                               (newBroadcast !== lastKnownBroadcast && lastKnownBroadcast !== null) ||
+                               (newSchedulePolicy !== lastKnownSchedulePolicy);
+
             if (isInitialLoad) {
                 isInitialLoad = false;
                 lastKnownSignature = newSig;
@@ -110,20 +130,13 @@
                 lastKnownExpiresAt = newExpiresAt;
                 lastKnownUpdatedAt = newUpdatedAt;
                 lastKnownBroadcast = newBroadcast;
-                return;
+                lastKnownSchedulePolicy = newSchedulePolicy;
+                if (!needsCatchup) return;
             }
 
-            // Detect if admin changed status, modules, expiry, machine binding, announcement, or signature
-            const hasChanged = (newSig !== lastKnownSignature) || 
-                               (newStatus !== lastKnownStatus) || 
-                               (newVer !== lastKnownConfigVer) ||
-                               (newBoundUuid !== lastKnownBoundUuid) ||
-                               (newExpiresAt !== lastKnownExpiresAt) ||
-                               (newUpdatedAt !== lastKnownUpdatedAt) ||
-                               (newBroadcast !== lastKnownBroadcast);
-
-            if (hasChanged) {
+            if (hasChanged || needsCatchup) {
                 console.log('⚡ Real-time license snapshot received from Adminova Cloud:', cloudData);
+                const prevPolicy = lastKnownSchedulePolicy;
                 lastKnownSignature = newSig;
                 lastKnownStatus = newStatus;
                 lastKnownConfigVer = newVer;
@@ -131,6 +144,7 @@
                 lastKnownExpiresAt = newExpiresAt;
                 lastKnownUpdatedAt = newUpdatedAt;
                 lastKnownBroadcast = newBroadcast;
+                lastKnownSchedulePolicy = newSchedulePolicy;
 
                 // Sync locally via /license/sync to verify RSA & update SQLite
                 fetch('{{ route("license.sync") }}', {
@@ -140,7 +154,10 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    },
+                    body: JSON.stringify({
+                        license_payload: cloudData
+                    })
                 })
                 .then(r => r.json())
                 .then(result => {
@@ -152,7 +169,14 @@
                         if (window.location.pathname === '/license-blocked') {
                             window.location.href = "{{ route('dashboard') }}";
                         } else {
-                            console.log('✅ License synchronized in real time.');
+                            console.log('✅ License synchronized in real time.', result);
+                            // If schedule policy changed, or user is on settings or schedule manager, soft reload
+                            if (newSchedulePolicy !== prevPolicy || window.location.pathname.includes('/settings') || window.location.pathname.includes('/schedule')) {
+                                window.dispatchEvent(new CustomEvent('license-enforcement-updated', { detail: result }));
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 350);
+                            }
                         }
                     }
                 })
