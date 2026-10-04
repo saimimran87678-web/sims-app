@@ -3,6 +3,7 @@
     'teacherData',
     'instituteName' => 'IMCB G-6/2, ISLAMABAD',
     'instituteLogo' => '',
+    'logoBase64'    => null,
     'effectiveDate' => '17th Nov 2025',
 ])
 
@@ -16,7 +17,9 @@
     {{-- Card Header --}}
     <div class="card-header">
         <div class="logo-box">
-            @if(!empty($instituteLogo) && file_exists(public_path($instituteLogo)))
+            @if(!empty($logoBase64))
+                <img src="{{ $logoBase64 }}" alt="Logo" class="teacher-card-logo">
+            @elseif(!empty($instituteLogo) && file_exists(public_path($instituteLogo)))
                 <img src="{{ '/' . $instituteLogo }}" alt="Logo" class="teacher-card-logo">
             @else
                 <div class="teacher-card-logo-fallback">🏛️</div>

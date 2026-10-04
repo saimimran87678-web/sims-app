@@ -11,6 +11,7 @@ use App\Models\AcademicSession;
 use App\Models\User;
 use App\Models\Setting;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class TimetablePrintController extends Controller
 {
@@ -31,9 +32,19 @@ class TimetablePrintController extends Controller
             ? AcademicSession::find($sessionId) 
             : AcademicSession::find(AcademicSession::getActiveSessionId());
 
+        $logoBase64 = null;
+        if (!empty($logoPath)) {
+            $fullPath = public_path(ltrim($logoPath, '/\\'));
+            if (file_exists($fullPath)) {
+                $mime = mime_content_type($fullPath) ?: 'image/png';
+                $logoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+            }
+        }
+
         return [
             'instituteName' => $instituteName,
             'instituteLogo' => $logoPath,
+            'logoBase64'    => $logoBase64,
             'effectiveDate' => $effectiveDate,
             'session'       => $session,
         ];
@@ -47,6 +58,33 @@ class TimetablePrintController extends Controller
         $isRegular = ($session && $session->shift_type === 'Regular');
         $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
         return ($shiftType === 'both') ? 'morning' : $shiftType;
+    }
+
+    /**
+     * Helper to return either HTML view or direct DomPDF stream/download
+     */
+    protected function respondWithViewOrPdf(Request $request, string $viewName, array $viewData, string $filename, string $paper = 'a4', string $orientation = 'landscape')
+    {
+        if ($request->query('format') === 'pdf' || $request->has('pdf') || $request->has('download')) {
+            $pdf = Pdf::loadView($viewName, $viewData)
+                ->setPaper($paper, $orientation)
+                ->setOption('isRemoteEnabled', true)
+                ->setOption('isHtml5ParserEnabled', true);
+
+            $safeFilename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $filename);
+            if (!str_ends_with(strtolower($safeFilename), '.pdf')) {
+                $safeFilename .= '.pdf';
+            }
+
+            if ($request->has('download') || $request->query('download') == 1) {
+                return $pdf->download($safeFilename);
+            }
+
+            return $pdf->stream($safeFilename);
+        }
+
+        $viewData['autoprint'] = (bool)$request->query('autoprint');
+        return view($viewName, $viewData);
     }
 
     /**
@@ -127,7 +165,7 @@ class TimetablePrintController extends Controller
             $sumOfLessons[$cls->id] = $count;
         }
 
-        return view('print.schedule.master-classwise', array_merge($branding, [
+        $viewData = array_merge($branding, [
             'periods'         => $periods,
             'assemblyPeriod'  => $assemblyPeriod,
             'breakPeriod'     => $breakPeriod,
@@ -135,7 +173,9 @@ class TimetablePrintController extends Controller
             'classes'         => $classes,
             'timetableGrid'   => $timetableGrid,
             'sumOfLessons'    => $sumOfLessons,
-        ]));
+        ]);
+
+        return $this->respondWithViewOrPdf($request, 'print.schedule.master-classwise', $viewData, 'Master-Classwise-Timetable.pdf', 'a4', 'landscape');
     }
 
     /**
@@ -211,7 +251,7 @@ class TimetablePrintController extends Controller
             $sumOfLessons[$t->id] = $count;
         }
 
-        return view('print.schedule.master-teacherwise', array_merge($branding, [
+        $viewData = array_merge($branding, [
             'periods'         => $periods,
             'assemblyPeriod'  => $assemblyPeriod,
             'breakPeriod'     => $breakPeriod,
@@ -219,21 +259,37 @@ class TimetablePrintController extends Controller
             'teachers'        => $teachers,
             'teacherGrid'     => $teacherGrid,
             'sumOfLessons'    => $sumOfLessons,
-        ]));
+        ]);
+
+        return $this->respondWithViewOrPdf($request, 'print.schedule.master-teacherwise', $viewData, 'Master-Teacherwise-Timetable.pdf', 'a4', 'landscape');
     }
 
     /**
      * 3. Individual Class Timetable ("By Class" - A4 Landscape, Rows=Periods)
      */
-    public function printClass(Request $request, $id)
+    public function printClass(Request $request, $id = null)
     {
         $user = $request->user();
         if ($user && !$user->hasRole('Super Admin') && $user->role !== 'admin') {
             abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view-sessions'), 403);
         }
 
-        $class = Classes::withoutGlobalScope('active_session')->findOrFail($id);
-        $sessionId = $class->academic_session_id ?: AcademicSession::getActiveSessionId();
+        $sessionId = $request->query('session_id', AcademicSession::getActiveSessionId());
+
+        if (!$id) {
+            $class = Classes::withoutGlobalScope('active_session')->where('academic_session_id', $sessionId)->first()
+                 ?? Classes::withoutGlobalScope('active_session')->first();
+        } else {
+            $class = Classes::withoutGlobalScope('active_session')->find($id)
+                 ?? Classes::withoutGlobalScope('active_session')->where('academic_session_id', $sessionId)->first()
+                 ?? Classes::withoutGlobalScope('active_session')->first();
+        }
+
+        if (!$class) {
+            abort(404, 'No class found to generate timetable.');
+        }
+
+        $sessionId = $class->academic_session_id ?: $sessionId;
         $branding = $this->getBrandingData($sessionId);
         $session = $branding['session'];
         $shiftType = $class->shift_type ?: $this->resolveShiftType($session);
@@ -293,36 +349,50 @@ class TimetablePrintController extends Controller
             ];
         }
 
-        return view('print.schedule.class-timetable', array_merge($branding, [
+        $viewData = array_merge($branding, [
             'class'            => $class,
             'classTeacherName' => $classTeacher?->name,
             'periodRows'       => $periodRows,
             'totalLessons'     => $totalLessons,
-        ]));
+        ]);
+
+        return $this->respondWithViewOrPdf($request, 'print.schedule.class-timetable', $viewData, 'Class-' . str_replace(' ', '_', $class->name) . '-Timetable.pdf', 'a4', 'landscape');
     }
 
     /**
      * 4. Specific Teacher Timetable (Individual Slip / Diary Card)
      */
-    public function printTeacherSingle(Request $request, $id)
+    public function printTeacherSingle(Request $request, $id = null)
     {
         $user = $request->user();
         if ($user && !$user->hasRole('Super Admin') && $user->role !== 'admin') {
             abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view-sessions'), 403);
         }
 
-        $teacher = User::findOrFail($id);
         $sessionId = $request->query('session_id', AcademicSession::getActiveSessionId());
+
+        if (!$id) {
+            $teacher = User::where('role', 'teacher')->first();
+        } else {
+            $teacher = User::find($id) ?? User::where('role', 'teacher')->first();
+        }
+
+        if (!$teacher) {
+            abort(404, 'No teacher found to generate timetable.');
+        }
+
         $branding = $this->getBrandingData($sessionId);
         $session = $branding['session'];
         $shiftType = $this->resolveShiftType($session);
 
         $teacherData = $this->buildTeacherTimetableData($teacher, $sessionId, $shiftType);
 
-        return view('print.schedule.teacher-single', array_merge($branding, [
+        $viewData = array_merge($branding, [
             'teacher'     => $teacher,
             'teacherData' => $teacherData,
-        ]));
+        ]);
+
+        return $this->respondWithViewOrPdf($request, 'print.schedule.teacher-single', $viewData, 'Teacher-' . str_replace(' ', '_', $teacher->name) . '-Slip.pdf', 'a4', 'portrait');
     }
 
     /**
@@ -362,9 +432,11 @@ class TimetablePrintController extends Controller
         // Chunk by 6 for 3x2 grid pages
         $teacherPages = array_chunk($teacherCards, 6);
 
-        return view('print.schedule.teachers-bulk', array_merge($branding, [
+        $viewData = array_merge($branding, [
             'teacherPages' => $teacherPages,
-        ]));
+        ]);
+
+        return $this->respondWithViewOrPdf($request, 'print.schedule.teachers-bulk', $viewData, 'All-Teachers-Dossier-Timetables.pdf', 'a4', 'landscape');
     }
 
     /**
