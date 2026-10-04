@@ -159,7 +159,7 @@
                                 <div class="flex items-center justify-between gap-1.5">
                                     <div>{{ $class->name }}</div>
                                     <a 
-                                        href="{{ route('admin.schedule.print.class', $class->id) }}" 
+                                        href="{{ url('admin/schedule/print/class/' . $class->id) }}" 
                                         target="_blank" 
                                         class="opacity-0 group-hover/classheader:opacity-100 transition-opacity p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" 
                                         title="Print Class {{ $class->name }} Timetable"
@@ -279,7 +279,7 @@
                                         {{ $teacher->name }}
                                     </div>
                                     <a 
-                                        href="{{ route('admin.schedule.print.teacher_single', $teacher->id) }}" 
+                                        href="{{ url('admin/schedule/print/teacher/' . $teacher->id) }}" 
                                         target="_blank" 
                                         class="opacity-0 group-hover/teacherheader:opacity-100 transition-opacity p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-indigo-50" 
                                         title="Print Teacher {{ $teacher->name }} Slip"
@@ -736,7 +736,7 @@
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <a 
-                                href="{{ route('admin.schedule.print.master_classwise') }}" 
+                                href="{{ url('admin/schedule/print/master-classwise') }}" 
                                 target="_blank"
                                 class="flex items-center justify-between p-3.5 bg-white rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all group"
                             >
@@ -755,7 +755,7 @@
                             </a>
 
                             <a 
-                                href="{{ route('admin.schedule.print.master_teacherwise') }}" 
+                                href="{{ url('admin/schedule/print/master-teacherwise') }}" 
                                 target="_blank"
                                 class="flex items-center justify-between p-3.5 bg-white rounded-xl border border-gray-200 hover:border-indigo-500 hover:shadow-md transition-all group"
                             >
@@ -852,7 +852,7 @@
                                     </div>
                                 </div>
                                 <a 
-                                    href="{{ route('admin.schedule.print.teachers_bulk') }}" 
+                                    href="{{ url('admin/schedule/print/teachers-bulk') }}" 
                                     target="_blank"
                                     class="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 flex-shrink-0"
                                 >

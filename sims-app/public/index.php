@@ -10,6 +10,11 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
     require $maintenance;
 }
 
+// Reset OPcache if running to ensure fresh bytecode and routes are loaded
+if (function_exists('opcache_reset')) {
+    @opcache_reset();
+}
+
 // Register the Composer autoloader...
 require __DIR__.'/../vendor/autoload.php';
 
