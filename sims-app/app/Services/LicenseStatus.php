@@ -375,4 +375,48 @@ class LicenseStatus
         } catch (\Throwable) {}
         return null;
     }
+
+    /**
+     * Get the schedule type policy enforced by the license.
+     * Returns: 'configurable' | 'day_wise' | 'single_schedule'
+     */
+    public static function getScheduleTypePolicy(): string
+    {
+        try {
+            $record = self::getLicenseRecord();
+            if ($record && !empty($record->schedule_type_policy)) {
+                return trim($record->schedule_type_policy);
+            }
+        } catch (\Throwable) {}
+        return 'configurable';
+    }
+
+    /**
+     * Check if schedule type is locked by license enforcement.
+     */
+    public static function isScheduleTypeLocked(): bool
+    {
+        $policy = self::getScheduleTypePolicy();
+        return in_array($policy, ['day_wise', 'single_schedule']);
+    }
+
+    /**
+     * Get effective schedule type considering license policy and local school setting.
+     * Returns: 'day_wise' | 'single_schedule'
+     */
+    public static function getEffectiveScheduleType(): string
+    {
+        $policy = self::getScheduleTypePolicy();
+        if ($policy === 'day_wise' || $policy === 'single_schedule') {
+            return $policy;
+        }
+
+        // Configurable: retrieve from Setting table (defaulting to 'day_wise')
+        try {
+            $val = \App\Models\Setting::get('schedule_type', 'day_wise');
+            return in_array($val, ['day_wise', 'single_schedule']) ? $val : 'day_wise';
+        } catch (\Throwable) {
+            return 'day_wise';
+        }
+    }
 }

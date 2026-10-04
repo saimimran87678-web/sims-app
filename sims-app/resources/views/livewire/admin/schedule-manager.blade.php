@@ -18,24 +18,29 @@
 
     {{-- Day Tabs + View Toggle --}}
     <div class="flex flex-wrap gap-2 justify-between items-center border-b border-gray-200 pb-3">
-        {{-- Left: Day Tabs --}}
-        <div class="flex gap-2 items-center flex-wrap">
-            <button
-                wire:click="$set('selectedDay', 'Everyday')"
-                class="px-4 py-2 rounded-t-lg font-medium transition-colors {{ $selectedDay === 'Everyday' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200' }}"
-            >
-                Everyday
-            </button>
-            <span class="text-gray-300">|</span>
-            @foreach($days as $day)
-                <button
-                    wire:click="$set('selectedDay', '{{ $day }}')"
-                    class="px-4 py-2 rounded-t-lg font-medium transition-colors {{ $selectedDay === $day ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
-                >
-                 {{ substr($day, 0, 3) }}
-                </button>
-            @endforeach
-        </div>
+        {{-- Left: Day Tabs / Single Schedule Status --}}
+        @if($scheduleType === 'single_schedule')
+            <div class="flex items-center gap-2.5 py-1">
+                <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-bold text-sm bg-blue-50 text-blue-800 border border-blue-200 shadow-xs">
+                    <span class="text-base">🗓️</span>
+                    <span>Single Universal Schedule</span>
+                </span>
+                <span class="text-xs text-gray-500 font-medium">
+                    (Unified timetable for all {{ count($days) }} active school days)
+                </span>
+            </div>
+        @else
+            <div class="flex gap-2 items-center flex-wrap">
+                @foreach($days as $day)
+                    <button
+                        wire:click="$set('selectedDay', '{{ $day }}')"
+                        class="px-4 py-2 rounded-t-lg font-medium transition-colors {{ $selectedDay === $day ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
+                    >
+                     {{ substr($day, 0, 3) }}
+                    </button>
+                @endforeach
+            </div>
+        @endif
 
         {{-- Right: View Toggle + Action Buttons --}}
         <div class="flex gap-2 items-center flex-wrap">
@@ -85,22 +90,33 @@
                 </svg>
                 Sync to Gradebook
             </button>
-            <button
-                wire:click="copyToAllDays"
-                wire:confirm="Copy {{ $selectedDay }}'s schedule to all other weekdays? This will replace existing schedules."
-                class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
-            >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
-                Copy to All
-            </button>
-            <button
-                wire:click="clearDay"
-                wire:confirm="Clear all schedule entries for {{ $selectedDay }}?"
-                class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
-            >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                Clear Day
-            </button>
+            @if($scheduleType !== 'single_schedule')
+                <button
+                    wire:click="copyToAllDays"
+                    wire:confirm="Copy {{ $selectedDay }}'s schedule to all other weekdays? This will replace existing schedules."
+                    class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
+                >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                    Copy to All
+                </button>
+                <button
+                    wire:click="clearDay"
+                    wire:confirm="Clear all schedule entries for {{ $selectedDay }}?"
+                    class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
+                >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    Clear Day
+                </button>
+            @else
+                <button
+                    wire:click="clearDay"
+                    wire:confirm="Clear all entries in the universal schedule across all school days?"
+                    class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
+                >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    Clear Schedule
+                </button>
+            @endif
         </div>
     </div>
 
@@ -344,8 +360,8 @@
                             @elseif($selectedTeacherId && $teachers->firstWhere('id', $selectedTeacherId))
                                 <span class="font-semibold text-indigo-700">{{ $teachers->firstWhere('id', $selectedTeacherId)->name }}</span> •
                             @endif
-                            @if($selectedDay === 'Everyday')
-                                <span class="text-green-600 font-medium">All Days</span>
+                            @if($scheduleType === 'single_schedule')
+                                <span class="text-blue-600 font-medium">All School Days</span>
                             @else
                                 {{ $selectedDay }}
                             @endif
@@ -453,14 +469,14 @@
                         <input type="text" wire:model="room" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Room/Lab" />
                     </div>
 
-                    {{-- Apply to All Days --}}
-                    @if($selectedDay === 'Everyday')
-                        <div class="bg-green-50 p-3 rounded-xl">
+                    {{-- Apply to All Days / Universal Indicator --}}
+                    @if($scheduleType === 'single_schedule')
+                        <div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200">
                             <div class="flex items-center gap-2">
-                                <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                <span class="text-sm font-medium text-green-700">Everyday Mode Active</span>
+                                <span class="text-base">🗓️</span>
+                                <span class="text-sm font-semibold text-blue-800">Universal Schedule Active</span>
                             </div>
-                            <p class="text-xs text-green-600 ml-7">This assignment will be applied to all days ({{ implode(', ', $days) }})</p>
+                            <p class="text-xs text-blue-600 ml-6 mt-0.5">This period assignment will automatically be applied across all active school days ({{ implode(', ', $days) }}).</p>
                         </div>
                     @else
                         <div class="bg-blue-50 p-3 rounded-xl">

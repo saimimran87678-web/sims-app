@@ -276,6 +276,92 @@
 
             <div class="border-t border-gray-100"></div>
 
+            {{-- ── Section: Schedule & Timetable Configuration ── --}}
+            <div>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        Schedule & Timetable Configuration
+                    </h2>
+                    @if($is_schedule_type_locked)
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            Enforced by License ({{ $schedule_type_policy === 'day_wise' ? 'Day-Wise' : 'Single Universal' }})
+                        </span>
+                    @endif
+                </div>
+
+                <label class="block text-sm font-semibold text-gray-700 mb-1">
+                    Schedule Type
+                </label>
+                <p class="text-xs text-gray-400 mb-4">
+                    Choose whether classes follow a specific timetable for each individual day (Monday, Tuesday, etc.) or follow a single universal period schedule across all active school days.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {{-- Option 1: Day-Wise Schedule --}}
+                    <label
+                        for="schedule_type_day_wise"
+                        class="relative flex items-start gap-4 p-4 border-2 rounded-xl transition-all {{ $is_schedule_type_locked ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer' }}
+                            {{ $schedule_type === 'day_wise' ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 bg-gray-50 hover:border-gray-300' }}"
+                    >
+                        <input
+                            type="radio"
+                            id="schedule_type_day_wise"
+                            wire:model.defer="schedule_type"
+                            value="day_wise"
+                            @disabled($is_schedule_type_locked)
+                            class="mt-1 w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                        >
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-base">📅</span>
+                                <p class="text-sm font-semibold {{ $schedule_type === 'day_wise' ? 'text-indigo-700' : 'text-gray-700' }}">Day-Wise Timetable</p>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Each day has its own dedicated schedule (Mon, Tue, Wed, Thu, Fri, Sat). Ideal for institutions with varying daily class distributions.</p>
+                        </div>
+                        @if($schedule_type === 'day_wise')
+                            <span class="absolute top-3 right-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-indigo-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            </span>
+                        @endif
+                    </label>
+
+                    {{-- Option 2: Single Universal Schedule --}}
+                    <label
+                        for="schedule_type_single_schedule"
+                        class="relative flex items-start gap-4 p-4 border-2 rounded-xl transition-all {{ $is_schedule_type_locked ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer' }}
+                            {{ $schedule_type === 'single_schedule' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 bg-gray-50 hover:border-gray-300' }}"
+                    >
+                        <input
+                            type="radio"
+                            id="schedule_type_single_schedule"
+                            wire:model.defer="schedule_type"
+                            value="single_schedule"
+                            @disabled($is_schedule_type_locked)
+                            class="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        >
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-base">🗓️</span>
+                                <p class="text-sm font-semibold {{ $schedule_type === 'single_schedule' ? 'text-blue-700' : 'text-gray-700' }}">Single Universal Schedule</p>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">One unified schedule applies to all days of the week. No concept of Mon, Tue, Wed tabs — period assignments apply universally.</p>
+                        </div>
+                        @if($schedule_type === 'single_schedule')
+                            <span class="absolute top-3 right-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            </span>
+                        @endif
+                    </label>
+                </div>
+                @error('schedule_type')
+                    <span class="text-red-500 text-xs mt-2 block">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="border-t border-gray-100"></div>
+
             {{-- ── Section: Admin Action Security ── --}}
             <div>
                 <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">

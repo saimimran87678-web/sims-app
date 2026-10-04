@@ -95,6 +95,7 @@ class FirebaseAuth
                     'offline_grace' => isset($fields['offline_grace']) ? intval($extractValue($fields['offline_grace'])) : 7,
                     'enabled_modules' => $extractArray($fields['enabled_modules'] ?? null) ?: ['fees', 'exams', 'attendance', 'whatsapp', 'reports'],
                     'broadcast_announcement' => $extractValue($fields['broadcast_announcement'] ?? null),
+                    'schedule_type_policy' => $extractValue($fields['schedule_type_policy'] ?? null) ?: 'configurable',
                     'config_version' => isset($fields['config_version']) ? intval($extractValue($fields['config_version'])) : 1,
                     'bound_machine_uuid' => $extractValue($fields['bound_machine_uuid'] ?? null) ?: $extractValue($fields['telemetry']['mapValue']['fields']['bound_machine_uuid'] ?? null),
                 ];

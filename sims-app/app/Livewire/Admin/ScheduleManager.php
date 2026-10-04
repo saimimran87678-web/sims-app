@@ -14,6 +14,8 @@ class ScheduleManager extends Component
     public $selectedDay = 'Monday';
     public $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     public $applyToAllDays = false;
+    public $scheduleType = 'day_wise';
+    public $isScheduleTypeLocked = false;
 
     // View Mode: 'class' | 'teacher'
     public $viewMode = 'class';
@@ -72,6 +74,13 @@ class ScheduleManager extends Component
         $this->days = $weekendMode === 'sun_only'
             ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
             : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+        // Schedule Configuration Type
+        $this->scheduleType = \App\Services\LicenseStatus::getEffectiveScheduleType();
+        $this->isScheduleTypeLocked = \App\Services\LicenseStatus::isScheduleTypeLocked();
+        if ($this->scheduleType === 'single_schedule') {
+            $this->selectedDay = 'Monday';
+        }
 
         $this->academicSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
@@ -145,8 +154,10 @@ class ScheduleManager extends Component
 
     public function loadTimetables()
     {
-        // For "Everyday" mode, load Monday's schedule as the unified template
-        $dayToLoad = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
+        // For Single Schedule mode or "Everyday", load Monday's schedule as the unified template
+        $dayToLoad = ($this->scheduleType === 'single_schedule' || $this->selectedDay === 'Everyday')
+            ? 'Monday'
+            : $this->selectedDay;
         
         $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
         $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
@@ -475,7 +486,9 @@ class ScheduleManager extends Component
 
     public function loadAvailableTeachers()
     {
-        $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
+        $dayToCheck = ($this->scheduleType === 'single_schedule' || $this->selectedDay === 'Everyday')
+            ? 'Monday'
+            : $this->selectedDay;
 
         // Get teachers already assigned in this period on this day within the selected session
         $busyQuery = DB::table('timetables')
@@ -532,7 +545,9 @@ class ScheduleManager extends Component
         $classSubjects = Subject::where('class_id', $this->modalClassId)->orderBy('name')->get();
 
         // Get subjects already assigned to this class on this day (for informational period hints)
-        $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
+        $dayToCheck = ($this->scheduleType === 'single_schedule' || $this->selectedDay === 'Everyday')
+            ? 'Monday'
+            : $this->selectedDay;
         $usedSubjectPeriods = DB::table('timetables')
             ->where('class_id', $this->modalClassId)
             ->where('day', $dayToCheck)
@@ -584,7 +599,9 @@ class ScheduleManager extends Component
             }
         }
 
-        $dayToCheck = $this->selectedDay === 'Everyday' ? 'Monday' : $this->selectedDay;
+        $dayToCheck = ($this->scheduleType === 'single_schedule' || $this->selectedDay === 'Everyday')
+            ? 'Monday'
+            : $this->selectedDay;
 
         // Collect IDs of divided slots being edited (to exclude from conflict check)
         $editingDividedIds = array_filter(array_column($this->dividedSlots, 'id'));
@@ -612,9 +629,9 @@ class ScheduleManager extends Component
         }
 
         // Determine which days to save to
-        if ($this->selectedDay === 'Everyday') {
+        if ($this->scheduleType === 'single_schedule') {
             $daysToSave = $this->days;
-        } elseif ($this->applyToAllDays) {
+        } elseif ($this->selectedDay === 'Everyday' || $this->applyToAllDays) {
             $daysToSave = $this->days;
         } else {
             $daysToSave = [$this->selectedDay];
@@ -667,30 +684,34 @@ class ScheduleManager extends Component
                     'updated_at'     => now(),
                 ];
 
-                if ($slotDef['id'] && $day === $this->selectedDay) {
-                    DB::table('timetables')->where('id', $slotDef['id'])->update($data);
-                    $daySavedIds[] = $slotDef['id'];
+                $existingForDay = null;
+                if ($this->scheduleType === 'single_schedule') {
+                    $existingForDay = DB::table('timetables')
+                        ->where('class_id', $this->modalClassId)
+                        ->where('period_no', $this->modalPeriodNo)
+                        ->where('day', $day)
+                        ->where('teacher_id', $slotDef['teacher_id'])
+                        ->where('is_substitute', false)
+                        ->first();
+                } elseif ($slotDef['id'] && $day === $this->selectedDay) {
+                    $existingForDay = DB::table('timetables')->where('id', $slotDef['id'])->first();
+                } elseif ($this->applyToAllDays && $day !== $this->selectedDay) {
+                    $existingForDay = DB::table('timetables')
+                        ->where('class_id', $this->modalClassId)
+                        ->where('period_no', $this->modalPeriodNo)
+                        ->where('day', $day)
+                        ->where('teacher_id', $slotDef['teacher_id'])
+                        ->where('is_substitute', false)
+                        ->first();
+                }
+
+                if ($existingForDay) {
+                    DB::table('timetables')->where('id', $existingForDay->id)->update($data);
+                    $daySavedIds[] = $existingForDay->id;
                 } else {
-                    // For "apply to all days" we look for an existing entry on that day
-                    $existingForDay = null;
-                    if ($this->applyToAllDays && $day !== $this->selectedDay) {
-                        // Try to find matching slot on that day for this teacher+subject
-                        $existingForDay = DB::table('timetables')
-                            ->where('class_id', $this->modalClassId)
-                            ->where('period_no', $this->modalPeriodNo)
-                            ->where('day', $day)
-                            ->where('teacher_id', $slotDef['teacher_id'])
-                            ->where('is_substitute', false)
-                            ->first();
-                    }
-                    if ($existingForDay) {
-                        DB::table('timetables')->where('id', $existingForDay->id)->update($data);
-                        $daySavedIds[] = $existingForDay->id;
-                    } else {
-                        $data['created_at'] = now();
-                        $newId = DB::table('timetables')->insertGetId($data);
-                        $daySavedIds[] = $newId;
-                    }
+                    $data['created_at'] = now();
+                    $newId = DB::table('timetables')->insertGetId($data);
+                    $daySavedIds[] = $newId;
                 }
             }
 
@@ -876,26 +897,43 @@ class ScheduleManager extends Component
         $entry = DB::table('timetables')->where('id', $this->editingId)->first();
         if (!$entry) return;
 
-        // Delete primary entry
-        DB::table('timetables')->where('id', $this->editingId)->delete();
-
-        // Delete all sibling divided entries for same class/period/day
-        if ($entry->is_divided) {
+        if ($this->scheduleType === 'single_schedule') {
             DB::table('timetables')
                 ->where('class_id', $entry->class_id)
                 ->where('period_no', $entry->period_no)
-                ->where('day', $entry->day)
-                ->where('is_divided', true)
+                ->whereIn('day', $this->days)
                 ->where('is_substitute', false)
                 ->delete();
-        }
 
-        // Delete all partner merged entries for the same merge group
-        if ($entry->merge_group_id) {
-            DB::table('timetables')
-                ->where('merge_group_id', $entry->merge_group_id)
-                ->where('is_substitute', false)
-                ->delete();
+            if ($entry->merge_group_id) {
+                DB::table('timetables')
+                    ->where('merge_group_id', $entry->merge_group_id)
+                    ->where('is_substitute', false)
+                    ->delete();
+            }
+        } else {
+            // Delete primary entry
+            DB::table('timetables')->where('id', $this->editingId)->delete();
+
+            // Delete all sibling divided entries for same class/period/day
+            if ($entry->is_divided) {
+                DB::table('timetables')
+                    ->where('class_id', $entry->class_id)
+                    ->where('period_no', $entry->period_no)
+                    ->where('day', $entry->day)
+                    ->where('is_divided', true)
+                    ->where('is_substitute', false)
+                    ->delete();
+            }
+
+            // Delete all partner merged entries for the same merge group
+            if ($entry->merge_group_id) {
+                DB::table('timetables')
+                    ->where('merge_group_id', $entry->merge_group_id)
+                    ->where('day', $entry->day)
+                    ->where('is_substitute', false)
+                    ->delete();
+            }
         }
 
         // Re-evaluate subject allocation for this class & subject
@@ -992,11 +1030,21 @@ class ScheduleManager extends Component
         $classIds = $this->classes->pluck('id')->toArray();
         if (empty($classIds)) return;
 
-        DB::table('timetables')
-            ->whereIn('class_id', $classIds)
-            ->where('day', $this->selectedDay)
-            ->where('is_substitute', false)
-            ->delete();
+        if ($this->scheduleType === 'single_schedule') {
+            DB::table('timetables')
+                ->whereIn('class_id', $classIds)
+                ->whereIn('day', $this->days)
+                ->where('is_substitute', false)
+                ->delete();
+            $clearMessage = 'All universal schedule entries have been cleared.';
+        } else {
+            DB::table('timetables')
+                ->whereIn('class_id', $classIds)
+                ->where('day', $this->selectedDay)
+                ->where('is_substitute', false)
+                ->delete();
+            $clearMessage = 'All schedule entries for ' . $this->selectedDay . ' have been cleared.';
+        }
 
         // Clean up any subject allocations that no longer exist anywhere in the week
         $remainingTimetables = DB::table('timetables')
@@ -1017,7 +1065,7 @@ class ScheduleManager extends Component
                 }
             });
 
-        session()->flash('message', 'All schedule entries for ' . $this->selectedDay . ' have been cleared.');
+        session()->flash('message', $clearMessage);
         $this->loadData();
     }
 

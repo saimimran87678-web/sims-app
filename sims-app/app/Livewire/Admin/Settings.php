@@ -18,6 +18,9 @@ class Settings extends Component
     public $logo; // Temporary uploaded logo file
     public $weekend_mode;
     public $default_session_shift_mode;
+    public $schedule_type = 'day_wise';
+    public $is_schedule_type_locked = false;
+    public $schedule_type_policy = 'configurable';
     public $admin_action_pin_enabled = false;
     public $admin_action_pin = '';
     public $successMessage = '';
@@ -64,6 +67,7 @@ class Settings extends Component
             'logo' => 'nullable|image|max:1024', // Max 1MB logo image
             'weekend_mode'   => 'required|in:sun_only,sat_sun',
             'default_session_shift_mode' => 'required|in:Regular,Dual',
+            'schedule_type' => 'required|in:day_wise,single_schedule',
             'admin_action_pin_enabled' => 'boolean',
             'admin_action_pin' => $this->admin_action_pin_enabled ? 'required|string|min:4|max:6' : 'nullable|string',
         ];
@@ -78,6 +82,12 @@ class Settings extends Component
         $this->institute_logo = Setting::getGlobal('institute_logo', '');
         $this->weekend_mode   = Setting::get('weekend_mode', 'sat_sun');
         $this->default_session_shift_mode = Setting::getGlobal('default_session_shift_mode', 'Regular');
+
+        // License & Timetable Schedule Configuration
+        $this->schedule_type_policy = \App\Services\LicenseStatus::getScheduleTypePolicy();
+        $this->is_schedule_type_locked = \App\Services\LicenseStatus::isScheduleTypeLocked();
+        $this->schedule_type = \App\Services\LicenseStatus::getEffectiveScheduleType();
+
         $this->admin_action_pin_enabled = (bool) Setting::get('admin_action_pin_enabled', false);
         $this->admin_action_pin = Setting::get('admin_action_pin', '');
 
@@ -298,6 +308,11 @@ class Settings extends Component
         Setting::setGlobal('institute_phone', $this->institute_phone ?? '');
         Setting::set('weekend_mode',   $this->weekend_mode);
         Setting::setGlobal('default_session_shift_mode', $this->default_session_shift_mode);
+
+        if (!$this->is_schedule_type_locked) {
+            Setting::set('schedule_type', $this->schedule_type);
+        }
+
         Setting::set('admin_action_pin_enabled', $this->admin_action_pin_enabled);
         Setting::set('admin_action_pin', $this->admin_action_pin_enabled ? $this->admin_action_pin : '');
 
