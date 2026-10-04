@@ -1,10 +1,10 @@
 {
   "version": "2.5.2",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
-  "checksum": "5e43852845248464ed014ff0cc5e0b7121635166d6301a0f1f3ee467bf9f48cb",
-  "sha256": "5e43852845248464ed014ff0cc5e0b7121635166d6301a0f1f3ee467bf9f48cb",
+  "checksum": "500e8b04d0a6e57bc9b278d986814e1536f206fd188d05b18d26b84ad12890bb",
+  "sha256": "500e8b04d0a6e57bc9b278d986814e1536f206fd188d05b18d26b84ad12890bb",
   "min_php_version": "8.2.0",
-  "changelog": "feat: add timetable print views, controller, routes, and schedule management component",
+  "changelog": "Maintenance updates, bug fixes, and security patches.",
   "size_bytes": 1289536,
-  "released_at": "2026-10-04T11:48:24Z"
+  "released_at": "2026-10-04T12:12:38Z"
 }
