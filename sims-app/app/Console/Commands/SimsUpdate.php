@@ -347,10 +347,17 @@ class SimsUpdate extends Command
         // ── STEP 6: Finalize update, record checksum & warm caches ────
         if (!app()->runningUnitTests()) {
             try {
+                // Defensively remove compiled route and config cache files to guarantee new routes load immediately
+                @unlink(base_path('bootstrap/cache/routes-v7.php'));
+                @unlink(base_path('bootstrap/cache/config.php'));
+                if (function_exists('opcache_reset')) {
+                    @opcache_reset();
+                }
+
                 if ($this->option('no-restart')) {
-                    // Running in web context:
-                    // Only clear compiled views and general cache. DO NOT run optimize (config:cache/route:cache)
-                    // as it reboots the container and wipes request singletons during an active HTTP response.
+                    // Running in web context: clear caches without rebooting container
+                    Artisan::call('route:clear');
+                    Artisan::call('config:clear');
                     Artisan::call('view:clear');
                     Artisan::call('cache:clear');
                 } else {

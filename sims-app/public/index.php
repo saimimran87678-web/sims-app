@@ -15,6 +15,19 @@ if (function_exists('opcache_reset')) {
     @opcache_reset();
 }
 
+// Auto-invalidate stale route cache if routes/web.php or routes/api.php was updated
+$routeCache = __DIR__.'/../bootstrap/cache/routes-v7.php';
+if (file_exists($routeCache)) {
+    clearstatcache(true, $routeCache);
+    $cacheMtime = @filemtime($routeCache) ?: 0;
+    $webRoutes = __DIR__.'/../routes/web.php';
+    $apiRoutes = __DIR__.'/../routes/api.php';
+    if ((file_exists($webRoutes) && @filemtime($webRoutes) > $cacheMtime) ||
+        (file_exists($apiRoutes) && @filemtime($apiRoutes) > $cacheMtime)) {
+        @unlink($routeCache);
+    }
+}
+
 // Register the Composer autoloader...
 require __DIR__.'/../vendor/autoload.php';
 

@@ -196,14 +196,14 @@ class SimsInstall extends Command
         }
 
         // 6. Pre-warm and compile application caches
-        $this->info('⚡ Pre-warming application caches (config, routes, views)...');
+        $this->info('⚡ Preparing clean application caches (views compiled, routes dynamic)...');
         try {
-            Artisan::call('config:cache');
-            Artisan::call('route:cache');
+            Artisan::call('route:clear');
+            Artisan::call('config:clear');
             Artisan::call('view:cache');
-            $this->info('✅ Configuration, route, and view caches compiled.');
+            $this->info('✅ View caches compiled and dynamic route dispatch enabled.');
         } catch (\Exception $e) {
-            $this->warn('⚠️ Cache compilation note: ' . $e->getMessage());
+            $this->warn('⚠️ Cache setup note: ' . $e->getMessage());
         }
 
         $this->info('====================================================');
