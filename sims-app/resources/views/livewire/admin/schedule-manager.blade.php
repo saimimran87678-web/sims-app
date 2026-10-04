@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-6" x-data="{ showPrintModal: false, selectedPrintClassId: '{{ $classes[0]->id ?? '' }}', selectedPrintTeacherId: '{{ $teachers[0]->id ?? '' }}' }">
     <div class="flex justify-between items-center">
         <div class="flex items-start gap-4">
             <x-schedule-menu />
@@ -90,6 +90,18 @@
                 </svg>
                 Sync to Gradebook
             </button>
+
+            <button
+                type="button"
+                @click="showPrintModal = true"
+                class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-sm font-medium"
+                title="Print Master, Class, and Teacher Timetables"
+            >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print Timetables
+            </button>
             @if($scheduleType !== 'single_schedule')
                 <button
                     wire:click="copyToAllDays"
@@ -143,8 +155,20 @@
                 <tbody class="bg-white divide-y divide-gray-100">
                     @foreach($classes as $class)
                         <tr class="hover:bg-gray-50/50">
-                            <td class="px-4 py-3 text-sm font-bold text-gray-800 sticky left-0 bg-white">
-                                <div>{{ $class->name }}</div>
+                            <td class="px-4 py-3 text-sm font-bold text-gray-800 sticky left-0 bg-white group/classheader">
+                                <div class="flex items-center justify-between gap-1.5">
+                                    <div>{{ $class->name }}</div>
+                                    <a 
+                                        href="{{ route('admin.schedule.print.class', $class->id) }}" 
+                                        target="_blank" 
+                                        class="opacity-0 group-hover/classheader:opacity-100 transition-opacity p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" 
+                                        title="Print Class {{ $class->name }} Timetable"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                        </svg>
+                                    </a>
+                                </div>
                                 @if(!empty($class->class_teacher_name))
                                     <div class="text-[10px] font-medium text-amber-600 truncate flex items-center gap-1 mt-0.5" title="Class Teacher: {{ $class->class_teacher_name }}">
                                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span>
@@ -249,9 +273,21 @@
                     @forelse($teachers as $teacher)
                         <tr class="hover:bg-indigo-50/20 transition-colors">
                             {{-- Teacher Name Cell --}}
-                            <td class="px-4 py-3 sticky left-0 bg-white z-10">
-                                <div class="text-sm font-bold text-gray-800 truncate max-w-[130px]" title="{{ $teacher->name }}">
-                                    {{ $teacher->name }}
+                            <td class="px-4 py-3 sticky left-0 bg-white z-10 group/teacherheader">
+                                <div class="flex items-center justify-between gap-1.5">
+                                    <div class="text-sm font-bold text-gray-800 truncate max-w-[110px]" title="{{ $teacher->name }}">
+                                        {{ $teacher->name }}
+                                    </div>
+                                    <a 
+                                        href="{{ route('admin.schedule.print.teacher_single', $teacher->id) }}" 
+                                        target="_blank" 
+                                        class="opacity-0 group-hover/teacherheader:opacity-100 transition-opacity p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-indigo-50" 
+                                        title="Print Teacher {{ $teacher->name }} Slip"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                        </svg>
+                                    </a>
                                 </div>
                                 @php
                                     $teacherPeriodCount = isset($teacherGridMap[$teacher->id])
@@ -626,4 +662,218 @@
         </div>
     </div>
     @endif
+
+    {{-- =========================================================== --}}
+    {{-- PRINT TIMETABLES MODAL (Single Universal Schedule)         --}}
+    {{-- =========================================================== --}}
+    <div 
+        x-show="showPrintModal" 
+        x-cloak 
+        class="fixed inset-0 z-50 overflow-y-auto"
+        role="dialog" 
+        aria-modal="true"
+        style="display: none;"
+    >
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            {{-- Backdrop --}}
+            <div 
+                x-show="showPrintModal" 
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity" 
+                @click="showPrintModal = false"
+            ></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            {{-- Modal Content Panel --}}
+            <div 
+                x-show="showPrintModal" 
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-100"
+            >
+                {{-- Header --}}
+                <div class="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 px-6 py-4 flex items-center justify-between text-white">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl shadow-inner border border-white/20">
+                            🖨️
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold">Print & Export Timetables</h3>
+                            <p class="text-xs text-blue-100">Single Universal Schedule Routine • Adminova Timetables</p>
+                        </div>
+                    </div>
+                    <button @click="showPrintModal = false" class="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Modal Body --}}
+                <div class="p-6 space-y-5">
+                    {{-- 1. Master Timetables --}}
+                    <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                    <span>🏫</span> Master Timetables (Whole School A4 Landscape)
+                                </h4>
+                                <p class="text-xs text-gray-500 mt-0.5">Comprehensive institution-wide matrix with Assembly & Break vertical bands</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full border border-blue-200">
+                                A4 Landscape
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <a 
+                                href="{{ route('admin.schedule.print.master_classwise') }}" 
+                                target="_blank"
+                                class="flex items-center justify-between p-3.5 bg-white rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all group"
+                            >
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
+                                        📊
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-gray-800 group-hover:text-blue-600">Class-Wise Matrix</div>
+                                        <div class="text-[10px] text-gray-400">Classes as rows • Matches sample PDF</div>
+                                    </div>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+
+                            <a 
+                                href="{{ route('admin.schedule.print.master_teacherwise') }}" 
+                                target="_blank"
+                                class="flex items-center justify-between p-3.5 bg-white rounded-xl border border-gray-200 hover:border-indigo-500 hover:shadow-md transition-all group"
+                            >
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                                        👨‍🏫
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-gray-800 group-hover:text-indigo-600">Teacher-Wise Matrix</div>
+                                        <div class="text-[10px] text-gray-400">Teachers as rows • Sum of lessons</div>
+                                    </div>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+
+                    {{-- 2. Individual Class Timetable --}}
+                    <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                    <span>📋</span> Individual Class Timetable ("By Class")
+                                </h4>
+                                <p class="text-xs text-gray-500 mt-0.5">Detailed routine with class teacher header & clean divided subject split</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
+                                By Class
+                            </span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-center gap-3">
+                            <select 
+                                x-model="selectedPrintClassId" 
+                                class="w-full sm:flex-1 rounded-xl border-gray-300 text-xs focus:ring-emerald-500 focus:border-emerald-500 py-2.5 px-3 bg-white"
+                            >
+                                @foreach($classes as $c)
+                                    <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->class_teacher_name ? 'CT: '.$c->class_teacher_name : 'No Class Teacher' }})</option>
+                                @endforeach
+                            </select>
+                            <a 
+                                :href="'{{ url('admin/schedule/print/class') }}/' + selectedPrintClassId" 
+                                target="_blank"
+                                class="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 flex-shrink-0"
+                            >
+                                <span>🖨️</span> Print Class Sheet
+                            </a>
+                        </div>
+                    </div>
+
+                    {{-- 3. Teacher Timetables --}}
+                    <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                    <span>📑</span> Teacher Schedules & Dossier
+                                </h4>
+                                <p class="text-xs text-gray-500 mt-0.5">2-column period slip matching each teacher.pdf (Individual or 6-Up Dossier)</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200">
+                                Teachers
+                            </span>
+                        </div>
+
+                        <div class="space-y-3">
+                            {{-- Individual slip --}}
+                            <div class="flex flex-col sm:flex-row items-center gap-3 bg-white p-2.5 rounded-xl border border-gray-200">
+                                <select 
+                                    x-model="selectedPrintTeacherId" 
+                                    class="w-full sm:flex-1 rounded-lg border-gray-300 text-xs focus:ring-purple-500 focus:border-purple-500 py-2 px-3"
+                                >
+                                    @foreach($teachers as $t)
+                                        <option value="{{ $t->id }}">{{ $t->name }}</option>
+                                    @endforeach
+                                </select>
+                                <a 
+                                    :href="'{{ url('admin/schedule/print/teacher') }}/' + selectedPrintTeacherId" 
+                                    target="_blank"
+                                    class="w-full sm:w-auto px-4 py-2 bg-gray-800 hover:bg-black text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 flex-shrink-0"
+                                >
+                                    <span>📄</span> Print Teacher Slip
+                                </a>
+                            </div>
+
+                            {{-- Bulk Dossier --}}
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-purple-50/70 border border-purple-200/80 p-3 rounded-xl gap-2">
+                                <div>
+                                    <div class="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                                        <span>🖨️</span> Bulk All Teachers Dossier (6 Cards / A4 Sheet)
+                                    </div>
+                                    <div class="text-[10px] text-purple-700 mt-0.5">
+                                        Matches each teacher.pdf • 3×2 grid on A4 Landscape with cutting lines
+                                    </div>
+                                </div>
+                                <a 
+                                    href="{{ route('admin.schedule.print.teachers_bulk') }}" 
+                                    target="_blank"
+                                    class="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 flex-shrink-0"
+                                >
+                                    <span>🖨️</span> Print All Teachers (6-Up)
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-end">
+                    <button 
+                        type="button" 
+                        @click="showPrintModal = false"
+                        class="px-5 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors shadow-xs"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

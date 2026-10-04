@@ -21,3 +21,5 @@
 
 *.log
 php_errors.log
+/Class wise timetable.pdf
+/each teacher.pdf

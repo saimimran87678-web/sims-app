@@ -76,6 +76,16 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     });
     
     Route::get('/schedule', \App\Livewire\Admin\ScheduleManager::class)->name('schedule');
+    
+    // Timetable Print Routes (Adminova Timetables)
+    Route::prefix('schedule/print')->name('schedule.print.')->group(function () {
+        Route::get('/master-classwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterClasswise'])->name('master_classwise');
+        Route::get('/master-teacherwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterTeacherwise'])->name('master_teacherwise');
+        Route::get('/class/{id}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printClass'])->name('class');
+        Route::get('/teacher/{id}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeacherSingle'])->name('teacher_single');
+        Route::get('/teachers-bulk', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeachersBulk'])->name('teachers_bulk');
+    });
+
     Route::get('/substitutions', \App\Livewire\Admin\SubstitutionManager::class)->name('substitutions');
     Route::get('/substitutions/print', function() {
         $user = request()->user();
