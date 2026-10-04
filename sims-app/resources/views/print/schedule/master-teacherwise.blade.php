@@ -2,57 +2,79 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Summary timetable of teachers | {{ $instituteName }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summary timetable of teachers | {{ $instituteName ?? 'School Timetable' }}</title>
     <style>
         @page {
             size: a4 landscape;
-            margin: 6mm 8mm;
+            margin: 5mm 6mm; /* Tight print margins matching aSc Timetables */
         }
+
         * {
             box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
+
         html, body {
             margin: 0;
             padding: 0;
-            background: #fff;
-            color: #000;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 8pt;
+            background-color: #ffffff;
+            color: #000000;
+            /* Condensed font stack to match aSc high-density metrics */
+            font-family: 'Arial Narrow', 'Liberation Sans Narrow', 'Roboto Condensed', 'Nimbus Sans L', Arial, sans-serif;
+            font-size: 7.5pt;
+            line-height: 1.15;
+            -webkit-text-size-adjust: 100%;
         }
+
         .sheet-page {
             width: 100%;
-            box-sizing: border-box;
+            max-width: 285mm;
+            margin: 0 auto 16px auto;
             page-break-inside: avoid;
-            margin: 0 auto 15px auto;
-        }
-        .page-break {
             page-break-after: always;
+            break-inside: avoid;
+            break-after: page;
+        }
+
+        .sheet-page:last-child {
+            page-break-after: auto;
+            break-after: auto;
+            margin-bottom: 0;
         }
 
         @media print {
             .no-print {
                 display: none !important;
             }
+            body {
+                width: 100%;
+                background: #fff;
+            }
             .sheet-page {
                 margin: 0 !important;
+                padding: 0 !important;
+                max-width: 100% !important;
             }
         }
 
         .screen-toolbar {
             position: fixed;
-            top: 10px;
-            right: 15px;
+            top: 12px;
+            right: 16px;
             display: flex;
+            align-items: center;
             gap: 8px;
-            z-index: 9999;
-            background: rgba(255,255,255,0.96);
+            z-index: 99999;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(4px);
             padding: 6px 12px;
             border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
             border: 1px solid #d1d5db;
         }
+
         .btn-action {
             display: inline-flex;
             align-items: center;
@@ -64,177 +86,236 @@
             cursor: pointer;
             border: none;
             text-decoration: none;
+            transition: background 0.15s ease;
         }
+
         .btn-primary {
-            background-color: #2563eb;
+            background-color: #1e3a8a;
             color: #ffffff;
         }
+
+        .btn-primary:hover {
+            background-color: #172554;
+        }
+
         .btn-secondary {
             background-color: #f3f4f6;
             color: #374151;
             border: 1px solid #d1d5db;
         }
 
-        /* Centered Header matching sample */
-        .school-header-block {
-            text-align: center;
-            margin-bottom: 5px;
-        }
-        .school-main-title {
-            font-size: 15pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin: 0 0 2px 0;
-            line-height: 1.2;
-        }
-        .school-sub-title {
-            font-size: 11.5pt;
-            font-weight: normal;
-            margin: 0;
-            line-height: 1.2;
+        .btn-secondary:hover {
+            background-color: #e5e7eb;
         }
 
-        /* Matrix Table */
+        .school-header-block {
+            text-align: center;
+            margin-bottom: 4px;
+            padding-top: 1px;
+        }
+
+        .school-main-title {
+            font-size: 13.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin: 0;
+            line-height: 1.15;
+            color: #000;
+        }
+
+        .school-sub-title {
+            font-size: 10.5pt;
+            font-weight: 400;
+            margin: 1px 0 0 0;
+            line-height: 1.15;
+            color: #111;
+        }
+
         table.timetable-table {
             width: 100%;
             border-collapse: collapse;
-            border: 1.5px solid #000;
-            table-layout: fixed;
-        }
-        table.timetable-table th,
-        table.timetable-table td {
-            border: 1px solid #000;
-            padding: 2px 2px;
-            text-align: center;
-            vertical-align: middle;
-            font-size: 8pt;
-            line-height: 1.15;
-            overflow: hidden;
-            word-wrap: break-word;
+            table-layout: fixed; /* Strictly bound by colgroup for stable columns */
+            border: 1.25px solid #000000;
+            background-color: #ffffff;
         }
 
-        /* Header row cells */
+        table.timetable-table th,
+        table.timetable-table td {
+            border: 0.75px solid #000000;
+            padding: 1.5px 1.5px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 7.5pt;
+            line-height: 1.12;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
         .th-blank-teacher {
-            width: 75px;
-            background-color: #fff;
+            background-color: #ffffff;
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-align: left;
+            padding-left: 6px;
+            border-bottom: 0.75px solid #000000;
         }
+
         .th-assembly-head {
-            width: 32px;
-            font-size: 7.5pt;
-            font-weight: bold;
-            background-color: #fff;
-            padding: 3px 1px;
+            font-size: 7.2pt;
+            font-weight: 700;
+            background-color: #ffffff;
+            padding: 4px 2px;
+            line-height: 1.25;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+            min-width: 50px;
         }
+
         .th-lessons-merged {
-            font-size: 9pt;
-            font-weight: bold;
-            background-color: #fff;
-            padding: 3px 0;
-        }
-        .th-sum-head {
-            width: 44px;
-            font-size: 7.5pt;
-            font-weight: bold;
-            background-color: #fff;
-            padding: 3px 1px;
-            line-height: 1.1;
+            font-size: 8.5pt;
+            font-weight: 700;
+            background-color: #ffffff;
+            padding: 2.5px 0;
+            text-transform: capitalize;
+            letter-spacing: 0.3px;
         }
 
         .th-period-sub {
-            font-size: 8pt;
-            font-weight: bold;
-            background-color: #fff;
-            padding: 2px 1px;
-        }
-        .th-break-sub {
-            width: 32px;
             font-size: 7.5pt;
-            font-weight: bold;
-            background-color: #fff;
+            font-weight: 700;
+            background-color: #ffffff;
             padding: 2px 1px;
-        }
-        .time-label {
-            font-size: 6.5pt;
-            font-weight: normal;
-            display: block;
-            margin-top: 1px;
+            line-height: 1.08;
         }
 
-        /* Body rows */
-        .td-teacher-name {
-            font-size: 9pt;
-            font-weight: bold;
-            text-align: left;
-            padding-left: 5px !important;
-            height: 40px;
+        .th-break-sub {
+            font-size: 7pt;
+            font-weight: 700;
+            background-color: #ffffff;
+            padding: 3px 1px;
+            line-height: 1.18;
+            letter-spacing: 0.3px;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            min-width: 44px;
         }
+
+        .th-sum-head {
+            font-size: 7pt;
+            font-weight: 700;
+            background-color: #ffffff;
+            padding: 2px 1px;
+            line-height: 1.05;
+        }
+
+        .time-label {
+            font-size: 6.2pt;
+            font-weight: 400;
+            display: block;
+            margin-top: 2px;
+            letter-spacing: -0.1px;
+            white-space: nowrap;
+            color: #111;
+        }
+
+        /* Teacher Name: Left-aligned with subtle padding, natural wrap, no ellipsis cut-offs */
+        .td-teacher-name {
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-align: left;
+            padding: 2px 4px 2px 6px;
+            background-color: #ffffff;
+            letter-spacing: 0.1px;
+            line-height: 1.15;
+            white-space: normal;
+        }
+
         .td-vertical-text {
-            background-color: #fff;
-            font-size: 7.5pt;
-            font-weight: bold;
+            background-color: #ffffff;
+            font-size: 6.8pt;
+            font-weight: 700;
             text-align: center;
             vertical-align: middle;
-            line-height: 1.35;
-            letter-spacing: 1px;
+            line-height: 1.25;
+            letter-spacing: 0.5px;
+            padding: 2px 1px;
         }
 
-        /* Slot Content */
+        .vertical-char-stack {
+            display: inline-block;
+            line-height: 1.25;
+            font-weight: 700;
+        }
+
         .slot-container {
             width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 24px;
         }
-        .slot-class {
-            font-size: 7.5pt;
-            font-weight: bold;
-            color: #000;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .slot-subject {
-            font-size: 7.5pt;
-            font-weight: normal;
-            color: #000;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-top: 1px;
-        }
-        .slot-divider {
-            border-bottom: 0.5px dashed #888;
+
+        .slot-item {
             padding: 1px 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
-        .slot-divider:last-child {
-            border-bottom: none;
+
+        /* Subtle hairline divider between multiple assignments in same period */
+        .slot-item + .slot-item {
+            border-top: 0.5px solid #000000;
+            margin-top: 1.5px;
+            padding-top: 1.5px;
+        }
+
+        /* In teacher-wise view: Class is primary header (bold), Subject is secondary */
+        .slot-class {
+            font-size: 7.2pt;
+            font-weight: 700;
+            color: #000000;
+            line-height: 1.1;
+            white-space: normal;
+        }
+
+        .slot-subject {
+            font-size: 6.8pt;
+            font-weight: 400;
+            color: #111111;
+            line-height: 1.05;
+            white-space: normal;
+            margin-top: 0.5px;
         }
 
         .td-sum-val {
-            font-size: 10pt;
-            font-weight: normal;
+            font-size: 8.5pt;
+            font-weight: 600;
             text-align: center;
+            color: #000000;
         }
 
-        /* Footer */
-        table.footer-table {
+        .page-footer-table {
             width: 100%;
             border-collapse: collapse;
             border: none;
-            margin-top: 4px;
-            font-size: 7.5pt;
-            color: #000;
+            margin-top: 3px;
+            font-size: 6.8pt;
+            color: #111111;
         }
-        table.footer-table td {
+
+        .page-footer-table td {
             border: none;
             padding: 0;
+            line-height: 1.2;
         }
+
         .footer-left {
             text-align: left;
         }
+
         .footer-right {
             text-align: right;
+            font-weight: 400;
         }
     </style>
 </head>
@@ -242,36 +323,70 @@
 
     @if(empty($isPdf))
     <div class="screen-toolbar no-print">
-        <button onclick="triggerPrintAndDownload()" class="btn-action btn-primary">
-            <svg style="width:14px;height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-            Print
+        <button onclick="triggerPrintAndDownload()" class="btn-action btn-primary" title="Print document">
+            <svg style="width:14px;height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            <span>Print Timetable</span>
         </button>
-        <button onclick="window.close()" class="btn-action btn-secondary">
+        <button onclick="window.close()" class="btn-action btn-secondary" title="Close window">
             ✕ Close
         </button>
     </div>
     @endif
 
+    @php
+        // Count non-break and break periods to compute precise column ratios
+        $nonBreakCount = collect($nonAssemblyPeriods)->where('is_break', false)->count();
+        $breakCount = collect($nonAssemblyPeriods)->where('is_break', true)->count();
+        $hasAssembly = !empty($assemblyPeriod);
+
+        // Teacher column gets 8.0% to provide room for longer names (e.g. Mr. Shahjahan)
+        // Assembly column has 4.8% with min-width 50px to prevent compact squeezed header on screen
+        $fixedWidthPercentage = 8.0 + ($hasAssembly ? 4.8 : 0) + ($breakCount * 3.8) + 4.4;
+        $periodWidthPercentage = $nonBreakCount > 0 ? ((100 - $fixedWidthPercentage) / $nonBreakCount) : 11.0;
+    @endphp
+
     @foreach($teacherPages as $pageIndex => $pageTeachers)
-    <div class="sheet-page {{ !$loop->last ? 'page-break' : '' }}">
-        {{-- Centered Header matching sample --}}
+    <div class="sheet-page">
         <div class="school-header-block">
-            <div class="school-main-title">{{ $instituteName }}</div>
+            <div class="school-main-title">{{ $instituteName ?? 'ISLAMABAD MODEL COLLEGE FOR BOYS G-6/2, ISLAMABAD' }}</div>
             <div class="school-sub-title">Summary timetable of teachers</div>
         </div>
 
-        {{-- Table --}}
         <table class="timetable-table">
+            <colgroup>
+                {{-- Column 1: Teacher Name --}}
+                <col style="width: 8.0%; min-width: 75px;">
+
+                {{-- Column 2: Assembly (expanded with min-width for browser screen legibility) --}}
+                @if($hasAssembly)
+                    <col style="width: 4.8%; min-width: 50px;">
+                @endif
+
+                {{-- Lesson Periods & Break Columns --}}
+                @foreach($nonAssemblyPeriods as $p)
+                    @if($p->is_break)
+                        <col style="width: 3.8%; min-width: 44px;">
+                    @else
+                        <col style="width: {{ number_format($periodWidthPercentage, 2) }}%;">
+                    @endif
+                @endforeach
+
+                {{-- Column Last: Sum of Lessons --}}
+                <col style="width: 4.4%;">
+            </colgroup>
+
             <thead>
-                {{-- Row 1: Teacher, Assembly (rowspan 2), Lessons (merged header), Sum of lessons (rowspan 2) --}}
+                {{-- Header Row 1: Merged Lessons & Anchors --}}
                 <tr>
                     <th rowspan="2" class="th-blank-teacher">Teacher</th>
 
-                    @if($assemblyPeriod)
+                    @if($hasAssembly)
                         <th rowspan="2" class="th-assembly-head">
                             ASSEMBLY
-                            @if($assemblyPeriod->start_time && $assemblyPeriod->end_time)
-                                <span class="time-label">{{ \Carbon\Carbon::parse($assemblyPeriod->start_time)->format('g:i') }} - {{ \Carbon\Carbon::parse($assemblyPeriod->end_time)->format('g:i') }}</span>
+                            @if(!empty($assemblyPeriod->start_time) && !empty($assemblyPeriod->end_time))
+                                <span class="time-label">{{ \Carbon\Carbon::parse($assemblyPeriod->start_time)->format('g:i') }}-{{ \Carbon\Carbon::parse($assemblyPeriod->end_time)->format('g:i') }}</span>
                             @endif
                         </th>
                     @endif
@@ -285,67 +400,68 @@
                     </th>
                 </tr>
 
-                {{-- Row 2: Sub-columns for Lessons and Break --}}
+                {{-- Header Row 2: Period Ordinals and Times --}}
                 <tr>
                     @foreach($nonAssemblyPeriods as $p)
                         @if($p->is_break)
                             <th class="th-break-sub">
                                 BREAK
-                                @if($p->start_time && $p->end_time)
-                                    <span class="time-label">{{ \Carbon\Carbon::parse($p->start_time)->format('g:i') }} - {{ \Carbon\Carbon::parse($p->end_time)->format('g:i') }}</span>
+                                @if(!empty($p->start_time) && !empty($p->end_time))
+                                    <span class="time-label">{{ \Carbon\Carbon::parse($p->start_time)->format('g:i') }}-{{ \Carbon\Carbon::parse($p->end_time)->format('g:i') }}</span>
                                 @endif
                             </th>
                         @else
                             <th class="th-period-sub">
                                 {{ $lessonOrdinals[$p->period_no] ?? ($p->period_no . 'th') }}
-                                @if($p->start_time && $p->end_time)
-                                    <span class="time-label">{{ \Carbon\Carbon::parse($p->start_time)->format('g:i') }} - {{ \Carbon\Carbon::parse($p->end_time)->format('g:i') }}</span>
+                                @if(!empty($p->start_time) && !empty($p->end_time))
+                                    <span class="time-label">{{ \Carbon\Carbon::parse($p->start_time)->format('g:i') }}-{{ \Carbon\Carbon::parse($p->end_time)->format('g:i') }}</span>
                                 @endif
                             </th>
                         @endif
                     @endforeach
                 </tr>
             </thead>
+
             <tbody>
                 @foreach($pageTeachers as $tIndex => $t)
                 <tr>
-                    {{-- Column 1: Teacher Name --}}
+                    {{-- Teacher Identifier --}}
                     <td class="td-teacher-name" title="{{ $t->name }}">
                         {{ $t->name }}
                     </td>
 
-                    {{-- Column 2: Assembly --}}
-                    @if($assemblyPeriod)
+                    {{-- Assembly Spanned Column --}}
+                    @if($hasAssembly)
                         @if($loop->first)
                             <td rowspan="{{ count($pageTeachers) }}" class="td-vertical-text">
-                                A<br>S<br>S<br>E<br>M<br>B<br>L<br>Y
+                                <span class="vertical-char-stack">
+                                    A<br>S<br>S<br>E<br>M<br>B<br>L<br>Y
+                                </span>
                             </td>
                         @endif
                     @endif
 
-                    {{-- Period & Break Columns --}}
+                    {{-- Period Columns --}}
                     @foreach($nonAssemblyPeriods as $p)
                         @if($p->is_break)
+                            {{-- Break Spanned Column --}}
                             @if($loop->parent->first)
                                 <td rowspan="{{ count($pageTeachers) }}" class="td-vertical-text">
-                                    B<br>R<br>E<br>A<br>K
+                                    <span class="vertical-char-stack">
+                                        B<br>R<br>E<br>A<br>K
+                                    </span>
                                 </td>
                             @endif
                         @else
+                            {{-- Period Lesson Slot --}}
                             @php
                                 $slots = $teacherGrid->get($t->id . '_' . $p->period_no, collect());
                             @endphp
                             <td>
-                                @if($slots->count() === 1)
-                                    @php $s = $slots->first(); @endphp
-                                    <div class="slot-container">
-                                        <div class="slot-class">{{ $s->class_name ?? '-' }}</div>
-                                        <div class="slot-subject">{{ $s->subject_name ?? $s->subject_code ?? '' }}</div>
-                                    </div>
-                                @elseif($slots->count() > 1)
+                                @if($slots->isNotEmpty())
                                     <div class="slot-container">
                                         @foreach($slots as $s)
-                                            <div class="slot-divider">
+                                            <div class="slot-item">
                                                 <div class="slot-class">{{ $s->class_name ?? '-' }}</div>
                                                 <div class="slot-subject">{{ $s->subject_name ?? $s->subject_code ?? '' }}</div>
                                             </div>
@@ -356,7 +472,7 @@
                         @endif
                     @endforeach
 
-                    {{-- Sum of lessons --}}
+                    {{-- Sum of Lessons --}}
                     <td class="td-sum-val">
                         {{ $sumOfLessons[$t->id] ?? 0 }}
                     </td>
@@ -365,8 +481,7 @@
             </tbody>
         </table>
 
-        {{-- Footer --}}
-        <table class="footer-table">
+        <table class="page-footer-table">
             <tr>
                 <td class="footer-left">Applicable from {{ $effectiveDate }}</td>
                 <td class="footer-right">Adminova Timetables</td>
@@ -398,15 +513,17 @@
                 window.print();
             }, 350);
         }
+    </script>
+    @endif
 
-        @if(!empty($autoprint))
+    @if(!empty($autoprint))
+    <script>
         window.addEventListener('load', function() {
             triggerDownloadPdf();
             setTimeout(function() {
                 window.print();
-            }, 550);
+            }, 500);
         });
-        @endif
     </script>
     @endif
 </body>
