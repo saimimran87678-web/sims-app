@@ -1,10 +1,10 @@
 {
   "version": "2.5.2",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
-  "checksum": "dc0b00bc1dc80725ad90f11f77651514c96dfdb6b572991199771e1bb14bd37f",
-  "sha256": "dc0b00bc1dc80725ad90f11f77651514c96dfdb6b572991199771e1bb14bd37f",
+  "checksum": "05693d703b651990a526baea8a261d913bebbaa0909adffc9ddb779b0a3c671a",
+  "sha256": "05693d703b651990a526baea8a261d913bebbaa0909adffc9ddb779b0a3c671a",
   "min_php_version": "8.2.0",
-  "changelog": "feat: add public entry point and schedule manager livewire view for admin",
-  "size_bytes": 1289520,
-  "released_at": "2026-10-04T12:20:10Z"
+  "changelog": "feat: add timetable printing controller, schedule views, and timetable components",
+  "size_bytes": 1292542,
+  "released_at": "2026-10-04T12:45:17Z"
 }
