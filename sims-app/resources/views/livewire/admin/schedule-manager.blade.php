@@ -159,9 +159,9 @@
                                 <div class="flex items-center justify-between gap-1.5">
                                     <div>{{ $class->name }}</div>
                                     <a 
-                                        href="{{ url('admin/schedule/print/class/' . $class->id) }}" 
+                                        href="/admin/schedule/print/class/{{ $class->id }}?autoprint=1" 
                                         target="_blank" 
-                                        class="opacity-0 group-hover/classheader:opacity-100 transition-opacity p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" 
+                                        class="opacity-0 group-hover/classheader:opacity-100 transition-opacity p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-indigo-50" 
                                         title="Print Class {{ $class->name }} Timetable"
                                     >
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -279,7 +279,7 @@
                                         {{ $teacher->name }}
                                     </div>
                                     <a 
-                                        href="{{ url('admin/schedule/print/teacher/' . $teacher->id) }}" 
+                                        href="/admin/schedule/print/teacher/{{ $teacher->id }}?autoprint=1" 
                                         target="_blank" 
                                         class="opacity-0 group-hover/teacherheader:opacity-100 transition-opacity p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-indigo-50" 
                                         title="Print Teacher {{ $teacher->name }} Slip"
@@ -659,12 +659,8 @@
                     </button>
                 </div>
             </div>
-        </div>
-    </div>
-    @endif
-
     {{-- =========================================================== --}}
-    {{-- PRINT TIMETABLES MODAL (Minimalist & Streamlined)          --}}
+    {{-- PRINT TIMETABLES MODAL (Clean, Smooth, Optimized Layout)     --}}
     {{-- =========================================================== --}}
     <div 
         x-show="showPrintModal" 
@@ -675,47 +671,47 @@
         aria-modal="true"
         style="display: none;"
     >
-        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        {{-- Centered Flex Wrapper with equal top/bottom breathing margin --}}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
             {{-- Backdrop --}}
             <div 
                 x-show="showPrintModal" 
-                x-transition:enter="ease-out duration-250"
+                x-transition:enter="ease-out duration-200"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"
                 x-transition:leave="ease-in duration-150"
                 x-transition:leave-start="opacity-100"
                 x-transition:leave-end="opacity-0"
-                class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
+                class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity" 
                 @click="showPrintModal = false"
             ></div>
-
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
             {{-- Modal Content Panel --}}
             <div 
                 x-show="showPrintModal" 
-                x-transition:enter="ease-out duration-250"
-                x-transition:enter-start="opacity-0 translate-y-2 sm:translate-y-0 sm:scale-98"
-                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:enter="ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
                 x-transition:leave="ease-in duration-150"
-                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                x-transition:leave-end="opacity-0 translate-y-2 sm:translate-y-0 sm:scale-98"
-                class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-slate-200"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="relative bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-lg border border-slate-200/90 z-10 flex flex-col my-auto"
             >
                 {{-- Clean Minimalist Header --}}
-                <div class="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-white">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center border border-slate-200/60">
-                            <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shadow-xs">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
                         </div>
                         <div>
-                            <h3 class="text-sm font-semibold text-slate-900 tracking-tight">Print Timetables</h3>
-                            <p class="text-xs text-slate-500">Generate printable routines or download PDF files</p>
+                            <h3 class="text-sm font-bold text-slate-900 leading-tight">Print Timetables</h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Select format to print and auto-download official PDF</p>
                         </div>
                     </div>
                     <button 
+                        type="button"
                         @click="showPrintModal = false" 
                         class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                         title="Close (Esc)"
@@ -727,12 +723,12 @@
                 </div>
 
                 {{-- Segmented Tabs --}}
-                <div class="px-6 pt-4 pb-1 bg-slate-50/50 border-b border-slate-100">
-                    <div class="flex p-1 bg-slate-200/60 rounded-xl text-xs font-medium text-slate-600 gap-1">
+                <div class="px-6 pt-3.5 pb-0 bg-white">
+                    <div class="flex p-1 bg-slate-100/80 rounded-xl text-xs font-medium text-slate-600 gap-1 border border-slate-200/60">
                         <button 
                             type="button"
                             @click="activePrintTab = 'master'"
-                            :class="activePrintTab === 'master' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                            :class="activePrintTab === 'master' ? 'bg-white text-indigo-700 shadow-xs font-semibold ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-800'"
                             class="flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5"
                         >
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -743,241 +739,192 @@
                         <button 
                             type="button"
                             @click="activePrintTab = 'class'"
-                            :class="activePrintTab === 'class' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                            :class="activePrintTab === 'class' ? 'bg-white text-indigo-700 shadow-xs font-semibold ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-800'"
                             class="flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5"
                         >
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
-                            Class Schedule
+                            By Class
                         </button>
                         <button 
                             type="button"
                             @click="activePrintTab = 'teacher'"
-                            :class="activePrintTab === 'teacher' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                            :class="activePrintTab === 'teacher' ? 'bg-white text-indigo-700 shadow-xs font-semibold ring-1 ring-slate-900/5' : 'text-slate-500 hover:text-slate-800'"
                             class="flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5"
                         >
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                            Teacher Slips
+                            Teachers
                         </button>
                     </div>
                 </div>
 
-                {{-- Modal Body --}}
-                <div class="p-6">
+                {{-- Modal Body with balanced margins and padding --}}
+                <div class="px-6 py-4 space-y-3 max-h-[calc(85vh-160px)] overflow-y-auto">
                     {{-- 1. TAB: MASTER MATRICES --}}
-                    <div x-show="activePrintTab === 'master'" class="space-y-3.5">
+                    <div x-show="activePrintTab === 'master'" class="space-y-3">
                         {{-- Class-Wise Master --}}
-                        <div class="p-4 rounded-xl border border-slate-200/80 bg-white hover:border-slate-300 transition-colors">
+                        <div class="p-4 rounded-xl border border-slate-200/80 bg-slate-50/30 hover:bg-white hover:border-indigo-200 hover:shadow-xs transition-all">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <h4 class="text-xs font-semibold text-slate-900">Class-Wise Master Matrix</h4>
-                                        <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">A4 Landscape</span>
+                                        <h4 class="text-xs font-bold text-slate-900">Class-Wise Master Matrix</h4>
+                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/70">A4 Landscape</span>
                                     </div>
                                     <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                                        Complete school routine with classes as rows and assembly & break vertical columns.
+                                        Whole school routine with classes as rows and assembly & break vertical bands.
                                     </p>
                                 </div>
-                                <div class="flex items-center gap-2 flex-shrink-0">
-                                    <a 
-                                        href="{{ url('admin/schedule/print/master-classwise?autoprint=1') }}" 
-                                        target="_blank"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                                        title="Open clean printable view in new tab"
-                                    >
-                                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                        </svg>
-                                        Print
-                                    </a>
-                                    <a 
-                                        href="{{ url('admin/schedule/print/master-classwise?format=pdf&download=1') }}" 
-                                        target="_blank"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-slate-900 hover:bg-black transition-colors"
-                                        title="Download direct PDF file"
-                                    >
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                        </svg>
-                                        PDF
-                                    </a>
-                                </div>
+                                <a 
+                                    href="/admin/schedule/print/master-classwise?autoprint=1" 
+                                    target="_blank"
+                                    class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition-all shadow-xs shadow-indigo-600/15 flex-shrink-0"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print Timetable
+                                </a>
                             </div>
                         </div>
 
                         {{-- Teacher-Wise Master --}}
-                        <div class="p-4 rounded-xl border border-slate-200/80 bg-white hover:border-slate-300 transition-colors">
+                        <div class="p-4 rounded-xl border border-slate-200/80 bg-slate-50/30 hover:bg-white hover:border-indigo-200 hover:shadow-xs transition-all">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <h4 class="text-xs font-semibold text-slate-900">Teacher-Wise Master Matrix</h4>
-                                        <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">A4 Landscape</span>
+                                        <h4 class="text-xs font-bold text-slate-900">Teacher-Wise Master Matrix</h4>
+                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/70">A4 Landscape</span>
                                     </div>
                                     <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                                        Full faculty roster with periods as columns and total weekly teaching load sum.
+                                        All faculty schedules with period allocations and total lessons sum.
                                     </p>
                                 </div>
-                                <div class="flex items-center gap-2 flex-shrink-0">
-                                    <a 
-                                        href="{{ url('admin/schedule/print/master-teacherwise?autoprint=1') }}" 
-                                        target="_blank"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                                        title="Open clean printable view in new tab"
-                                    >
-                                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                        </svg>
-                                        Print
-                                    </a>
-                                    <a 
-                                        href="{{ url('admin/schedule/print/master-teacherwise?format=pdf&download=1') }}" 
-                                        target="_blank"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-slate-900 hover:bg-black transition-colors"
-                                        title="Download direct PDF file"
-                                    >
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                        </svg>
-                                        PDF
-                                    </a>
-                                </div>
+                                <a 
+                                    href="/admin/schedule/print/master-teacherwise?autoprint=1" 
+                                    target="_blank"
+                                    class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition-all shadow-xs shadow-indigo-600/15 flex-shrink-0"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print Timetable
+                                </a>
                             </div>
                         </div>
                     </div>
 
                     {{-- 2. TAB: CLASS TIMETABLE --}}
-                    <div x-show="activePrintTab === 'class'" style="display: none;" class="space-y-4">
+                    <div x-show="activePrintTab === 'class'" style="display: none;" class="space-y-3">
                         <div class="p-4 rounded-xl border border-slate-200/80 bg-white">
-                            <label class="block text-xs font-semibold text-slate-900 mb-2">Select Target Class</label>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-xs font-bold text-slate-900">Select Class</label>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/70">A4 Landscape</span>
+                            </div>
                             <select 
                                 x-model="selectedPrintClassId" 
-                                class="w-full rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50/60 focus:bg-white focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 py-2.5 px-3 transition-all"
+                                class="w-full rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 py-2.5 px-3 transition-all"
                             >
                                 @foreach($classes as $c)
-                                    <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->class_teacher_name ? 'CT: '.$c->class_teacher_name : 'No Class Teacher' }})</option>
+                                    <option value="{{ $c->id }}">{{ $c->name }} {{ $c->class_teacher_name ? '• CT: '.$c->class_teacher_name : '' }}</option>
                                 @endforeach
                             </select>
 
                             <p class="text-[11px] text-slate-500 mt-2.5 leading-relaxed">
-                                Formatted in A4 Landscape matching official class timetables with period timings and designated class teachers.
+                                Formatted in A4 Landscape with period times, designated subjects, and class teacher details.
                             </p>
 
-                            <div class="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-end gap-2">
+                            <div class="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-end">
                                 <a 
-                                    :href="'{{ url('admin/schedule/print/class') }}' + (selectedPrintClassId ? '/' + selectedPrintClassId : '') + '?autoprint=1'" 
+                                    :href="'/admin/schedule/print/class/' + (selectedPrintClassId || '') + '?autoprint=1'" 
                                     target="_blank"
-                                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                                >
-                                    <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Print Class
-                                </a>
-                                <a 
-                                    :href="'{{ url('admin/schedule/print/class') }}' + (selectedPrintClassId ? '/' + selectedPrintClassId : '') + '?format=pdf&download=1'" 
-                                    target="_blank"
-                                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium text-white bg-slate-900 hover:bg-black transition-colors"
+                                    class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition-all shadow-xs shadow-indigo-600/15"
                                 >
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                     </svg>
-                                    Download PDF
+                                    Print Class Timetable
                                 </a>
                             </div>
                         </div>
                     </div>
 
                     {{-- 3. TAB: TEACHER TIMETABLES --}}
-                    <div x-show="activePrintTab === 'teacher'" style="display: none;" class="space-y-3.5">
+                    <div x-show="activePrintTab === 'teacher'" style="display: none;" class="space-y-3">
                         {{-- Individual Teacher Slip --}}
                         <div class="p-4 rounded-xl border border-slate-200/80 bg-white">
-                            <label class="block text-xs font-semibold text-slate-900 mb-2">Individual Teacher Slip</label>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-xs font-bold text-slate-900">Individual Teacher Slip</label>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/70">Diary Card</span>
+                            </div>
                             <select 
                                 x-model="selectedPrintTeacherId" 
-                                class="w-full rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50/60 focus:bg-white focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 py-2 px-3 transition-all"
+                                class="w-full rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 py-2.5 px-3 transition-all"
                             >
                                 @foreach($teachers as $t)
                                     <option value="{{ $t->id }}">{{ $t->name }}</option>
                                 @endforeach
                             </select>
 
-                            <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                            <p class="text-[11px] text-slate-500 mt-2.5 leading-relaxed">
                                 2-column compact diary slip showing periods, assigned classes, and room allocations.
                             </p>
 
-                            <div class="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                            <div class="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-end">
                                 <a 
-                                    :href="'{{ url('admin/schedule/print/teacher') }}' + (selectedPrintTeacherId ? '/' + selectedPrintTeacherId : '') + '?autoprint=1'" 
+                                    :href="'/admin/schedule/print/teacher/' + (selectedPrintTeacherId || '') + '?autoprint=1'" 
                                     target="_blank"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                                >
-                                    <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Print Slip
-                                </a>
-                                <a 
-                                    :href="'{{ url('admin/schedule/print/teacher') }}' + (selectedPrintTeacherId ? '/' + selectedPrintTeacherId : '') + '?format=pdf&download=1'" 
-                                    target="_blank"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-slate-900 hover:bg-black transition-colors"
+                                    class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition-all shadow-xs shadow-indigo-600/15"
                                 >
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                     </svg>
-                                    PDF
+                                    Print Teacher Slip
                                 </a>
                             </div>
                         </div>
 
                         {{-- Bulk All Teachers Dossier --}}
-                        <div class="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:border-slate-300 transition-colors">
+                        <div class="p-4 rounded-xl border border-slate-200/80 bg-slate-50/30 hover:bg-white hover:border-indigo-200 hover:shadow-xs transition-all">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <h4 class="text-xs font-semibold text-slate-900">Bulk All Teachers Dossier</h4>
-                                        <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-200/70 text-slate-700">6 Cards / A4</span>
+                                        <h4 class="text-xs font-bold text-slate-900">Bulk All Teachers Dossier</h4>
+                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/70">6 Cards / A4</span>
                                     </div>
                                     <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                                        Formats all faculty slips into a 3×2 grid on A4 Landscape with cutting guides.
+                                        3×2 grid on A4 Landscape with cutting lines for all faculty members.
                                     </p>
                                 </div>
-                                <div class="flex items-center gap-2 flex-shrink-0">
-                                    <a 
-                                        href="{{ url('admin/schedule/print/teachers-bulk?autoprint=1') }}" 
-                                        target="_blank"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                                    >
-                                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                        </svg>
-                                        Print All
-                                    </a>
-                                    <a 
-                                        href="{{ url('admin/schedule/print/teachers-bulk?format=pdf&download=1') }}" 
-                                        target="_blank"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-slate-900 hover:bg-black transition-colors"
-                                    >
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                        </svg>
-                                        PDF
-                                    </a>
-                                </div>
+                                <a 
+                                    href="/admin/schedule/print/teachers-bulk?autoprint=1" 
+                                    target="_blank"
+                                    class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition-all shadow-xs shadow-indigo-600/15 flex-shrink-0"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print All (6-Up)
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {{-- Clean Minimalist Footer --}}
-                <div class="px-6 py-3 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span class="text-[11px] text-slate-400">Press <kbd class="px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-600 font-mono text-[10px]">Esc</kbd> to close</span>
+                <div class="px-6 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Auto-downloads PDF & opens print dialog
+                    </span>
                     <button 
                         type="button" 
                         @click="showPrintModal = false"
-                        class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition-colors"
                     >
                         Close
                     </button>

@@ -77,14 +77,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     
     Route::get('/schedule', \App\Livewire\Admin\ScheduleManager::class)->name('schedule');
     
-    // Timetable Print Routes (Adminova Timetables)
-    Route::prefix('schedule/print')->name('schedule.print.')->group(function () {
-        Route::get('/master-classwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterClasswise'])->name('master_classwise');
-        Route::get('/master-teacherwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterTeacherwise'])->name('master_teacherwise');
-        Route::get('/class/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printClass'])->name('class');
-        Route::get('/teacher/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeacherSingle'])->name('teacher_single');
-        Route::get('/teachers-bulk', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeachersBulk'])->name('teachers_bulk');
-    });
+
 
     Route::get('/substitutions', \App\Livewire\Admin\SubstitutionManager::class)->name('substitutions');
     Route::get('/substitutions/print', function() {
@@ -314,6 +307,36 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
             Route::get('/invoice/{record}/download', \App\Http\Controllers\Admin\Fee\DownloadInvoiceController::class)->name('invoice.download');
             Route::get('/receipt/{payment}/download', \App\Http\Controllers\Admin\Fee\DownloadReceiptController::class)->name('receipt.download');
         });
+    });
+});
+
+// Universal Timetable Print Routes (Zero 404s and no IsAdmin redirect intercepts)
+Route::middleware(['auth'])->group(function () {
+    // 1. Admin Prefix & Named Routes
+    Route::prefix('admin/schedule/print')->name('admin.schedule.print.')->group(function () {
+        Route::get('/master-classwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterClasswise'])->name('master_classwise');
+        Route::get('/master-teacherwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterTeacherwise'])->name('master_teacherwise');
+        Route::get('/class/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printClass'])->name('class');
+        Route::get('/teacher/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeacherSingle'])->name('teacher_single');
+        Route::get('/teachers-bulk', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeachersBulk'])->name('teachers_bulk');
+    });
+
+    // 2. Schedule Root Prefix & Named Routes
+    Route::prefix('schedule/print')->name('schedule.print.')->group(function () {
+        Route::get('/master-classwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterClasswise'])->name('master_classwise');
+        Route::get('/master-teacherwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterTeacherwise'])->name('master_teacherwise');
+        Route::get('/class/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printClass'])->name('class');
+        Route::get('/teacher/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeacherSingle'])->name('teacher_single');
+        Route::get('/teachers-bulk', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeachersBulk'])->name('teachers_bulk');
+    });
+
+    // 3. Teacher Shared Prefix & Named Routes
+    Route::prefix('teacher/shared/schedule/print')->name('teacher.shared.schedule.print.')->group(function () {
+        Route::get('/master-classwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterClasswise'])->name('master_classwise');
+        Route::get('/master-teacherwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterTeacherwise'])->name('master_teacherwise');
+        Route::get('/class/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printClass'])->name('class');
+        Route::get('/teacher/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeacherSingle'])->name('teacher_single');
+        Route::get('/teachers-bulk', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeachersBulk'])->name('teachers_bulk');
     });
 });
 

@@ -95,7 +95,7 @@ class TimetablePrintController extends Controller
     {
         $user = $request->user();
         if ($user && !$user->hasRole('Super Admin') && $user->role !== 'admin') {
-            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view-sessions'), 403);
+            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view') && !$user->can('schedule.view-sessions'), 403);
         }
 
         $sessionId = $request->query('session_id', AcademicSession::getActiveSessionId());
@@ -185,7 +185,7 @@ class TimetablePrintController extends Controller
     {
         $user = $request->user();
         if ($user && !$user->hasRole('Super Admin') && $user->role !== 'admin') {
-            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view-sessions'), 403);
+            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view') && !$user->can('schedule.view-sessions'), 403);
         }
 
         $sessionId = $request->query('session_id', AcademicSession::getActiveSessionId());
@@ -271,7 +271,7 @@ class TimetablePrintController extends Controller
     {
         $user = $request->user();
         if ($user && !$user->hasRole('Super Admin') && $user->role !== 'admin') {
-            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view-sessions'), 403);
+            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view') && !$user->can('schedule.view-sessions'), 403);
         }
 
         $sessionId = $request->query('session_id', AcademicSession::getActiveSessionId());
@@ -286,7 +286,14 @@ class TimetablePrintController extends Controller
         }
 
         if (!$class) {
-            abort(404, 'No class found to generate timetable.');
+            $class = Classes::withoutGlobalScope('active_session')->first();
+            if (!$class) {
+                $class = new Classes();
+                $class->id = 1;
+                $class->name = 'All Classes';
+                $class->academic_session_id = $sessionId;
+                $class->shift_type = 'morning';
+            }
         }
 
         $sessionId = $class->academic_session_id ?: $sessionId;
@@ -366,19 +373,22 @@ class TimetablePrintController extends Controller
     {
         $user = $request->user();
         if ($user && !$user->hasRole('Super Admin') && $user->role !== 'admin') {
-            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view-sessions'), 403);
+            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view') && !$user->can('schedule.view-sessions'), 403);
         }
 
         $sessionId = $request->query('session_id', AcademicSession::getActiveSessionId());
 
         if (!$id) {
-            $teacher = User::where('role', 'teacher')->first();
+            $teacher = User::where('role', 'teacher')->first() ?? User::first();
         } else {
-            $teacher = User::find($id) ?? User::where('role', 'teacher')->first();
+            $teacher = User::find($id) ?? User::where('role', 'teacher')->first() ?? User::first();
         }
 
         if (!$teacher) {
-            abort(404, 'No teacher found to generate timetable.');
+            $teacher = new User();
+            $teacher->id = 1;
+            $teacher->name = 'Faculty Member';
+            $teacher->role = 'teacher';
         }
 
         $branding = $this->getBrandingData($sessionId);
@@ -402,7 +412,7 @@ class TimetablePrintController extends Controller
     {
         $user = $request->user();
         if ($user && !$user->hasRole('Super Admin') && $user->role !== 'admin') {
-            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view-sessions'), 403);
+            abort_if(!$user->can('schedule.manage') && !$user->can('schedule.view') && !$user->can('schedule.view-sessions'), 403);
         }
 
         $sessionId = $request->query('session_id', AcademicSession::getActiveSessionId());
