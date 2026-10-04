@@ -1,10 +1,10 @@
 {
   "version": "2.5.2",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
-  "checksum": "5944bff7827a8e44982989d733cf85554706edf8f871d37382d0a5fd3c158d50",
-  "sha256": "5944bff7827a8e44982989d733cf85554706edf8f871d37382d0a5fd3c158d50",
+  "checksum": "9255382c65f27841222725f694eae568ff3464b85b4eaf7c493f27d96ab4b99c",
+  "sha256": "9255382c65f27841222725f694eae568ff3464b85b4eaf7c493f27d96ab4b99c",
   "min_php_version": "8.2.0",
-  "changelog": "Schedule component updates, bug fixes, and security patches.",
-  "size_bytes": 1266704,
-  "released_at": "2026-10-04T09:55:58Z"
+  "changelog": "feat: add real-time license listener, broadcast banner, activation command, and setup controller",
+  "size_bytes": 1267788,
+  "released_at": "2026-10-04T10:12:57Z"
 }
