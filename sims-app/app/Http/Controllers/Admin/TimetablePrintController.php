@@ -65,11 +65,15 @@ class TimetablePrintController extends Controller
      */
     protected function respondWithViewOrPdf(Request $request, string $viewName, array $viewData, string $filename, string $paper = 'a4', string $orientation = 'landscape')
     {
-        if ($request->query('format') === 'pdf' || $request->has('pdf') || $request->has('download')) {
+        $isPdf = ($request->query('format') === 'pdf' || $request->has('pdf') || $request->has('download'));
+        $viewData['isPdf'] = $isPdf;
+
+        if ($isPdf) {
             $pdf = Pdf::loadView($viewName, $viewData)
                 ->setPaper($paper, $orientation)
                 ->setOption('isRemoteEnabled', true)
-                ->setOption('isHtml5ParserEnabled', true);
+                ->setOption('isHtml5ParserEnabled', true)
+                ->setOption('defaultFont', 'Helvetica');
 
             $safeFilename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $filename);
             if (!str_ends_with(strtolower($safeFilename), '.pdf')) {
@@ -89,7 +93,7 @@ class TimetablePrintController extends Controller
 
     /**
      * 1. Master Class-Wise Timetable (Whole School A4 Landscape Matrix)
-     * Matches Class wise timetable.pdf
+     * Matches Class wise timetable.pdf standard
      */
     public function printMasterClasswise(Request $request)
     {
@@ -111,7 +115,24 @@ class TimetablePrintController extends Controller
         // Separate assembly, lesson periods, and break
         $assemblyPeriod = $periods->first(fn($p) => $p->is_assembly || str_contains(strtolower($p->label ?? ''), 'assembly'));
         $breakPeriod = $periods->first(fn($p) => $p->is_break || str_contains(strtolower($p->label ?? ''), 'break'));
+        $nonAssemblyPeriods = $periods->filter(fn($p) => !$p->is_assembly && !str_contains(strtolower($p->label ?? ''), 'assembly'))->values();
         $lessonPeriods = $periods->filter(fn($p) => (!$p->is_break && !$p->is_assembly && !str_contains(strtolower($p->label ?? ''), 'assembly') && !str_contains(strtolower($p->label ?? ''), 'break')))->values();
+
+        // Calculate lesson ordinals (1st, 2nd, 3rd, 4th, 5th, etc.)
+        $lessonOrdinals = [];
+        $lessonCounter = 1;
+        foreach ($periods as $p) {
+            if (!$p->is_assembly && !$p->is_break && !str_contains(strtolower($p->label ?? ''), 'assembly') && !str_contains(strtolower($p->label ?? ''), 'break')) {
+                $num = $lessonCounter++;
+                $suffix = match($num % 10) {
+                    1 => ($num % 100 == 11 ? 'th' : 'st'),
+                    2 => ($num % 100 == 12 ? 'th' : 'nd'),
+                    3 => ($num % 100 == 13 ? 'th' : 'rd'),
+                    default => 'th',
+                };
+                $lessonOrdinals[$p->period_no] = $num . $suffix;
+            }
+        }
 
         // Fetch classes with class teacher
         $classes = Classes::withoutGlobalScope('active_session')
@@ -165,17 +186,26 @@ class TimetablePrintController extends Controller
             $sumOfLessons[$cls->id] = $count;
         }
 
+        // Chunk classes into 9 per page to perfectly fit A4 landscape without blank overflow
+        $classPages = $classes->chunk(9);
+        if ($classPages->isEmpty()) {
+            $classPages = collect([collect()]);
+        }
+
         $viewData = array_merge($branding, [
-            'periods'         => $periods,
-            'assemblyPeriod'  => $assemblyPeriod,
-            'breakPeriod'     => $breakPeriod,
-            'lessonPeriods'   => $lessonPeriods,
-            'classes'         => $classes,
-            'timetableGrid'   => $timetableGrid,
-            'sumOfLessons'    => $sumOfLessons,
+            'periods'            => $periods,
+            'assemblyPeriod'     => $assemblyPeriod,
+            'breakPeriod'        => $breakPeriod,
+            'nonAssemblyPeriods' => $nonAssemblyPeriods,
+            'lessonPeriods'      => $lessonPeriods,
+            'lessonOrdinals'     => $lessonOrdinals,
+            'classes'            => $classes,
+            'classPages'         => $classPages,
+            'timetableGrid'      => $timetableGrid,
+            'sumOfLessons'       => $sumOfLessons,
         ]);
 
-        return $this->respondWithViewOrPdf($request, 'print.schedule.master-classwise', $viewData, 'Master-Classwise-Timetable.pdf', 'a4', 'landscape');
+        return $this->respondWithViewOrPdf($request, 'print.schedule.master-classwise', $viewData, 'Class-Wise-Master-Timetable.pdf', 'a4', 'landscape');
     }
 
     /**
@@ -199,7 +229,24 @@ class TimetablePrintController extends Controller
 
         $assemblyPeriod = $periods->first(fn($p) => $p->is_assembly || str_contains(strtolower($p->label ?? ''), 'assembly'));
         $breakPeriod = $periods->first(fn($p) => $p->is_break || str_contains(strtolower($p->label ?? ''), 'break'));
+        $nonAssemblyPeriods = $periods->filter(fn($p) => !$p->is_assembly && !str_contains(strtolower($p->label ?? ''), 'assembly'))->values();
         $lessonPeriods = $periods->filter(fn($p) => (!$p->is_break && !$p->is_assembly && !str_contains(strtolower($p->label ?? ''), 'assembly') && !str_contains(strtolower($p->label ?? ''), 'break')))->values();
+
+        // Calculate lesson ordinals (1st, 2nd, 3rd, 4th, 5th, etc.)
+        $lessonOrdinals = [];
+        $lessonCounter = 1;
+        foreach ($periods as $p) {
+            if (!$p->is_assembly && !$p->is_break && !str_contains(strtolower($p->label ?? ''), 'assembly') && !str_contains(strtolower($p->label ?? ''), 'break')) {
+                $num = $lessonCounter++;
+                $suffix = match($num % 10) {
+                    1 => ($num % 100 == 11 ? 'th' : 'st'),
+                    2 => ($num % 100 == 12 ? 'th' : 'nd'),
+                    3 => ($num % 100 == 13 ? 'th' : 'rd'),
+                    default => 'th',
+                };
+                $lessonOrdinals[$p->period_no] = $num . $suffix;
+            }
+        }
 
         // Fetch active teachers
         $teachers = User::where('role', 'teacher')
@@ -251,17 +298,26 @@ class TimetablePrintController extends Controller
             $sumOfLessons[$t->id] = $count;
         }
 
+        // Chunk teachers into 9 per page
+        $teacherPages = $teachers->chunk(9);
+        if ($teacherPages->isEmpty()) {
+            $teacherPages = collect([collect()]);
+        }
+
         $viewData = array_merge($branding, [
-            'periods'         => $periods,
-            'assemblyPeriod'  => $assemblyPeriod,
-            'breakPeriod'     => $breakPeriod,
-            'lessonPeriods'   => $lessonPeriods,
-            'teachers'        => $teachers,
-            'teacherGrid'     => $teacherGrid,
-            'sumOfLessons'    => $sumOfLessons,
+            'periods'            => $periods,
+            'assemblyPeriod'     => $assemblyPeriod,
+            'breakPeriod'        => $breakPeriod,
+            'nonAssemblyPeriods' => $nonAssemblyPeriods,
+            'lessonPeriods'      => $lessonPeriods,
+            'lessonOrdinals'     => $lessonOrdinals,
+            'teachers'           => $teachers,
+            'teacherPages'       => $teacherPages,
+            'teacherGrid'        => $teacherGrid,
+            'sumOfLessons'       => $sumOfLessons,
         ]);
 
-        return $this->respondWithViewOrPdf($request, 'print.schedule.master-teacherwise', $viewData, 'Master-Teacherwise-Timetable.pdf', 'a4', 'landscape');
+        return $this->respondWithViewOrPdf($request, 'print.schedule.master-teacherwise', $viewData, 'Teacher-Wise-Master-Timetable.pdf', 'a4', 'landscape');
     }
 
     /**

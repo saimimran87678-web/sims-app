@@ -2,12 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class {{ $class->name }} Timetable | Adminova Timetables</title>
+    <title>Class {{ $class->name }} Timetable | {{ $instituteName }}</title>
     <style>
         @page {
             size: A4 landscape;
-            margin: 10mm 12mm;
+            margin: 8mm 10mm;
         }
 
         * {
@@ -17,12 +16,18 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             margin: 0;
             padding: 0;
             background-color: #fff;
-            color: #111827;
-            font-size: 9pt;
+            color: #000;
+            font-size: 8.5pt;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
         }
 
         /* Screen Floating Toolbar */
@@ -35,30 +40,27 @@
             z-index: 9999;
             background: rgba(255, 255, 255, 0.95);
             padding: 8px 14px;
-            border-radius: 8px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
-            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            border: 1px solid #d1d5db;
         }
 
         .btn-action {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 7px 16px;
-            font-size: 13px;
+            padding: 6px 14px;
+            font-size: 12px;
             font-weight: 600;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
             border: none;
-            transition: all 0.15s ease;
+            text-decoration: none;
         }
 
         .btn-primary {
             background-color: #2563eb;
             color: #ffffff;
-        }
-        .btn-primary:hover {
-            background-color: #1d4ed8;
         }
 
         .btn-secondary {
@@ -66,148 +68,76 @@
             color: #374151;
             border: 1px solid #d1d5db;
         }
-        .btn-secondary:hover {
-            background-color: #e5e7eb;
-        }
 
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-            body {
-                padding: 0;
-            }
-        }
-
-        /* Container */
         .sheet-container {
             width: 100%;
-            max-width: 1000px;
             margin: 0 auto;
-            padding: 6px;
+            page-break-inside: avoid;
         }
 
         /* Header matching design standard */
-        .sheet-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 2px solid #000;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
+        .school-header-block {
+            text-align: center;
+            margin-bottom: 6px;
         }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
+        .school-main-title {
+            font-size: 15pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 2px 0;
+            line-height: 1.2;
         }
-
-        .inst-logo {
-            height: 44px;
-            max-width: 55px;
-            object-fit: contain;
-            image-rendering: -webkit-optimize-contrast;
-        }
-
-        .logo-fallback {
-            width: 44px;
-            height: 44px;
-            border: 1px solid #d1d5db;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            border-radius: 4px;
-            background: #f9fafb;
-        }
-
-        .header-title-box {
+        .school-sub-title {
+            font-size: 11.5pt;
+            font-weight: normal;
+            margin: 0;
             line-height: 1.2;
         }
 
-        .inst-name {
-            font-size: 14pt;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #000;
-            margin: 0;
-        }
-
-        .sheet-subtitle {
-            font-size: 11pt;
-            font-weight: 700;
-            color: #1f2937;
-            margin: 3px 0 0 0;
-        }
-
-        .header-right {
-            text-align: right;
-            line-height: 1.3;
-        }
-
-        .system-brand {
-            font-size: 10.5pt;
-            font-weight: 800;
-            color: #1e3a8a;
-            letter-spacing: 0.3px;
-        }
-
-        .effective-tag {
-            font-size: 8.5pt;
-            color: #4b5563;
-            margin-top: 2px;
-        }
-
-        /* Class Teacher banner */
-        .meta-strip {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Meta strip using table for 100% DomPDF compatibility */
+        table.meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #999;
             background-color: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            padding: 6px 12px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
-
-        .class-teacher-info {
-            font-size: 9.5pt;
-            color: #1e293b;
-        }
-
-        .class-teacher-info strong {
-            font-size: 10.5pt;
-            color: #0f172a;
-            margin-left: 4px;
-        }
-
-        .class-info-badge {
+        table.meta-table td {
+            padding: 5px 10px;
             font-size: 9pt;
-            font-weight: 600;
+            border: none;
+        }
+        .meta-left {
+            text-align: left;
+            color: #000;
+        }
+        .meta-right {
+            text-align: right;
             color: #475569;
         }
 
-        /* Table */
-        .timetable-table {
+        /* Timetable Table */
+        table.timetable-table {
             width: 100%;
             border-collapse: collapse;
             border: 1.5px solid #000;
+            table-layout: fixed;
         }
 
-        .timetable-table th,
-        .timetable-table td {
+        table.timetable-table th,
+        table.timetable-table td {
             border: 1px solid #000;
-            padding: 6px 10px;
+            padding: 4px 6px;
             vertical-align: middle;
             font-size: 8.5pt;
+            line-height: 1.2;
         }
 
-        .timetable-table thead th {
-            background-color: #f1f5f9;
-            font-weight: 700;
-            color: #0f172a;
+        table.timetable-table thead th {
+            background-color: #f3f4f6;
+            font-weight: bold;
+            color: #000;
             text-align: left;
             font-size: 9pt;
         }
@@ -219,109 +149,93 @@
         .col-teacher { width: 28%; }
 
         .time-badge {
-            font-variant-numeric: tabular-nums;
-            font-weight: 600;
-            color: #334155;
+            font-weight: bold;
+            color: #000;
         }
 
         .duration-badge {
             font-size: 8pt;
-            color: #64748b;
+            color: #444;
             text-align: center;
         }
 
         /* Assembly & Break Rows */
         .span-row {
-            background-color: #f8fafc;
-            font-weight: 700;
-        }
-
-        .span-row td {
-            color: #334155;
+            background-color: #fbfbfb;
+            font-weight: bold;
         }
 
         .span-label {
             text-align: center;
             letter-spacing: 2px;
-            font-weight: 800;
-            font-size: 9.5pt;
-            color: #475569;
-            background-color: #f1f5f9;
+            font-weight: bold;
+            font-size: 9pt;
+            color: #333;
+            background-color: #f3f4f6;
         }
 
-        /* Subject / Teacher info */
         .subj-title {
-            font-weight: 700;
-            font-size: 9.5pt;
-            color: #0f172a;
+            font-weight: bold;
+            font-size: 9pt;
+            color: #000;
         }
 
         .teacher-title {
-            font-weight: 600;
-            font-size: 9pt;
-            color: #1e293b;
-        }
-
-        /* Clean Divided Split Container (Side-by-side or clean partitioned) */
-        .divided-container {
-            display: flex;
-            width: 100%;
-            gap: 12px;
-        }
-
-        .divided-partition {
-            flex: 1;
-            padding: 4px 6px;
-            background: #f8fafc;
-            border-radius: 4px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .divided-subject {
-            font-weight: 700;
-            font-size: 9pt;
-            color: #0f172a;
-        }
-
-        .divided-teacher {
             font-size: 8.5pt;
-            color: #475569;
-            margin-top: 1px;
+            color: #000;
+        }
+
+        /* Split container using table for DomPDF */
+        table.split-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: none;
+        }
+        table.split-table td {
+            border: none;
+            padding: 2px 4px;
+            vertical-align: top;
+        }
+        .split-card {
+            border: 1px solid #ccc;
+            padding: 3px 5px;
+            background: #fafafa;
         }
 
         .empty-slot {
-            color: #94a3b8;
+            color: #888;
             font-style: italic;
         }
 
-        /* Total lessons row */
         .total-row {
-            background-color: #f1f5f9;
-            font-weight: 800;
-            font-size: 9pt;
-        }
-
-        .total-row td {
-            border-top: 2px solid #000;
-            padding: 7px 10px;
+            background-color: #f3f4f6;
+            font-weight: bold;
         }
 
         /* Footer */
-        .sheet-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
-            padding-top: 4px;
-            border-top: 1px solid #cbd5e1;
+        table.footer-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: none;
+            margin-top: 6px;
             font-size: 7.5pt;
-            color: #64748b;
+            color: #000;
+        }
+        table.footer-table td {
+            border: none;
+            padding: 0;
+        }
+        .footer-left {
+            text-align: left;
+        }
+        .footer-right {
+            text-align: right;
         }
     </style>
 </head>
 <body>
 
-    {{-- Screen Floating Actions --}}
+    @if(empty($isPdf))
     <div class="screen-toolbar no-print">
         <button onclick="triggerPrintAndDownload()" class="btn-action btn-primary">
             <svg style="width:14px;height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
@@ -331,40 +245,27 @@
             ✕ Close
         </button>
     </div>
+    @endif
 
     <div class="sheet-container">
-        {{-- Header matching sample --}}
-        <div class="sheet-header">
-            <div class="header-left">
-                @if(!empty($logoBase64))
-                    <img src="{{ $logoBase64 }}" alt="Logo" class="inst-logo">
-                @elseif(!empty($instituteLogo) && file_exists(public_path($instituteLogo)))
-                    <img src="{{ '/' . $instituteLogo }}" alt="Logo" class="inst-logo">
-                @else
-                    <div class="logo-fallback">🏛️</div>
-                @endif
-                <div class="header-title-box">
-                    <h1 class="inst-name">{{ $instituteName }}</h1>
-                    <div class="sheet-subtitle">Class {{ $class->name }} Timetable</div>
-                </div>
-            </div>
-
-            <div class="header-right">
-                <div class="system-brand">Adminova Timetables</div>
-                <div class="effective-tag">Applicable from: <strong>{{ $effectiveDate }}</strong></div>
-            </div>
+        {{-- Centered Header --}}
+        <div class="school-header-block">
+            <div class="school-main-title">{{ $instituteName }}</div>
+            <div class="school-sub-title">Class {{ $class->name }} Timetable</div>
         </div>
 
         {{-- Class Teacher & Class Meta Strip --}}
-        <div class="meta-strip">
-            <div class="class-teacher-info">
-                Class In-charge / Teacher: 
-                <strong>{{ !empty($classTeacherName) ? $classTeacherName : 'Not Assigned' }}</strong>
-            </div>
-            <div class="class-info-badge">
-                Single Universal Schedule Routine • Working Days
-            </div>
-        </div>
+        <table class="meta-table">
+            <tr>
+                <td class="meta-left">
+                    Class In-charge / Teacher: 
+                    <strong>{{ !empty($classTeacherName) ? $classTeacherName : 'Not Assigned' }}</strong>
+                </td>
+                <td class="meta-right">
+                    Applicable from: <strong>{{ $effectiveDate }}</strong>
+                </td>
+            </tr>
+        </table>
 
         {{-- Class Timetable Table --}}
         <table class="timetable-table">
@@ -379,14 +280,14 @@
             </thead>
             <tbody>
                 @foreach($periodRows as $row)
-                    @if($row['is_assembly'])
+                    @if(!empty($row['is_assembly']))
                         <tr class="span-row">
                             <td><strong>ASSEMBLY</strong></td>
                             <td class="time-badge">{{ $row['time_range'] }}</td>
                             <td class="duration-badge">{{ $row['duration'] }} min</td>
                             <td colspan="2" class="span-label">MORNING ASSEMBLY</td>
                         </tr>
-                    @elseif($row['is_break'])
+                    @elseif(!empty($row['is_break']))
                         <tr class="span-row">
                             <td><strong>BREAK</strong></td>
                             <td class="time-badge">{{ $row['time_range'] }}</td>
@@ -411,16 +312,19 @@
                                     <div class="teacher-title">{{ $slot->teacher_name ?? '-' }}</div>
                                 </td>
                             @elseif($slots->count() > 1)
-                                {{-- Clean side-by-side divided partition without any DIVIDED CLASS PARTITION tag --}}
-                                <td colspan="2" style="padding: 4px;">
-                                    <div class="divided-container">
-                                        @foreach($slots as $slot)
-                                            <div class="divided-partition">
-                                                <div class="divided-subject">{{ $slot->subject_name ?? 'Elective' }}</div>
-                                                <div class="divided-teacher">Teacher: <strong>{{ $slot->teacher_name ?? '-' }}</strong></div>
-                                            </div>
-                                        @endforeach
-                                    </div>
+                                <td colspan="2" style="padding: 2px;">
+                                    <table class="split-table">
+                                        <tr>
+                                            @foreach($slots as $slot)
+                                                <td>
+                                                    <div class="split-card">
+                                                        <div class="subj-title">{{ $slot->subject_name ?? 'Elective' }}</div>
+                                                        <div class="teacher-title">Teacher: <strong>{{ $slot->teacher_name ?? '-' }}</strong></div>
+                                                    </div>
+                                                </td>
+                                            @endforeach
+                                        </tr>
+                                    </table>
                                 </td>
                             @else
                                 <td colspan="2" class="empty-slot">-</td>
@@ -438,12 +342,15 @@
         </table>
 
         {{-- Footer --}}
-        <div class="sheet-footer">
-            <span>Generated on {{ now()->format('d/m/Y h:i A') }} • Single Universal Schedule Routine</span>
-            <span>Adminova Timetables • Class {{ $class->name }}</span>
-        </div>
+        <table class="footer-table">
+            <tr>
+                <td class="footer-left">Applicable from {{ $effectiveDate }} • Single Universal Schedule Routine</td>
+                <td class="footer-right">Adminova Timetables • Class {{ $class->name }}</td>
+            </tr>
+        </table>
     </div>
 
+    @if(empty($isPdf))
     <script>
         function triggerDownloadPdf() {
             try {
@@ -476,5 +383,6 @@
         });
         @endif
     </script>
+    @endif
 </body>
 </html>

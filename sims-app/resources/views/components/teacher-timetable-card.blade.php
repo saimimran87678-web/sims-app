@@ -15,21 +15,23 @@
 
 <div class="teacher-card">
     {{-- Card Header --}}
-    <div class="card-header">
-        <div class="logo-box">
+    <table class="card-header-table">
+        <tr>
             @if(!empty($logoBase64))
-                <img src="{{ $logoBase64 }}" alt="Logo" class="teacher-card-logo">
+                <td class="logo-td">
+                    <img src="{{ $logoBase64 }}" alt="Logo" class="teacher-card-logo">
+                </td>
             @elseif(!empty($instituteLogo) && file_exists(public_path($instituteLogo)))
-                <img src="{{ '/' . $instituteLogo }}" alt="Logo" class="teacher-card-logo">
-            @else
-                <div class="teacher-card-logo-fallback">🏛️</div>
+                <td class="logo-td">
+                    <img src="{{ '/' . $instituteLogo }}" alt="Logo" class="teacher-card-logo">
+                </td>
             @endif
-        </div>
-        <div class="header-text">
-            <div class="inst-title">{{ $instituteName }}</div>
-            <div class="teacher-title">Teacher {{ $teacher?->name ?? 'Staff Member' }}</div>
-        </div>
-    </div>
+            <td class="header-text-td">
+                <div class="inst-title">{{ $instituteName }}</div>
+                <div class="teacher-title">Teacher {{ $teacher?->name ?? 'Staff Member' }}</div>
+            </td>
+        </tr>
+    </table>
 
     {{-- Period Table --}}
     <table class="card-table">
@@ -41,21 +43,21 @@
         </thead>
         <tbody>
             @foreach($rows as $row)
-                @if($row['is_assembly'])
+                @if(!empty($row['is_assembly']))
                     <tr class="span-row">
                         <td class="time-td">
                             <em>ASSEMBLY</em>
-                            <span class="time-sub">{{ $row['time_range'] }}</span>
+                            <span class="time-sub">{{ $row['time_range'] ?? '' }}</span>
                         </td>
                         <td class="span-td">
                             <strong><em>ASSEMBLY</em></strong>
                         </td>
                     </tr>
-                @elseif($row['is_break'])
+                @elseif(!empty($row['is_break']))
                     <tr class="span-row">
                         <td class="time-td">
                             <em>BREAK</em>
-                            <span class="time-sub">{{ $row['time_range'] }}</span>
+                            <span class="time-sub">{{ $row['time_range'] ?? '' }}</span>
                         </td>
                         <td class="span-td">
                             <strong><em>BREAK</em></strong>
@@ -69,10 +71,12 @@
                         </td>
                         <td class="lesson-td">
                             @if(!empty($row['subject']) || !empty($row['class_name']))
-                                <div class="lesson-split">
-                                    <span class="subj-name">{{ $row['subject'] ?? 'Teaching' }}</span>
-                                    <span class="class-name">{{ $row['class_name'] ?? '' }}</span>
-                                </div>
+                                <table class="lesson-split-table">
+                                    <tr>
+                                        <td class="subj-name-cell">{{ $row['subject'] ?? 'Teaching' }}</td>
+                                        <td class="class-name-cell">{{ $row['class_name'] ?? '' }}</td>
+                                    </tr>
+                                </table>
                             @endif
                         </td>
                     </tr>
@@ -86,173 +90,168 @@
     </table>
 
     {{-- Card Footer --}}
-    <div class="card-footer">
-        <span class="footer-left">Applicable from {{ $effectiveDate }}</span>
-        <span class="footer-right">Adminova Timetables</span>
-    </div>
+    <table class="card-footer-table">
+        <tr>
+            <td class="footer-left-cell">Applicable from {{ $effectiveDate }}</td>
+            <td class="footer-right-cell">Adminova Timetables</td>
+        </tr>
+    </table>
 </div>
 
 <style>
 .teacher-card {
     border: 1.5px solid #000;
     background: #fff;
-    padding: 3px 5px 2px 5px;
+    padding: 3px 4px 2px 4px;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
     page-break-inside: avoid;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     color: #000;
+    width: 100%;
 }
-.card-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding-bottom: 2px;
+table.card-header-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: none;
     border-bottom: 1.5px solid #000;
+    padding-bottom: 2px;
 }
-.logo-box {
-    width: 26px;
-    height: 26px;
-    max-width: 28px;
-    max-height: 28px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+table.card-header-table td {
+    border: none;
+    padding: 1px 2px;
+    vertical-align: middle;
+}
+.logo-td {
+    width: 28px;
+    text-align: left;
 }
 .teacher-card-logo {
-    width: 26px;
-    height: 26px;
-    max-width: 28px;
-    max-height: 28px;
+    width: 24px;
+    height: 24px;
     object-fit: contain;
-    image-rendering: -webkit-optimize-contrast;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
 }
-.teacher-card-logo-fallback {
-    font-size: 16px;
-    line-height: 1;
-}
-.header-text {
-    flex: 1;
-    min-width: 0;
-    line-height: 1.15;
+.header-text-td {
+    text-align: left;
 }
 .inst-title {
-    font-size: 7.5pt;
-    font-weight: 700;
+    font-size: 7pt;
+    font-weight: bold;
     text-transform: uppercase;
-    letter-spacing: 0.2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.1;
+    color: #000;
 }
 .teacher-title {
-    font-size: 9.5pt;
-    font-weight: 800;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 9pt;
+    font-weight: bold;
+    line-height: 1.1;
+    color: #000;
     margin-top: 1px;
 }
-.card-table {
+
+table.card-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 2px;
-    flex: 1;
 }
-.card-table th, .card-table td {
+table.card-table th, table.card-table td {
     border: 1px solid #000;
     padding: 1.5px 3px;
     box-sizing: border-box;
 }
 .time-th {
-    width: 32%;
+    width: 34%;
     border: none !important;
 }
 .lessons-th {
-    width: 68%;
-    font-size: 8.5pt;
-    font-weight: 600;
+    width: 66%;
+    font-size: 8pt;
+    font-weight: bold;
     text-align: center;
     border-bottom: 1px solid #000 !important;
     border-top: none !important;
     border-right: none !important;
 }
 .time-td {
-    width: 32%;
+    width: 34%;
     font-size: 7.5pt;
-    line-height: 1.15;
+    line-height: 1.1;
     vertical-align: middle;
 }
 .time-td em {
     font-style: italic;
-    font-weight: 700;
+    font-weight: bold;
     display: block;
 }
 .time-sub {
     font-size: 6.5pt;
-    font-family: monospace, sans-serif;
     color: #111;
     display: block;
 }
 .span-td {
     text-align: center;
-    font-size: 9pt;
+    font-size: 8pt;
     letter-spacing: 1px;
     vertical-align: middle;
 }
 .lesson-td {
-    width: 68%;
+    width: 66%;
     vertical-align: middle;
-    padding: 1px 4px !important;
+    padding: 0 !important;
 }
-.lesson-split {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+table.lesson-split-table {
     width: 100%;
+    border-collapse: collapse;
+    border: none !important;
 }
-.subj-name {
-    font-size: 8pt;
-    font-weight: 500;
+table.lesson-split-table td {
+    border: none !important;
+    padding: 1px 3px !important;
+    vertical-align: middle;
+}
+.subj-name-cell {
+    font-size: 7.5pt;
+    font-weight: normal;
     text-align: left;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 65%;
 }
-.class-name {
-    font-size: 8.5pt;
-    font-weight: 800;
+.class-name-cell {
+    font-size: 8pt;
+    font-weight: bold;
     text-align: right;
     white-space: nowrap;
 }
 .sum-row {
-    font-weight: 700;
+    font-weight: bold;
 }
 .sum-label {
     font-size: 7.5pt !important;
-    font-weight: 700;
+    font-weight: bold;
 }
 .sum-count {
     text-align: center;
-    font-size: 9.5pt;
-    font-weight: 900;
+    font-size: 9pt;
+    font-weight: bold;
 }
-.card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 6.5pt;
-    font-weight: 600;
-    color: #333;
-    padding-top: 2px;
+table.card-footer-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: none;
     border-top: 1px solid #000;
     margin-top: 2px;
+}
+table.card-footer-table td {
+    border: none;
+    padding: 1px 0;
+    font-size: 6.5pt;
+    font-weight: normal;
+    color: #222;
+}
+.footer-left-cell {
+    text-align: left;
+}
+.footer-right-cell {
+    text-align: right;
 }
 </style>
