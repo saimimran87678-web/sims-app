@@ -1,10 +1,10 @@
 {
   "version": "2.5.2",
   "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
-  "checksum": "9255382c65f27841222725f694eae568ff3464b85b4eaf7c493f27d96ab4b99c",
-  "sha256": "9255382c65f27841222725f694eae568ff3464b85b4eaf7c493f27d96ab4b99c",
+  "checksum": "5e43852845248464ed014ff0cc5e0b7121635166d6301a0f1f3ee467bf9f48cb",
+  "sha256": "5e43852845248464ed014ff0cc5e0b7121635166d6301a0f1f3ee467bf9f48cb",
   "min_php_version": "8.2.0",
-  "changelog": "feat: add real-time license listener, broadcast banner, activation command, and setup controller",
-  "size_bytes": 1267788,
-  "released_at": "2026-10-04T10:12:57Z"
+  "changelog": "feat: add timetable print views, controller, routes, and schedule management component",
+  "size_bytes": 1289536,
+  "released_at": "2026-10-04T11:48:24Z"
 }
