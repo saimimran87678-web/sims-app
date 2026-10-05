@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Teachers Timetable Dossier (6-Up) | {{ $instituteName }}</title>
+    <title>{{ !empty($isSelective) ? 'Selected Teachers Timetable Dossier (' . ($teachersCount ?? '') . ' Teachers - 6-Up)' : 'All Teachers Timetable Dossier (6-Up)' }} | {{ $instituteName }}</title>
     <style>
         @page {
             size: A4 landscape;
@@ -121,7 +121,7 @@
     <div class="screen-toolbar no-print">
         <button onclick="triggerPrintAndDownload()" class="btn-action btn-primary">
             <svg style="width:14px;height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-            Print Dossier
+            Print Dossier ({{ $teachersCount ?? '' }})
         </button>
         <button onclick="window.close()" class="btn-action btn-secondary">
             ✕ Close

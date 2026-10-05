@@ -93,7 +93,6 @@ class TimetablePrintController extends Controller
 
     /**
      * 1. Master Class-Wise Timetable (Whole School A4 Landscape Matrix)
-     * Matches Class wise timetable.pdf standard
      */
     public function printMasterClasswise(Request $request)
     {
@@ -107,18 +106,15 @@ class TimetablePrintController extends Controller
         $session = $branding['session'];
         $shiftType = $this->resolveShiftType($session);
 
-        // Fetch periods for active shift
         $periods = PeriodConfig::where('shift_type', $shiftType)
             ->orderBy('period_no')
             ->get();
 
-        // Separate assembly, lesson periods, and break
         $assemblyPeriod = $periods->first(fn($p) => $p->is_assembly || str_contains(strtolower($p->label ?? ''), 'assembly'));
         $breakPeriod = $periods->first(fn($p) => $p->is_break || str_contains(strtolower($p->label ?? ''), 'break'));
         $nonAssemblyPeriods = $periods->filter(fn($p) => !$p->is_assembly && !str_contains(strtolower($p->label ?? ''), 'assembly'))->values();
         $lessonPeriods = $periods->filter(fn($p) => (!$p->is_break && !$p->is_assembly && !str_contains(strtolower($p->label ?? ''), 'assembly') && !str_contains(strtolower($p->label ?? ''), 'break')))->values();
 
-        // Calculate lesson ordinals (1st, 2nd, 3rd, 4th, 5th, etc.)
         $lessonOrdinals = [];
         $lessonCounter = 1;
         foreach ($periods as $p) {
@@ -134,7 +130,6 @@ class TimetablePrintController extends Controller
             }
         }
 
-        // Fetch classes with class teacher
         $classes = Classes::withoutGlobalScope('active_session')
             ->leftJoin('session_user', function ($join) use ($sessionId) {
                 $join->on('classes.id', '=', 'session_user.class_id')
@@ -150,7 +145,6 @@ class TimetablePrintController extends Controller
             ->orderBy('classes.name')
             ->get();
 
-        // Fetch timetables (Single Universal Schedule queries Monday as universal routine)
         $rawRows = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->leftJoin('subjects', 'timetables.subject_id', '=', 'subjects.id')
@@ -170,10 +164,8 @@ class TimetablePrintController extends Controller
             )
             ->get();
 
-        // Key timetable entries by "classId_periodNo" => Collection of slots (supports split/divided)
         $timetableGrid = $rawRows->groupBy(fn($r) => $r->class_id . '_' . $r->period_no);
 
-        // Calculate sum of lessons per class
         $sumOfLessons = [];
         foreach ($classes as $cls) {
             $count = 0;
@@ -186,7 +178,6 @@ class TimetablePrintController extends Controller
             $sumOfLessons[$cls->id] = $count;
         }
 
-        // Chunk classes into 9 per page to perfectly fit A4 landscape without blank overflow
         $classPages = $classes->chunk(9);
         if ($classPages->isEmpty()) {
             $classPages = collect([collect()]);
@@ -232,7 +223,6 @@ class TimetablePrintController extends Controller
         $nonAssemblyPeriods = $periods->filter(fn($p) => !$p->is_assembly && !str_contains(strtolower($p->label ?? ''), 'assembly'))->values();
         $lessonPeriods = $periods->filter(fn($p) => (!$p->is_break && !$p->is_assembly && !str_contains(strtolower($p->label ?? ''), 'assembly') && !str_contains(strtolower($p->label ?? ''), 'break')))->values();
 
-        // Calculate lesson ordinals (1st, 2nd, 3rd, 4th, 5th, etc.)
         $lessonOrdinals = [];
         $lessonCounter = 1;
         foreach ($periods as $p) {
@@ -248,7 +238,6 @@ class TimetablePrintController extends Controller
             }
         }
 
-        // Fetch active teachers
         $teachers = User::where('role', 'teacher')
             ->whereExists(function ($query) use ($sessionId, $shiftType) {
                 $query->select(DB::raw(1))
@@ -266,7 +255,6 @@ class TimetablePrintController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Fetch timetables
         $rawRows = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->leftJoin('subjects', 'timetables.subject_id', '=', 'subjects.id')
@@ -282,10 +270,8 @@ class TimetablePrintController extends Controller
             )
             ->get();
 
-        // Key teacher timetable entries by "teacherId_periodNo" => Collection of slots
         $teacherGrid = $rawRows->groupBy(fn($r) => $r->teacher_id . '_' . $r->period_no);
 
-        // Sum of lessons per teacher
         $sumOfLessons = [];
         foreach ($teachers as $t) {
             $count = 0;
@@ -298,7 +284,6 @@ class TimetablePrintController extends Controller
             $sumOfLessons[$t->id] = $count;
         }
 
-        // Chunk teachers into 9 per page
         $teacherPages = $teachers->chunk(9);
         if ($teacherPages->isEmpty()) {
             $teacherPages = collect([collect()]);
@@ -321,7 +306,7 @@ class TimetablePrintController extends Controller
     }
 
     /**
-     * 3. Individual Class Timetable ("By Class" - A4 Landscape, Rows=Periods)
+     * 3. Individual Class Timetable ("By Class" - A4 Landscape)
      */
     public function printClass(Request $request, $id = null)
     {
@@ -342,14 +327,11 @@ class TimetablePrintController extends Controller
         }
 
         if (!$class) {
-            $class = Classes::withoutGlobalScope('active_session')->first();
-            if (!$class) {
-                $class = new Classes();
-                $class->id = 1;
-                $class->name = 'All Classes';
-                $class->academic_session_id = $sessionId;
-                $class->shift_type = 'morning';
-            }
+            $class = new Classes();
+            $class->id = 1;
+            $class->name = 'All Classes';
+            $class->academic_session_id = $sessionId;
+            $class->shift_type = 'morning';
         }
 
         $sessionId = $class->academic_session_id ?: $sessionId;
@@ -357,7 +339,6 @@ class TimetablePrintController extends Controller
         $session = $branding['session'];
         $shiftType = $class->shift_type ?: $this->resolveShiftType($session);
 
-        // Class teacher lookup
         $classTeacher = DB::table('session_user')
             ->join('users', 'session_user.user_id', '=', 'users.id')
             ->where('session_user.academic_session_id', $sessionId)
@@ -383,7 +364,6 @@ class TimetablePrintController extends Controller
             ->get()
             ->groupBy('period_no');
 
-        // Prepare period rows with duration and assigned data
         $periodRows = [];
         $totalLessons = 0;
         foreach ($periods as $p) {
@@ -462,7 +442,7 @@ class TimetablePrintController extends Controller
     }
 
     /**
-     * 5. Bulk All Teachers Dossier (A4 Landscape 3x2 Grid, 6 Cards per Page)
+     * 5. Bulk Teacher Dossier (Supports all or selected subset, 6 Cards per Page)
      */
     public function printTeachersBulk(Request $request)
     {
@@ -488,6 +468,18 @@ class TimetablePrintController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Check if selective teachers passed (via ?teachers=1,2,3 or ?teacher_ids=...)
+        $teachersParam = $request->query('teachers') ?? $request->query('teacher_ids');
+        $isSelective = false;
+        if (!empty($teachersParam)) {
+            $selectedIds = is_array($teachersParam) ? $teachersParam : explode(',', $teachersParam);
+            $selectedIds = array_filter(array_map('intval', $selectedIds));
+            if (!empty($selectedIds)) {
+                $teachers = $teachers->whereIn('id', $selectedIds)->values();
+                $isSelective = true;
+            }
+        }
+
         // Build data array for each teacher
         $teacherCards = [];
         foreach ($teachers as $teacher) {
@@ -497,12 +489,21 @@ class TimetablePrintController extends Controller
 
         // Chunk by 6 for 3x2 grid pages
         $teacherPages = array_chunk($teacherCards, 6);
+        if (empty($teacherPages)) {
+            $teacherPages = [[]];
+        }
 
         $viewData = array_merge($branding, [
-            'teacherPages' => $teacherPages,
+            'teacherPages'  => $teacherPages,
+            'isSelective'   => $isSelective,
+            'teachersCount' => count($teachers),
         ]);
 
-        return $this->respondWithViewOrPdf($request, 'print.schedule.teachers-bulk', $viewData, 'All-Teachers-Dossier-Timetables.pdf', 'a4', 'landscape');
+        $filename = $isSelective 
+            ? 'Selected-Teachers-Timetables-Dossier.pdf' 
+            : 'All-Teachers-Dossier-Timetables.pdf';
+
+        return $this->respondWithViewOrPdf($request, 'print.schedule.teachers-bulk', $viewData, $filename, 'a4', 'landscape');
     }
 
     /**

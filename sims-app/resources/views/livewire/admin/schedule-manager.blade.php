@@ -1,4 +1,4 @@
-<div class="space-y-6" x-data="{ showPrintModal: false, activePrintTab: 'master', selectedPrintClassId: '{{ $classes->first()?->id ?? '' }}', selectedPrintTeacherId: '{{ $teachers->first()?->id ?? '' }}' }">
+<div class="space-y-6" x-data="{ showPrintModal: false, activePrintTab: 'master', selectedPrintClassId: '{{ data_get(collect($classes)->first(), 'id', '') }}', selectedPrintTeacherId: '{{ data_get(collect($teachers)->first(), 'id', '') }}' }">
     <div class="flex justify-between items-center">
         <div class="flex items-start gap-4">
             <x-schedule-menu />
@@ -44,7 +44,6 @@
 
         {{-- Right: View Toggle + Action Buttons --}}
         <div class="flex gap-2 items-center flex-wrap">
-
             {{-- View Mode Toggle --}}
             <div class="flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5" role="group" aria-label="Grid view mode">
                 <button
@@ -81,7 +80,6 @@
 
             <button
                 wire:click="syncAllocations"
-                wire:confirm="Sync all timetable teacher and subject assignments directly into Gradebook and User Management?"
                 class="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-1.5 shadow-sm font-medium"
                 title="Synchronize all timetable entries into Teacher Gradebook and User Management"
             >
@@ -105,7 +103,6 @@
             @if($scheduleType !== 'single_schedule')
                 <button
                     wire:click="copyToAllDays"
-                    wire:confirm="Copy {{ $selectedDay }}'s schedule to all other weekdays? This will replace existing schedules."
                     class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
                 >
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
@@ -113,7 +110,6 @@
                 </button>
                 <button
                     wire:click="clearDay"
-                    wire:confirm="Clear all schedule entries for {{ $selectedDay }}?"
                     class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
                 >
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -122,7 +118,6 @@
             @else
                 <button
                     wire:click="clearDay"
-                    wire:confirm="Clear all entries in the universal schedule across all school days?"
                     class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
                 >
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -235,7 +230,6 @@
     {{-- =========================================================== --}}
     @if($viewMode === 'teacher')
     <div class="glass-card rounded-2xl overflow-hidden">
-
         {{-- Legend --}}
         <div class="px-4 py-2.5 bg-indigo-50/60 border-b border-indigo-100 flex items-center gap-4 text-xs text-indigo-700">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -382,7 +376,9 @@
     </div>
     @endif
 
-    {{-- Assignment Modal --}}
+    {{-- =========================================================== --}}
+    {{-- ASSIGNMENT MODAL                                             --}}
+    {{-- =========================================================== --}}
     @if($showModal)
     <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -391,10 +387,10 @@
                     <div>
                         <h2 class="text-xl font-bold text-gray-800">{{ $editingId ? 'Edit Period Assignment' : 'Assign Period' }}</h2>
                         <p class="text-sm text-gray-500">
-                            @if($modalClassId && $classes->firstWhere('id', $modalClassId))
-                                <span class="font-semibold text-gray-700">{{ $classes->firstWhere('id', $modalClassId)->name }}</span> •
-                            @elseif($selectedTeacherId && $teachers->firstWhere('id', $selectedTeacherId))
-                                <span class="font-semibold text-indigo-700">{{ $teachers->firstWhere('id', $selectedTeacherId)->name }}</span> •
+                            @if($modalClassId && collect($classes)->firstWhere('id', $modalClassId))
+                                <span class="font-semibold text-gray-700">{{ data_get(collect($classes)->firstWhere('id', $modalClassId), 'name') }}</span> •
+                            @elseif($selectedTeacherId && collect($teachers)->firstWhere('id', $selectedTeacherId))
+                                <span class="font-semibold text-indigo-700">{{ data_get(collect($teachers)->firstWhere('id', $selectedTeacherId), 'name') }}</span> •
                             @endif
                             @if($scheduleType === 'single_schedule')
                                 <span class="text-blue-600 font-medium">All School Days</span>
@@ -441,21 +437,75 @@
                                 </p>
                             @endif
                         </div>
+
+                        {{-- Friendly Conflict & Replacement Notification (Teacher View Only) --}}
+                        @if($viewMode === 'teacher' && $classConflictNotice)
+                            <div class="p-3.5 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 flex items-start gap-2.5 shadow-xs">
+                                <div class="w-5 h-5 rounded-full bg-amber-200/80 text-amber-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                </div>
+                                <div class="leading-relaxed flex-1">
+                                    <div class="font-bold text-amber-950 text-[12px]">Schedule Overwrite Notice:</div>
+                                    <div class="mt-0.5 text-amber-900">
+                                        <strong>{{ $classConflictNotice['class_name'] }}</strong> is already assigned to <strong>{{ $classConflictNotice['teacher_name'] }}</strong> for <em>{{ $classConflictNotice['subject_name'] }}</em> in {{ $classConflictNotice['period_label'] }}.
+                                    </div>
+                                    <div class="mt-1 text-amber-700 font-medium">
+                                        Saving this assignment will replace that existing class allocation.
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     @endif
 
-                    {{-- Main Assignment --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Teacher <span class="text-red-500">*</span>
-                        </label>
-                        <select wire:model.live="selectedTeacherId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800">
-                            <option value="">Select Teacher</option>
-                            @foreach($availableTeachers as $teacher)
-                                <option value="{{ $teacher->id }}">{{ $teacher->name }}</option>
-                            @endforeach
-                        </select>
-                        <p class="text-xs text-gray-400 mt-1">Only shows teachers not busy this period</p>
-                    </div>
+                    {{-- Teacher Selection: In Teacher View, Teacher is already known; show verification card instead of dropdown --}}
+                    @if($viewMode === 'teacher')
+                        <input type="hidden" wire:model="selectedTeacherId" />
+                        @php
+                            $currentTeacherObj = collect($teachers)->firstWhere('id', $selectedTeacherId);
+                        @endphp
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                                Assigned Teacher (Verified)
+                            </label>
+                            <div class="p-3 bg-indigo-50/70 border border-indigo-200/80 rounded-xl flex items-center justify-between shadow-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                        {{ substr($currentTeacherObj?->name ?? 'T', 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-bold text-indigo-950 leading-tight">
+                                            {{ $currentTeacherObj?->name ?? 'Selected Teacher' }}
+                                        </div>
+                                        <div class="text-[11px] text-indigo-600 mt-0.5">
+                                            Active Editor Target
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/70">
+                                    <svg class="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Confirmed
+                                </span>
+                            </div>
+                        </div>
+                    @else
+                        {{-- Class View: Standard Teacher Dropdown --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Teacher <span class="text-red-500">*</span>
+                            </label>
+                            <select wire:model.live="selectedTeacherId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800">
+                                <option value="">Select Teacher</option>
+                                @foreach($availableTeachers as $teacher)
+                                    <option value="{{ $teacher->id }}">{{ $teacher->name }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Only shows teachers not busy this period</p>
+                        </div>
+                    @endif
 
                     {{-- Optional Class Teacher Assignment --}}
                     @if($selectedTeacherId && $modalClassId)
@@ -464,7 +514,7 @@
                                 <input type="checkbox" wire:model.live="setAsClassTeacher" class="mt-0.5 w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500" />
                                 <div class="flex-1 text-xs">
                                     <span class="font-semibold text-amber-900 block text-sm">
-                                        Assign as Class Teacher for {{ $classes->firstWhere('id', $modalClassId)?->name }}
+                                        Assign as Class Teacher for {{ data_get(collect($classes)->firstWhere('id', $modalClassId), 'name') }}
                                     </span>
                                     <span class="text-amber-700 mt-0.5 block leading-relaxed">
                                         Syncs directly with User Management. Grants authority to take attendance &amp; manage roll numbers for this class.
@@ -499,7 +549,8 @@
                         <p class="text-xs text-gray-400 mt-1">
                             {{ empty($modalClassId) ? 'Class selection is required to display subjects' : 'Multiple periods of the same subject on the same day are supported' }}
                         </p>
-                    </div>{{-- close subject div --}}
+                    </div>
+
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
                         <input type="text" wire:model="room" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Room/Lab" />
@@ -552,7 +603,7 @@
                                         <label class="block text-xs font-medium text-gray-600 mb-1">Teacher</label>
                                         <select
                                             wire:model.live="dividedSlots.{{ $slotIndex }}.teacher_id"
-                                            class="w-full px-3 py-1.5 rounded-lg border border-purple-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white text-sm"
+                                            class="w-full px-3 py-1.5 rounded-lg border border-purple-200 focus:ring-2 focus:purple-400 outline-none bg-white text-sm"
                                         >
                                             <option value="">Select Teacher</option>
                                             @foreach($availableTeachers as $teacher)
@@ -650,7 +701,7 @@
                         {{ $editingId ? 'Update' : 'Assign' }}
                     </button>
                     @if($editingId)
-                        <button wire:click="delete" wire:confirm="Remove this assignment?" class="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium">
+                        <button wire:click="delete" class="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium">
                             Delete
                         </button>
                     @endif
@@ -855,63 +906,292 @@
                         </div>
                     </div>
 
-                    {{-- 3. TAB: TEACHER TIMETABLES --}}
-                    <div x-show="activePrintTab === 'teacher'" style="display: none;" class="space-y-3">
-                        {{-- Individual Teacher Slip --}}
+                    {{-- 3. TAB: TEACHER TIMETABLES (Clean Searchable Multi-Select Combobox) --}}
+                    <div 
+                        x-show="activePrintTab === 'teacher'" 
+                        style="display: none;" 
+                        class="space-y-3"
+                        x-data="{
+                            open: false,
+                            search: '',
+                            selectedTeacherIds: [{{ ($firstTid = data_get(collect($teachers)->first(), 'id')) !== null ? json_encode($firstTid) : '' }}].filter(Boolean),
+                            teachersList: {{ \Illuminate\Support\Js::from(collect($teachers)->map(fn($t) => [
+                                'id' => data_get($t, 'id'),
+                                'name' => data_get($t, 'name'),
+                                'period_count' => count(data_get($teacherGridMap, data_get($t, 'id'), []))
+                            ])->values()) }},
+                            get filteredTeachers() {
+                                if (!this.search || !this.search.trim()) return this.teachersList;
+                                const q = this.search.toLowerCase().trim();
+                                return this.teachersList.filter(t => (t.name || '').toLowerCase().includes(q));
+                            },
+                            isSelected(id) {
+                                return this.selectedTeacherIds.some(i => String(i) === String(id));
+                            },
+                            toggleTeacher(id) {
+                                const idStr = String(id);
+                                const idx = this.selectedTeacherIds.findIndex(i => String(i) === idStr);
+                                if (idx > -1) {
+                                    this.selectedTeacherIds.splice(idx, 1);
+                                } else {
+                                    this.selectedTeacherIds.push(id);
+                                }
+                            },
+                            removeTeacher(id) {
+                                const idStr = String(id);
+                                const idx = this.selectedTeacherIds.findIndex(i => String(i) === idStr);
+                                if (idx > -1) {
+                                    this.selectedTeacherIds.splice(idx, 1);
+                                }
+                            },
+                            selectAll() {
+                                this.selectedTeacherIds = this.teachersList.map(t => t.id);
+                            },
+                            clearAll() {
+                                this.selectedTeacherIds = [];
+                            },
+                            get selectedSummaryText() {
+                                if (this.selectedTeacherIds.length === 0) return '';
+                                if (this.selectedTeacherIds.length === this.teachersList.length) return 'All teachers selected (' + this.teachersList.length + ')';
+                                return this.selectedTeacherIds.length + ' teachers selected';
+                            }
+                        }"
+                    >
                         <div class="p-4 rounded-xl border border-slate-200/80 bg-white">
                             <div class="flex items-center justify-between mb-2">
-                                <label class="text-xs font-bold text-slate-900">Individual Teacher Slip</label>
-                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/70">Diary Card</span>
+                                <label class="text-xs font-bold text-slate-900">Select Teachers</label>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/70">6 Cards / A4 Landscape</span>
                             </div>
-                            <select 
-                                x-model="selectedPrintTeacherId" 
-                                class="w-full rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50/60 hover:bg-white focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 py-2.5 px-3 transition-all"
-                            >
-                                @foreach($teachers as $t)
-                                    <option value="{{ $t->id }}">{{ $t->name }}</option>
-                                @endforeach
-                            </select>
+
+                            {{-- Standard Combobox Field (Click to Open Dropdown) --}}
+                            <div class="relative" @click.outside="open = false">
+                                <div 
+                                    @click="open = !open; if(open) $nextTick(() => $refs.teacherSearchInput.focus())"
+                                    class="min-h-[42px] w-full rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50/60 hover:bg-white focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 py-1.5 px-3 transition-all cursor-pointer flex items-center justify-between gap-2"
+                                >
+                                    {{-- Selected Tags / Summary Display --}}
+                                    <div class="flex flex-wrap items-center gap-1.5 flex-1 min-w-0 py-0.5">
+                                        <template x-if="selectedTeacherIds.length === 0">
+                                            <span class="text-slate-400 font-normal">Choose teachers to print...</span>
+                                        </template>
+
+                                        {{-- 1-2 Selected: Clean removable chip tags --}}
+                                        <template x-if="selectedTeacherIds.length > 0 && selectedTeacherIds.length <= 2">
+                                            <div class="flex flex-wrap gap-1 items-center">
+                                                <template x-for="tid in selectedTeacherIds" :key="'chip-' + tid">
+                                                    @verbatim
+                                                    <span class="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-medium border border-indigo-100/80">
+                                                        <span x-text="teachersList.find(t => String(t.id) === String(tid))?.name || 'Teacher'" class="max-w-[130px] truncate"></span>
+                                                        <button 
+                                                            type="button" 
+                                                            @click.stop="removeTeacher(tid)" 
+                                                            class="hover:bg-indigo-200/60 rounded-full p-0.5 text-indigo-500 hover:text-indigo-800 transition-colors"
+                                                            title="Remove"
+                                                        >
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    </span>
+                                                    @endverbatim
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        {{-- > 2 Selected: Clean counter badge --}}
+                                        <template x-if="selectedTeacherIds.length > 2">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-100">
+                                                <span x-text="selectedSummaryText"></span>
+                                            </span>
+                                        </template>
+                                    </div>
+
+                                    {{-- Right Icons (Clear & Chevron) --}}
+                                    <div class="flex items-center gap-1.5 text-slate-400 flex-shrink-0">
+                                        <button 
+                                            type="button" 
+                                            x-show="selectedTeacherIds.length > 0" 
+                                            @click.stop="clearAll()" 
+                                            class="p-1 hover:text-slate-600 rounded-md hover:bg-slate-200/50 transition-colors"
+                                            title="Clear all selections"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                        <svg 
+                                            class="w-4 h-4 transition-transform duration-200" 
+                                            :class="open ? 'transform rotate-180 text-indigo-600' : ''" 
+                                            fill="none" 
+                                            viewBox="0 0 24 24" 
+                                            stroke="currentColor"
+                                        >
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                {{-- Dropdown Popover with Integrated Search & Checklist --}}
+                                <div 
+                                    x-show="open" 
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="transform opacity-0 scale-95"
+                                    x-transition:enter-end="transform opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="transform opacity-100 scale-100"
+                                    x-transition:leave-end="transform opacity-0 scale-95"
+                                    class="absolute left-0 right-0 z-50 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden"
+                                    style="display: none;"
+                                >
+                                    {{-- In-Built Search Box --}}
+                                    <div class="p-2 border-b border-slate-100 bg-slate-50/70">
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                            </div>
+                                            <input 
+                                                x-ref="teacherSearchInput"
+                                                type="text" 
+                                                x-model="search" 
+                                                placeholder="Search teacher name..." 
+                                                class="w-full pl-8 pr-7 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                                @keydown.escape="open = false"
+                                            />
+                                            <button 
+                                                type="button" 
+                                                x-show="search.length > 0" 
+                                                @click="search = ''; $refs.teacherSearchInput.focus()" 
+                                                class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600"
+                                            >
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        {{-- Quick Actions Row (Select All / Deselect) --}}
+                                        <div class="flex items-center justify-between mt-2 px-1 text-[11px]">
+                                            <span class="text-slate-500 font-medium">
+                                                <span x-text="selectedTeacherIds.length"></span> of <span x-text="teachersList.length"></span> selected
+                                            </span>
+                                            <div class="flex items-center gap-2">
+                                                <button 
+                                                    type="button" 
+                                                    @click="selectAll()" 
+                                                    class="text-indigo-600 hover:text-indigo-800 font-semibold"
+                                                >
+                                                    Select All
+                                                </button>
+                                                <span class="text-slate-300">|</span>
+                                                <button 
+                                                    type="button" 
+                                                    @click="clearAll()" 
+                                                    class="text-slate-400 hover:text-rose-600 font-medium"
+                                                >
+                                                    Clear
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Scrollable Checklist without label collision bugs --}}
+                                    <div class="max-h-52 overflow-y-auto p-1 divide-y divide-slate-50">
+                                        <template x-for="t in filteredTeachers" :key="'teacher-item-' + t.id">
+                                            <div 
+                                                role="button"
+                                                tabindex="0"
+                                                @click="toggleTeacher(t.id)"
+                                                @keydown.space.prevent="toggleTeacher(t.id)"
+                                                @keydown.enter.prevent="toggleTeacher(t.id)"
+                                                class="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-indigo-50/70 cursor-pointer transition-colors group select-none"
+                                                :class="isSelected(t.id) ? 'bg-indigo-50/40 text-indigo-950 font-medium' : 'text-slate-700'"
+                                            >
+                                                <div class="flex items-center gap-2.5 min-w-0 pointer-events-none">
+                                                    <span 
+                                                        class="w-4 h-4 rounded border flex items-center justify-center transition-all flex-shrink-0"
+                                                        :class="isSelected(t.id) ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xs' : 'border-slate-300 bg-white group-hover:border-indigo-400'"
+                                                    >
+                                                        <svg x-show="isSelected(t.id)" class="w-2.5 h-2.5 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </span>
+                                                    <span 
+                                                        :class="isSelected(t.id) ? 'font-semibold text-indigo-950' : 'text-slate-700'"
+                                                        class="text-xs truncate" 
+                                                        x-text="t.name"
+                                                    ></span>
+                                                </div>
+                                                <span 
+                                                    class="text-[10px] px-2 py-0.5 rounded-md transition-colors pointer-events-none font-medium"
+                                                    :class="isSelected(t.id) ? 'bg-indigo-100/70 text-indigo-800' : 'text-slate-400 group-hover:text-slate-600 bg-slate-100/60'"
+                                                    x-text="t.period_count + ' period' + (t.period_count === 1 ? '' : 's')"
+                                                ></span>
+                                            </div>
+                                        </template>
+
+                                        {{-- Empty Search State --}}
+                                        <div x-show="filteredTeachers.length === 0" class="py-6 text-center text-xs text-slate-400">
+                                            No teachers found matching "<span x-text="search"></span>"
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <p class="text-[11px] text-slate-500 mt-2.5 leading-relaxed">
-                                2-column compact diary slip showing periods, assigned classes, and room allocations.
+                                Formatted in A4 Landscape 3×2 grid (6 cards per page) with period timings, designated classes, and subject allocations.
                             </p>
 
-                            <div class="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-end">
-                                <a 
-                                    :href="'/admin/schedule/print/teacher/' + (selectedPrintTeacherId || '') + '?autoprint=1'" 
-                                    target="_blank"
-                                    class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition-all shadow-xs shadow-indigo-600/15"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Print Teacher Slip
-                                </a>
-                            </div>
-                        </div>
-
-                        {{-- Bulk All Teachers Dossier --}}
-                        <div class="p-4 rounded-xl border border-slate-200/80 bg-slate-50/30 hover:bg-white hover:border-indigo-200 hover:shadow-xs transition-all">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <h4 class="text-xs font-bold text-slate-900">Bulk All Teachers Dossier</h4>
-                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/70">6 Cards / A4</span>
-                                    </div>
-                                    <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                                        3×2 grid on A4 Landscape with cutting lines for all faculty members.
-                                    </p>
+                            {{-- Action Buttons & Metrics Bar --}}
+                            <div class="mt-3.5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                                <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                                    <template x-if="selectedTeacherIds.length === 0">
+                                        <span class="text-amber-600 font-medium flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                            </svg>
+                                            Select at least 1 teacher to print
+                                        </span>
+                                    </template>
+                                    <template x-if="selectedTeacherIds.length > 0">
+                                        <span>
+                                            <strong class="text-slate-800" x-text="selectedTeacherIds.length"></strong> teacher(s) selected
+                                            <span class="text-slate-400">•</span>
+                                            <span class="text-indigo-600 font-semibold" x-text="'~' + Math.ceil(selectedTeacherIds.length / 6) + ' A4 page' + (Math.ceil(selectedTeacherIds.length / 6) !== 1 ? 's' : '')"></span>
+                                        </span>
+                                    </template>
                                 </div>
-                                <a 
-                                    href="/admin/schedule/print/teachers-bulk?autoprint=1" 
-                                    target="_blank"
-                                    class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition-all shadow-xs shadow-indigo-600/15 flex-shrink-0"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Print All (6-Up)
-                                </a>
+
+                                <div class="flex items-center gap-2 justify-end">
+                                    {{-- Single Slip option if exactly 1 teacher selected --}}
+                                    <template x-if="selectedTeacherIds.length === 1">
+                                        <a 
+                                            :href="'/admin/schedule/print/teacher/' + selectedTeacherIds[0] + '?autoprint=1'" 
+                                            target="_blank"
+                                            class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 transition-all shadow-2xs"
+                                            title="Print single diary card slip"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                            </svg>
+                                            Single Slip
+                                        </a>
+                                    </template>
+
+                                    {{-- Primary 6-Up Dossier Print Action --}}
+                                    <a 
+                                        :href="'/admin/schedule/print/teachers-bulk?teachers=' + selectedTeacherIds.join(',') + '&autoprint=1'" 
+                                        target="_blank"
+                                        :class="selectedTeacherIds.length > 0 ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white shadow-xs shadow-indigo-600/15' : 'bg-slate-200 text-slate-400 pointer-events-none cursor-not-allowed'"
+                                        class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        <span x-text="selectedTeacherIds.length === teachersList.length ? 'Print All (' + teachersList.length + ' in 6-Up)' : ('Print Selected (' + selectedTeacherIds.length + ' in 6-Up)')"></span>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
