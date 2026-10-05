@@ -277,6 +277,7 @@ class UserManager extends Component
 
             if ($this->isEditMode) {
                 $user = User::findOrFail($this->userId);
+                $originalRole = $user->role;
                 $data = [
                     'name' => $this->name,
                     'email' => $this->email,
@@ -437,32 +438,14 @@ class UserManager extends Component
                 }
             } elseif ($user->role === 'teacher') {
                 $user->syncRoles(['Teacher']);
-                if (!$this->isEditMode) {
-                    $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-                    if ($activeSessionId) {
-                        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-                        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-                        $shiftsToInsert = $isRegular ? ['regular'] : ['morning', 'evening'];
 
-                        $allPermissions = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
-                        $insertData = [];
-                        foreach ($shiftsToInsert as $st) {
-                            foreach ($allPermissions as $perm) {
-                                if (in_array($perm, ['access-control.manage', 'permissions.assign'])) {
-                                    continue;
-                                }
-                                $insertData[] = [
-                                    'user_id'             => $user->id,
-                                    'academic_session_id' => $activeSessionId,
-                                    'permission_name'     => $perm,
-                                    'shift_type'          => $st,
-                                    'created_at'          => now(),
-                                    'updated_at'          => now(),
-                                ];
-                            }
-                        }
-                        DB::table('session_user_permissions')->insert($insertData);
-                    }
+                // Teachers must NOT be granted all admin permissions by default.
+                // Permissions are granted explicitly through Access Control -> Feature Sharing.
+                // If an existing admin was changed to a teacher, clear their admin session permissions.
+                if ($this->isEditMode && isset($originalRole) && $originalRole === 'admin') {
+                    DB::table('session_user_permissions')
+                        ->where('user_id', $user->id)
+                        ->delete();
                 }
             }
 
