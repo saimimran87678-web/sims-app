@@ -460,10 +460,19 @@
                             <td>
                                 @if($slots->isNotEmpty())
                                     <div class="slot-container">
-                                        @foreach($slots as $s)
+                                        @php
+                                            $groupedClassSlots = $slots->groupBy('class_id');
+                                        @endphp
+                                        @foreach($groupedClassSlots as $cId => $cSlots)
+                                            @php
+                                                $firstSlot = $cSlots->first();
+                                                $abbrList = $cSlots->map(function($cs) {
+                                                    return \App\Models\Subject::formatAbbreviation($cs->subject_name, $cs->subject_code);
+                                                })->filter()->unique()->values();
+                                            @endphp
                                             <div class="slot-item">
-                                                <div class="slot-class">{{ $s->class_name ?? '-' }}</div>
-                                                <div class="slot-subject">{{ $s->subject_name ?? $s->subject_code ?? '' }}</div>
+                                                <div class="slot-class">{{ $firstSlot->class_name ?? '-' }}</div>
+                                                <div class="slot-subject">{{ $abbrList->implode(' + ') }}</div>
                                             </div>
                                         @endforeach
                                     </div>

@@ -1,4 +1,9 @@
-<div class="space-y-6" x-data="{ showPrintModal: false, activePrintTab: 'master', selectedPrintClassId: '{{ data_get(collect($classes)->first(), 'id', '') }}', selectedPrintTeacherId: '{{ data_get(collect($teachers)->first(), 'id', '') }}' }">
+<div class="space-y-6" x-data="{ 
+    showPrintModal: false, 
+    activePrintTab: 'master', 
+    selectedPrintClassId: '{{ data_get(collect($classes)->first(), 'id', '') }}', 
+    selectedPrintTeacherId: '{{ data_get(collect($teachers)->first(), 'id', '') }}' 
+}">
     <div class="flex justify-between items-center">
         <div class="flex items-start gap-4">
             <x-schedule-menu />
@@ -131,17 +136,57 @@
     {{-- CLASS VIEW GRID                                              --}}
     {{-- =========================================================== --}}
     @if($viewMode === 'class')
-    <div class="glass-card rounded-2xl overflow-hidden">
+    <div class="glass-card rounded-2xl overflow-hidden border border-gray-200/80 shadow-xs bg-white">
+        {{-- Matching Cohesive Top Legend Bar --}}
+        <div class="px-4 py-2.5 bg-blue-50/60 border-b border-blue-100 flex flex-wrap items-center justify-between gap-3 text-xs text-blue-800">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 flex-shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                <span><strong>Class View</strong> — rows are classes, columns are periods. Click any cell to assign or edit a period schedule.</span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                {{-- Role Notches --}}
+                <span class="inline-flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 text-amber-900 font-semibold shadow-xs">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-amber-200 flex-shrink-0"></span>
+                    <span>Has Class Teacher</span>
+                </span>
+
+                <div class="h-4 w-px bg-blue-200 mx-0.5"></div>
+
+                {{-- Status Indicators (Uniform pill styling with dedicated padding and swatches) --}}
+                <span class="inline-flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 text-blue-800 font-medium shadow-xs">
+                    <span class="w-2.5 h-2.5 rounded bg-blue-200 border border-blue-400 flex-shrink-0"></span>
+                    <span>Assigned</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 text-emerald-800 font-medium shadow-xs">
+                    <span class="w-2.5 h-2.5 rounded bg-emerald-200 border border-emerald-400 flex-shrink-0"></span>
+                    <span>Free</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200 text-purple-800 font-medium shadow-xs">
+                    <span class="w-2.5 h-2.5 rounded bg-purple-200 border border-purple-400 flex-shrink-0"></span>
+                    <span>Divided</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 text-teal-800 font-medium shadow-xs">
+                    <span class="w-2.5 h-2.5 rounded bg-teal-200 border border-teal-400 flex-shrink-0"></span>
+                    <span>Merged</span>
+                </span>
+            </div>
+        </div>
+
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50/50">
+            <table class="min-w-full divide-y divide-gray-200 table-fixed">
+                <thead class="bg-gray-50/60">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase w-32 sticky left-0 bg-gray-50">Class</th>
+                        <th class="px-3.5 py-2.5 text-left text-xs font-bold text-gray-700 uppercase w-40 sticky left-0 bg-gray-50 z-20 border-r border-gray-100">
+                            Class
+                        </th>
                         @foreach($periods as $period)
-                            <th class="px-2 py-3 text-center text-xs font-medium {{ $period->is_break ? 'bg-yellow-50 text-yellow-700' : ($period->is_assembly ? 'bg-purple-50 text-purple-700' : 'text-gray-500') }} min-w-[140px]">
-                                <div class="font-bold">{{ $period->label }}</div>
-                                <div class="text-[10px] text-gray-400 mt-0.5">
-                                    {{ \Carbon\Carbon::parse($period->start_time)->format('h:i') }} - {{ \Carbon\Carbon::parse($period->end_time)->format('h:i') }}
+                            <th class="px-1.5 py-2 text-center text-xs font-medium 
+                                {{ $period->is_break ? 'bg-yellow-50/70 text-yellow-800 w-16 min-w-[62px]' : ($period->is_assembly ? 'bg-purple-50/70 text-purple-800 w-16 min-w-[62px]' : 'text-gray-600 min-w-[105px]') }}">
+                                <div class="font-bold text-xs leading-tight">{{ $period->label }}</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5 font-normal whitespace-nowrap">
+                                    {{ \Carbon\Carbon::parse($period->start_time)->format('h:i') }}–{{ \Carbon\Carbon::parse($period->end_time)->format('h:i') }}
                                 </div>
                             </th>
                         @endforeach
@@ -149,67 +194,100 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-100">
                     @foreach($classes as $class)
-                        <tr class="hover:bg-gray-50/50">
-                            <td class="px-4 py-3 text-sm font-bold text-gray-800 sticky left-0 bg-white group/classheader">
+                        @php
+                            $classId = data_get($class, 'id');
+                            $className = data_get($class, 'name');
+                            $ctName = $classTeacherMap[$classId] ?? data_get($class, 'class_teacher_name', null);
+                            $hasCt = !empty($ctName);
+                        @endphp
+                        <tr class="hover:bg-blue-50/20 transition-colors">
+                            {{-- Class Identifier Cell with Persistent CT Notch --}}
+                            <td class="px-3.5 py-2.5 sticky left-0 bg-white z-10 group/classheader border-r border-gray-100 {{ $hasCt ? 'bg-amber-50/20' : '' }}">
                                 <div class="flex items-center justify-between gap-1.5">
-                                    <div>{{ $class->name }}</div>
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <span class="w-2 h-2 rounded-full flex-shrink-0 {{ $hasCt ? 'bg-amber-500 ring-2 ring-amber-100 shadow-2xs' : 'bg-gray-300' }}" title="{{ $hasCt ? 'Class Teacher: ' . $ctName : 'No Class Teacher Assigned' }}"></span>
+                                        <div class="text-sm font-bold text-gray-800 truncate max-w-[110px]" title="{{ $className }}">
+                                            {{ $className }}
+                                        </div>
+                                    </div>
                                     <a 
-                                        href="/admin/schedule/print/class/{{ $class->id }}?autoprint=1" 
+                                        href="/admin/schedule/print/class/{{ $classId }}?autoprint=1" 
                                         target="_blank" 
                                         class="opacity-0 group-hover/classheader:opacity-100 transition-opacity p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-indigo-50" 
-                                        title="Print Class {{ $class->name }} Timetable"
+                                        title="Print Class {{ $className }} Timetable"
                                     >
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                                         </svg>
                                     </a>
                                 </div>
-                                @if(!empty($class->class_teacher_name))
-                                    <div class="text-[10px] font-medium text-amber-600 truncate flex items-center gap-1 mt-0.5" title="Class Teacher: {{ $class->class_teacher_name }}">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span>
-                                        <span class="truncate">CT: {{ $class->class_teacher_name }}</span>
-                                    </div>
-                                @endif
+                                <div class="mt-1 flex items-center justify-between gap-1 text-[10px]">
+                                    @if($hasCt)
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-semibold text-amber-800 bg-amber-50 border border-amber-200/90 truncate max-w-[125px]" title="Class Teacher: {{ $ctName }}">
+                                            <span class="truncate">CT: {{ $ctName }}</span>
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-medium text-gray-400 bg-gray-50 border border-gray-100 truncate text-[10px]" title="No Class Teacher Assigned">
+                                            <span>No CT Assigned</span>
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
+
+                            {{-- Period Cells --}}
                             @foreach($periods as $period)
                                 @if($period->is_break)
-                                    <td class="px-2 py-3 bg-yellow-50/50 text-center">
-                                        <span class="text-yellow-600 text-xs">Break</span>
+                                    <td class="px-1.5 py-2 bg-yellow-50/40 text-center border-l border-gray-100">
+                                        <span class="text-yellow-700 font-bold text-[10px] tracking-wider uppercase">Break</span>
                                     </td>
                                 @elseif($period->is_assembly)
-                                    <td class="px-2 py-3 bg-purple-50/50 text-center">
-                                        <span class="text-purple-600 text-xs">Assembly</span>
+                                    <td class="px-1.5 py-2 bg-purple-50/40 text-center border-l border-gray-100">
+                                        <span class="text-purple-700 font-bold text-[10px] tracking-wider uppercase">Assembly</span>
                                     </td>
                                 @else
-                                    @php $schedules = $this->getSchedule($class->id, $period->period_no); @endphp
+                                    @php $schedules = $this->getSchedule($classId, $period->period_no); @endphp
                                     <td
-                                        wire:click="openModal({{ $class->id }}, {{ $period->period_no }})"
-                                        class="px-2 py-2 cursor-pointer border-l border-gray-100 {{ $schedules->isNotEmpty() ? 'hover:bg-blue-50/80' : 'hover:bg-emerald-50/70' }} transition-all group"
-                                        title="{{ $schedules->isNotEmpty() ? 'Edit assignment for ' . $class->name . ' in ' . $period->label : 'Assign period for ' . $class->name . ' in ' . $period->label }}"
+                                        wire:click="openModal({{ $classId }}, {{ $period->period_no }})"
+                                        class="px-2 py-1.5 cursor-pointer border-l border-gray-100 {{ $schedules->isNotEmpty() ? 'hover:bg-blue-50/80' : 'hover:bg-emerald-50/70' }} transition-all group align-middle"
+                                        title="{{ $schedules->isNotEmpty() ? 'Edit assignment for ' . $className . ' in ' . $period->label : 'Assign period for ' . $className . ' in ' . $period->label }}"
                                     >
                                         @if($schedules->isNotEmpty())
-                                            <div class="flex flex-col gap-1">
-                                        @foreach($schedules as $schedule)
-                                            @php
-                                                $teacher = collect($teachers)->firstWhere('id', $schedule->teacher_id);
-                                                $subject = \App\Models\Subject::find($schedule->subject_id);
-                                                $partnerLabel = $mergedPartnerClassesMap[$schedule->id] ?? null;
-                                            @endphp
-                                            <div class="text-xs space-y-0.5 {{ $loop->index > 0 ? 'border-t border-gray-200 pt-1' : '' }}">
-                                                <div class="font-bold text-blue-700 truncate">{{ $subject->name ?? '-' }}</div>
-                                                <div class="text-gray-500 truncate">{{ $teacher->name ?? '-' }}</div>
-                                                @if($schedule->is_merged && $partnerLabel)
-                                                    <span class="text-[10px] text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded-full border border-teal-200" title="Merged with {{ $partnerLabel }}">🔗 +{{ $partnerLabel }}</span>
-                                                @endif
-                                                @if($schedule->is_divided && $loop->last)
-                                                    <span class="text-[10px] text-purple-600 bg-purple-50 px-1 rounded">Divided</span>
-                                                @endif
+                                            <div class="flex flex-col gap-1.5">
+                                                @php
+                                                    $groupedSchedules = $schedules->groupBy('teacher_id');
+                                                @endphp
+                                                @foreach($groupedSchedules as $tId => $groupRows)
+                                                    @php
+                                                        $teacher = collect($teachers)->firstWhere('id', $tId);
+                                                        $groupSubjects = $groupRows->map(fn($r) => \App\Models\Subject::find($r->subject_id))->filter();
+                                                        $firstRow = $groupRows->first();
+                                                        $partnerLabel = $mergedPartnerClassesMap[$firstRow->id] ?? null;
+                                                    @endphp
+                                                    <div class="text-xs space-y-0.5 {{ $loop->index > 0 ? 'border-t border-gray-200 pt-1' : '' }}">
+                                                        <div class="font-bold text-blue-700 leading-tight flex items-center flex-wrap gap-1">
+                                                            @foreach($groupSubjects as $sIdx => $sub)
+                                                                @if($sIdx > 0)
+                                                                    <span class="inline-flex items-center justify-center w-3 h-3 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black leading-none shadow-2xs" title="Multi-subject">+</span>
+                                                                @endif
+                                                                <span class="px-1 py-0.2 rounded bg-blue-50 text-blue-800 text-[11px] font-bold border border-blue-200/60" title="{{ $sub->name }}">{{ $sub->abbreviation }}</span>
+                                                            @endforeach
+                                                            @if($groupSubjects->isEmpty())
+                                                                <span class="text-gray-400">-</span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="text-gray-500 text-[11px] truncate leading-tight">{{ $teacher->name ?? '-' }}</div>
+                                                        @if($firstRow->is_merged && $partnerLabel)
+                                                            <span class="text-[9px] text-teal-700 bg-teal-50 px-1 py-0.2 rounded border border-teal-200 inline-block leading-tight" title="Merged with {{ $partnerLabel }}">🔗 +{{ $partnerLabel }}</span>
+                                                        @endif
+                                                        @if($firstRow->is_divided && $loop->last)
+                                                            <span class="text-[9px] text-purple-700 bg-purple-50 px-1 py-0.2 rounded border border-purple-200 inline-block leading-tight">Divided</span>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
                                             </div>
-                                        @endforeach
-                                    </div>
                                         @else
-                                            <div class="flex items-center justify-center h-full">
-                                                <span class="text-[11px] text-emerald-600 bg-emerald-50 group-hover:bg-emerald-100 group-hover:text-emerald-700 px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1 border border-emerald-200/60 shadow-xs">
+                                            <div class="flex items-center justify-center h-full py-1">
+                                                <span class="text-[10px] text-emerald-600 bg-emerald-50 group-hover:bg-emerald-100 group-hover:text-emerald-700 px-2 py-0.5 rounded-md font-semibold transition-all flex items-center gap-1 border border-emerald-200/60 shadow-2xs">
                                                     <span class="text-xs font-bold leading-none">+</span> Assign
                                                 </span>
                                             </div>
@@ -231,23 +309,47 @@
     @if($viewMode === 'teacher')
     <div class="glass-card rounded-2xl overflow-hidden">
         {{-- Legend --}}
-        <div class="px-4 py-2.5 bg-indigo-50/60 border-b border-indigo-100 flex items-center gap-4 text-xs text-indigo-700">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span><strong>Teacher View</strong> — rows are teachers, columns are periods. Click any cell to assign or edit a class period.</span>
-            <span class="ml-auto flex items-center gap-3">
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-100 border border-indigo-300"></span> Assigned</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300"></span> Free (Click to assign)</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-purple-100 border border-purple-300"></span> Divided</span>
-            </span>
+        <div class="px-4 py-2.5 bg-indigo-50/60 border-b border-indigo-100 flex flex-wrap items-center justify-between gap-3 text-xs text-indigo-700">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 flex-shrink-0 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span><strong>Teacher View</strong> — click any cell to assign or edit a period.</span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                {{-- Role Notches --}}
+                <span class="inline-flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 text-amber-900 font-semibold shadow-xs">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-amber-200 flex-shrink-0"></span>
+                    <span>Class Teacher</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 text-blue-900 font-semibold shadow-xs">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 ring-2 ring-blue-200 flex-shrink-0"></span>
+                    <span>Subject Teacher</span>
+                </span>
+
+                <div class="h-4 w-px bg-indigo-200 mx-0.5"></div>
+
+                {{-- Status Indicators (Uniform pill styling with dedicated padding and swatches) --}}
+                <span class="inline-flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 text-indigo-800 font-medium shadow-xs">
+                    <span class="w-2.5 h-2.5 rounded bg-indigo-200 border border-indigo-400 flex-shrink-0"></span>
+                    <span>Assigned</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 text-emerald-800 font-medium shadow-xs">
+                    <span class="w-2.5 h-2.5 rounded bg-emerald-200 border border-emerald-400 flex-shrink-0"></span>
+                    <span>Free</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200 text-purple-800 font-medium shadow-xs">
+                    <span class="w-2.5 h-2.5 rounded bg-purple-200 border border-purple-400 flex-shrink-0"></span>
+                    <span>Divided</span>
+                </span>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50/50">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase w-36 sticky left-0 bg-gray-50">Teacher</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase w-44 sticky left-0 bg-gray-50 z-20">Teacher</th>
                         @foreach($periods as $period)
                             <th class="px-2 py-3 text-center text-xs font-medium min-w-[130px]
                                 {{ $period->is_break ? 'bg-yellow-50 text-yellow-700' : ($period->is_assembly ? 'bg-purple-50 text-purple-700' : 'text-gray-500') }}">
@@ -265,12 +367,22 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-100">
                     @forelse($teachers as $teacher)
+                        @php
+                            $ctClassName = $teacherClassMap[$teacher->id] ?? null;
+                            $isClassTeacher = !empty($ctClassName);
+                            $teacherPeriodCount = isset($teacherGridMap[$teacher->id])
+                                ? count($teacherGridMap[$teacher->id])
+                                : 0;
+                        @endphp
                         <tr class="hover:bg-indigo-50/20 transition-colors">
-                            {{-- Teacher Name Cell --}}
-                            <td class="px-4 py-3 sticky left-0 bg-white z-10 group/teacherheader">
+                            {{-- Teacher Name Cell with Colored Notch & CT / Subject Teacher Badge --}}
+                            <td class="px-3.5 py-2.5 sticky left-0 bg-white z-10 group/teacherheader border-r border-gray-100 {{ $isClassTeacher ? 'bg-amber-50/20' : '' }}">
                                 <div class="flex items-center justify-between gap-1.5">
-                                    <div class="text-sm font-bold text-gray-800 truncate max-w-[110px]" title="{{ $teacher->name }}">
-                                        {{ $teacher->name }}
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <span class="w-2 h-2 rounded-full flex-shrink-0 {{ $isClassTeacher ? 'bg-amber-500 ring-2 ring-amber-100 shadow-2xs' : 'bg-blue-400' }}" title="{{ $isClassTeacher ? 'Class Teacher (' . $ctClassName . ')' : 'Subject Teacher' }}"></span>
+                                        <div class="text-sm font-bold text-gray-800 truncate max-w-[120px]" title="{{ $teacher->name }}">
+                                            {{ $teacher->name }}
+                                        </div>
                                     </div>
                                     <a 
                                         href="/admin/schedule/print/teacher/{{ $teacher->id }}?autoprint=1" 
@@ -283,13 +395,19 @@
                                         </svg>
                                     </a>
                                 </div>
-                                @php
-                                    $teacherPeriodCount = isset($teacherGridMap[$teacher->id])
-                                        ? count($teacherGridMap[$teacher->id])
-                                        : 0;
-                                @endphp
-                                <div class="text-[10px] text-gray-400 mt-0.5">
-                                    {{ $teacherPeriodCount }} period{{ $teacherPeriodCount !== 1 ? 's' : '' }} assigned
+                                <div class="mt-1 flex items-center justify-between gap-1 text-[10px]">
+                                    @if($isClassTeacher)
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-semibold text-amber-800 bg-amber-50 border border-amber-200/90 truncate max-w-[105px]" title="Class Teacher of {{ $ctClassName }}">
+                                            <span class="truncate">CT: {{ $ctClassName }}</span>
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-medium text-blue-700 bg-blue-50 border border-blue-100 truncate" title="Subject Teacher only">
+                                            <span>Subject Teacher</span>
+                                        </span>
+                                    @endif
+                                    <span class="text-gray-400 font-medium whitespace-nowrap ml-auto">
+                                        {{ $teacherPeriodCount }}p
+                                    </span>
                                 </div>
                             </td>
 
@@ -315,25 +433,45 @@
                                             class="px-2 py-2 cursor-pointer border-l border-gray-100 hover:bg-indigo-50/80 transition-all"
                                             title="Edit assignment for {{ $teacher->name }} in {{ $period->label }}"
                                         >
-                                            <div class="flex flex-col gap-1">
-                                                @foreach($cellRows as $idx => $row)
+                                            <div class="flex flex-col gap-1.5">
+                                                @php
+                                                    $groupedByClass = collect($cellRows)->groupBy('class_id');
+                                                @endphp
+                                                @foreach($groupedByClass as $cId => $classRows)
                                                     @php
-                                                        $subject = \App\Models\Subject::find($row->subject_id);
-                                                        $classObj = $classes->firstWhere('id', $row->class_id);
+                                                        $classObj = $classes->firstWhere('id', $cId);
+                                                        $isTeachingHomeClass = ($isClassTeacher && $classObj && $classObj->name === $ctClassName);
+                                                        $cSubjects = $classRows->map(fn($r) => \App\Models\Subject::find($r->subject_id))->filter();
+                                                        $firstCRow = $classRows->first();
                                                     @endphp
-                                                    <div class="text-xs {{ $idx > 0 ? 'border-t border-indigo-100 pt-1' : '' }}">
-                                                        <div class="font-bold text-indigo-700 truncate">
-                                                            {{ $classObj->name ?? ('Class #'.$row->class_id) }}
+                                                    <div class="text-xs {{ $loop->index > 0 ? 'border-t border-indigo-100 pt-1' : '' }}">
+                                                        <div class="flex items-center justify-between gap-1">
+                                                            <div class="font-bold {{ $isTeachingHomeClass ? 'text-amber-900' : 'text-indigo-700' }} truncate">
+                                                                {{ $classObj->name ?? ('Class #'.$cId) }}
+                                                            </div>
+                                                            @if($isTeachingHomeClass)
+                                                                <span class="text-[9px] font-bold text-amber-700 bg-amber-100/80 border border-amber-200 px-1 py-0.2 rounded-sm" title="Teaching their assigned homeroom class">CT</span>
+                                                            @endif
                                                         </div>
-                                                        <div class="text-gray-500 truncate">{{ $subject->name ?? '—' }}</div>
-                                                        @if($row->is_divided)
+                                                        <div class="flex items-center flex-wrap gap-1 mt-0.5 leading-tight">
+                                                            @foreach($cSubjects as $sIdx => $sub)
+                                                                @if($sIdx > 0)
+                                                                    <span class="inline-flex items-center justify-center w-3 h-3 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black leading-none shadow-2xs" title="Multi-subject">+</span>
+                                                                @endif
+                                                                <span class="px-1 py-0.2 rounded bg-indigo-50 text-indigo-800 text-[10.5px] font-bold border border-indigo-200/60" title="{{ $sub->name }}">{{ $sub->abbreviation }}</span>
+                                                            @endforeach
+                                                            @if($cSubjects->isEmpty())
+                                                                <span class="text-gray-400">—</span>
+                                                            @endif
+                                                        </div>
+                                                        @if($firstCRow->is_divided)
                                                             <span class="text-[10px] text-purple-600 bg-purple-50 px-1 rounded">Divided</span>
                                                         @endif
-                                                        @if($row->is_merged && ($mergedPartnerClassesMap[$row->id] ?? null))
-                                                            <span class="text-[10px] text-teal-700 bg-teal-50 px-1 rounded">🔗 +{{ $mergedPartnerClassesMap[$row->id] }}</span>
+                                                        @if($firstCRow->is_merged && ($mergedPartnerClassesMap[$firstCRow->id] ?? null))
+                                                            <span class="text-[10px] text-teal-700 bg-teal-50 px-1 rounded">🔗 +{{ $mergedPartnerClassesMap[$firstCRow->id] }}</span>
                                                         @endif
-                                                        @if($row->room)
-                                                            <div class="text-[10px] text-gray-400">{{ $row->room }}</div>
+                                                        @if($firstCRow->room)
+                                                            <div class="text-[10px] text-gray-400">{{ $firstCRow->room }}</div>
                                                         @endif
                                                     </div>
                                                 @endforeach
@@ -464,22 +602,32 @@
                         <input type="hidden" wire:model="selectedTeacherId" />
                         @php
                             $currentTeacherObj = collect($teachers)->firstWhere('id', $selectedTeacherId);
+                            $modalTeacherCtClass = $teacherClassMap[$selectedTeacherId] ?? null;
+                            $modalTeacherIsCt = !empty($modalTeacherCtClass);
                         @endphp
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
                                 Assigned Teacher (Verified)
                             </label>
-                            <div class="p-3 bg-indigo-50/70 border border-indigo-200/80 rounded-xl flex items-center justify-between shadow-xs">
+                            <div class="p-3 {{ $modalTeacherIsCt ? 'bg-amber-50/70 border-amber-200/90' : 'bg-indigo-50/70 border-indigo-200/80' }} border rounded-xl flex items-center justify-between shadow-xs">
                                 <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                    <div class="w-8 h-8 rounded-lg {{ $modalTeacherIsCt ? 'bg-amber-600' : 'bg-indigo-600' }} text-white flex items-center justify-center font-bold text-sm shadow-xs">
                                         {{ substr($currentTeacherObj?->name ?? 'T', 0, 1) }}
                                     </div>
                                     <div>
-                                        <div class="text-sm font-bold text-indigo-950 leading-tight">
+                                        <div class="text-sm font-bold text-gray-900 leading-tight">
                                             {{ $currentTeacherObj?->name ?? 'Selected Teacher' }}
                                         </div>
-                                        <div class="text-[11px] text-indigo-600 mt-0.5">
-                                            Active Editor Target
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            @if($modalTeacherIsCt)
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-200">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Class Teacher ({{ $modalTeacherCtClass }})
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded border border-blue-200">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Subject Teacher
+                                                </span>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -536,19 +684,123 @@
                         </div>
                     @endif
 
+                    {{-- Subject Selection: Multi-Subject Selector with Abbreviations & Plus Badge Preview --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Subject <span class="text-red-500">*</span>
-                        </label>
-                        <select wire:model.live="selectedSubjectId" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800" {{ empty($modalClassId) ? 'disabled' : '' }}>
-                            <option value="">{{ empty($modalClassId) ? 'Select a Class first' : 'Select Subject' }}</option>
-                            @foreach($availableSubjects as $subject)
-                                <option value="{{ $subject->id }}">{{ $subject->name }}{{ $subject->schedule_hint ?? '' }}</option>
-                            @endforeach
-                        </select>
-                        <p class="text-xs text-gray-400 mt-1">
-                            {{ empty($modalClassId) ? 'Class selection is required to display subjects' : 'Multiple periods of the same subject on the same day are supported' }}
-                        </p>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2">
+                                <label class="block text-sm font-medium text-gray-700">
+                                    Subject(s) <span class="text-red-500">*</span>
+                                </label>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                                    Multi-Subject Capable
+                                </span>
+                            </div>
+                            @if(!empty($modalClassId) && $availableSubjects->isNotEmpty())
+                                <div class="flex items-center gap-2 text-xs">
+                                    <button 
+                                        type="button" 
+                                        wire:click="selectAllSubjects"
+                                        class="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+                                    >
+                                        Select All
+                                    </button>
+                                    <span class="text-gray-300">|</span>
+                                    <button 
+                                        type="button" 
+                                        wire:click="clearSubjects"
+                                        class="text-gray-400 hover:text-red-600 font-medium transition-colors"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+
+                        @if(empty($modalClassId))
+                            <div class="p-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl text-xs text-gray-400 text-center">
+                                Please select a class above first to load its available subjects.
+                            </div>
+                        @else
+                            {{-- Live Combined Assignment Preview Strip (shows abbreviations with + icon) --}}
+                            @if(!empty($selectedSubjectIds))
+                                @php
+                                    $selectedSubjectModels = $availableSubjects->whereIn('id', $selectedSubjectIds)->values();
+                                @endphp
+                                <div class="mb-2 p-2.5 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-center justify-between flex-wrap gap-2 shadow-2xs">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="text-[11px] font-semibold text-blue-900 mr-1">Period Display:</span>
+                                        @foreach($selectedSubjectModels as $sIdx => $sObj)
+                                            @if($sIdx > 0)
+                                                <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[11px] font-black leading-none shadow-2xs">+</span>
+                                            @endif
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-blue-200 text-blue-900 font-bold text-xs shadow-2xs" title="{{ $sObj->name }}">
+                                                <span>{{ $sObj->abbreviation }}</span>
+                                                <button 
+                                                    type="button" 
+                                                    wire:click="toggleSubject({{ $sObj->id }})" 
+                                                    class="text-gray-400 hover:text-red-500 rounded-full p-0.5 transition-colors ml-0.5" 
+                                                    title="Remove {{ $sObj->name }}"
+                                                >
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                    <span class="text-[11px] font-semibold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-md">
+                                        {{ count($selectedSubjectIds) }} subject{{ count($selectedSubjectIds) > 1 ? 's' : '' }} assigned
+                                    </span>
+                                </div>
+                            @endif
+
+                            {{-- Clickable Subject Grid / Chips --}}
+                            <div class="max-h-48 overflow-y-auto p-1 border border-gray-200 rounded-xl bg-gray-50/30 divide-y divide-gray-100">
+                                @forelse($availableSubjects as $subject)
+                                    @php
+                                        $isSelected = in_array((int)$subject->id, $selectedSubjectIds);
+                                    @endphp
+                                    <div
+                                        wire:key="subject-choice-{{ $subject->id }}"
+                                        wire:click="toggleSubject({{ $subject->id }})"
+                                        class="flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all select-none {{ $isSelected ? 'bg-blue-50/90 text-blue-950 font-semibold ring-1 ring-blue-300' : 'hover:bg-white text-gray-700' }}"
+                                    >
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <span 
+                                                class="w-4 h-4 rounded border flex items-center justify-center transition-all flex-shrink-0 {{ $isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-2xs' : 'border-gray-300 bg-white' }}"
+                                            >
+                                                @if($isSelected)
+                                                    <svg class="w-2.5 h-2.5 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                @endif
+                                            </span>
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10.5px] font-bold {{ $isSelected ? 'bg-blue-200/80 text-blue-900 border border-blue-300' : 'bg-gray-100 text-gray-700 border border-gray-200' }}">
+                                                {{ $subject->abbreviation }}
+                                            </span>
+                                            <span class="text-xs truncate {{ $isSelected ? 'text-blue-950 font-bold' : 'text-gray-800 font-medium' }}">
+                                                {{ $subject->name }}
+                                            </span>
+                                        </div>
+                                        @if(!empty($subject->schedule_hint))
+                                            <span class="text-[10px] text-gray-400 font-normal pl-2 flex-shrink-0">
+                                                {{ $subject->schedule_hint }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                @empty
+                                    <div class="p-4 text-center text-xs text-gray-400">
+                                        No subjects found for this class.
+                                    </div>
+                                @endforelse
+                            </div>
+                            <p class="text-[11px] text-gray-500 mt-1.5 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Select one or multiple subjects. They will be displayed together with a plus icon (+) using their abbreviations in the timetable.
+                            </p>
+                        @endif
                     </div>
 
                     <div>
@@ -614,16 +866,36 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">Subject</label>
-                                        <select
-                                            wire:model.live="dividedSlots.{{ $slotIndex }}.subject_id"
-                                            class="w-full px-3 py-1.5 rounded-lg border border-purple-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white text-sm"
-                                        >
-                                            <option value="">Select Subject</option>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-xs font-medium text-gray-600">Subject(s)</label>
+                                            @php
+                                                $slotSubjectIds = $slot['subject_ids'] ?? (!empty($slot['subject_id']) ? [(int)$slot['subject_id']] : []);
+                                            @endphp
+                                            @if(!empty($slotSubjectIds))
+                                                <span class="text-[10px] font-semibold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
+                                                    {{ count($slotSubjectIds) }} selected
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <div class="flex flex-wrap gap-1 max-h-28 overflow-y-auto p-1.5 bg-purple-50/50 rounded-lg border border-purple-200">
                                             @foreach($availableSubjects as $subject)
-                                                <option value="{{ $subject->id }}" {{ ($slot['subject_id'] ?? '') == $subject->id ? 'selected' : '' }}>{{ $subject->name }}{{ $subject->schedule_hint ?? '' }}</option>
+                                                @php
+                                                    $isSlotSubSelected = in_array($subject->id, $slotSubjectIds);
+                                                    $abbr = $subject->abbreviation ?? \App\Models\Subject::formatAbbreviation($subject->name, $subject->code);
+                                                @endphp
+                                                <button
+                                                    type="button"
+                                                    wire:click="toggleDividedSubject({{ $slotIndex }}, {{ $subject->id }})"
+                                                    class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs transition-all {{ $isSlotSubSelected ? 'bg-purple-600 text-white font-medium shadow-xs' : 'bg-white text-gray-700 border border-gray-200 hover:border-purple-300' }}"
+                                                    title="{{ $subject->name }}"
+                                                >
+                                                    @if($isSlotSubSelected)
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                    @endif
+                                                    <span>{{ $abbr }}</span>
+                                                </button>
                                             @endforeach
-                                        </select>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600 mb-1">Room (optional)</label>
@@ -979,7 +1251,6 @@
                                         <template x-if="selectedTeacherIds.length > 0 && selectedTeacherIds.length <= 2">
                                             <div class="flex flex-wrap gap-1 items-center">
                                                 <template x-for="tid in selectedTeacherIds" :key="'chip-' + tid">
-                                                    @verbatim
                                                     <span class="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-medium border border-indigo-100/80">
                                                         <span x-text="teachersList.find(t => String(t.id) === String(tid))?.name || 'Teacher'" class="max-w-[130px] truncate"></span>
                                                         <button 
@@ -993,7 +1264,6 @@
                                                             </svg>
                                                         </button>
                                                     </span>
-                                                    @endverbatim
                                                 </template>
                                             </div>
                                         </template>

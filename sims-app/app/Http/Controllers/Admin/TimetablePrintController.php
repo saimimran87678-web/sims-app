@@ -529,7 +529,7 @@ class TimetablePrintController extends Controller
                 'subjects.code as subject_code'
             )
             ->get()
-            ->keyBy('period_no');
+            ->groupBy('period_no');
 
         $rows = [];
         $totalLessons = 0;
@@ -538,9 +538,20 @@ class TimetablePrintController extends Controller
             $startTime = $p->start_time ? Carbon::parse($p->start_time)->format('g:i') : '';
             $endTime = $p->end_time ? Carbon::parse($p->end_time)->format('g:i') : '';
 
-            $assigned = $timetables->get($p->period_no);
-            if ($assigned && !$p->is_break && !$p->is_assembly) {
+            $assignedSlots = $timetables->get($p->period_no);
+            if ($assignedSlots && $assignedSlots->isNotEmpty() && !$p->is_break && !$p->is_assembly) {
                 $totalLessons++;
+            }
+
+            $firstAssigned = $assignedSlots?->first();
+            $subjectLabel = '';
+            if ($assignedSlots && $assignedSlots->isNotEmpty()) {
+                if ($assignedSlots->count() > 1) {
+                    $abbrs = $assignedSlots->map(fn($as) => \App\Models\Subject::formatAbbreviation($as->subject_name, $as->subject_code))->unique()->filter()->values();
+                    $subjectLabel = $abbrs->implode(' + ');
+                } else {
+                    $subjectLabel = $firstAssigned->subject_name;
+                }
             }
 
             $rows[] = [
@@ -549,9 +560,9 @@ class TimetablePrintController extends Controller
                 'time_range'  => "{$startTime} - {$endTime}",
                 'is_assembly' => (bool)$p->is_assembly,
                 'is_break'    => (bool)$p->is_break,
-                'subject'     => $assigned?->subject_name,
-                'class_name'  => $assigned?->class_name,
-                'room'        => $assigned?->room,
+                'subject'     => $subjectLabel,
+                'class_name'  => $firstAssigned?->class_name,
+                'room'        => $firstAssigned?->room,
             ];
         }
 

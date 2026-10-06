@@ -534,14 +534,23 @@
                                     @endif
                                 </div>
                             </td>
-                            <td @if($slots->count() > 1) class="td-split-cell" @endif>
-                                @if($slots->count() === 1)
-                                    @php $slot = $slots->first(); @endphp
+                            @php
+                                $groupedTeacherSlots = $slots->groupBy('teacher_id');
+                            @endphp
+                            <td @if($groupedTeacherSlots->count() > 1) class="td-split-cell" @endif>
+                                @if($groupedTeacherSlots->count() === 1)
+                                    @php
+                                        $tSlots = $groupedTeacherSlots->first();
+                                        $slot = $tSlots->first();
+                                        $subjectLabel = $tSlots->count() > 1
+                                            ? $tSlots->map(fn($ts) => \App\Models\Subject::formatAbbreviation($ts->subject_name, $ts->subject_code))->unique()->values()->implode(' + ')
+                                            : ($slot->subject_name ?? '-');
+                                    @endphp
                                     {{-- Borderless 2-cell table guarantees baseline parity in both Dompdf and Browser --}}
                                     <table class="slot-table">
                                         <tr>
                                             <td class="slot-td-left">
-                                                <span class="subj-title">{{ $slot->subject_name ?? '-' }}</span>
+                                                <span class="subj-title">{{ $subjectLabel }}</span>
                                             </td>
                                             <td class="slot-td-right">
                                                 <span class="teacher-info">
@@ -550,16 +559,22 @@
                                             </td>
                                         </tr>
                                     </table>
-                                @elseif($slots->count() > 1)
+                                @elseif($groupedTeacherSlots->count() > 1)
                                     {{-- Split wrapper with table-cell layout prevents nested page breaks --}}
                                     <div class="split-wrapper">
-                                        @foreach($slots as $slot)
-                                            <div class="split-col" style="width: {{ number_format(100 / $slots->count(), 2) }}%;">
+                                        @foreach($groupedTeacherSlots as $tId => $tSlots)
+                                            @php
+                                                $slot = $tSlots->first();
+                                                $subjectLabel = $tSlots->count() > 1
+                                                    ? $tSlots->map(fn($ts) => \App\Models\Subject::formatAbbreviation($ts->subject_name, $ts->subject_code))->unique()->values()->implode(' + ')
+                                                    : ($slot->subject_name ?? 'Elective');
+                                            @endphp
+                                            <div class="split-col" style="width: {{ number_format(100 / $groupedTeacherSlots->count(), 2) }}%;">
                                                 <table class="slot-table">
                                                     <tr>
                                                         <td class="slot-td-left">
                                                             <span class="subj-title" style="font-size: 11.5pt;">
-                                                                {{ $slot->subject_name ?? 'Elective' }}
+                                                                {{ $subjectLabel }}
                                                             </span>
                                                         </td>
                                                         <td class="slot-td-right">
