@@ -316,6 +316,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('admin/schedule/print')->name('admin.schedule.print.')->group(function () {
         Route::get('/master-classwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterClasswise'])->name('master_classwise');
         Route::get('/master-teacherwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterTeacherwise'])->name('master_teacherwise');
+        Route::get('/daywise/master-classwise', [\App\Http\Controllers\Admin\DaywiseTimetablePrintController::class, 'printMasterClasswise'])->name('daywise_master_classwise');
+        Route::get('/daywise/master-teacherwise', [\App\Http\Controllers\Admin\DaywiseTimetablePrintController::class, 'printMasterTeacherwise'])->name('daywise_master_teacherwise');
         Route::get('/class/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printClass'])->name('class');
         Route::get('/teacher/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeacherSingle'])->name('teacher_single');
         Route::get('/teachers-bulk', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeachersBulk'])->name('teachers_bulk');
@@ -325,6 +327,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('schedule/print')->name('schedule.print.')->group(function () {
         Route::get('/master-classwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterClasswise'])->name('master_classwise');
         Route::get('/master-teacherwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterTeacherwise'])->name('master_teacherwise');
+        Route::get('/daywise/master-classwise', [\App\Http\Controllers\Admin\DaywiseTimetablePrintController::class, 'printMasterClasswise'])->name('daywise_master_classwise');
+        Route::get('/daywise/master-teacherwise', [\App\Http\Controllers\Admin\DaywiseTimetablePrintController::class, 'printMasterTeacherwise'])->name('daywise_master_teacherwise');
         Route::get('/class/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printClass'])->name('class');
         Route::get('/teacher/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeacherSingle'])->name('teacher_single');
         Route::get('/teachers-bulk', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeachersBulk'])->name('teachers_bulk');
@@ -334,6 +338,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('teacher/shared/schedule/print')->name('teacher.shared.schedule.print.')->group(function () {
         Route::get('/master-classwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterClasswise'])->name('master_classwise');
         Route::get('/master-teacherwise', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printMasterTeacherwise'])->name('master_teacherwise');
+        Route::get('/daywise/master-classwise', [\App\Http\Controllers\Admin\DaywiseTimetablePrintController::class, 'printMasterClasswise'])->name('daywise_master_classwise');
+        Route::get('/daywise/master-teacherwise', [\App\Http\Controllers\Admin\DaywiseTimetablePrintController::class, 'printMasterTeacherwise'])->name('daywise_master_teacherwise');
         Route::get('/class/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printClass'])->name('class');
         Route::get('/teacher/{id?}', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeacherSingle'])->name('teacher_single');
         Route::get('/teachers-bulk', [\App\Http\Controllers\Admin\TimetablePrintController::class, 'printTeachersBulk'])->name('teachers_bulk');

@@ -3,7 +3,8 @@
     activePrintTab: 'master', 
     activeCohort: 'all',
     selectedPrintClassId: '{{ data_get(collect($classes)->first(), 'id', '') }}', 
-    selectedPrintTeacherId: '{{ data_get(collect($teachers)->first(), 'id', '') }}' 
+    selectedPrintTeacherId: '{{ data_get(collect($teachers)->first(), 'id', '') }}',
+    selectedPrintDay: 'all'
 }">
     @php
         // Helper to categorize subjects into distinct department color accents
@@ -1112,6 +1113,32 @@
                 <div class="px-6 py-4 space-y-3 max-h-[calc(85vh-160px)] overflow-y-auto">
                     {{-- 1. Master Tab --}}
                     <div x-show="activePrintTab === 'master'" class="space-y-3">
+                        @if($scheduleType === 'day_wise')
+                        <div class="p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/50 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    Select Day to Print
+                                </label>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100/70 text-indigo-700">
+                                    Day-Wise Schedule
+                                </span>
+                            </div>
+                            <select 
+                                x-model="selectedPrintDay" 
+                                class="w-full rounded-xl border border-indigo-200 text-xs text-slate-800 bg-white py-2 px-3 focus:ring-2 focus:ring-indigo-500/20 font-medium"
+                            >
+                                <option value="all">🗓️ All Working Days (Sequential Timetable)</option>
+                                @foreach($days as $day)
+                                    <option value="{{ $day }}">📅 {{ $day }} Only</option>
+                                @endforeach
+                            </select>
+                            <p class="text-[11px] text-slate-500">Choose a specific day or print all working days at once with day name clearly mentioned on every sheet.</p>
+                        </div>
+                        @endif
+
                         <div class="p-4 rounded-xl border border-slate-200/80 bg-slate-50/40 hover:bg-white hover:border-indigo-200 transition-all">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
@@ -1122,7 +1149,7 @@
                                     <p class="text-[11px] text-slate-500 mt-1">Whole-school routine with classes as rows and vertical break/assembly bands.</p>
                                 </div>
                                 <a 
-                                    href="/admin/schedule/print/master-classwise?autoprint=1" 
+                                    :href="'{{ $scheduleType === 'day_wise' ? '/admin/schedule/print/daywise/master-classwise' : '/admin/schedule/print/master-classwise' }}?day=' + (selectedPrintDay || 'all') + '&autoprint=1'" 
                                     target="_blank"
                                     class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xs"
                                 >
@@ -1141,7 +1168,7 @@
                                     <p class="text-[11px] text-slate-500 mt-1">Faculty timetable roster with individual periods and total lessons sum.</p>
                                 </div>
                                 <a 
-                                    href="/admin/schedule/print/master-teacherwise?autoprint=1" 
+                                    :href="'{{ $scheduleType === 'day_wise' ? '/admin/schedule/print/daywise/master-teacherwise' : '/admin/schedule/print/master-teacherwise' }}?day=' + (selectedPrintDay || 'all') + '&autoprint=1'" 
                                     target="_blank"
                                     class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xs"
                                 >
