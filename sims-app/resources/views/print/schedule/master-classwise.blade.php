@@ -458,13 +458,17 @@
                                         @foreach($groupedTeacherSlots as $tId => $tSlots)
                                             @php
                                                 $firstSlot = $tSlots->first();
-                                                $abbrList = $tSlots->map(function($ts) {
-                                                    return \App\Models\Subject::formatAbbreviation($ts->subject_name, $ts->subject_code);
-                                                })->filter()->unique()->values();
+                                                if ($tSlots->count() > 1) {
+                                                    $subText = $tSlots->map(function($ts) {
+                                                        return \App\Models\Subject::formatAbbreviation($ts->subject_name, $ts->subject_code);
+                                                    })->filter()->unique()->values()->implode(' + ');
+                                                } else {
+                                                    $subText = $firstSlot->subject_name ?? $firstSlot->subject_code ?? '';
+                                                }
                                             @endphp
                                             <div class="slot-item">
                                                 <div class="slot-teacher">{{ $firstSlot->teacher_name ?? '-' }}</div>
-                                                <div class="slot-subject">{{ $abbrList->implode(' + ') }}</div>
+                                                <div class="slot-subject">{{ $subText }}</div>
                                             </div>
                                         @endforeach
                                     </div>

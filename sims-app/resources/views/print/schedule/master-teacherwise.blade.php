@@ -466,13 +466,17 @@
                                         @foreach($groupedClassSlots as $cId => $cSlots)
                                             @php
                                                 $firstSlot = $cSlots->first();
-                                                $abbrList = $cSlots->map(function($cs) {
-                                                    return \App\Models\Subject::formatAbbreviation($cs->subject_name, $cs->subject_code);
-                                                })->filter()->unique()->values();
+                                                if ($cSlots->count() > 1) {
+                                                    $subText = $cSlots->map(function($cs) {
+                                                        return \App\Models\Subject::formatAbbreviation($cs->subject_name, $cs->subject_code);
+                                                    })->filter()->unique()->values()->implode(' + ');
+                                                } else {
+                                                    $subText = $firstSlot->subject_name ?? $firstSlot->subject_code ?? '';
+                                                }
                                             @endphp
                                             <div class="slot-item">
                                                 <div class="slot-class">{{ $firstSlot->class_name ?? '-' }}</div>
-                                                <div class="slot-subject">{{ $abbrList->implode(' + ') }}</div>
+                                                <div class="slot-subject">{{ $subText }}</div>
                                             </div>
                                         @endforeach
                                     </div>

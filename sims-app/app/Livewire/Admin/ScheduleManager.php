@@ -504,20 +504,30 @@ class ScheduleManager extends Component
         return $query->orderBy('numeric_value', 'asc')->orderBy('name', 'asc')->get();
     }
 
+    public function updatedSelectedSubjectIds($values)
+    {
+        $values = array_map('intval', (array)$values);
+        if (count($values) > 3) {
+            $this->selectedSubjectIds = array_slice($values, 0, 3);
+            session()->flash('warning', 'You can select up to 3 subjects only.');
+        } else {
+            $this->selectedSubjectIds = $values;
+        }
+        $this->selectedSubjectId = $this->selectedSubjectIds[0] ?? '';
+    }
+
     public function toggleSubject($subjectId)
     {
         $subjectId = (int)$subjectId;
         if (in_array($subjectId, $this->selectedSubjectIds)) {
             $this->selectedSubjectIds = array_values(array_filter($this->selectedSubjectIds, fn($id) => $id != $subjectId));
         } else {
+            if (count($this->selectedSubjectIds) >= 3) {
+                session()->flash('warning', 'You can select up to 3 subjects only.');
+                return;
+            }
             $this->selectedSubjectIds[] = $subjectId;
         }
-        $this->selectedSubjectId = $this->selectedSubjectIds[0] ?? '';
-    }
-
-    public function selectAllSubjects()
-    {
-        $this->selectedSubjectIds = $this->availableSubjects->pluck('id')->map(fn($id) => (int)$id)->toArray();
         $this->selectedSubjectId = $this->selectedSubjectIds[0] ?? '';
     }
 
@@ -537,6 +547,10 @@ class ScheduleManager extends Component
         if (in_array($subjectId, $current)) {
             $this->dividedSlots[$index]['subject_ids'] = array_values(array_filter($current, fn($id) => $id != $subjectId));
         } else {
+            if (count($current) >= 3) {
+                session()->flash('warning', 'You can select up to 3 subjects only.');
+                return;
+            }
             $this->dividedSlots[$index]['subject_ids'][] = $subjectId;
         }
         $this->dividedSlots[$index]['subject_id'] = $this->dividedSlots[$index]['subject_ids'][0] ?? '';
@@ -807,7 +821,7 @@ class ScheduleManager extends Component
         $allSlots = [
             [
                 'teacher_id'  => $this->selectedTeacherId,
-                'subject_ids' => array_values(array_unique(array_filter($this->selectedSubjectIds))),
+                'subject_ids' => array_slice(array_values(array_unique(array_filter($this->selectedSubjectIds))), 0, 3),
                 'room'        => $this->room,
                 'is_primary'  => true,
             ]
@@ -818,7 +832,7 @@ class ScheduleManager extends Component
                 if (!empty($slot['teacher_id']) && !empty($slotSubs)) {
                     $allSlots[] = [
                         'teacher_id'  => $slot['teacher_id'],
-                        'subject_ids' => array_values(array_unique(array_filter($slotSubs))),
+                        'subject_ids' => array_slice(array_values(array_unique(array_filter($slotSubs))), 0, 3),
                         'room'        => $slot['room'] ?? $this->room,
                         'is_primary'  => false,
                     ];
