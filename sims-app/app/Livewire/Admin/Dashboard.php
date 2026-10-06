@@ -322,7 +322,7 @@ class Dashboard extends Component
             $unpaidStudentIds = $unpaidStudentIdsQuery->pluck('fee_records.student_id');
 
             $unpaidStudents = Student::select('id', 'name', 'roll_no', 'class_id')
-                ->with('class:id,name')
+                ->with('class')
                 ->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
                     $q->where('academic_session_id', $activeSessionId)->active();
                     if ($shiftType !== 'both') {
