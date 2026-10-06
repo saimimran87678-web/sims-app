@@ -66,28 +66,43 @@ class PasswordResetLinkController extends Controller
 
         // Send OTP via Email
         try {
-            $instituteName = \App\Models\Setting::get('institute_name', 'IMCB G-6/2');
-            Mail::send([], [], function ($message) use ($email, $otp, $instituteName) {
-                $message->to($email)
-                    ->subject('Reset code for "' . $instituteName . '"')
-                    ->html("
-                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>
-                            <div style='text-align: center; margin-bottom: 24px;'>
-                                <h2 style='color: #1e3a5f; margin: 0; font-size: 24px; font-weight: 800;'>{$instituteName}</h2>
-                                <p style='color: #64748b; margin: 4px 0 0 0; font-size: 13px;'>Powered by Adminova</p>
-                            </div>
-                            <hr style='border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 24px;'>
-                            <p style='font-size: 15px; color: #334155; line-height: 1.5;'>Hello,</p>
-                            <p style='font-size: 15px; color: #334155; line-height: 1.5;'>We received a request to reset your password. Use the following 6-digit One Time Password (OTP) code to proceed with the reset process:</p>
-                            <div style='text-align: center; margin: 36px 0;'>
-                                <span style='font-size: 36px; font-weight: 800; letter-spacing: 6px; color: #1e3a5f; padding: 12px 24px; background-color: #f1f5f9; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block;'>{$otp}</span>
-                            </div>
-                            <p style='color: #ef4444; font-size: 13px; line-height: 1.5; margin-bottom: 0;'><strong>Note:</strong> This OTP code is valid for 15 minutes. If you did not request a password reset, please ignore this email.</p>
-                            <hr style='border: 0; border-top: 1px solid #e2e8f0; margin-top: 24px; margin-bottom: 24px;'>
-                            <p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>© " . date('Y') . " Adminova. All rights reserved.</p>
-                        </div>
-                    ");
-            });
+            $instituteFormalName = trim((string) \App\Models\Setting::getGlobal('institute_formal_name', ''));
+            if (empty($instituteFormalName)) {
+                $instituteFormalName = trim((string) \App\Models\Setting::getGlobal('institute_name', config('app.name', 'IMCB G-6/2, ISLAMABAD')));
+            }
+            $instituteShortName = trim((string) \App\Models\Setting::getGlobal('institute_short_name', ''));
+            $userName = $user ? $user->name : null;
+
+            $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+            $logoUrl = null;
+            if (!empty($logoPath)) {
+                $logoUrl = filter_var($logoPath, FILTER_VALIDATE_URL) ? $logoPath : url($logoPath);
+            }
+
+            // Ensure dynamic SMTP credentials and sender name are set
+            $mailUser = \App\Models\Setting::getGlobal('mail_username');
+            $mailPass = \App\Models\Setting::getGlobal('mail_password');
+            if (!empty($mailUser) && !empty($mailPass)) {
+                config([
+                    'mail.default' => 'smtp',
+                    'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                    'mail.mailers.smtp.port' => 465,
+                    'mail.mailers.smtp.encryption' => 'ssl',
+                    'mail.mailers.smtp.username' => $mailUser,
+                    'mail.mailers.smtp.password' => $mailPass,
+                    'mail.from.address' => $mailUser,
+                    'mail.from.name' => $instituteFormalName,
+                ]);
+            }
+
+            Mail::to($email)->send(new \App\Mail\PasswordResetOtpMail(
+                otp: $otp,
+                instituteName: $instituteFormalName,
+                userName: $userName,
+                logoUrl: $logoUrl,
+                validMinutes: 15,
+                instituteShortName: $instituteShortName
+            ));
         } catch (\Exception $e) {
             return back()->withInput($request->only('email'))
                 ->withErrors(['email' => 'Failed to send OTP email: ' . $e->getMessage()]);
