@@ -23,10 +23,16 @@
             <strong style="color: #1e3a5f;">{{ session('reset_email') }}</strong>
         </div>
 
-        {{-- Status Notification --}}
+        {{-- Status / Error Notifications --}}
         @if (session('status'))
             <div style="padding: 10px; background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.2); border-radius: 8px; color: #15803d; font-size: 13px; text-align: center; margin-bottom: 20px;">
                 {{ session('status') }}
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div style="padding: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; color: #dc2626; font-size: 13px; text-align: center; margin-bottom: 20px;">
+                {{ session('error') }}
             </div>
         @endif
 
@@ -60,14 +66,94 @@
                 Change Email
             </a>
             
-            <form method="POST" action="{{ route('password.email') }}" style="display: inline;">
+            <form id="form-resend-otp" method="POST" action="{{ route('password.email') }}" style="display: inline;">
                 @csrf
                 <input type="hidden" name="email" value="{{ session('reset_email') }}">
-                <button type="submit" style="background: none; border: none; padding: 0; color: #3182ce; font-size: 13px; cursor: pointer; text-decoration: underline;" onmouseover="this.style.color='#2b6cb0'" onmouseout="this.style.color='#3182ce'">
-                    Resend Code
+                <button type="submit" id="btn-resend-otp" 
+                        style="background: none; border: none; padding: 4px 6px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; transition: all 0.2s; {{ ($secondsRemaining ?? 0) > 0 ? 'color: #94a3b8; cursor: not-allowed;' : 'color: #3182ce; cursor: pointer; text-decoration: underline;' }}" 
+                        {{ ($secondsRemaining ?? 0) > 0 ? 'disabled' : '' }}>
+                    <svg id="resend-icon-timer" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="{{ ($secondsRemaining ?? 0) > 0 ? 'display: inline;' : 'display: none;' }}">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                    <svg id="resend-icon-refresh" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="{{ ($secondsRemaining ?? 0) > 0 ? 'display: none;' : 'display: inline;' }}">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                    <span id="resend-text">
+                        @if(($secondsRemaining ?? 0) > 0)
+                            Resend Code ({{ $secondsRemaining }}s)
+                        @else
+                            Resend Code
+                        @endif
+                    </span>
                 </button>
             </form>
         </div>
+
+        <script>
+            (function() {
+                var secondsLeft = {{ (int) ($secondsRemaining ?? 0) }};
+                var btn = document.getElementById('btn-resend-otp');
+                var textSpan = document.getElementById('resend-text');
+                var iconTimer = document.getElementById('resend-icon-timer');
+                var iconRefresh = document.getElementById('resend-icon-refresh');
+                var form = document.getElementById('form-resend-otp');
+                var timer = null;
+
+                function updateUI() {
+                    if (!btn || !textSpan) return;
+                    if (secondsLeft > 0) {
+                        btn.disabled = true;
+                        btn.style.cursor = 'not-allowed';
+                        btn.style.color = '#94a3b8';
+                        btn.style.textDecoration = 'none';
+                        if (iconTimer) iconTimer.style.display = 'inline';
+                        if (iconRefresh) iconRefresh.style.display = 'none';
+                        textSpan.textContent = 'Resend Code (' + secondsLeft + 's)';
+                    } else {
+                        btn.disabled = false;
+                        btn.style.cursor = 'pointer';
+                        btn.style.color = '#3182ce';
+                        btn.style.textDecoration = 'underline';
+                        if (iconTimer) iconTimer.style.display = 'none';
+                        if (iconRefresh) iconRefresh.style.display = 'inline';
+                        textSpan.textContent = 'Resend Code';
+                        if (timer) {
+                            clearInterval(timer);
+                            timer = null;
+                        }
+                    }
+                }
+
+                updateUI();
+
+                if (secondsLeft > 0) {
+                    timer = setInterval(function() {
+                        secondsLeft--;
+                        if (secondsLeft <= 0) {
+                            secondsLeft = 0;
+                            updateUI();
+                        } else {
+                            updateUI();
+                        }
+                    }, 1000);
+                }
+
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        if (secondsLeft > 0) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.style.cursor = 'wait';
+                            btn.style.color = '#94a3b8';
+                            if (textSpan) textSpan.textContent = 'Sending...';
+                        }
+                    });
+                }
+            })();
+        </script>
     </div>
 
     {{-- Footer --}}

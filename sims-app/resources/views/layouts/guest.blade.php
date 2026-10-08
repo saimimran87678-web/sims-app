@@ -20,10 +20,16 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @livewireStyles
 
         <style>
             [x-cloak] { display: none !important; }
             * { font-family: 'Inter', sans-serif; }
+            
+            input::-ms-reveal,
+            input::-ms-clear {
+                display: none !important;
+            }
             
             .login-bg {
                 background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 50%, #38b2ac 100%);
@@ -182,5 +188,6 @@
                 </div>
             </div>
         </div>
+        @livewireScripts
     </body>
 </html>

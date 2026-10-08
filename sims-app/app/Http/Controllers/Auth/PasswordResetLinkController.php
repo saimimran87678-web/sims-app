@@ -53,6 +53,24 @@ class PasswordResetLinkController extends Controller
             }
         }
 
+        $existing = DB::table('password_reset_tokens')->where('email', $email)->first();
+        if ($existing && $existing->created_at) {
+            $createdAt = Carbon::parse($existing->created_at);
+            $elapsedSeconds = $createdAt->diffInSeconds(now());
+            if ($createdAt->isFuture() || $elapsedSeconds < 60) {
+                $secondsLeft = $createdAt->isFuture() ? 60 : (60 - $elapsedSeconds);
+                if ($secondsLeft > 0) {
+                    session(['reset_email' => $email]);
+                    return back()->withInput($request->only('email'))
+                        ->with('error', "Please wait {$secondsLeft} second(s) before requesting a new OTP.")
+                        ->withErrors([
+                            'email' => "Please wait {$secondsLeft} second(s) before requesting a new OTP.",
+                            'otp' => "Please wait {$secondsLeft} second(s) before requesting a new OTP.",
+                        ]);
+                }
+            }
+        }
+
         $otp = rand(100000, 999999);
 
         // Save OTP to password_reset_tokens table
@@ -109,7 +127,10 @@ class PasswordResetLinkController extends Controller
         }
 
         // Store email in session to allow OTP verification
-        session(['reset_email' => $email]);
+        session([
+            'reset_email' => $email,
+            'otp_sent_at' => now()->timestamp,
+        ]);
 
         return redirect()->route('password.otp.verify')->with('status', 'OTP code has been sent to your email address.');
     }
@@ -123,7 +144,30 @@ class PasswordResetLinkController extends Controller
             return redirect()->route('password.request')->withErrors(['email' => 'Please enter your email first.']);
         }
 
-        return view('auth.verify-otp');
+        $email = session('reset_email');
+        $record = DB::table('password_reset_tokens')->where('email', $email)->first();
+
+        $secondsRemaining = 0;
+        if ($record && $record->created_at) {
+            $createdAt = Carbon::parse($record->created_at);
+            if ($createdAt->isFuture()) {
+                $secondsRemaining = 60;
+            } else {
+                $elapsed = $createdAt->diffInSeconds(now());
+                if ($elapsed < 60) {
+                    $secondsRemaining = 60 - $elapsed;
+                }
+            }
+        } elseif (session()->has('otp_sent_at')) {
+            $elapsed = now()->timestamp - (int) session('otp_sent_at');
+            if ($elapsed < 60) {
+                $secondsRemaining = 60 - $elapsed;
+            }
+        }
+
+        return view('auth.verify-otp', [
+            'secondsRemaining' => max(0, (int) $secondsRemaining),
+        ]);
     }
 
     /**
