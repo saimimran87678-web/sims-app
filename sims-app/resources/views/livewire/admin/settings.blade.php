@@ -1,4 +1,30 @@
-<div class="space-y-6 max-w-2xl mx-auto">
+<div class="space-y-6 max-w-2xl mx-auto"
+     x-data="{ 
+        activeTab: '{{ $activeTab ?? 'general' }}',
+        scrollToUpdates() {
+            this.$nextTick(() => {
+                const el = document.getElementById('updates-tab');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        },
+        checkHash() {
+            const hash = window.location.hash;
+            const urlParams = new URLSearchParams(window.location.search);
+            if (hash === '#updates-tab' || hash === '#updates' || urlParams.get('tab') === 'updates' || urlParams.get('tab') === 'updates-tab') {
+                this.activeTab = 'updates';
+                this.scrollToUpdates();
+            } else if (hash === '#general' || urlParams.get('tab') === 'general') {
+                this.activeTab = 'general';
+            }
+        },
+        init() {
+            this.checkHash();
+            window.addEventListener('hashchange', () => this.checkHash());
+            document.addEventListener('livewire:navigated', () => this.checkHash());
+        }
+     }">
     <div class="flex items-center gap-4">
         <a href="{{ route('admin.dashboard') }}" class="p-2 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:text-blue-600 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -21,8 +47,43 @@
         </div>
     @endif
 
+    {{-- Navigation Tabs --}}
+    <div class="flex items-center gap-2 p-1.5 bg-gray-100/90 rounded-2xl border border-gray-200/80 shadow-inner">
+        <button 
+            type="button" 
+            id="tab-btn-general"
+            @click="activeTab = 'general'; if (history.replaceState) history.replaceState(null, null, '{{ route('admin.settings') }}#general');"
+            :class="activeTab === 'general' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-800 font-medium'"
+            class="flex-1 py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>General Settings</span>
+        </button>
+
+        <button 
+            type="button" 
+            id="tab-btn-updates"
+            @click="activeTab = 'updates'; if (history.replaceState) history.replaceState(null, null, '{{ route('admin.settings') }}#updates-tab'); scrollToUpdates();"
+            :class="activeTab === 'updates' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-800 font-medium'"
+            class="flex-1 py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 relative cursor-pointer"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>System Updates & Integrity</span>
+            @if($updateAvailable)
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white animate-pulse">
+                    New
+                </span>
+            @endif
+        </button>
+    </div>
+
     {{-- Settings Form Card --}}
-    <div class="glass-card p-8 rounded-2xl bg-white shadow-sm border border-gray-100">
+    <div x-show="activeTab === 'general'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 transform translate-y-1" x-transition:enter-end="opacity-100 transform translate-y-0" class="glass-card p-8 rounded-2xl bg-white shadow-sm border border-gray-100">
         <form wire:submit.prevent="save" class="space-y-8">
 
             {{-- ── Section: Branding ── --}}
@@ -600,7 +661,7 @@
     </div>
 
     {{-- System Updates & Version Integrity Card --}}
-    <div class="glass-card p-8 rounded-2xl bg-white shadow-sm border border-gray-100">
+    <div id="updates-tab" x-show="activeTab === 'updates'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 transform translate-y-1" x-transition:enter-end="opacity-100 transform translate-y-0" class="glass-card p-8 rounded-2xl bg-white shadow-sm border border-gray-100 scroll-mt-24">
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">

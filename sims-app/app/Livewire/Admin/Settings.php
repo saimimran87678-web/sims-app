@@ -24,6 +24,7 @@ class Settings extends Component
     public $admin_action_pin_enabled = false;
     public $admin_action_pin = '';
     public $successMessage = '';
+    public $activeTab = 'general';
 
     // Email & SMTP Configuration Properties
     public $smtp_email = '';
@@ -101,6 +102,11 @@ class Settings extends Component
         $this->currentVersion = $dbVer;
         $this->lastUpdateChecksum = Setting::getGlobal('last_update_checksum', 'None (Initial Installation)');
         $this->lastUpdatedAt = Setting::getGlobal('last_updated_at', 'Initial Installation');
+
+        // Check if navigated with tab query param
+        if (request()->query('tab') === 'updates' || request()->query('tab') === 'updates-tab') {
+            $this->activeTab = 'updates';
+        }
 
         // Initialize Email & SMTP configuration
         $savedMailUser = Setting::getGlobal('mail_username');
@@ -282,8 +288,14 @@ class Settings extends Component
         $this->admin_action_pin_enabled = (bool) Setting::get('admin_action_pin_enabled', false);
     }
 
+    public function setTab($tab)
+    {
+        $this->activeTab = in_array($tab, ['general', 'updates']) ? $tab : 'general';
+    }
+
     public function save()
     {
+        $this->activeTab = 'general';
         $this->validate();
 
         if ($this->logo) {
@@ -456,6 +468,7 @@ class Settings extends Component
 
     public function checkForUpdates()
     {
+        $this->activeTab = 'updates';
         $this->updateCheckMessage = '';
         $this->updateSuccessMessage = '';
         $this->updateErrorMessage = '';
@@ -563,6 +576,7 @@ class Settings extends Component
 
     public function applyUpdate()
     {
+        $this->activeTab = 'updates';
         @set_time_limit(300);
         @ini_set('memory_limit', '512M');
         $this->updateSuccessMessage = '';
@@ -603,6 +617,7 @@ class Settings extends Component
 
     public function applyManualPatch()
     {
+        $this->activeTab = 'updates';
         @set_time_limit(300);
         @ini_set('memory_limit', '512M');
         $this->manualPatchSuccess = '';

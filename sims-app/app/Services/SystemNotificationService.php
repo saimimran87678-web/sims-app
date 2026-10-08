@@ -115,7 +115,7 @@ class SystemNotificationService
                         'message'      => $notes,
                         'version'      => $latestVer,
                         'current'      => $installedVer,
-                        'action_url'   => route('admin.settings') . '#updates-tab',
+                        'action_url'   => route('admin.settings', ['tab' => 'updates']) . '#updates-tab',
                         'action_label' => 'Update System Now',
                         'badge'        => $isPatch ? 'Hotfix' : "v{$latestVer}",
                         'badge_color'  => 'bg-emerald-100 text-emerald-800 border-emerald-200',
