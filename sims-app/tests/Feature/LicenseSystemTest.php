@@ -29,12 +29,12 @@ class LicenseSystemTest extends TestCase
         request()->headers->set('HOST', 'localhost');
 
         // Always start with a clean cache so tests don't bleed into each other
-        Cache::forget(LicenseStatus::CACHE_KEY);
+        LicenseStatus::clearCache();
     }
 
     protected function tearDown(): void
     {
-        Cache::forget(LicenseStatus::CACHE_KEY);
+        LicenseStatus::clearCache();
         request()->headers->set('HOST', 'localhost');
         parent::tearDown();
     }
@@ -95,6 +95,8 @@ class LicenseSystemTest extends TestCase
             'integrity_hash'          => $hash,
             'last_online_verified_at' => $lastVerified ?? Carbon::now(),
         ]);
+
+        LicenseStatus::clearCache();
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────────

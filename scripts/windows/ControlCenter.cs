@@ -728,6 +728,8 @@ namespace Adminova.ControlCenter
             {
                 portList.Add(9000);
                 portList.Add(9001);
+                portList.Add(9002);
+                portList.Add(9003);
             }
 
             int[] ports = portList.ToArray();
@@ -761,6 +763,10 @@ namespace Adminova.ControlCenter
                     {
                         LogMessage("[WARN] Failed to start PHP FastCGI worker on " + port + ": " + ex.Message);
                     }
+                }
+                else
+                {
+                    LogMessage("PHP FastCGI Engine worker on 127.0.0.1:" + port + " is active.");
                 }
             }
 

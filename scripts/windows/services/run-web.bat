@@ -49,7 +49,7 @@ if exist "%APP_DIR%\php.ini" (
 )
 
 if exist "%PHP_CGI%" (
-    for %%P in (9000 9001) do (
+    for %%P in (9000 9001 9002 9003) do (
         netstat -ano 2>nul | findstr "127.0.0.1:%%P " >nul 2>&1
         if !errorLevel! neq 0 (
             echo [INFO] Starting bundled PHP 8.2 FastCGI Engine on port %%P...

@@ -610,7 +610,7 @@ class FeatureSharingTest extends TestCase
     }
 
     #[Test]
-    public function teacher_created_from_user_manager_has_teacher_role_and_all_permissions_except_access_control(): void
+    public function teacher_created_from_user_manager_has_teacher_role_and_no_shared_permissions_by_default(): void
     {
         $this->actingAs($this->admin);
 
@@ -628,16 +628,14 @@ class FeatureSharingTest extends TestCase
         $this->assertTrue($newUser->hasRole('Teacher'));
         $this->assertEquals('teacher', $newUser->role);
 
-        // Verify that all permissions are enabled for them in the active session except access control
-        $allPermissionsCount = \Spatie\Permission\Models\Permission::count();
+        // Verify that teachers do NOT have shared admin permissions in the active session by default
         $grantedPermissionsCount = DB::table('session_user_permissions')
             ->where('user_id', $newUser->id)
             ->where('academic_session_id', $this->session->id)
             ->count();
 
-        // 2 access control permissions ('access-control.manage', 'permissions.assign') should be excluded
-        $this->assertEquals($allPermissionsCount - 2, $grantedPermissionsCount);
-        $this->assertTrue($newUser->can('students.manage'));
+        $this->assertEquals(0, $grantedPermissionsCount);
+        $this->assertFalse($newUser->can('students.manage'));
         $this->assertFalse($newUser->can('access-control.manage'));
     }
 

@@ -925,8 +925,8 @@
                                     @php
                                         $bulkStudentsList = \App\Models\Student::whereIn('id', $selectedStudentIds)->get();
                                         $bulkEnrollmentsList = DB::table('enrollments')
-                                            ->whereIn('student_id', $selectedStudentIds)
-                                            ->where('academic_session_id', $selectedSessionId)
+                                            ->whereIn('enrollments.student_id', $selectedStudentIds)
+                                            ->where('enrollments.academic_session_id', $selectedSessionId)
                                             ->join('classes', 'enrollments.class_id', '=', 'classes.id')
                                             ->select('enrollments.student_id', 'enrollments.shift_type', 'classes.name as class_name')
                                             ->get()

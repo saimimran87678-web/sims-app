@@ -105,9 +105,9 @@ class LicenseStatus
      *
      * @return array Returns ['stage' => string, 'reason' => string, 'details' => array]
      */
-    public static function computeStatus(): array
+    public static function computeStatus(bool $forceRefresh = false): array
     {
-        $record = self::getLicenseRecord();
+        $record = self::getLicenseRecord($forceRefresh);
 
         // Layer 0: Check existence
         if (!$record) {
@@ -379,6 +379,7 @@ class LicenseStatus
     public static function clearCache(): void
     {
         Cache::forget(self::CACHE_KEY);
+        self::clearMemoryCache();
     }
 
     /**
