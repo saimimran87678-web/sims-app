@@ -149,15 +149,20 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         ]);
     })->name('substitutions.teacher_attendance.print');
     Route::get('/classes', \App\Livewire\Admin\ClassManager::class)->name('classes');
-    Route::get('/students', \App\Livewire\Admin\StudentManager::class)->name('students');
-    Route::get('/students/import', \App\Livewire\Admin\StudentImportManager::class)->name('students.import');
+    
+    // Student Management (Remotely Gated)
+    Route::middleware(['feature:students'])->group(function () {
+        Route::get('/students', \App\Livewire\Admin\StudentManager::class)->name('students');
+        Route::get('/students/import', \App\Livewire\Admin\StudentImportManager::class)->name('students.import');
+    });
+
     Route::get('/academic-sessions', \App\Livewire\Admin\AcademicSessionManager::class)->name('academic-sessions');
     
     // Reports System (Remotely Gated)
     Route::get('/reports', \App\Livewire\Admin\Reports\ReportManager::class)->name('reports')->middleware('feature:reports');
     
     // Global Management
-    Route::get('/grades', \App\Livewire\Admin\GradeManager::class)->name('grades');
+    Route::get('/grades', \App\Livewire\Admin\GradeManager::class)->name('grades')->middleware('feature:gradebook');
     Route::get('/attendance', \App\Livewire\Admin\AttendanceManager::class)->name('attendance')->middleware('feature:attendance');
     
     // WhatsApp & Communication Hub (Remotely Gated)
@@ -202,8 +207,8 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
     Route::get('/dashboard', \App\Livewire\Teacher\Dashboard::class)->name('dashboard');
 
     Route::get('/attendance', \App\Livewire\Teacher\AttendanceManager::class)->name('attendance');
-    Route::get('/grades', \App\Livewire\Teacher\GradeManager::class)->name('grades');
-    Route::get('/students', \App\Livewire\Teacher\StudentList::class)->name('students');
+    Route::get('/grades', \App\Livewire\Teacher\GradeManager::class)->name('grades')->middleware('feature:gradebook');
+    Route::get('/students', \App\Livewire\Teacher\StudentList::class)->name('students')->middleware('feature:students');
     Route::get('/schedule', \App\Livewire\Teacher\ScheduleView::class)->name('schedule');
     Route::get('/reports', \App\Livewire\Teacher\Reports\ReportManager::class)->name('reports');
     Route::get('/communication-hub', \App\Livewire\Teacher\CommunicationHub::class)->name('communication-hub');
@@ -215,7 +220,7 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
         Route::get('/shared/datesheet/{examId}', \App\Livewire\Admin\Datesheet\DatesheetManager::class)->name('shared.datesheet');
     });
     
-    Route::middleware(['permission:students.manage'])->group(function () {
+    Route::middleware(['permission:students.manage', 'feature:students'])->group(function () {
         Route::get('/shared/students-manage', \App\Livewire\Admin\StudentManager::class)->name('shared.students');
         Route::get('/shared/students-import', \App\Livewire\Admin\StudentImportManager::class)->name('shared.students.import');
     });

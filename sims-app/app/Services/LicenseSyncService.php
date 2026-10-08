@@ -111,7 +111,7 @@ class LicenseSyncService
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $newHash,
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,
-                'enabled_modules'         => json_encode($firebaseLic['enabled_modules'] ?? ['fees', 'exams', 'attendance', 'whatsapp', 'reports']),
+                'enabled_modules'         => json_encode($firebaseLic['enabled_modules'] ?? ['students', 'gradebook', 'fees', 'exams', 'attendance', 'whatsapp', 'reports']),
                 'broadcast_announcement'  => $firebaseLic['broadcast_announcement'] ?? null,
                 'schedule_type_policy'    => $firebaseLic['schedule_type_policy'] ?? 'configurable',
                 'config_version'          => $firebaseLic['config_version'] ?? 1,

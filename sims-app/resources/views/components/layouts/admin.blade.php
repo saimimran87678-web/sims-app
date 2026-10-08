@@ -127,12 +127,14 @@
                 @endcan
 
                 <!-- Student Management -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('students'))
                 @can('students.manage')
                 <x-nav-link id="nav-students" :href="route('admin.students')" :active="request()->routeIs('admin.students')" color="pink">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
                     <span class="font-medium">Student Management</span>
                 </x-nav-link>
                 @endcan
+                @endif
 
                 <!-- Fee Management -->
                 @if((\App\Services\LicenseStatus::getStatus()['plan'] ?? 'basic') !== 'basic' && \App\Services\LicenseStatus::isModuleEnabled('fees'))
@@ -154,12 +156,14 @@
                 @endif
 
                 <!-- Gradebook -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('gradebook'))
                 @can('classes.manage') <!-- Using classes.manage or grades.manage if existed -->
                 <x-nav-link :href="route('admin.grades')" :active="request()->routeIs('admin.grades')" color="indigo">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
                     <span class="font-medium">Gradebook</span>
                 </x-nav-link>
                 @endcan
+                @endif
 
                 <!-- Attendance -->
                 @if(\App\Services\LicenseStatus::isModuleEnabled('attendance'))

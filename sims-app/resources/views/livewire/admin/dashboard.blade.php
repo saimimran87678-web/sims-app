@@ -172,6 +172,7 @@
     <div class="grid grid-cols-2 md:grid-cols-3 {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'xl:grid-cols-6' : 'xl:grid-cols-4' }} gap-4">
 
         {{-- Students --}}
+        @if(\App\Services\LicenseStatus::isModuleEnabled('students'))
         <div class="stat-card col-span-1">
             <div class="flex items-start justify-between mb-3">
                 <div class="p-2 rounded-xl bg-indigo-50 text-indigo-600">
@@ -182,6 +183,7 @@
             <p class="text-2xl font-bold text-slate-800">{{ $stats['students'] }}</p>
             <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Students</p>
         </div>
+        @endif
 
         {{-- Classes --}}
         <div class="stat-card col-span-1">
@@ -521,6 +523,7 @@
                 <h3 class="text-sm font-bold text-slate-700 mb-1">Quick Actions</h3>
                 <p class="text-[11px] text-slate-400 mb-5">Immediate management shortcuts</p>
                 <div class="grid grid-cols-2 gap-3">
+                    @if(\App\Services\LicenseStatus::isModuleEnabled('students'))
                     @can('students.manage')
                     <a href="{{ route('admin.students', ['open_add_modal' => 1]) }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -529,6 +532,7 @@
                         <span class="text-[10px] font-bold text-slate-600">Admit Student</span>
                     </a>
                     @endcan
+                    @endif
                     @can('classes.manage')
                     <a href="{{ route('admin.classes', ['open_add_modal' => 1]) }}" class="action-btn">
                         <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">

@@ -119,10 +119,12 @@
                 </x-nav-link>
 
                 <!-- Gradebook -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('gradebook'))
                 <x-nav-link :href="route('teacher.grades')" :active="request()->routeIs('teacher.grades')" color="green">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                     <span class="font-medium">Gradebook</span>
                 </x-nav-link>
+                @endif
 
                 <!-- Schedule -->
                 <x-nav-link :href="route('teacher.schedule')" :active="request()->routeIs('teacher.schedule')" color="green">
@@ -131,10 +133,12 @@
                 </x-nav-link>
 
                 <!-- Students -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('students'))
                 <x-nav-link :href="route('teacher.students')" :active="request()->routeIs('teacher.students')" color="green">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     <span class="font-medium">My Students</span>
                 </x-nav-link>
+                @endif
 
                 <!-- Communication Hub -->
                 <x-nav-link :href="route('teacher.communication-hub')" :active="request()->routeIs('teacher.communication-hub')" color="purple">
@@ -162,12 +166,14 @@
                         </x-nav-link>
                         @endcan
 
+                        @if(\App\Services\LicenseStatus::isModuleEnabled('students'))
                         @can('students.manage')
                         <x-nav-link :href="route('teacher.shared.students')" :active="request()->routeIs('teacher.shared.students')" color="purple">
                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                             <span class="font-medium">Manage Students</span>
                         </x-nav-link>
                         @endcan
+                        @endif
 
                         @can('classes.manage')
                         <x-nav-link :href="route('teacher.shared.classes')" :active="request()->routeIs('teacher.shared.classes')" color="purple">

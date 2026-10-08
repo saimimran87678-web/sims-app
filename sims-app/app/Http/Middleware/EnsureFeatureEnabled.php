@@ -21,6 +21,8 @@ class EnsureFeatureEnabled
             $formattedName = ucfirst($module);
             if ($module === 'whatsapp') $formattedName = 'WhatsApp Integration';
             if ($module === 'fees') $formattedName = 'Fee Management';
+            if ($module === 'students') $formattedName = 'Student Management';
+            if ($module === 'gradebook') $formattedName = 'Gradebook';
 
             if ($request->expectsJson() || $request->isXmlHttpRequest()) {
                 return response()->json([
@@ -29,7 +31,12 @@ class EnsureFeatureEnabled
                 ], 403);
             }
 
-            return redirect()->route('admin.dashboard')
+            $user = auth()->user();
+            $redirectRoute = ($user && $user->isTeacher() && !$user->isAdmin())
+                ? 'teacher.dashboard'
+                : 'admin.dashboard';
+
+            return redirect()->route($redirectRoute)
                 ->with('error', "The {$formattedName} module is currently disabled by administrative license policy.");
         }
 

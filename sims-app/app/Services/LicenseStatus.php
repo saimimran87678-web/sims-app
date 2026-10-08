@@ -44,7 +44,7 @@ class LicenseStatus
     /**
      * Check if a specific feature module is enabled via remote licensing policy.
      *
-     * @param string $module Module name (e.g. 'fees', 'exams', 'attendance', 'whatsapp', 'reports')
+     * @param string $module Module name (e.g. 'students', 'gradebook', 'fees', 'exams', 'attendance', 'whatsapp', 'reports')
      * @return bool
      */
     public static function isModuleEnabled(string $module): bool
@@ -60,7 +60,20 @@ class LicenseStatus
                 return true;
             }
 
-            return in_array(strtolower($module), array_map('strtolower', $modules));
+            $modulesLower = array_map('strtolower', $modules);
+            $modLower = strtolower($module);
+
+            // Backward compatibility: If an existing license record was saved before
+            // students or gradebook were modularized (neither is in the array),
+            // treat them as enabled by default.
+            if (in_array($modLower, ['students', 'gradebook'])) {
+                $hasAnyNewMod = in_array('students', $modulesLower) || in_array('gradebook', $modulesLower);
+                if (!$hasAnyNewMod) {
+                    return true;
+                }
+            }
+
+            return in_array($modLower, $modulesLower);
         } catch (\Exception $e) {
             return true;
         }
