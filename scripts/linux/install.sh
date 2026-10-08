@@ -37,6 +37,7 @@ echo "Step 1/2: Initializing database, cryptographic keys, and caches..."
 echo "------------------------------------------------------------------"
 cd "${APP_DIR}"
 php artisan sims:install
+php artisan optimize >/dev/null 2>&1 || true
 
 echo ""
 echo "Step 2/2: Registering systemd background services (auto-boot)..."

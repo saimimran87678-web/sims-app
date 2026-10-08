@@ -191,6 +191,10 @@ if %errorLevel% neq 0 (
 )
 
 echo.
+echo [*] Pre-warming production caches for maximum performance...
+"%PHP_BIN%" artisan optimize >nul 2>&1
+
+echo.
 echo [4/4] Starting SIMS Web Server and verifying status...
 cd /d "%ROOT_DIR%"
 

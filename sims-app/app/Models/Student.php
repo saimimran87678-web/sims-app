@@ -99,40 +99,46 @@ class Student extends Model
 
     public function getRollNoAttribute()
     {
-        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-
-        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
-        if ($shiftType === 'both') {
-            $shiftType = 'morning';
+        if (array_key_exists('roll_no', $this->attributes)) {
+            return $this->attributes['roll_no'];
         }
 
-        $enrollment = $this->enrollments()
-            ->where('academic_session_id', $activeSessionId)
-            ->where('shift_type', $shiftType)
-            ->first();
+        static $cachedSessionId = null;
+        static $cachedShiftType = null;
+        if ($cachedSessionId === null) {
+            $cachedSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $sessionObj = \App\Models\AcademicSession::find($cachedSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+            $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
+        }
 
-        return $enrollment ? $enrollment->roll_number : null;
+        return $this->enrollments()
+            ->where('academic_session_id', $cachedSessionId)
+            ->where('shift_type', $cachedShiftType)
+            ->value('roll_number');
     }
 
     public function getClassIdAttribute()
     {
-        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-
-        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
-        if ($shiftType === 'both') {
-            $shiftType = 'morning';
+        if (array_key_exists('class_id', $this->attributes)) {
+            return $this->attributes['class_id'];
         }
 
-        $enrollment = $this->enrollments()
-            ->where('academic_session_id', $activeSessionId)
-            ->where('shift_type', $shiftType)
-            ->first();
+        static $cachedSessionId = null;
+        static $cachedShiftType = null;
+        if ($cachedSessionId === null) {
+            $cachedSessionId = \App\Models\AcademicSession::getActiveSessionId();
+            $sessionObj = \App\Models\AcademicSession::find($cachedSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+            $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
+        }
 
-        return $enrollment ? $enrollment->class_id : null;
+        return $this->enrollments()
+            ->where('academic_session_id', $cachedSessionId)
+            ->where('shift_type', $cachedShiftType)
+            ->value('class_id');
     }
 
     public function subjects()

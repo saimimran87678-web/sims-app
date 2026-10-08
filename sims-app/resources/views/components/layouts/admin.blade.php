@@ -63,9 +63,14 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 
-    <!-- Guided Product Tour Styles -->
-    <link rel="stylesheet" href="{{ asset('vendor/driverjs/driver.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/driverjs/driver-theme.css') }}">
+    @php
+        $shouldLaunchTour = (bool) \App\Models\Setting::getGlobal('launch_first_tour', false);
+    @endphp
+    @if($shouldLaunchTour)
+        <!-- Guided Product Tour Styles (Deferred/Conditional) -->
+        <link rel="stylesheet" href="{{ asset('vendor/driverjs/driver.css') }}">
+        <link rel="stylesheet" href="{{ asset('vendor/driverjs/driver-theme.css') }}">
+    @endif
 </head>
 <body class="font-sans antialiased text-gray-900 bg-gray-50">
 <div x-data="{ sidebarOpen: true }" class="flex h-screen overflow-hidden bg-gray-50">
@@ -667,12 +672,14 @@
     @livewireScripts
     <x-security-scripts />
 
-    <!-- Driver.js Guided Product Tour -->
-    <script src="{{ asset('vendor/driverjs/driver.js.iife.js') }}"></script>
+    <!-- Driver.js Guided Product Tour (Only loaded when active) -->
     <script>
-        window.SIMS_LAUNCH_TOUR = {{ \App\Models\Setting::getGlobal('launch_first_tour', false) ? 'true' : 'false' }};
+        window.SIMS_LAUNCH_TOUR = {{ $shouldLaunchTour ? 'true' : 'false' }};
     </script>
-    <script src="{{ asset('js/tour.js') }}"></script>
+    @if($shouldLaunchTour)
+        <script src="{{ asset('vendor/driverjs/driver.js.iife.js') }}"></script>
+        <script src="{{ asset('js/tour.js') }}"></script>
+    @endif
 
     <!-- License Synchronization Handler -->
     <script>

@@ -18,9 +18,8 @@ if exist "%RUNTIME_DIR%\php\php.exe" (
     set "PHP_BIN=php"
 )
 
-echo Starting SIMS Background Queue Worker...
-"%PHP_BIN%" artisan queue:work --sleep=3 --tries=3
-if %errorLevel% neq 0 (
-    echo [ERROR] Queue worker stopped with code %errorLevel%.
-    pause
-)
+echo Starting SIMS Background Queue Worker (Self-Healing Watchdog)...
+:WORKER_LOOP
+"%PHP_BIN%" artisan queue:work --sleep=3 --tries=3 --max-time=3600
+ping 127.0.0.1 -n 3 >nul
+goto :WORKER_LOOP

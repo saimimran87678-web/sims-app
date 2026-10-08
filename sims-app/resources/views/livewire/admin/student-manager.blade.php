@@ -80,7 +80,7 @@
             <h3 class="text-lg font-bold text-gray-800">Student Directory</h3>
             <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
                 <div class="relative w-full md:w-64">
-                    <input wire:model.live.debounce.300ms="search" type="text" placeholder="Search by name, roll, adm..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <input wire:model.live.debounce.500ms="search" type="text" placeholder="Search by name, roll, adm..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                         <svg class="h-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
@@ -231,7 +231,7 @@
                         <tr class="hover:bg-gray-50 transition-colors {{ in_array($student->id, $selectedStudentIds) ? 'bg-blue-50/20' : '' }}">
                             @if($selectedClassId)
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-10">
-                                <input type="checkbox" wire:model.live="selectedStudentIds" value="{{ $student->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer" />
+                                <input type="checkbox" wire:model="selectedStudentIds" value="{{ $student->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer" />
                             </td>
                             @endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $student->admission_no }}</td>
@@ -315,7 +315,7 @@
                         <div class="flex gap-3 items-center">
                             @if($selectedClassId)
                             {{-- Checkbox --}}
-                            <input type="checkbox" wire:model.live="selectedStudentIds" value="{{ $student->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer w-4 h-4 shadow-sm shrink-0" />
+                            <input type="checkbox" wire:model="selectedStudentIds" value="{{ $student->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer w-4 h-4 shadow-sm shrink-0" />
                             @endif
                             
                             {{-- Avatar --}}
@@ -922,26 +922,23 @@
                             <div>
                                 <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Selected Students ({{ count($selectedStudentIds) }})</h4>
                                 <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
-                                    @foreach($selectedStudentIds as $studentId)
+                                    @php
+                                        $bulkStudentsList = \App\Models\Student::whereIn('id', $selectedStudentIds)->get();
+                                        $bulkEnrollmentsList = DB::table('enrollments')
+                                            ->whereIn('student_id', $selectedStudentIds)
+                                            ->where('academic_session_id', $selectedSessionId)
+                                            ->join('classes', 'enrollments.class_id', '=', 'classes.id')
+                                            ->select('enrollments.student_id', 'enrollments.shift_type', 'classes.name as class_name')
+                                            ->get()
+                                            ->groupBy('student_id');
+                                    @endphp
+                                    @foreach($bulkStudentsList as $st)
                                         @php
-                                            $st = \App\Models\Student::find($studentId);
-                                            if (!$st) continue;
-
-                                            $enrollments = DB::table('enrollments')
-                                                ->where('student_id', $studentId)
-                                                ->where('academic_session_id', $selectedSessionId)
-                                                ->get();
-
-                                            $hasMorning = $enrollments->contains('shift_type', 'morning');
-                                            $hasEvening = $enrollments->contains('shift_type', 'evening');
-
-                                            $morningClass = $hasMorning 
-                                                ? DB::table('classes')->where('id', $enrollments->firstWhere('shift_type', 'morning')->class_id)->value('name')
-                                                : null;
-
-                                            $eveningClass = $hasEvening 
-                                                ? DB::table('classes')->where('id', $enrollments->firstWhere('shift_type', 'evening')->class_id)->value('name')
-                                                : null;
+                                            $stEnrs = $bulkEnrollmentsList->get($st->id, collect());
+                                            $morningClass = $stEnrs->firstWhere('shift_type', 'morning')?->class_name;
+                                            $eveningClass = $stEnrs->firstWhere('shift_type', 'evening')?->class_name;
+                                            $hasMorning = !empty($morningClass);
+                                            $hasEvening = !empty($eveningClass);
                                         @endphp
                                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
                                             <div class="flex items-center gap-3">

@@ -18,9 +18,8 @@ if exist "%RUNTIME_DIR%\php\php.exe" (
     set "PHP_BIN=php"
 )
 
-echo Starting SIMS Task Scheduler...
+echo Starting SIMS Task Scheduler (Self-Healing Watchdog)...
+:SCHEDULER_LOOP
 "%PHP_BIN%" artisan schedule:work
-if %errorLevel% neq 0 (
-    echo [ERROR] Scheduler stopped with code %errorLevel%.
-    pause
-)
+ping 127.0.0.1 -n 5 >nul
+goto :SCHEDULER_LOOP

@@ -195,13 +195,18 @@ class SimsInstall extends Command
             $this->warn('⚠️ Storage link note: ' . $e->getMessage());
         }
 
-        // 6. Pre-warm and compile application caches
-        $this->info('⚡ Preparing clean application caches (views compiled, routes dynamic)...');
+        // 6. Pre-warm and compile application caches for maximum performance
+        $this->info('⚡ Pre-warming production caches (views, config, routes, events)...');
         try {
-            Artisan::call('route:clear');
-            Artisan::call('config:clear');
             Artisan::call('view:cache');
-            $this->info('✅ View caches compiled and dynamic route dispatch enabled.');
+            $phpBin  = PHP_BINARY;
+            $artisan = base_path('artisan');
+            @exec("\"{$phpBin}\" \"{$artisan}\" optimize 2>&1", $optOutput, $optCode);
+            if (isset($optCode) && $optCode === 0) {
+                $this->info('✅ Production caches pre-warmed (config, routes, events, views).');
+            } else {
+                $this->info('✅ View caches compiled.');
+            }
         } catch (\Exception $e) {
             $this->warn('⚠️ Cache setup note: ' . $e->getMessage());
         }

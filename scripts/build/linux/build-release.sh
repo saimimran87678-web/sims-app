@@ -119,15 +119,15 @@ LOG_LEVEL=error
 DB_CONNECTION=sqlite
 DB_FOREIGN_KEYS=true
 
-# Database-backed Queue, Cache, and Sessions (Zero-Redis dependency)
-SESSION_DRIVER=database
+# High-Performance Session & Cache: Use file to eliminate SQLite WAL write contention
+SESSION_DRIVER=file
 SESSION_LIFETIME=120
 SESSION_ENCRYPT=false
 SESSION_PATH=/
 SESSION_DOMAIN=null
 SESSION_EXPIRE_ON_CLOSE=true
 
-CACHE_STORE=database
+CACHE_STORE=file
 QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 BROADCAST_CONNECTION=log

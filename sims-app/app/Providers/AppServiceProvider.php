@@ -41,6 +41,13 @@ class AppServiceProvider extends ServiceProvider
                 }
                 @touch($dbPath);
             }
+
+            // High-performance SQLite PRAGMAs: 64MB RAM cache, 256MB mmap zero-copy, memory temp store
+            try {
+                \Illuminate\Support\Facades\DB::connection()->getPdo()->exec('PRAGMA cache_size = -64000;');
+                \Illuminate\Support\Facades\DB::connection()->getPdo()->exec('PRAGMA mmap_size = 268435456;');
+                \Illuminate\Support\Facades\DB::connection()->getPdo()->exec('PRAGMA temp_store = 2;');
+            } catch (\Throwable $e) {}
         }
 
         if (request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https') {

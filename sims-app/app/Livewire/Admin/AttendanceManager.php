@@ -99,8 +99,8 @@ class AttendanceManager extends Component
 
         $holiday = Holiday::where('academic_session_id', $activeSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('start_date', '<=', $this->date)
-            ->whereDate('end_date', '>=', $this->date)
+            ->where('start_date', '<=', $this->date)
+            ->where('end_date', '>=', $this->date)
             ->first();
 
         if ($holiday) {
@@ -484,8 +484,8 @@ class AttendanceManager extends Component
         $holidays = DB::table('holidays')
             ->where('academic_session_id', $activeSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('start_date', '<=', $endDate->format('Y-m-d'))
-            ->whereDate('end_date', '>=', $startDate->format('Y-m-d'))
+            ->where('start_date', '<=', $endDate->format('Y-m-d'))
+            ->where('end_date', '>=', $startDate->format('Y-m-d'))
             ->get();
 
         // Fetch recorded attendance dates

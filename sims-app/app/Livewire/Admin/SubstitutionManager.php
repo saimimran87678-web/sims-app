@@ -203,7 +203,7 @@ class SubstitutionManager extends Component
         // Load assigned substitutions from dedicated substitutions table
         $subs = Substitution::with('class')
             ->where('academic_session_id', $this->selectedSessionId)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->where('shift_type', $shiftType)
             ->whereNotNull('substitute_teacher_id')
             ->orderBy('period_no')
@@ -223,7 +223,7 @@ class SubstitutionManager extends Component
 
         // ── Daily workload counter from substitutions table ──
         $this->dailySubCounts = Substitution::where('academic_session_id', $this->selectedSessionId)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->where('shift_type', $shiftType)
             ->whereNotNull('substitute_teacher_id')
             ->groupBy('substitute_teacher_id')
@@ -268,7 +268,7 @@ class SubstitutionManager extends Component
         $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
 
         // Load attendances with remarks
-        $attendances = TeacherAttendance::whereDate('date', $selectedDate)
+        $attendances = TeacherAttendance::where('date', $selectedDate)
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
             ->get()->keyBy('teacher_id');
@@ -342,7 +342,7 @@ class SubstitutionManager extends Component
         $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
 
         // Fetch teachers who already have an attendance record in DB for this date/session/shift
-        $existingTeacherIds = TeacherAttendance::whereDate('date', $selectedDate)
+        $existingTeacherIds = TeacherAttendance::where('date', $selectedDate)
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
             ->pluck('teacher_id')
@@ -421,7 +421,7 @@ class SubstitutionManager extends Component
         DB::beginTransaction();
         try {
             // Find existing non-present records in DB for this date/session/shift
-            $existingNonPresent = TeacherAttendance::whereDate('date', $selectedDate)
+            $existingNonPresent = TeacherAttendance::where('date', $selectedDate)
                 ->where('academic_session_id', $this->selectedSessionId)
                 ->where('shift_type', $shiftType)
                 ->where('status', '!=', 'Present')
@@ -484,7 +484,7 @@ class SubstitutionManager extends Component
         $this->closedClassesList = ClosedClassroom::with('class')
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->get()
             ->map(function ($c) {
                 return [
@@ -505,7 +505,7 @@ class SubstitutionManager extends Component
         $merges = DailyClassMerge::with(['sourceClass', 'targetClass'])
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->get();
 
         $grouped = [];
@@ -695,7 +695,7 @@ class SubstitutionManager extends Component
 
         DailyClassMerge::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->where('source_class_id', $sourceClassId)
             ->where('target_class_id', $targetClassId)
             ->delete();
@@ -731,7 +731,7 @@ class SubstitutionManager extends Component
 
         Substitution::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->where('absent_teacher_id', $teacherId)
             ->delete();
 
@@ -767,7 +767,7 @@ class SubstitutionManager extends Component
                 ->where('shift_type', $shiftType)
                 ->where('class_id', $schedule->class_id)
                 ->where('period_no', $schedule->period_no)
-                ->whereDate('date', $selectedDate)
+                ->where('date', $selectedDate)
                 ->first();
 
             $this->substitutions[$teacherId][$schedule->period_no] = $existingSub ? $existingSub->substitute_teacher_id : '';
@@ -791,7 +791,7 @@ class SubstitutionManager extends Component
                 ->where('shift_type', $shiftType)
                 ->where('class_id', $classId)
                 ->where('period_no', $periodNo)
-                ->whereDate('date', $selectedDate)
+                ->where('date', $selectedDate)
                 ->delete();
 
             // Also clean up legacy timetables table for schedule queries
@@ -816,7 +816,7 @@ class SubstitutionManager extends Component
 
         // Link with attendance record if available
         $attendanceRecord = TeacherAttendance::where('teacher_id', $absentTeacherId)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
             ->first();
@@ -877,14 +877,14 @@ class SubstitutionManager extends Component
         // Classrooms that are closed today do not count as busy
         $closedClassIds = ClosedClassroom::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->pluck('class_id')
             ->toArray();
 
         // Source classrooms in class merges are merged into target, so source timetable periods are freed up
         $mergedSourceTimetableIds = DailyClassMerge::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->pluck('source_timetable_id')
             ->toArray();
 
@@ -913,7 +913,7 @@ class SubstitutionManager extends Component
 
         // 2. Check other substitutions for today
         $hasSubstitute = Substitution::where('academic_session_id', $this->selectedSessionId)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->where('shift_type', $shiftType)
             ->where('period_no', $periodNo)
             ->where('substitute_teacher_id', $teacherId)
@@ -932,14 +932,14 @@ class SubstitutionManager extends Component
         // Fetch closed class IDs for today
         $closedClassIds = ClosedClassroom::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->pluck('class_id')
             ->toArray();
 
         // Fetch merged source timetable IDs for today
         $mergedSourceTimetableIds = DailyClassMerge::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->pluck('source_timetable_id')
             ->toArray();
 
@@ -968,7 +968,7 @@ class SubstitutionManager extends Component
 
         // 2. Teachers already assigned as substitutes in substitutions table
         $subBusy = Substitution::where('academic_session_id', $this->selectedSessionId)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->where('shift_type', $shiftType)
             ->where('period_no', $periodNo)
             ->whereNotNull('substitute_teacher_id')
@@ -1005,14 +1005,14 @@ class SubstitutionManager extends Component
 
         $closedClassrooms = ClosedClassroom::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->get()
             ->keyBy('class_id');
 
         $dailyMerges = DailyClassMerge::with('targetClass')
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', $selectedDate)
+            ->where('date', $selectedDate)
             ->get()
             ->keyBy('source_timetable_id');
 
@@ -1095,16 +1095,16 @@ class SubstitutionManager extends Component
         // Fetch all attendance records for this month (safe SQLite date comparison)
         $attendances = TeacherAttendance::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', '>=', $startOfMonth->format('Y-m-d'))
-            ->whereDate('date', '<=', $endOfMonth->format('Y-m-d'))
+            ->where('date', '>=', $startOfMonth->format('Y-m-d'))
+            ->where('date', '<=', $endOfMonth->format('Y-m-d'))
             ->get()
             ->groupBy('teacher_id');
 
         // Fetch monthly substitutions count per substitute teacher
         $substitutionsCount = Substitution::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', '>=', $startOfMonth->format('Y-m-d'))
-            ->whereDate('date', '<=', $endOfMonth->format('Y-m-d'))
+            ->where('date', '>=', $startOfMonth->format('Y-m-d'))
+            ->where('date', '<=', $endOfMonth->format('Y-m-d'))
             ->whereNotNull('substitute_teacher_id')
             ->groupBy('substitute_teacher_id')
             ->select('substitute_teacher_id', DB::raw('COUNT(*) as total'))
@@ -1246,8 +1246,8 @@ class SubstitutionManager extends Component
         $attendances = TeacherAttendance::where('teacher_id', $this->selectedTeacherId)
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->whereDate('date', '>=', $startOfMonth->format('Y-m-d'))
-            ->whereDate('date', '<=', $endOfMonth->format('Y-m-d'))
+            ->where('date', '>=', $startOfMonth->format('Y-m-d'))
+            ->where('date', '<=', $endOfMonth->format('Y-m-d'))
             ->get()
             ->keyBy(fn($r) => Carbon::parse($r->date)->format('Y-m-d'));
 
@@ -1256,8 +1256,8 @@ class SubstitutionManager extends Component
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
             ->where('substitute_teacher_id', $this->selectedTeacherId)
-            ->whereDate('date', '>=', $startOfMonth->format('Y-m-d'))
-            ->whereDate('date', '<=', $endOfMonth->format('Y-m-d'))
+            ->where('date', '>=', $startOfMonth->format('Y-m-d'))
+            ->where('date', '<=', $endOfMonth->format('Y-m-d'))
             ->get()
             ->groupBy(fn($s) => Carbon::parse($s->date)->format('Y-m-d'));
 

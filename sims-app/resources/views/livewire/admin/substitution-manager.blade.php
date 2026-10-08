@@ -1435,15 +1435,28 @@
     @endif
 </div>
 
-{{-- html2pdf for direct client-side PDF download --}}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+{{-- html2pdf for direct client-side PDF download (Lazy-loaded on demand) --}}
 <script>
-    if (typeof html2pdf === 'undefined') {
-        document.write('<script src="{{ asset('js/html2pdf.bundle.min.js') }}"><\/script>');
+    function ensureHtml2PdfLoaded() {
+        if (typeof html2pdf !== 'undefined') {
+            return Promise.resolve();
+        }
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = "{{ asset('js/html2pdf.bundle.min.js') }}";
+            script.onload = resolve;
+            script.onerror = () => {
+                const cdnScript = document.createElement('script');
+                cdnScript.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+                cdnScript.onload = resolve;
+                cdnScript.onerror = reject;
+                document.body.appendChild(cdnScript);
+            };
+            document.body.appendChild(script);
+        });
     }
-</script>
-<script>
-    function downloadPdfDirectly(event, url, dateStr) {
+
+    async function downloadPdfDirectly(event, url, dateStr) {
         event.preventDefault();
         const btn = event.currentTarget;
         const originalContent = btn.innerHTML;
@@ -1455,39 +1468,37 @@
             </svg>
             <span>Generating...</span>
         `;
-        fetch(url)
-            .then(response => {
-                if (!response.ok) throw new Error("Failed to fetch PDF template");
-                return response.text();
-            })
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const reportContent = doc.getElementById('report-content');
-                if (!reportContent) throw new Error("Report content container not found in fetched HTML");
-                const tempDiv = document.createElement('div');
-                tempDiv.style.position = 'absolute';
-                tempDiv.style.left = '-9999px';
-                tempDiv.style.top = '-9999px';
-                tempDiv.style.width = '900px';
-                tempDiv.innerHTML = reportContent.innerHTML;
-                document.body.appendChild(tempDiv);
-                const opt = {
-                    margin:       [10, 10, 10, 10],
-                    filename:     'Teacher_Arrangement_' + dateStr + '.pdf',
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, allowTaint: true },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-                return html2pdf().set(opt).from(tempDiv).save().then(() => { tempDiv.remove(); });
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Error generating PDF. Please try again.");
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = originalContent;
-            });
+        try {
+            await ensureHtml2PdfLoaded();
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Failed to fetch PDF template");
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const reportContent = doc.getElementById('report-content');
+            if (!reportContent) throw new Error("Report content container not found in fetched HTML");
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            tempDiv.style.top = '-9999px';
+            tempDiv.style.width = '900px';
+            tempDiv.innerHTML = reportContent.innerHTML;
+            document.body.appendChild(tempDiv);
+            const opt = {
+                margin:       [10, 10, 10, 10],
+                filename:     'Teacher_Arrangement_' + dateStr + '.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, allowTaint: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            await html2pdf().set(opt).from(tempDiv).save();
+            tempDiv.remove();
+        } catch (err) {
+            console.error(err);
+            alert("Error generating PDF. Please try again.");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
     }
 </script>

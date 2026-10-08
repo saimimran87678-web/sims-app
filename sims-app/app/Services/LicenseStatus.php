@@ -18,22 +18,38 @@ class LicenseStatus
     const STAGE_LOCKED = 'LOCKED';
     const STAGE_BLOCKED = 'BLOCKED';
 
+    protected static ?object $cachedLicenseRecord = null;
+    protected static ?array $cachedModules = null;
+
+    /**
+     * Clear memory cache for license records (e.g. after sync or activation).
+     */
+    public static function clearMemoryCache(): void
+    {
+        self::$cachedLicenseRecord = null;
+        self::$cachedModules = null;
+    }
+
     /**
      * Get the current license record from SQLite.
      * Programmatically runs migrations if columns are missing.
      *
      * @return object|null
      */
-    public static function getLicenseRecord()
+    public static function getLicenseRecord(bool $forceRefresh = false)
     {
+        if (!$forceRefresh && self::$cachedLicenseRecord !== null) {
+            return self::$cachedLicenseRecord;
+        }
+
         try {
-            return DB::table('software_licenses')->first();
+            return self::$cachedLicenseRecord = DB::table('software_licenses')->first();
         } catch (\Exception $e) {
             // Self-heal only if table is genuinely missing on cold boot
             try {
                 if (!Schema::hasTable('software_licenses')) {
                     Artisan::call('migrate', ['--force' => true]);
-                    return DB::table('software_licenses')->first();
+                    return self::$cachedLicenseRecord = DB::table('software_licenses')->first();
                 }
             } catch (\Throwable) {}
             Log::error('License Database lookup failed: ' . $e->getMessage());
@@ -49,19 +65,23 @@ class LicenseStatus
      */
     public static function isModuleEnabled(string $module): bool
     {
+        $modLower = strtolower($module);
+        if (self::$cachedModules !== null && array_key_exists($modLower, self::$cachedModules)) {
+            return self::$cachedModules[$modLower];
+        }
+
         try {
             $record = self::getLicenseRecord();
             if (!$record || empty($record->enabled_modules)) {
-                return true; // Default to enabled if not configured
+                return self::$cachedModules[$modLower] = true; // Default to enabled if not configured
             }
 
             $modules = json_decode($record->enabled_modules, true);
             if (!is_array($modules)) {
-                return true;
+                return self::$cachedModules[$modLower] = true;
             }
 
             $modulesLower = array_map('strtolower', $modules);
-            $modLower = strtolower($module);
 
             // Backward compatibility: If this is an untouched legacy record (config_version < 2)
             // that was created before students or gradebook were modularized,
@@ -70,11 +90,11 @@ class LicenseStatus
             if ($configVersion < 2 && in_array($modLower, ['students', 'gradebook'])) {
                 $hasAnyNewMod = in_array('students', $modulesLower) || in_array('gradebook', $modulesLower);
                 if (!$hasAnyNewMod) {
-                    return true;
+                    return self::$cachedModules[$modLower] = true;
                 }
             }
 
-            return in_array($modLower, $modulesLower);
+            return self::$cachedModules[$modLower] = in_array($modLower, $modulesLower);
         } catch (\Exception $e) {
             return true;
         }
