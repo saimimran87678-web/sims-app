@@ -63,10 +63,11 @@ class LicenseStatus
             $modulesLower = array_map('strtolower', $modules);
             $modLower = strtolower($module);
 
-            // Backward compatibility: If an existing license record was saved before
-            // students or gradebook were modularized (neither is in the array),
-            // treat them as enabled by default.
-            if (in_array($modLower, ['students', 'gradebook'])) {
+            // Backward compatibility: If this is an untouched legacy record (config_version < 2)
+            // that was created before students or gradebook were modularized,
+            // treat them as enabled by default so existing installations do not break.
+            $configVersion = (int) ($record->config_version ?? 1);
+            if ($configVersion < 2 && in_array($modLower, ['students', 'gradebook'])) {
                 $hasAnyNewMod = in_array('students', $modulesLower) || in_array('gradebook', $modulesLower);
                 if (!$hasAnyNewMod) {
                     return true;
