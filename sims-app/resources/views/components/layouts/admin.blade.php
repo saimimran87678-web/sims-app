@@ -54,10 +54,8 @@
     @endphp
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='{{ $faviconColor }}'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' transform='translate%284.2%2C%204.2%29%20scale%280.65%29'%3E{{ $svgPath }}%3C/g%3E%3C/svg%3E">
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Local Offline-First Fonts (Zero Internet Latency) -->
+    <link rel="stylesheet" href="/fonts/inter.css">
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -153,9 +151,9 @@
                     </button>
                     
                     <div x-show="feeOpen" x-transition class="pl-11 pr-3 py-2 space-y-1">
-                        <a href="{{ route('admin.fee.generator') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.generator') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Voucher Management</a>
-                        <a href="{{ route('admin.fee.record-payment') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.record-payment') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Collect Fees</a>
-                        <a href="{{ route('admin.fee.defaulters') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.defaulters') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Defaulter List</a>
+                        <a wire:navigate href="{{ route('admin.fee.generator') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.generator') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Voucher Management</a>
+                        <a wire:navigate href="{{ route('admin.fee.record-payment') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.record-payment') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Collect Fees</a>
+                        <a wire:navigate href="{{ route('admin.fee.defaulters') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.defaulters') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Defaulter List</a>
                     </div>
                 </div>
                 @endif
@@ -413,7 +411,7 @@
                                 <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
                             </div>
                             
-                            <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors">
+                            <a wire:navigate href="{{ route('admin.settings') }}" class="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                                 System Settings
                             </a>

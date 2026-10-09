@@ -42,3 +42,5 @@ scratch_*
 
 /storage/caddy/
 /firebase_admin_panel.html
+/public/pricing-export.html
+/public/pricing.html

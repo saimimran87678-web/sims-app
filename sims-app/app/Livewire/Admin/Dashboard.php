@@ -22,7 +22,7 @@ class Dashboard extends Component
         $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
         $cacheKey = "admin_dashboard_metrics_{$activeSessionId}_{$shiftType}";
-        $metrics = Cache::remember($cacheKey, 30, function () use ($activeSessionId, $activeSession, $shiftType) {
+        $metrics = Cache::remember($cacheKey, 120, function () use ($activeSessionId, $activeSession, $shiftType) {
             // ─── Core Stats ────────────────────────────────────────────
         $classesCount = $activeSessionId
             ? Classes::withoutGlobalScope('active_session')
@@ -32,20 +32,22 @@ class Dashboard extends Component
             : 0;
 
         $studentsCount = $activeSessionId
-            ? Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
-                    $q->where('academic_session_id', $activeSessionId)->active();
-                    if ($shiftType !== 'both') {
-                        $q->where('shift_type', $shiftType);
-                    }
-              })
-              ->count()
+            ? DB::table('enrollments')
+                ->where('academic_session_id', $activeSessionId)
+                ->where('status', 'active')
+                ->when($shiftType !== 'both', fn($q) => $q->where('shift_type', $shiftType))
+                ->distinct('student_id')
+                ->count('student_id')
             : 0;
 
         // ─── Attendance (single query) ─────────────────────────────
         $attendanceStat = 0;
         if ($activeSessionId && $activeSession) {
             $rowQuery = DB::table('attendances')
-                ->join('enrollments', 'attendances.student_id', '=', 'enrollments.student_id')
+                ->join('enrollments', function($join) use ($activeSessionId) {
+                    $join->on('attendances.student_id', '=', 'enrollments.student_id')
+                         ->where('enrollments.academic_session_id', '=', $activeSessionId);
+                })
                 ->where('attendances.academic_session_id', $activeSessionId)
                 ->where('enrollments.status', 'active')
                 ->whereBetween('attendances.date', [$activeSession->start_date, $activeSession->end_date]);
@@ -167,7 +169,10 @@ class Dashboard extends Component
 
         if ($activeSessionId && $activeSession) {
             $trendQuery = DB::table('attendances')
-                ->join('enrollments', 'attendances.student_id', '=', 'enrollments.student_id')
+                ->join('enrollments', function($join) use ($activeSessionId) {
+                    $join->on('attendances.student_id', '=', 'enrollments.student_id')
+                         ->where('enrollments.academic_session_id', '=', $activeSessionId);
+                })
                 ->where('attendances.academic_session_id', $activeSessionId)
                 ->where('enrollments.status', 'active')
                 ->whereBetween('attendances.date', [$activeSession->start_date, $activeSession->end_date]);

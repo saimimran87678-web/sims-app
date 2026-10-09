@@ -13,26 +13,41 @@
 @endphp
 
 @if(!empty($licenseKey) && !empty($firebaseApiKey) && !empty($firebaseProjectId))
-<!-- Firebase Real-Time Firestore Cloud Snapshot Listener (Sub-second cloud sync) -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<!-- Asynchronous Background Cloud License Listener (Zero Render Blocking) -->
 <script>
 (function() {
-    try {
-        if (typeof firebase === 'undefined') return;
+    function initFirebaseLicenseListener() {
+        if (window._simsFirebaseInitialized) return;
+        window._simsFirebaseInitialized = true;
 
-        const config = {
-            apiKey: "{{ $firebaseApiKey }}",
-            projectId: "{{ $firebaseProjectId }}"
-        };
-
-        if (!firebase.apps.length) {
-            firebase.initializeApp(config);
+        function injectScript(src, next) {
+            const el = document.createElement('script');
+            el.src = src;
+            el.async = true;
+            el.onload = next;
+            el.onerror = function() {
+                console.warn('Adminova Cloud snapshot listener offline.');
+            };
+            document.head.appendChild(el);
         }
 
-        const db = firebase.firestore();
-        const licenseKey = "{{ $licenseKey }}";
-        let isInitialLoad = true;
+        injectScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js', function() {
+            injectScript('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js', function() {
+                try {
+                    if (typeof firebase === 'undefined') return;
+
+                    const config = {
+                        apiKey: "{{ $firebaseApiKey }}",
+                        projectId: "{{ $firebaseProjectId }}"
+                    };
+
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(config);
+                    }
+
+                    const db = firebase.firestore();
+                    const licenseKey = "{{ $licenseKey }}";
+                    let isInitialLoad = true;
         let lastKnownSignature = null;
         let lastKnownStatus = null;
         let lastKnownConfigVer = {{ (int) $initialConfigVersion }};
@@ -185,8 +200,19 @@
         }, (err) => {
             console.warn('Real-time snapshot stream notice:', err.message);
         });
-    } catch (e) {
-        console.warn('Real-time listener initialization notice:', e.message);
+                } catch (e) {
+                    console.warn('Real-time listener initialization notice:', e.message);
+                }
+            });
+        });
+    }
+
+    if (document.readyState === 'complete') {
+        setTimeout(initFirebaseLicenseListener, 1200);
+    } else {
+        window.addEventListener('load', function() {
+            setTimeout(initFirebaseLicenseListener, 1200);
+        });
     }
 })();
 </script>

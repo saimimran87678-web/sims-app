@@ -68,6 +68,6 @@ $classes = ($active ?? false)
             : 'flex items-center gap-3 px-6 py-3 transition-all duration-200 ' . $inactiveClasses;
 @endphp
 
-<a {{ $attributes->merge(['class' => $classes]) }}>
+<a wire:navigate {{ $attributes->merge(['class' => $classes]) }}>
     {{ $slot }}
 </a>

@@ -6,10 +6,10 @@
     <title>Domain Authorization Required - SIMS</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/fonts/inter.css">
     <style>
         body {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: #0f172a; /* slate-900 */
         }
         .glass-card {

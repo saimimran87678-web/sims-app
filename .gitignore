@@ -16,11 +16,12 @@
 /firebase_master_dashboard.html
 /Adminova-Control-Center.exe
 /adminova-license-portal/
-
+/HAR
 /firestore.rules
-
+/pricing.html
 *.log
 php_errors.log
 /Class wise timetable.pdf
 /each teacher.pdf
 Class-wise-master-timetable.pdf
+/pricing-export.html
