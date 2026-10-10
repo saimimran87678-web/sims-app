@@ -1,118 +1,139 @@
-![zrok](docs/images/zrok_cover.png)
+# Adminova SIMS — Application Core (`sims-app`)
 
-`zrok` is a next-generation, peer-to-peer sharing platform built on top of [OpenZiti](https://docs.openziti.io/docs/learn/introduction/), a programmable zero-trust network overlay. `zrok` is a _Ziti Native Application_.
+[![Laravel 12](https://img.shields.io/badge/Laravel-12.x-FF2D20.svg?logo=laravel)](https://laravel.com)
+[![Livewire 3](https://img.shields.io/badge/Livewire-3.7-4E56A6.svg?logo=livewire)](https://livewire.laravel.com)
+[![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777BB4.svg?logo=php)](https://php.net)
+[![SQLite WAL](https://img.shields.io/badge/Database-SQLite%20WAL-003B57.svg?logo=sqlite)](https://sqlite.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com)
 
-`zrok` facilitates sharing resources both publicly and privately. Public sharing allows you to share `zrok` resources with non-`zrok` users over the public internet. Private sharing allows you to directly share your resources peer-to-peer with other `zrok` users without changing your security or firewall settings.
+The `sims-app` directory contains the full Laravel 12 & Livewire 3 application engine for the **Adminova School Information Management System**. It powers the offline-first web interface, local REST APIs, fee computation engine, timetable solvers, and cryptographic license checks.
 
-Like other offerings in this space, `zrok` allows users to share tunnels for HTTP, TCP and UDP network resources. `zrok` additionally allows users to easily and rapidly share files, web content, and custom resources in a peer-to-peer manner.
+---
 
-`zrok` is an extensible platform for sharing. Initially we're targeting technical users. Super-simple sharing for end users is planned and in the backlog.
+## 🛠️ Tech Stack & Architecture
 
-![zrok Web Console](docs/images/zrok_web_console.png)
+- **Backend Framework:** Laravel 12.x (PHP 8.2 / 8.3)
+- **Reactive UI Engine:** Livewire 3.7+ & Alpine.js 3.4+
+- **Styling & Components:** Tailwind CSS 3.x with DaisyUI
+- **Database Engine:** SQLite 3 with Write-Ahead Logging (`PRAGMA journal_mode=WAL;`)
+- **Document Rendering:** Barryvdh Laravel DomPDF 3.1+ (High-resolution 3-part bank vouchers and report cards)
+- **Role-Based Access Control:** Spatie Laravel-Permission 6.24+
+- **Security & Licensing:** Asymmetric RSA-2048 verification with BIOS hardware UUID binding
 
-## Frictionless
+---
 
-You can be up and sharing using the `zrok.io` service in minutes. Here is a synopsis of what's involved:
-
-* Download the binary for your platform [here](https://github.com/openziti/zrok/releases/latest)
-* `zrok invite` to create an account with the service
-* `zrok enable` to enable your shell environment for sharing with the service
-
-### And then... sharing...
-
-Easily share private network resources with public internet users, securely, without having to alter any of your local network configuration:
-
-```
-$ zrok share public localhost:8080
-```
-
-![zrok share public](docs/images/zrok_share_public.png)
+## 📂 Core Application Structure
 
 ```
-$ curl -s https://dslno640nct4.share.zrok.io | head
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <meta name="theme-color" content="#000000"/>
-    <meta name="description" content="zrok ui"/>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+sims-app/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/         # REST endpoints & public voucher download handlers
+│   │   └── Middleware/          # Shift/Session Context Shifter & RSA License Gate
+│   ├── Livewire/                # Single-page reactive components
+│   │   ├── AcademicSessionManager.php
+│   │   ├── AttendanceManager.php
+│   │   ├── ClassManager.php
+│   │   ├── ExamManager.php
+│   │   ├── FeeManager.php       # 3-part challans, partial receipts & ledger
+│   │   ├── ScheduleManager.php  # Master timetable constraint grid
+│   │   ├── StudentManager.php   # Admissions, roll numbers & profile photo
+│   │   ├── SubstitutionManager.php # 1-click substitute teacher allocation
+│   │   └── UserManagement.php   # RBAC & staff permissions
+│   ├── Models/                  # Eloquent entities & relationships
+│   └── Services/
+│       ├── LicenseVerifier.php  # Hardware UUID probe & RSA signature validator
+│       ├── SubstitutionEngine.php # Constraint solver for teacher availability
+│       └── WhatsAppService.php  # Local queue dispatcher for Baileys bridge
+├── config/                      # Application, database, and auth configurations
+├── database/
+│   ├── migrations/              # Schema definitions for all school modules
+│   └── seeders/                 # Baseline roles, permissions & admin seeders
+├── resources/
+│   ├── css/                     # Tailwind stylesheets
+│   ├── js/                      # Alpine.js & client plugins
+│   └── views/                   # Blade templates & PDF layouts
+└── routes/
+    ├── web.php                  # Application routes & Livewire endpoints
+    └── api.php                  # Local background worker interfaces
 ```
 
-Share "network drives" with public and private users running on Windows, macOS, or Linux systems:
+---
 
-```
-$ zrok share public --backend-mode drive ~/Repos/zrok
-```
+## 🚀 Local Development Setup
 
-![zrok share public -b drive](docs/images/zrok_share_public_drive.png)
+### 1. Prerequisites
+- PHP 8.2 or 8.3 with extensions: `pdo_sqlite`, `bcmath`, `curl`, `gd`, `intl`, `mbstring`, `xml`, `zip`
+- Composer 2.x
+- Node.js 20.x & NPM
 
-Mounting and working with shared drives is simple, and works with any applications on the end users' systems:
+### 2. Installation Steps
+```bash
+# 1. Install Composer dependencies
+composer install
 
-![mounted zrok drive](docs/images/zrok_share_public_drive_explorer.png)
+# 2. Install NPM dependencies
+npm install
 
-See the [Concepts and Getting Started Guide](https://docs.zrok.io/docs/getting-started) for a full overview.
+# 3. Create environment configuration
+cp .env.example .env
 
-## The `zrok` SDK
+# 4. Generate application encryption key
+php artisan key:generate
 
-`zrok` includes an SDK that allows you to embed `zrok` sharing capabilities into your own applications. If you're familiar with a golang `net.Conn` and `net.Listener`, you'll be right at home with our SDK.
+# 5. Initialize SQLite database
+touch database/database.sqlite
+php artisan migrate --seed
 
-### A Simple `zrok` Sharing Service
-
-```go
-// load enabled zrok environment
-root, err := environment.LoadRoot()
-
-// request a share for your resource
-shr, err := sdk.CreateShare(root, &sdk.ShareRequest{
-    BackendMode: sdk.TcpTunnelBackendMode,
-    ShareMode:   sdk.PrivateShareMode,
-	// ...
-})
-
-// accept requests for your resource
-listener, err := sdk.NewListener(shr.Token, root)
+# 6. Build frontend assets
+npm run build
 ```
 
-### A Simple `zrok` Client
+### 3. Launch Development Server
+```bash
+# Terminal 1: Run the web server
+php artisan serve --port=8000
 
-```go
-// load enabled zrok environment
-root, err := environment.LoadRoot()
+# Terminal 2: Run the Vite asset compiler (for hot reload during UI dev)
+npm run dev
 
-// request access to a shared zrok resource
-acc, err := sdk.CreateAccess(root, &sdk.AccessRequest{ShareToken: shrToken})
-
-// establish a connection to the resource directly
-conn, err := sdk.NewDialer(shrToken, root)
+# Terminal 3: Run the background WhatsApp queue processor
+php artisan whatsapp:process-queue
 ```
 
-This [blog post](https://blog.openziti.io/the-zrok-sdk) provides more details for [getting started](https://blog.openziti.io/the-zrok-sdk) with the `zrok` SDK.
+---
 
-## Self-Hosting
+## ⚙️ Essential Artisan Commands
 
-`zrok` is designed to scale up to support extremely large service instances. `zrok.io` is a public service instance operated by NetFoundry using the same code base that is available to self-hosted environments.
+Adminova SIMS includes custom Artisan commands to manage offline operations:
 
-`zrok` is also designed to scale down to support extremely small deployments. Run `zrok` and OpenZiti on a Raspberry Pi!
+| Command | Purpose |
+| :--- | :--- |
+| `php artisan sims:activate --token=SIMS-TOK-XXXX` | Unlocks the installation using a remote activation token. |
+| `php artisan sims:verify-license` | Re-verifies local RSA signature and hardware UUID integrity. |
+| `php artisan whatsapp:process-queue` | Background daemon polling and dispatching outgoing WhatsApp messages. |
+| `php artisan schedule:run` | Executes scheduled cron jobs (morning absence checks, fee overdue alerts). |
+| `php artisan optimize:clear` | Flushes all configuration, route, and view caches. |
 
-The single `zrok` binary contains everything you need to operate `zrok` environments and also host your own service instances. Just add an OpenZiti network and you're up and running.
+---
 
-See the [Self-Hosting Guide](https://docs.zrok.io/docs/guides/self-hosting/self_hosting_guide/) for details on getting your own `zrok` service instance running.
+## 🧪 Testing
 
-## zrok Office Hours
+Execute automated unit and feature tests:
 
-We maintain a growing playlist of videos focusing on various aspects of `zrok`. This includes the "office hours" series, which are longer-format videos digging into the implementation of `zrok` and showcasing some of the latest features and capabilities:
+```bash
+# Run the entire test suite
+php artisan test
 
-[![zrok Office Hours](https://img.youtube.com/vi/Edqv7yRmXb0/0.jpg)](https://www.youtube.com/watch?v=Edqv7yRmXb0&list=PLMUj_5fklasLuM6XiCNqwAFBuZD1t2lO2)
+# Run licensing & security validation tests only
+php artisan test --filter=LicenseTest
 
+# Run timetable & substitution balancer tests
+php artisan test --filter=TimetableTest
+```
 
+---
 
-## Building
+## 📄 License & Intellectual Property
 
-If you are interested in building `zrok` for yourself instead of using a released package, please refer to [BUILD.md](./BUILD.md)
-
-## Contributing
-
-If you'd like to contribute back to `zrok`, that'd be great. Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) page and
-abide by the [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
+Proprietary software developed by Adminova Solutions. All rights reserved. Unauthorized reproduction or reverse engineering is prohibited.
