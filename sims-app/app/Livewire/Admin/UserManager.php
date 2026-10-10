@@ -53,7 +53,16 @@ class UserManager extends Component
 
     public function mount()
     {
-        abort_unless(auth()->user()->can('users.manage') || auth()->user()->hasRole('Super Admin') || auth()->id() === 1, 403, 'Unauthorized access to User Management.');
+        abort_unless(
+            auth()->check() && (
+                auth()->user()->role === 'admin' ||
+                auth()->user()->hasRole('Super Admin') ||
+                auth()->id() === 1 ||
+                auth()->user()->can('users.manage')
+            ),
+            403,
+            'Unauthorized access to User Management.'
+        );
     }
 
     private function invalidateDashboardMetricsCache()

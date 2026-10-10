@@ -128,27 +128,33 @@ class User extends Authenticatable
         }
 
         return $query->where(function($q) use ($sessionId, $shiftType) {
-            // User 1 (Super Admin / School Owner) is always active
-            $q->where('users.id', 1)
-              ->orWhere(function($sub) use ($sessionId, $shiftType) {
-                  $sub->whereHas('academicSessions', function($sq) use ($sessionId, $shiftType) {
-                      $sq->where('session_user.academic_session_id', $sessionId)
-                         ->where('session_user.is_active', true);
-                      if ($shiftType !== 'both') {
-                          $sq->where(function($ssq) use ($shiftType) {
-                              $ssq->where('session_user.allowed_shifts', 'both')
-                                  ->orWhere('session_user.allowed_shifts', $shiftType);
-                          });
-                      }
-                  })
-                  ->orWhere(function($adminQ) use ($sessionId) {
-                      // Staff admins without an explicit session_user entry in this session default to active
-                      $adminQ->where('role', 'admin')
-                             ->whereDoesntHave('academicSessions', function($sq) use ($sessionId) {
-                                 $sq->where('session_user.academic_session_id', $sessionId);
-                             });
-                  });
-              });
+            // Admins are active across all shifts unless explicitly deactivated in this session
+            $q->where(function($adminQ) use ($sessionId) {
+                $adminQ->where('role', 'admin')
+                       ->where(function($sub) use ($sessionId) {
+                           $sub->whereDoesntHave('academicSessions', function($sq) use ($sessionId) {
+                               $sq->where('session_user.academic_session_id', $sessionId);
+                           })
+                           ->orWhereHas('academicSessions', function($sq) use ($sessionId) {
+                               $sq->where('session_user.academic_session_id', $sessionId)
+                                  ->where('session_user.is_active', true);
+                           });
+                       });
+            })
+            // Teachers are scoped to session and allowed shifts
+            ->orWhere(function($teacherQ) use ($sessionId, $shiftType) {
+                $teacherQ->where('role', '!=', 'admin')
+                         ->whereHas('academicSessions', function($sq) use ($sessionId, $shiftType) {
+                             $sq->where('session_user.academic_session_id', $sessionId)
+                                ->where('session_user.is_active', true);
+                             if ($shiftType !== 'both') {
+                                 $sq->where(function($ssq) use ($shiftType) {
+                                     $ssq->where('session_user.allowed_shifts', 'both')
+                                         ->orWhere('session_user.allowed_shifts', $shiftType);
+                                 });
+                             }
+                         });
+            });
         });
     }
 }
