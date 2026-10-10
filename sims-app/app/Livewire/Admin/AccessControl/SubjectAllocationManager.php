@@ -28,13 +28,29 @@ class SubjectAllocationManager extends Component
             abort(403, 'Unauthorized access to Allocation Manager.');
         }
 
-        // Load users
-        $this->users = User::orderBy('name')->get();
-        
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
         $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
         $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+
+        // Load users active in current session (teachers and staff)
+        $userQuery = User::join('session_user', 'users.id', '=', 'session_user.user_id')
+            ->where('session_user.academic_session_id', $activeSessionId)
+            ->where('session_user.is_active', true)
+            ->select('users.*')
+            ->orderBy('users.name');
+
+        if ($shiftType !== 'both' && $shiftType !== 'regular') {
+            $userQuery->where(function($q) use ($shiftType) {
+                $q->where('session_user.allowed_shifts', 'both')
+                  ->orWhere('session_user.allowed_shifts', $shiftType);
+            });
+        }
+
+        $this->users = $userQuery->get();
+        if ($this->users->isEmpty()) {
+            $this->users = User::where('role', 'teacher')->orderBy('name')->get();
+        }
 
         $this->classes = Classes::withoutGlobalScope('active_session')
             ->where('academic_session_id', $activeSessionId)
@@ -198,7 +214,6 @@ class SubjectAllocationManager extends Component
         DB::table('subject_allocations')->where('id', $id)->delete();
         $this->loadAllocations();
         session()->flash('message', 'Allocation removed.');
-        session()->flash('message', 'Allocation removed.');
     }
 
     public function toggleLock($classId, $subjectId)
@@ -238,7 +253,7 @@ class SubjectAllocationManager extends Component
 
     public function render()
     {
-        $layout = (auth()->check() && auth()->user()->role === 'teacher')
+        $layout = (request()->is('teacher/*') || (auth()->check() && auth()->user()->role === 'teacher'))
             ? 'components.layouts.teacher'
             : 'components.layouts.admin';
 

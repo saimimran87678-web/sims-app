@@ -66,7 +66,9 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', \App\Livewire\Admin\Dashboard::class)->name('dashboard');
 
-    Route::get('/users', \App\Livewire\Admin\UserManager::class)->name('users');
+    Route::middleware(['permission:users.manage'])->group(function () {
+        Route::get('/users', \App\Livewire\Admin\UserManager::class)->name('users');
+    });
     
     // Exams & Datesheet System (Remotely Gated)
     Route::middleware(['feature:exams'])->group(function () {
@@ -312,6 +314,21 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
             Route::get('/invoice/{record}/download', \App\Http\Controllers\Admin\Fee\DownloadInvoiceController::class)->name('invoice.download');
             Route::get('/receipt/{payment}/download', \App\Http\Controllers\Admin\Fee\DownloadReceiptController::class)->name('receipt.download');
         });
+    });
+
+    // Allocations (Data Scope) shared with teacher
+    Route::middleware(['permission:allocations.view'])->group(function () {
+        Route::get('/shared/allocations', \App\Livewire\Admin\AccessControl\SubjectAllocationManager::class)->name('shared.allocations');
+    });
+
+    // Feature Sharing (Access Control) shared with teacher
+    Route::middleware(['permission:access-control.manage'])->group(function () {
+        Route::get('/shared/feature-sharing', \App\Livewire\Admin\AccessControl\FeatureSharingManager::class)->name('shared.feature-sharing');
+    });
+
+    // User Management shared with teacher
+    Route::middleware(['permission:users.manage'])->group(function () {
+        Route::get('/shared/users', \App\Livewire\Admin\UserManager::class)->name('shared.users');
     });
 });
 

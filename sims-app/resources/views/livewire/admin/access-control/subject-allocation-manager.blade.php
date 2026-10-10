@@ -69,6 +69,7 @@
                 <!-- 2. Grant Access Form (Vertical Stack) -->
                 <div class="lg:col-span-1">
                     <div class="bg-white p-6 rounded-lg shadow-md h-full">
+                        @can('allocations.manage')
                         <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
@@ -104,6 +105,13 @@
                                 Allocate Subject
                             </button>
                         </div>
+                        @else
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-sm text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <p class="font-medium text-gray-700">Read-Only View</p>
+                            <p class="text-xs text-gray-400 mt-1">You have permission to view allocations. Modifying allocations requires full management rights.</p>
+                        </div>
+                        @endcan
                     </div>
                 </div>
 
@@ -148,6 +156,7 @@
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div class="flex items-center justify-end gap-2">
+                                                        @can('allocations.lock')
                                                         {{-- Lock Button --}}
                                                         <button 
                                                             wire:click="toggleLock({{ $alloc->class_id }}, {{ $alloc->subject_id }})" 
@@ -156,7 +165,9 @@
                                                         >
                                                             {{ isset($alloc->is_locked) && $alloc->is_locked ? 'Locked' : 'Lock' }}
                                                         </button>
+                                                        @endcan
 
+                                                        @can('allocations.manage')
                                                         @if(!isset($alloc->is_inherent) || !$alloc->is_inherent)
                                                             <button wire:click="deallocate({{ $alloc->id }})" class="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded" title="Remove Allocation">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -164,6 +175,7 @@
                                                                 </svg>
                                                             </button>
                                                         @endif
+                                                        @endcan
                                                     </div>
                                                 </td>
                                             </tr>
@@ -194,6 +206,5 @@
                 </div>
             </div>
         @endif
-    </div>
-</div>
+        </div>
 </div>

@@ -19,7 +19,7 @@ class FeatureSharingManager extends Component
     public $allClasses = [];
     public $userClassAccess = [];
 
-    public function mount()
+    public function getUsersQuery()
     {
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
         $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
@@ -30,6 +30,10 @@ class FeatureSharingManager extends Component
             ->join('session_user', 'users.id', '=', 'session_user.user_id')
             ->where('session_user.academic_session_id', $activeSessionId)
             ->where('session_user.is_active', true)
+            ->where('users.id', '!=', 1)
+            ->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'Super Admin');
+            })
             ->select('users.*');
 
         if ($shiftType !== 'both' && $shiftType !== 'regular') {
@@ -39,15 +43,24 @@ class FeatureSharingManager extends Component
             });
         }
 
-        // Security: Hide Super Admins and regular Admins from selection list
-        // Only allow sharing with relevant staff (Teachers, etc.) if delegate
-        if (!auth()->user()->hasRole('Super Admin')) {
+        // Security: Non-Super-Admins can only share features to teachers, not to other admins
+        if (!auth()->check() || (!auth()->user()->hasRole('Super Admin') && auth()->id() !== 1)) {
             $query->whereDoesntHave('roles', function ($q) {
                 $q->whereIn('name', ['Super Admin', 'admin']);
             })->where('role', '!=', 'admin');
         }
 
-        $this->users = $query->get();
+        return $query;
+    }
+
+    public function mount()
+    {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        
+        $this->users = $this->getUsersQuery()->get();
 
         $classQuery = DB::table('classes')
             ->where('academic_session_id', $activeSessionId);
@@ -101,10 +114,15 @@ class FeatureSharingManager extends Component
                 'desc' => 'View and print academic reports.',
                 'perms' => ['reports.view', 'reports.view-all-classes']
             ],
+            'User Management' => [
+                'icon' => 'user-group',
+                'desc' => 'Manage user accounts, staff passwords, and class teacher assignments.',
+                'perms' => ['users.manage']
+            ],
             'Access Control' => [
                 'icon' => 'key',
-                'desc' => 'Manage feature sharing and user roles.',
-                'perms' => ['access-control.manage', 'permissions.assign', 'users.manage']
+                'desc' => 'Manage feature sharing and delegation privileges.',
+                'perms' => ['access-control.manage', 'permissions.assign']
             ],
             'Data Scope' => [
                 'icon' => 'adjustments-horizontal', // Heroicon
@@ -448,41 +466,20 @@ class FeatureSharingManager extends Component
 
     public function render()
     {
-        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
-
-        // Simple search filter for users - loading only active in active session
-        $query = User::query()
-            ->join('session_user', 'users.id', '=', 'session_user.user_id')
-            ->where('session_user.academic_session_id', $activeSessionId)
-            ->where('session_user.is_active', true)
-            ->select('users.*');
-
-        if ($shiftType !== 'both' && $shiftType !== 'regular') {
-            $query->where(function($q) use ($shiftType) {
-                $q->where('session_user.allowed_shifts', 'both')
-                  ->orWhere('session_user.allowed_shifts', $shiftType);
-            });
-        }
-
-        // Security: Hide Super Admins if current user is not Super Admin
-        if (!auth()->user()->hasRole('Super Admin')) {
-            $query->whereDoesntHave('roles', function ($q) {
-                $q->where('name', 'Super Admin');
-            });
-        }
-
-        $filteredUsers = $query->when($this->search, function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%');
+        $filteredUsers = $this->getUsersQuery()
+            ->when($this->search, function($q) {
+                $q->where(function($sq) {
+                    $sq->where('users.name', 'like', '%' . $this->search . '%')
+                      ->orWhere('users.email', 'like', '%' . $this->search . '%');
+                });
             })
-            ->orderBy('name')
+            ->orderBy('users.name')
             ->get();
 
-        // Dynamic Layout based on Role
-        $layout = auth()->user()->role === 'teacher' ? 'components.layouts.teacher' : 'components.layouts.admin';
+        // Dynamic Layout based on Role or Route
+        $layout = (request()->is('teacher/*') || auth()->user()->role === 'teacher')
+            ? 'components.layouts.teacher' 
+            : 'components.layouts.admin';
 
         return view('livewire.admin.access-control.feature-sharing-manager', [
             'filteredUsers' => $filteredUsers

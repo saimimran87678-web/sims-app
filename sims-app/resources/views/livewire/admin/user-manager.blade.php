@@ -27,6 +27,49 @@
         </div>
     @endif
 
+    {{-- Summary Cards --}}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div class="p-3 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Users</p>
+                <p class="text-xl font-bold text-gray-800">{{ $totalUsers }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400" title="Active in current session and selected shift (matches Dashboard count)">Active in Shift</p>
+                <p class="text-xl font-bold text-emerald-600">{{ $activeUsers }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div class="p-3 bg-purple-50 text-purple-600 rounded-xl shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Admins</p>
+                <p class="text-xl font-bold text-gray-800">{{ $totalAdmins }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div class="p-3 bg-amber-50 text-amber-600 rounded-xl shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Teachers</p>
+                <p class="text-xl font-bold text-gray-800">{{ $totalTeachers }}</p>
+            </div>
+        </div>
+    </div>
+
     {{-- Search --}}
     <div class="glass-card p-4 rounded-2xl flex items-center gap-4">
         <div class="relative flex-1">
@@ -117,29 +160,37 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button wire:click="edit({{ $user->id }})" class="text-blue-600 hover:text-blue-900 mr-3 transition-transform hover:scale-110" title="Edit">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                            </button>
-                             @if($user->id !== auth()->id() && $user->id !== 1)
-                                <button
-                                    wire:click="toggleAccountStatus({{ $user->id }})"
-                                    class="{{ ($user->session_is_active ?? false) ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800' }} mr-3 transition-transform hover:scale-110"
-                                    title="{{ ($user->session_is_active ?? false) ? 'Disable Account' : 'Enable Account' }}"
-                                >
-                                    @if($user->session_is_active ?? false)
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                                    @else
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
-                                    @endif
+                            @php
+                                $isSuperAdmin = auth()->check() && (auth()->user()->hasRole('Super Admin') || auth()->id() === 1);
+                                $canManageUser = $isSuperAdmin || ($user->role !== 'admin' && $user->id !== 1);
+                            @endphp
+                            @if($canManageUser)
+                                <button wire:click="edit({{ $user->id }})" class="text-blue-600 hover:text-blue-900 mr-3 transition-transform hover:scale-110" title="Edit">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                 </button>
-                                <button
-                                    wire:click="delete({{ $user->id }})"
-                                    wire:confirm="Are you sure you want to delete this user?"
-                                    class="text-red-600 hover:text-red-900 transition-transform hover:scale-110"
-                                    title="Delete"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                </button>
+                                 @if($user->id !== auth()->id() && $user->id !== 1)
+                                    <button
+                                        wire:click="toggleAccountStatus({{ $user->id }})"
+                                        class="{{ ($user->session_is_active ?? false) ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800' }} mr-3 transition-transform hover:scale-110"
+                                        title="{{ ($user->session_is_active ?? false) ? 'Disable Account' : 'Enable Account' }}"
+                                    >
+                                        @if($user->session_is_active ?? false)
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                        @else
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                                        @endif
+                                    </button>
+                                    <button
+                                        wire:click="delete({{ $user->id }})"
+                                        wire:confirm="Are you sure you want to delete this user?"
+                                        class="text-red-600 hover:text-red-900 transition-transform hover:scale-110"
+                                        title="Delete"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                    </button>
+                                 @endif
+                            @else
+                                <span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-lg text-xs font-medium">Protected</span>
                             @endif
                         </td>
                     </tr>
@@ -266,12 +317,14 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                                 </svg>
                                             </button>
+                                            @if(auth()->check() && (auth()->user()->hasRole('Super Admin') || auth()->id() === 1))
                                             <button type="button" @click="selected = 'admin'; open = false" class="w-full text-left px-4 py-2 hover:bg-blue-50/50 hover:text-blue-600 font-medium transition-colors flex items-center justify-between">
                                                 <span>Admin</span>
                                                 <svg x-show="selected === 'admin'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                                 </svg>
                                             </button>
+                                            @endif
                                         </div>
                                     </div>
                                     @error('role') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror

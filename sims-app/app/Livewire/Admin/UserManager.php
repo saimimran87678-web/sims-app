@@ -50,6 +50,22 @@ class UserManager extends Component
         if(!$classId) return;
         $this->teachingAssignments[$index]['subjects'] = DB::table('subjects')->where('class_id', $classId)->get()->toArray();
     }
+
+    public function mount()
+    {
+        abort_unless(auth()->user()->can('users.manage') || auth()->user()->hasRole('Super Admin') || auth()->id() === 1, 403, 'Unauthorized access to User Management.');
+    }
+
+    private function invalidateDashboardMetricsCache()
+    {
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        if ($activeSessionId) {
+            \Illuminate\Support\Facades\Cache::forget("admin_dashboard_metrics_{$activeSessionId}_morning");
+            \Illuminate\Support\Facades\Cache::forget("admin_dashboard_metrics_{$activeSessionId}_evening");
+            \Illuminate\Support\Facades\Cache::forget("admin_dashboard_metrics_{$activeSessionId}_both");
+            \Illuminate\Support\Facades\Cache::forget("admin_dashboard_metrics_{$activeSessionId}_regular");
+        }
+    }
  
     protected $rules = [
         'name' => 'required|min:3',
@@ -129,12 +145,25 @@ class UserManager extends Component
             $classTeacherSubjects = DB::table('subjects')->where('class_id', $this->class_id)->get();
         }
 
+        $totalUsers = User::count();
+        $activeUsers = User::activeInSession($activeSessionId, $shiftType)->count();
+        $totalAdmins = User::where('role', 'admin')->count();
+        $totalTeachers = User::where('role', 'teacher')->count();
+
+        $layout = (request()->is('teacher/*') || (auth()->check() && auth()->user()->role === 'teacher'))
+            ? 'components.layouts.teacher'
+            : 'components.layouts.admin';
+
         return view('livewire.admin.user-manager', [
             'users' => $users,
             'classes' => $classes,
             'classTeacherSubjects' => $classTeacherSubjects,
-            'userAllocations' => $allocations
-        ])->layout('components.layouts.admin', ['title' => 'User Management']);
+            'userAllocations' => $allocations,
+            'totalUsers' => $totalUsers,
+            'activeUsers' => $activeUsers,
+            'totalAdmins' => $totalAdmins,
+            'totalTeachers' => $totalTeachers,
+        ])->layout($layout, ['title' => 'User Management']);
     }
 
     public function create()
@@ -151,6 +180,13 @@ class UserManager extends Component
     public function edit($id)
     {
         $user = User::findOrFail($id);
+
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin') || auth()->id() === 1;
+        if (!$isSuperAdmin && ($user->role === 'admin' || $user->id === 1)) {
+            session()->flash('error', 'Only the Super Admin can modify administrator accounts.');
+            return;
+        }
+
         $this->userId = $user->id;
         $this->name = $user->name;
         $this->email = $user->email;
@@ -247,6 +283,26 @@ class UserManager extends Component
         }
 
         $this->validate($rules);
+
+        // Security check: Only Super Admin can create or assign administrator accounts, or modify owner
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin') || auth()->id() === 1;
+        if (!$isSuperAdmin) {
+            if ($this->role === 'admin') {
+                session()->flash('error', 'Only the Super Admin can create or assign administrator accounts.');
+                return;
+            }
+            if ($this->isEditMode && $this->userId == 1) {
+                session()->flash('error', 'Only the owner can modify the owner account.');
+                return;
+            }
+            if ($this->isEditMode) {
+                $targetUser = User::find($this->userId);
+                if ($targetUser && $targetUser->role === 'admin') {
+                    session()->flash('error', 'Only the Super Admin can modify administrator accounts.');
+                    return;
+                }
+            }
+        }
 
         // Check if Admin Action PIN is required
         $targetRole = $this->isEditMode ? User::findOrFail($this->userId)->role : $this->role;
@@ -406,34 +462,41 @@ class UserManager extends Component
                         ->delete();
                 } else {
                     $user->syncRoles([]);
-                    $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
-                    if ($activeSessionId) {
-                        $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-                        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-                        $shiftsToInsert = $isRegular ? ['regular'] : ['morning', 'evening'];
 
-                        $allPermissions = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
-                        $insertData = [];
-                        foreach ($shiftsToInsert as $st) {
-                            foreach ($allPermissions as $perm) {
-                                if (in_array($perm, ['access-control.manage', 'permissions.assign'])) {
-                                    continue;
+                    // Only seed default permissions if creating a new staff admin or converting a teacher to admin.
+                    // If editing an existing admin, preserve their custom permissions configured in Feature Sharing!
+                    $shouldSeedPermissions = !$this->isEditMode || (isset($originalRole) && $originalRole !== 'admin');
+
+                    if ($shouldSeedPermissions) {
+                        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+                        if ($activeSessionId) {
+                            $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
+                            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+                            $shiftsToInsert = $isRegular ? ['regular'] : ['morning', 'evening'];
+
+                            $allPermissions = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
+                            $insertData = [];
+                            foreach ($shiftsToInsert as $st) {
+                                foreach ($allPermissions as $perm) {
+                                    if (in_array($perm, ['access-control.manage', 'permissions.assign'])) {
+                                        continue;
+                                    }
+                                    $insertData[] = [
+                                        'user_id'             => $user->id,
+                                        'academic_session_id' => $activeSessionId,
+                                        'permission_name'     => $perm,
+                                        'shift_type'          => $st,
+                                        'created_at'          => now(),
+                                        'updated_at'          => now(),
+                                    ];
                                 }
-                                $insertData[] = [
-                                    'user_id'             => $user->id,
-                                    'academic_session_id' => $activeSessionId,
-                                    'permission_name'     => $perm,
-                                    'shift_type'          => $st,
-                                    'created_at'          => now(),
-                                    'updated_at'          => now(),
-                                ];
                             }
+                            DB::table('session_user_permissions')
+                                ->where('user_id', $user->id)
+                                ->where('academic_session_id', $activeSessionId)
+                                ->delete();
+                            DB::table('session_user_permissions')->insert($insertData);
                         }
-                        DB::table('session_user_permissions')
-                            ->where('user_id', $user->id)
-                            ->where('academic_session_id', $activeSessionId)
-                            ->delete();
-                        DB::table('session_user_permissions')->insert($insertData);
                     }
                 }
             } elseif ($user->role === 'teacher') {
@@ -448,6 +511,8 @@ class UserManager extends Component
                         ->delete();
                 }
             }
+
+            $this->invalidateDashboardMetricsCache();
 
             DB::commit();
         } catch (\Exception $e) {
@@ -471,6 +536,12 @@ class UserManager extends Component
         }
 
         $user = User::findOrFail($id);
+
+        if (!auth()->user()->hasRole('Super Admin') && auth()->id() !== 1 && $user->role === 'admin') {
+            session()->flash('error', 'Only the Super Admin can delete administrator accounts.');
+            return;
+        }
+
         if (\App\Models\Setting::get('admin_action_pin_enabled', false) && $user->role === 'admin') {
             $this->confirmPinAction('delete', $id);
             return;
@@ -482,6 +553,7 @@ class UserManager extends Component
     private function executeDelete($id)
     {
         User::findOrFail($id)->delete();
+        $this->invalidateDashboardMetricsCache();
         session()->flash('message', 'User deleted successfully.');
     }
 
@@ -498,6 +570,12 @@ class UserManager extends Component
         }
 
         $user = User::findOrFail($id);
+
+        if (!auth()->user()->hasRole('Super Admin') && auth()->id() !== 1 && $user->role === 'admin') {
+            session()->flash('error', 'Only the Super Admin can modify administrator account status.');
+            return;
+        }
+
         if (\App\Models\Setting::get('admin_action_pin_enabled', false) && $user->role === 'admin') {
             $this->confirmPinAction('toggleAccountStatus', $id);
             return;
@@ -542,6 +620,8 @@ class UserManager extends Component
             ]);
             session()->flash('message', 'User account enabled and attached to the active session.');
         }
+
+        $this->invalidateDashboardMetricsCache();
     }
 
 

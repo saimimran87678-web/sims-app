@@ -99,7 +99,7 @@ class User extends Authenticatable
     public function academicSessions()
     {
         return $this->belongsToMany(AcademicSession::class, 'session_user')
-            ->withPivot('class_id', 'class_subject', 'is_active')
+            ->withPivot('class_id', 'class_subject', 'is_active', 'allowed_shifts')
             ->withTimestamps();
     }
 
@@ -117,4 +117,39 @@ class User extends Authenticatable
     {
         return $this->hasMany(Substitution::class, 'substitute_teacher_id');
     }
+
+    /**
+     * Scope a query to only include users active in the given academic session and shift.
+     */
+    public function scopeActiveInSession($query, $sessionId, $shiftType = 'both')
+    {
+        if (!$sessionId) {
+            return $query;
+        }
+
+        return $query->where(function($q) use ($sessionId, $shiftType) {
+            // User 1 (Super Admin / School Owner) is always active
+            $q->where('users.id', 1)
+              ->orWhere(function($sub) use ($sessionId, $shiftType) {
+                  $sub->whereHas('academicSessions', function($sq) use ($sessionId, $shiftType) {
+                      $sq->where('session_user.academic_session_id', $sessionId)
+                         ->where('session_user.is_active', true);
+                      if ($shiftType !== 'both') {
+                          $sq->where(function($ssq) use ($shiftType) {
+                              $ssq->where('session_user.allowed_shifts', 'both')
+                                  ->orWhere('session_user.allowed_shifts', $shiftType);
+                          });
+                      }
+                  })
+                  ->orWhere(function($adminQ) use ($sessionId) {
+                      // Staff admins without an explicit session_user entry in this session default to active
+                      $adminQ->where('role', 'admin')
+                             ->whereDoesntHave('academicSessions', function($sq) use ($sessionId) {
+                                 $sq->where('session_user.academic_session_id', $sessionId);
+                             });
+                  });
+              });
+        });
+    }
 }
+

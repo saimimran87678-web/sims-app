@@ -129,27 +129,9 @@ class Dashboard extends Component
             $unpaidCount = $unpaidQuery->distinct('fee_records.student_id')->count('fee_records.student_id');
         }
 
-        $usersCount = 0;
-        if ($activeSessionId) {
-            $usersCount = User::where(function($query) use ($activeSessionId, $shiftType) {
-                $query->where('role', 'admin')
-                    ->orWhere(function($q) use ($activeSessionId, $shiftType) {
-                        $q->where('role', '!=', 'admin')
-                          ->whereHas('academicSessions', function($sq) use ($activeSessionId, $shiftType) {
-                              $sq->where('session_user.academic_session_id', $activeSessionId)
-                                 ->where('session_user.is_active', true);
-                              if ($shiftType !== 'both') {
-                                  $sq->where(function($ssq) use ($shiftType) {
-                                      $ssq->where('session_user.allowed_shifts', 'both')
-                                          ->orWhere('session_user.allowed_shifts', $shiftType);
-                                  });
-                              }
-                          });
-                    });
-            })->count();
-        } else {
-            $usersCount = User::count();
-        }
+        $usersCount = $activeSessionId
+            ? User::activeInSession($activeSessionId, $shiftType)->count()
+            : User::count();
 
         $stats = [
             'users'           => $usersCount,

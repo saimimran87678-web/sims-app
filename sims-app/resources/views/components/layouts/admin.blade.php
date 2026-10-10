@@ -114,7 +114,7 @@
                 </x-nav-link>
 
                 <!-- Users -->
-                @can('access-control.manage')
+                @can('users.manage')
                 <x-nav-link :href="route('admin.users')" :active="request()->routeIs('admin.users')" color="violet">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     <span class="font-medium">User Management</span>
@@ -229,28 +229,34 @@
 
 
                 <!-- Access Control (Shared) -->
-                @can('access-control.manage')
+                @if(auth()->user()->can('access-control.manage') || auth()->user()->can('allocations.view'))
                 <div class="pt-4 mt-4 border-t border-gray-100">
                     <div class="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                         Access Control
                     </div>
                     
+                    @can('access-control.manage')
                     <x-nav-link :href="route('admin.feature-sharing')" :active="request()->routeIs('admin.feature-sharing')" color="fuchsia">
                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                           <span class="font-medium">Feature Sharing</span>
                     </x-nav-link>
+                    @endcan
 
+                    @can('allocations.view')
                     <x-nav-link :href="route('admin.allocations')" :active="request()->routeIs('admin.allocations')" color="slate">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
                           <span class="font-medium">Data Scope</span>
                     </x-nav-link>
+                    @endcan
 
+                    @can('access-control.manage')
                     <x-nav-link id="nav-settings" :href="route('admin.settings')" :active="request()->routeIs('admin.settings')" color="slate">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         <span class="font-medium">System Settings</span>
                     </x-nav-link>
+                    @endcan
                 </div>
-                @endcan
+                @endif
             </nav>
 
         </aside>

@@ -35,8 +35,8 @@
                     </div>
                     <h3 class="font-bold text-gray-900 line-clamp-1 w-full">{{ $user->name }}</h3>
                     <p class="text-sm text-gray-500 mb-4 line-clamp-1 w-full">{{ $user->email }}</p>
-                    <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                        {{ ucfirst($user->getRoleNames()->first() ?? 'Staff') }}
+                    <span class="px-3 py-1 {{ $user->role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600' }} text-xs rounded-full font-medium group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        {{ $user->role === 'admin' ? 'Admin' : ($user->getRoleNames()->first() ?? 'Teacher') }}
                     </span>
                 </div>
             @endforeach
@@ -56,7 +56,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                     Back to Directory
                 </button>
-                <h2 class="text-3xl font-bold text-gray-800">Permissions: <span class="text-blue-600">{{ $users->find($selectedUserId)->name ?? 'User' }}</span></h2>
+                <h2 class="text-3xl font-bold text-gray-800">Permissions: <span class="text-blue-600">{{ \App\Models\User::find($selectedUserId)->name ?? 'User' }}</span></h2>
             </div>
              
              <div class="flex items-center gap-2">
@@ -117,6 +117,8 @@
                                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
                                  @elseif($group['icon'] == 'arrow-path-rounded-square')
                                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3M2.25 12a48.664 48.664 0 01.138-3.662 4.006 4.006 0 013.7-3.7 48.656 48.656 0 017.324 0 4.006 4.006 0 013.7 3.7c.017.22.032.441.046.662M2.25 12l3 3m-3-3l-3 3"></path></svg>
+                                 @elseif($group['icon'] == 'user-group')
+                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                                  @elseif($group['icon'] == 'adjustments-horizontal')
                                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"></path></svg>
                                  @endif
@@ -254,7 +256,7 @@
                         @endif
                         
                         {{-- Restricted Class Access (For Students, Reports, etc) --}}
-                        @if(in_array($groupName, ['Students', 'Reports', 'Gradebook']))
+                        @if($groupName === 'Students')
                             <div class="mt-6 pt-5 border-t border-gray-200/60">
                                 <div class="flex items-center justify-between mb-4">
                                     <div>

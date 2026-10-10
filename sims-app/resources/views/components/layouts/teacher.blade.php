@@ -212,20 +212,27 @@
                         </div>
                         @endcan
                         
-                        @can('access-control.manage')
-                        <x-nav-link :href="route('admin.feature-sharing')" :active="request()->routeIs('admin.feature-sharing')" color="purple">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M15 7a2 2 0 0 1 2 2m4 0a6 6 0 0 1-7.743 5.743L11 17H9v2H7v2H4a1 1 0 0 1-1-1v-2.586a1 1 0 0 1.293-.707l5.964-5.964A6 6 0 1 1 21 9z"/></svg>
-                            <span class="font-medium">Access Control</span>
+                        @can('users.manage')
+                        <x-nav-link :href="route('teacher.shared.users')" :active="request()->routeIs('teacher.shared.users*')" color="purple">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            <span class="font-medium">User Management</span>
                         </x-nav-link>
                         @endcan
 
                         @can('allocations.view')
-                        <x-nav-link :href="route('admin.allocations')" :active="request()->routeIs('admin.allocations')" color="purple">
+                        <x-nav-link :href="route('teacher.shared.allocations')" :active="request()->routeIs('teacher.shared.allocations*')" color="purple">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                             </svg>
-                            <span class="font-medium">Allocations</span>
+                            <span class="font-medium">Data Scope</span>
+                        </x-nav-link>
+                        @endcan
+
+                        @can('access-control.manage')
+                        <x-nav-link :href="route('teacher.shared.feature-sharing')" :active="request()->routeIs('teacher.shared.feature-sharing*')" color="purple">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M15 7a2 2 0 0 1 2 2m4 0a6 6 0 0 1-7.743 5.743L11 17H9v2H7v2H4a1 1 0 0 1-1-1v-2.586a1 1 0 0 1.293-.707l5.964-5.964A6 6 0 1 1 21 9z"/></svg>
+                            <span class="font-medium">Access Control</span>
                         </x-nav-link>
                         @endcan
                     </div>
