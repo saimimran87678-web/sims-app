@@ -97,6 +97,17 @@ class LicenseSyncService
                 $allowedDomains
             );
 
+            $rawModules = $firebaseLic['enabled_modules'] ?? ['students', 'gradebook', 'fees', 'exams', 'attendance', 'whatsapp', 'reports'];
+            $isV2 = !empty($firebaseLic['modules_v2']);
+            if (!$isV2 && is_array($rawModules)) {
+                if (!in_array('students', $rawModules)) {
+                    array_unshift($rawModules, 'students');
+                }
+                if (!in_array('gradebook', $rawModules)) {
+                    array_splice($rawModules, 1, 0, 'gradebook');
+                }
+            }
+
             // Step 7 - Save to local SQLite
             DB::table('software_licenses')->truncate();
             DB::table('software_licenses')->insert([
@@ -111,10 +122,11 @@ class LicenseSyncService
                 'rsa_signature'           => $firebaseLic['rsa_signature'],
                 'integrity_hash'          => $newHash,
                 'offline_grace_days'      => $firebaseLic['offline_grace'] ?? 7,
-                'enabled_modules'         => json_encode($firebaseLic['enabled_modules'] ?? ['students', 'gradebook', 'fees', 'exams', 'attendance', 'whatsapp', 'reports']),
+                'enabled_modules'         => json_encode($rawModules),
                 'broadcast_announcement'  => $firebaseLic['broadcast_announcement'] ?? null,
                 'schedule_type_policy'    => $firebaseLic['schedule_type_policy'] ?? 'configurable',
                 'config_version'          => $firebaseLic['config_version'] ?? 1,
+                'modules_v2'              => $isV2,
                 'last_online_verified_at' => Carbon::now(),
                 'created_at'              => Carbon::now(),
                 'updated_at'              => Carbon::now(),
