@@ -185,8 +185,8 @@
                             window.location.href = "{{ route('dashboard') }}";
                         } else {
                             console.log('✅ License synchronized in real time.', result);
-                            // If schedule policy changed, or user is on settings, schedule manager, or dashboard, soft reload
-                            if (newSchedulePolicy !== prevPolicy || window.location.pathname.includes('/settings') || window.location.pathname.includes('/schedule') || window.location.pathname === '/' || window.location.pathname.includes('/dashboard')) {
+                            // If schedule policy changed, or user is on settings or schedule manager, soft reload
+                            if (newSchedulePolicy !== prevPolicy || window.location.pathname.includes('/settings') || window.location.pathname.includes('/schedule')) {
                                 window.dispatchEvent(new CustomEvent('license-enforcement-updated', { detail: result }));
                                 setTimeout(() => {
                                     window.location.reload();

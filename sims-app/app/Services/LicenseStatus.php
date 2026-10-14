@@ -83,11 +83,13 @@ class LicenseStatus
 
             $modulesLower = array_map('strtolower', $modules);
 
-            // Backward compatibility: If this record is not explicitly marked as modules_v2,
-            // ensure core modules (students, gradebook) default to enabled for legacy setups.
-            $isV2 = !empty($record->modules_v2);
-            if (!$isV2 && in_array($modLower, ['students', 'gradebook'])) {
-                if (!in_array($modLower, $modulesLower)) {
+            // Backward compatibility: If this is an untouched legacy record (config_version < 2)
+            // that was created before students or gradebook were modularized,
+            // treat them as enabled by default so existing installations do not break.
+            $configVersion = (int) ($record->config_version ?? 1);
+            if ($configVersion < 2 && in_array($modLower, ['students', 'gradebook'])) {
+                $hasAnyNewMod = in_array('students', $modulesLower) || in_array('gradebook', $modulesLower);
+                if (!$hasAnyNewMod) {
                     return self::$cachedModules[$modLower] = true;
                 }
             }
