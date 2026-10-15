@@ -1,7 +1,7 @@
 {{-- Reusable Teacher Timetable Card matching each teacher.pdf --}}
 @props([
     'teacherData',
-    'instituteName' => 'IMCB G-6/2, ISLAMABAD',
+    'instituteName' => null,
     'instituteLogo' => '',
     'logoBase64'    => null,
     'effectiveDate' => '17th Nov 2025',
@@ -11,6 +11,7 @@
     $teacher = $teacherData['teacher'] ?? null;
     $rows = $teacherData['rows'] ?? [];
     $totalLessons = $teacherData['totalLessons'] ?? 0;
+    $instituteName = $instituteName ?: \App\Models\Setting::getFormalInstituteName();
 @endphp
 
 <div class="teacher-card">

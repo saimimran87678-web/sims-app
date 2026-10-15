@@ -20,10 +20,7 @@ class TimetablePrintController extends Controller
      */
     protected function getBrandingData($sessionId = null): array
     {
-        $instituteFormalName = Setting::getGlobal('institute_formal_name');
-        $instituteName = !empty($instituteFormalName) 
-            ? $instituteFormalName 
-            : Setting::getGlobal('institute_name', config('app.name', 'IMCB G-6/2, ISLAMABAD'));
+        $instituteName = Setting::getFormalInstituteName();
 
         $logoPath = Setting::getGlobal('institute_logo', '');
         $effectiveDate = Setting::getGlobal('session_start_date', now()->format('jS M Y'));

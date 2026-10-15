@@ -200,7 +200,7 @@ class DefaulterList extends Component
         $defaulters = $this->getDefaultersQuery()->get();
         $totalDueAggregate = $defaulters->sum('total_due');
         $selectedSessionName = $sessionObj ? $sessionObj->name : 'Active Session';
-        $instituteName = \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2 ISLAMABAD');
+        $instituteName = \App\Models\Setting::getFormalInstituteName();
 
         return response()->streamDownload(function () use ($defaulters, $shiftType, $totalDueAggregate, $selectedSessionName, $instituteName) {
             echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';

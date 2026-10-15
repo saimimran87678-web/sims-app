@@ -342,7 +342,7 @@
     @foreach($classPages as $pageIndex => $pageClasses)
     <div class="sheet-page">
         <div class="school-header-block">
-            <div class="school-main-title">{{ $instituteName ?? 'ISLAMABAD MODEL COLLEGE FOR BOYS G-6/2, ISLAMABAD' }}</div>
+            <div class="school-main-title">{{ $instituteName ?? \App\Models\Setting::getFormalInstituteName() }}</div>
             <div class="school-sub-title">Summary timetable of classes</div>
         </div>
 

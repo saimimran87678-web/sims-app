@@ -221,7 +221,7 @@
         <div class="header">
             @php
                 $instituteLogo = \App\Models\Setting::get('institute_logo', \App\Models\Setting::getGlobal('institute_logo'));
-                $instituteName = \App\Models\Setting::get('institute_name', \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2'));
+                $instituteName = \App\Models\Setting::getFormalInstituteName();
                 $instituteAddress = \App\Models\Setting::get('institute_address', \App\Models\Setting::getGlobal('institute_address'));
             @endphp
             <table>

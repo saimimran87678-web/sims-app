@@ -10,10 +10,7 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
     require $maintenance;
 }
 
-// Reset OPcache if running to ensure fresh bytecode and routes are loaded
-if (function_exists('opcache_reset')) {
-    @opcache_reset();
-}
+
 
 // Auto-invalidate stale route cache if routes/web.php or routes/api.php was updated
 $routeCache = __DIR__.'/../bootstrap/cache/routes-v7.php';

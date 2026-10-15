@@ -319,6 +319,35 @@ class SubstitutionManager extends Component
 
         if ($value !== 'Present') {
             $this->loadExistingSubstitutions($teacherId);
+
+            // If this teacher was previously assigned as a substitute for other classes today,
+            // they can no longer take those substitutions. Clean them up immediately.
+            $conflictingSubs = Substitution::where('academic_session_id', $this->selectedSessionId)
+                ->where('shift_type', $shiftType)
+                ->where('date', $selectedDate)
+                ->where('substitute_teacher_id', $teacherId)
+                ->get();
+
+            if ($conflictingSubs->isNotEmpty()) {
+                foreach ($conflictingSubs as $cSub) {
+                    if (isset($this->substitutions[$cSub->absent_teacher_id][$cSub->period_no])) {
+                        $this->substitutions[$cSub->absent_teacher_id][$cSub->period_no] = '';
+                    }
+                }
+                Substitution::where('academic_session_id', $this->selectedSessionId)
+                    ->where('shift_type', $shiftType)
+                    ->where('date', $selectedDate)
+                    ->where('substitute_teacher_id', $teacherId)
+                    ->delete();
+
+                DB::table('timetables')
+                    ->where('teacher_id', $teacherId)
+                    ->where('is_substitute', true)
+                    ->where('substitute_date', $selectedDate)
+                    ->delete();
+
+                $this->loadTeacherAssignedSubs();
+            }
         } else {
             // Remove from local state and clean up any substitutions
             unset($this->substitutions[$teacherId]);
@@ -807,6 +836,16 @@ class SubstitutionManager extends Component
             return;
         }
 
+        // Logic Check: Is the selected substitute unavailable today (Absent, Leave, Short Leave, Official Duty, etc.)?
+        $unavailableIds = $this->getUnavailableTeacherIds();
+        if (in_array((int)$substituteTeacherId, $unavailableIds, true) || (int)$substituteTeacherId === (int)$absentTeacherId) {
+            $subTeacherName = collect($this->teachers)->firstWhere('id', $substituteTeacherId)->name ?? 'Teacher';
+            $st = $this->teacherStatuses[$substituteTeacherId] ?? 'Unavailable';
+            $this->warningMessage = "Cannot assign: {$subTeacherName} is marked as '{$st}' today and is unavailable for substitution.";
+            $this->substitutions[$absentTeacherId][$periodNo] = '';
+            return;
+        }
+
         // Logic Check: Is the selected substitute already busy?
         $isBusy = $this->checkIfTeacherIsBusy($substituteTeacherId, $periodNo, $classId);
         if ($isBusy) {
@@ -922,12 +961,64 @@ class SubstitutionManager extends Component
         return $hasSubstitute;
     }
 
-    public function getAvailableTeachersForPeriod($periodNo, $currentlyAssignedId = null, $classId = null)
+    /**
+     * Get IDs of teachers who are unavailable today (Absent, Leave, Short Leave, Official Duty, etc.)
+     */
+    public function getUnavailableTeacherIds(): array
     {
-        $busyTeacherIds = [];
+        $unavailableIds = [];
+
+        // 1. From local state (radio button selections)
+        foreach ($this->teacherStatuses as $tId => $status) {
+            if (strtolower(trim((string)$status)) !== 'present') {
+                $unavailableIds[] = (int) $tId;
+            }
+        }
+
+        // 2. From database attendance records for this date/session/shift
+        $shiftType = $this->getActiveShiftType();
+        $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
+
+        $dbNonPresent = TeacherAttendance::where('academic_session_id', $this->selectedSessionId)
+            ->where('date', $selectedDate)
+            ->when($shiftType !== 'both', function ($q) use ($shiftType) {
+                $q->where('shift_type', $shiftType);
+            })
+            ->whereRaw('LOWER(TRIM(status)) != ?', ['present'])
+            ->pluck('teacher_id')
+            ->map(fn($id) => (int)$id)
+            ->toArray();
+
+        return array_values(array_unique(array_merge($unavailableIds, $dbNonPresent)));
+    }
+
+    public function getAvailableTeachersForPeriod($periodNo, $currentlyAssignedId = null, $classId = null, $absentTeacherId = null, $showAll = false)
+    {
         $dayOfWeek = Carbon::parse($this->selectedDate)->format('l');
         $shiftType = $this->getActiveShiftType();
         $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
+
+        // 1. Determine all teachers who are unavailable today (Absent, Leave, Short Leave, Official Duty, etc.)
+        $unavailableTeacherIds = $this->getUnavailableTeacherIds();
+
+        // The teacher whose class needs substitution can never substitute for their own class
+        if ($absentTeacherId !== null) {
+            $unavailableTeacherIds[] = (int) $absentTeacherId;
+            $unavailableTeacherIds = array_unique($unavailableTeacherIds);
+        }
+
+        // Base pool: ONLY teachers who are active and PRESENT today (strictly excluding all unavailable teachers)
+        $eligibleTeachers = collect($this->teachers)->filter(function ($t) use ($unavailableTeacherIds) {
+            return !in_array((int)$t->id, $unavailableTeacherIds, true);
+        })->values();
+
+        // If "Show All (Override)" is enabled, return all present teachers (ignoring timetable period conflicts)
+        if ($showAll) {
+            return $eligibleTeachers;
+        }
+
+        // 2. Filter out timetable period conflicts (regular schedule & existing substitutions)
+        $busyTeacherIds = [];
 
         // Fetch closed class IDs for today
         $closedClassIds = ClosedClassroom::where('academic_session_id', $this->selectedSessionId)
@@ -943,7 +1034,7 @@ class SubstitutionManager extends Component
             ->pluck('source_timetable_id')
             ->toArray();
 
-        // 1. Teachers with regular classes (excluding closed classes and merged source classes)
+        // Teachers with regular classes during this period
         $regularBusy = DB::table('timetables')
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->where('classes.academic_session_id', $this->selectedSessionId)
@@ -952,48 +1043,41 @@ class SubstitutionManager extends Component
             ->when($shiftType !== 'both', function ($q) use ($shiftType) {
                 $q->where('classes.shift_type', $shiftType);
             })
-            ->when($classId, function($q) use ($classId) {
+            ->when($classId, function ($q) use ($classId) {
                 return $q->where('timetables.class_id', '!=', $classId);
             })
-            ->when(!empty($closedClassIds), function($q) use ($closedClassIds) {
+            ->when(!empty($closedClassIds), function ($q) use ($closedClassIds) {
                 return $q->whereNotIn('timetables.class_id', $closedClassIds);
             })
-            ->when(!empty($mergedSourceTimetableIds), function($q) use ($mergedSourceTimetableIds) {
+            ->when(!empty($mergedSourceTimetableIds), function ($q) use ($mergedSourceTimetableIds) {
                 return $q->whereNotIn('timetables.id', $mergedSourceTimetableIds);
             })
             ->pluck('timetables.teacher_id')
+            ->map(fn($id) => (int)$id)
             ->toArray();
-        
+
         $busyTeacherIds = array_merge($busyTeacherIds, $regularBusy);
 
-        // 2. Teachers already assigned as substitutes in substitutions table
+        // Teachers already assigned as substitutes in substitutions table during this period
         $subBusy = Substitution::where('academic_session_id', $this->selectedSessionId)
             ->where('date', $selectedDate)
             ->where('shift_type', $shiftType)
             ->where('period_no', $periodNo)
             ->whereNotNull('substitute_teacher_id')
             ->pluck('substitute_teacher_id')
+            ->map(fn($id) => (int)$id)
             ->toArray();
 
         $busyTeacherIds = array_merge($busyTeacherIds, $subBusy);
-
-        // 3. Teachers who are Absent or on Leave today
-        $absentTeacherIds = [];
-        foreach ($this->teacherStatuses as $tId => $status) {
-            if ($status === 'Absent' || $status === 'Leave') {
-                $absentTeacherIds[] = $tId;
-            }
-        }
-        $busyTeacherIds = array_merge($busyTeacherIds, $absentTeacherIds);
         $busyTeacherIds = array_unique($busyTeacherIds);
 
-        // If currently assigned teacher is provided, keep them selectable
-        if ($currentlyAssignedId !== null) {
-            $busyTeacherIds = array_diff($busyTeacherIds, [$currentlyAssignedId]);
+        // If currently assigned teacher is provided and is NOT unavailable (i.e. is actually present), keep them selectable
+        if ($currentlyAssignedId !== null && !in_array((int)$currentlyAssignedId, $unavailableTeacherIds, true)) {
+            $busyTeacherIds = array_diff($busyTeacherIds, [(int)$currentlyAssignedId]);
         }
 
-        return collect($this->teachers)->filter(function($t) use ($busyTeacherIds) {
-            return !in_array($t->id, $busyTeacherIds);
+        return $eligibleTeachers->filter(function ($t) use ($busyTeacherIds) {
+            return !in_array((int)$t->id, $busyTeacherIds, true);
         })->values();
     }
 

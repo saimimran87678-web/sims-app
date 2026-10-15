@@ -111,4 +111,22 @@ class Setting extends Model
             ['value' => $value]
         );
     }
+
+    /**
+     * Get the formal institute name for official documents, prints, and PDF generations.
+     * Prioritizes institute_formal_name, falling back to institute_name or default.
+     */
+    public static function getFormalInstituteName(string $default = 'SIMS'): string
+    {
+        $formal = self::getGlobal('institute_formal_name');
+        if (!empty($formal) && trim((string)$formal) !== '') {
+            return trim((string)$formal);
+        }
+        $name = self::getGlobal('institute_name');
+        if (!empty($name) && trim((string)$name) !== '') {
+            return trim((string)$name);
+        }
+        return $default;
+    }
 }
+

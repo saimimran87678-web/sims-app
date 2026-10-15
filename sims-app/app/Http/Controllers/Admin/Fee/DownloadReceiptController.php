@@ -21,7 +21,7 @@ class DownloadReceiptController extends Controller
 
 
 
-        $instituteName = \App\Models\Setting::getGlobal('institute_formal_name', \App\Models\Setting::getGlobal('institute_name', 'SIMS'));
+        $instituteName = \App\Models\Setting::getFormalInstituteName();
         $instituteAddress = \App\Models\Setting::getGlobal('institute_address', '');
         $institutePhone = \App\Models\Setting::getGlobal('institute_phone', '');
         $instituteEmail = \App\Models\Setting::getGlobal('institute_email', '');

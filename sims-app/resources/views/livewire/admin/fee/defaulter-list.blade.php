@@ -225,7 +225,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-black uppercase tracking-tight text-black">
-                        {{ \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2 ISLAMABAD') }}
+                        {{ \App\Models\Setting::getFormalInstituteName() }}
                     </h1>
                     <p class="text-xs font-semibold text-gray-700 uppercase tracking-widest mt-0.5">
                         {{ \App\Models\Setting::getGlobal('institute_address', 'Federal Board Educational Campus, Islamabad') }}

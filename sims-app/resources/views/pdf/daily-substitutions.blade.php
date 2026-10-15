@@ -149,7 +149,7 @@
     <div style="margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; font-family: 'Helvetica', 'Arial', sans-serif;">
         @php
             $logoPath = \App\Models\Setting::get('institute_logo', \App\Models\Setting::getGlobal('institute_logo'));
-            $instituteName = \App\Models\Setting::get('institute_name', \App\Models\Setting::getGlobal('institute_name', 'IMCB G-6/2'));
+            $instituteName = \App\Models\Setting::getFormalInstituteName();
             $address = \App\Models\Setting::get('institute_address', \App\Models\Setting::getGlobal('institute_address'));
         @endphp
         <table style="width: 100%; border-collapse: collapse;">

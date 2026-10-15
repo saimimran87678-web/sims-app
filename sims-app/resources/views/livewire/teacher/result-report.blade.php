@@ -378,7 +378,7 @@
             '<style>@page { size: auto; margin: 5mm; } body { font-family: sans-serif; padding: 10px; font-size: 11px; } @media print { body { -webkit-print-color-adjust: exact; } table { width: 100%; font-size: inherit; } }</style></head>' +
             '<body>' +
             '<div style="text-align: center; margin-bottom: 20px;">' +
-                '<div style="font-size: 20px; font-weight: bold; text-transform: uppercase;">' + {!! json_encode(strtoupper(\App\Models\Setting::getGlobal('institute_name', 'ISLAMABAD MODEL COLLEGE FOR BOYS (VI-X)'))) !!} + '</div>' +
+                '<div style="font-size: 20px; font-weight: bold; text-transform: uppercase;">' + {!! json_encode(strtoupper(\App\Models\Setting::getFormalInstituteName())) !!} + '</div>' +
                 '<div style="font-size: 14px; margin-bottom: 5px;">' + {!! json_encode(strtoupper(\App\Models\Setting::getGlobal('institute_address', 'G-6/2 ISLAMABAD'))) !!} + '</div>' +
                 '<div style="font-size: 16px; margin-top: 5px;">Result Gazette - ' + data.examName + ' - ' + data.className + '</div>' +
             '</div>' +

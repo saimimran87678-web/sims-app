@@ -8,17 +8,20 @@ echo "Starting SIMS Web Server and Background Workers..."
 cd "${APP_DIR}"
 
 # Check FrankenPHP first, fallback to PHP built-in server
+PORT="${PORT:-8000}"
 if [ -f "${ROOT_DIR}/runtime/frankenphp" ] && [ -x "${ROOT_DIR}/runtime/frankenphp" ]; then
-    nohup "${ROOT_DIR}/runtime/frankenphp" php-server --listen :80 --root "${APP_DIR}/public" >/dev/null 2>&1 &
+    setsid "${ROOT_DIR}/runtime/frankenphp" run --config "${APP_DIR}/Caddyfile.frankenphp" > "${APP_DIR}/storage/logs/frankenphp.log" 2>&1 < /dev/null &
 elif command -v frankenphp >/dev/null 2>&1; then
-    nohup frankenphp php-server --listen :80 --root "${APP_DIR}/public" >/dev/null 2>&1 &
+    setsid frankenphp run --config "${APP_DIR}/Caddyfile.frankenphp" > "${APP_DIR}/storage/logs/frankenphp.log" 2>&1 < /dev/null &
 else
-    PHP_CLI_SERVER_WORKERS=4 nohup php -S 0.0.0.0:80 -t "${APP_DIR}/public" >/dev/null 2>&1 &
+    PHP_CLI_SERVER_WORKERS=4 setsid php -S 0.0.0.0:${PORT} -t "${APP_DIR}/public" >/dev/null 2>&1 < /dev/null &
 fi
 
-# Start Queue worker
-nohup php "${APP_DIR}/artisan" queue:work --sleep=3 --tries=3 >/dev/null 2>&1 &
+# Start Queue worker if not already running
+if ! pgrep -f "artisan queue:work" >/dev/null 2>&1; then
+    nohup php "${APP_DIR}/artisan" queue:work --sleep=3 --tries=3 >/dev/null 2>&1 &
+fi
 
-echo "[OK] Web server and queue worker launched in background."
+echo "[OK] FrankenPHP web server (4 workers) and queue worker launched."
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
-echo "Access URL: http://${SERVER_IP} or http://localhost"
+echo "Access URL: http://${SERVER_IP}:${PORT} or http://localhost:${PORT}"

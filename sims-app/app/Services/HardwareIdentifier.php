@@ -18,16 +18,29 @@ class HardwareIdentifier
             return $cached;
         }
 
-        // 1. Try Motherboard BIOS UUID via CIM/WMI
-        $output = trim((string) @shell_exec('powershell -NoProfile -Command "(Get-CimInstance Win32_ComputerSystemProduct).UUID" 2>NUL'));
-        if (!empty($output) && strlen($output) >= 16 && $output !== 'FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF') {
-            return $cached = strtoupper($output);
+        // 1. Linux support: check /etc/machine-id or /var/lib/dbus/machine-id or product_uuid
+        if (PHP_OS_FAMILY === 'Linux') {
+            foreach (['/etc/machine-id', '/var/lib/dbus/machine-id', '/sys/class/dmi/id/product_uuid'] as $file) {
+                if (@is_readable($file)) {
+                    $id = trim((string) @file_get_contents($file));
+                    if (!empty($id) && strlen($id) >= 16 && $id !== '00000000-0000-0000-0000-000000000000') {
+                        return $cached = strtoupper($id);
+                    }
+                }
+            }
         }
 
-        // 2. Fallback to Windows MachineGuid in Registry
-        $guid = trim((string) @shell_exec('powershell -NoProfile -Command "(Get-ItemProperty -Path \'HKLM:\SOFTWARE\Microsoft\Cryptography\').MachineGuid" 2>NUL'));
-        if (!empty($guid) && strlen($guid) >= 16) {
-            return $cached = strtoupper($guid);
+        // 2. Windows support: Try Motherboard BIOS UUID or Windows MachineGuid
+        if (PHP_OS_FAMILY === 'Windows') {
+            $output = trim((string) @shell_exec('powershell -NoProfile -Command "(Get-CimInstance Win32_ComputerSystemProduct).UUID" 2>NUL'));
+            if (!empty($output) && strlen($output) >= 16 && $output !== 'FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF') {
+                return $cached = strtoupper($output);
+            }
+
+            $guid = trim((string) @shell_exec('powershell -NoProfile -Command "(Get-ItemProperty -Path \'HKLM:\SOFTWARE\Microsoft\Cryptography\').MachineGuid" 2>NUL'));
+            if (!empty($guid) && strlen($guid) >= 16) {
+                return $cached = strtoupper($guid);
+            }
         }
 
         return $cached = 'UNKNOWN-MACHINE-UUID';

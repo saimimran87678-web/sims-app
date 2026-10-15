@@ -210,4 +210,141 @@ class SubstitutionManagerTest extends TestCase
         $comp->assertSee('1 sub today');
         $comp->assertDontSee('2 subs today');
     }
+
+    #[Test]
+    public function it_excludes_teachers_with_non_present_statuses_from_available_substitutes()
+    {
+        $this->actingAs($this->admin);
+
+        $today = now()->format('Y-m-d');
+
+        // Create teachers with various non-present statuses
+        $leaveTeacher = User::factory()->create(['name' => 'Leave Teacher', 'role' => 'teacher']);
+        $odTeacher = User::factory()->create(['name' => 'OD Teacher', 'role' => 'teacher']);
+        $shortLeaveTeacher = User::factory()->create(['name' => 'Short Leave Teacher', 'role' => 'teacher']);
+        $presentTeacher = User::factory()->create(['name' => 'Present Teacher', 'role' => 'teacher']);
+
+        foreach ([$leaveTeacher, $odTeacher, $shortLeaveTeacher, $presentTeacher] as $t) {
+            DB::table('session_user')->insert([
+                'user_id'             => $t->id,
+                'academic_session_id' => $this->session->id,
+                'is_active'           => true,
+                'is_primary'          => true,
+                'created_at'          => now(),
+                'updated_at'          => now(),
+            ]);
+        }
+
+        $comp = Livewire::test(SubstitutionManager::class)
+            ->set('selectedDate', $today)
+            ->set('selectedSessionId', $this->session->id);
+
+        // Mark statuses
+        $comp->set('teacherStatuses.' . $this->absentTeacher->id, 'Absent');
+        $comp->set('teacherStatuses.' . $leaveTeacher->id, 'Leave');
+        $comp->set('teacherStatuses.' . $odTeacher->id, 'Official Duty');
+        $comp->set('teacherStatuses.' . $shortLeaveTeacher->id, 'Short Leave');
+        $comp->set('teacherStatuses.' . $presentTeacher->id, 'Present');
+
+        $instance = $comp->instance();
+
+        // 1. Check getUnavailableTeacherIds contains all non-present teachers
+        $unavailableIds = $instance->getUnavailableTeacherIds();
+        $this->assertContains($this->absentTeacher->id, $unavailableIds);
+        $this->assertContains($leaveTeacher->id, $unavailableIds);
+        $this->assertContains($odTeacher->id, $unavailableIds);
+        $this->assertContains($shortLeaveTeacher->id, $unavailableIds);
+        $this->assertNotContains($presentTeacher->id, $unavailableIds);
+
+        // 2. Check getAvailableTeachersForPeriod strictly excludes unavailable teachers (even with showAll = true)
+        $availableNormal = $instance->getAvailableTeachersForPeriod(1, null, $this->class->id, $this->absentTeacher->id, false);
+        $availableShowAll = $instance->getAvailableTeachersForPeriod(1, null, $this->class->id, $this->absentTeacher->id, true);
+
+        $normalIds = $availableNormal->pluck('id')->all();
+        $showAllIds = $availableShowAll->pluck('id')->all();
+
+        // Absent teacher can never substitute
+        $this->assertNotContains($this->absentTeacher->id, $normalIds);
+        $this->assertNotContains($this->absentTeacher->id, $showAllIds);
+
+        // Leave, Official Duty, Short Leave teachers can never substitute
+        $this->assertNotContains($leaveTeacher->id, $normalIds);
+        $this->assertNotContains($leaveTeacher->id, $showAllIds);
+        $this->assertNotContains($odTeacher->id, $normalIds);
+        $this->assertNotContains($odTeacher->id, $showAllIds);
+        $this->assertNotContains($shortLeaveTeacher->id, $normalIds);
+        $this->assertNotContains($shortLeaveTeacher->id, $showAllIds);
+
+        // Present teacher is available
+        $this->assertContains($presentTeacher->id, $normalIds);
+        $this->assertContains($presentTeacher->id, $showAllIds);
+    }
+
+    #[Test]
+    public function it_blocks_assigning_an_unavailable_teacher_as_substitute()
+    {
+        $this->actingAs($this->admin);
+
+        $today = now()->format('Y-m-d');
+
+        $comp = Livewire::test(SubstitutionManager::class)
+            ->set('selectedDate', $today)
+            ->set('selectedSessionId', $this->session->id);
+
+        // Mark substituteTeacher on Short Leave
+        $comp->set('teacherStatuses.' . $this->substituteTeacher->id, 'Short Leave');
+
+        // Try to assign substituteTeacher to absentTeacher's period
+        $comp->set('substitutions.' . $this->absentTeacher->id . '.1', $this->substituteTeacher->id)
+            ->call('assignSubstitute', $this->absentTeacher->id, 1, $this->class->id, $this->subject->id);
+
+        // Assignment should be blocked with a warning message
+        $instance = $comp->instance();
+        $this->assertStringContainsString('unavailable for substitution', $instance->warningMessage);
+
+        // Should not exist in substitutions table
+        $this->assertFalse(
+            \App\Models\Substitution::where('date', $today)
+                ->where('period_no', 1)
+                ->where('substitute_teacher_id', $this->substituteTeacher->id)
+                ->exists()
+        );
+    }
+
+    #[Test]
+    public function it_cleans_up_substitutions_if_substitute_is_marked_non_present()
+    {
+        $this->actingAs($this->admin);
+
+        $today = now()->format('Y-m-d');
+
+        $comp = Livewire::test(SubstitutionManager::class)
+            ->set('selectedDate', $today)
+            ->set('selectedSessionId', $this->session->id);
+
+        // Both start present, assign substituteTeacher for Period 1
+        $comp->set('teacherStatuses.' . $this->absentTeacher->id, 'Absent');
+        $comp->set('teacherStatuses.' . $this->substituteTeacher->id, 'Present');
+
+        $comp->set('substitutions.' . $this->absentTeacher->id . '.1', $this->substituteTeacher->id)
+            ->call('assignSubstitute', $this->absentTeacher->id, 1, $this->class->id, $this->subject->id);
+
+        $this->assertTrue(
+            \App\Models\Substitution::where('date', $today)
+                ->where('period_no', 1)
+                ->where('substitute_teacher_id', $this->substituteTeacher->id)
+                ->exists()
+        );
+
+        // Now substituteTeacher goes on Official Duty
+        $comp->set('teacherStatuses.' . $this->substituteTeacher->id, 'Official Duty');
+
+        // Substitute duty should be automatically revoked
+        $this->assertFalse(
+            \App\Models\Substitution::where('date', $today)
+                ->where('period_no', 1)
+                ->where('substitute_teacher_id', $this->substituteTeacher->id)
+                ->exists()
+        );
+    }
 }

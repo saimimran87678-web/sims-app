@@ -9,8 +9,8 @@ ACTION="${1:-}"
 case "${ACTION}" in
     start)
         echo "Starting SIMS Linux services..."
-        if command -v systemctl >/dev/null 2>&1; then
-            sudo systemctl start sims-web sims-queue sims-scheduler 2>/dev/null || sudo systemctl start sims-web
+        if command -v systemctl >/dev/null 2>&1 && sudo -n systemctl is-active sims-web >/dev/null 2>&1; then
+            sudo -n systemctl start sims-web sims-queue sims-scheduler 2>/dev/null || sudo -n systemctl start sims-web
         else
             "${ROOT_DIR}/scripts/linux/start-server.sh"
         fi
@@ -18,8 +18,8 @@ case "${ACTION}" in
         ;;
     stop)
         echo "Stopping SIMS Linux services..."
-        if command -v systemctl >/dev/null 2>&1; then
-            sudo systemctl stop sims-web sims-queue sims-scheduler 2>/dev/null || true
+        if command -v systemctl >/dev/null 2>&1 && sudo -n systemctl is-active sims-web >/dev/null 2>&1; then
+            sudo -n systemctl stop sims-web sims-queue sims-scheduler 2>/dev/null || true
         else
             "${ROOT_DIR}/scripts/linux/stop-services.sh"
         fi
@@ -27,8 +27,8 @@ case "${ACTION}" in
         ;;
     restart)
         echo "Restarting SIMS Linux services..."
-        if command -v systemctl >/dev/null 2>&1; then
-            sudo systemctl restart sims-web sims-queue sims-scheduler 2>/dev/null || sudo systemctl restart sims-web
+        if command -v systemctl >/dev/null 2>&1 && sudo -n systemctl is-active sims-web >/dev/null 2>&1; then
+            sudo -n systemctl restart sims-web sims-queue sims-scheduler 2>/dev/null || sudo -n systemctl restart sims-web
         else
             "${ROOT_DIR}/scripts/linux/stop-services.sh"
             "${ROOT_DIR}/scripts/linux/start-server.sh"

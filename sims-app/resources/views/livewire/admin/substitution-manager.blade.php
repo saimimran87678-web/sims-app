@@ -470,9 +470,13 @@
                                         @php
                                             $showAll = $showAllTeachersToggle[$teacher->id][$period->period_no] ?? false;
                                             $currentSub = $substitutions[$teacher->id][$period->period_no] ?? null;
-                                            $availableList = $showAll 
-                                                ? $teachers 
-                                                : $this->getAvailableTeachersForPeriod($period->period_no, $currentSub, $period->class_id);
+                                            $availableList = $this->getAvailableTeachersForPeriod(
+                                                $period->period_no, 
+                                                $currentSub, 
+                                                $period->class_id, 
+                                                $teacher->id, 
+                                                $showAll
+                                            );
                                         @endphp
                                         <div wire:key="period-{{ $teacher->id }}-{{ $period->period_no }}" class="flex flex-col lg:flex-row lg:items-center justify-between p-4 bg-gray-50/70 rounded-xl border border-gray-150 gap-4">
                                             {{-- Period Info --}}

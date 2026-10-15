@@ -31,7 +31,7 @@ class PublicVoucherController extends Controller
             ->where('period', '<', $record->period)
             ->sum('balance');
 
-        $instituteName = \App\Models\Setting::get('institute_name', 'SIMS');
+        $instituteName = \App\Models\Setting::getFormalInstituteName();
         $instituteAddress = \App\Models\Setting::get('institute_address', '');
         $institutePhone = \App\Models\Setting::get('institute_phone', '');
         $instituteEmail = \App\Models\Setting::get('institute_email', '');

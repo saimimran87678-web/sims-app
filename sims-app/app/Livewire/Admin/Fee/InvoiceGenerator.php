@@ -68,7 +68,7 @@ class InvoiceGenerator extends Component
         $this->billingMonth = date('Y-m');
         $this->viewMonth = date('Y-m');
         $this->receiptMonth = date('Y-m');
-        $this->instituteName = \App\Models\Setting::get('institute_name', 'SIMS Institute');
+        $this->instituteName = \App\Models\Setting::getFormalInstituteName();
         
         // Add one empty row by default
         $this->baseItems[] = ['id' => uniqid(), 'name' => '', 'amount' => '', 'category' => 'monthly'];
@@ -1133,7 +1133,7 @@ class InvoiceGenerator extends Component
     protected function generateReceiptPdfFile($payment)
     {
         $payment->load(['student', 'record', 'record.class', 'record.items']);
-        $instituteName = \App\Models\Setting::get('institute_name', 'SIMS');
+        $instituteName = \App\Models\Setting::getFormalInstituteName();
         $instituteAddress = \App\Models\Setting::get('institute_address', '');
         $institutePhone = \App\Models\Setting::get('institute_phone', '');
         $instituteEmail = \App\Models\Setting::get('institute_email', '');

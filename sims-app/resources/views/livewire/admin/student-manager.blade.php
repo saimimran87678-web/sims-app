@@ -1027,7 +1027,7 @@
 
                         {{-- School Header --}}
                         <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); color: #fff; padding: 20px 30px; text-align: center;">
-                            <h1 style="font-size: 22px; font-weight: 700; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 3px;">{{ \App\Models\Setting::getGlobal('institute_name', 'Islamabad Model College for Boys') }}</h1>
+                            <h1 style="font-size: 22px; font-weight: 700; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 3px;">{{ \App\Models\Setting::getFormalInstituteName() }}</h1>
                             <p style="font-size: 12px; margin: 0; opacity: 0.9;">{{ \App\Models\Setting::getGlobal('institute_address', 'G-6/2, Islamabad') }}</p>
                         </div>
 
