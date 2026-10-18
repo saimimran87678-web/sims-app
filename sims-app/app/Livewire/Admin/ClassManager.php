@@ -102,13 +102,7 @@ class ClassManager extends Component
 
     public function getCurrentShift()
     {
-        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
-        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
-        if ($shiftType === 'both') {
-            $shiftType = 'morning';
-        }
-        return $shiftType;
+        return \App\Support\ActiveShift::single($this->selectedSessionId);
     }
 
     public function getSourceShift()

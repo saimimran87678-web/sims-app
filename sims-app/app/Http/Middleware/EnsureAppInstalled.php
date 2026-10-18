@@ -46,28 +46,37 @@ class EnsureAppInstalled
         }
 
         // 1. Safe check for database schema readiness
-        try {
-            if (!\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+        static $isInstalledMemo = null;
+        if (!app()->runningUnitTests() && $isInstalledMemo !== null) {
+            $isInstalled = $isInstalledMemo;
+        } else {
+            try {
+                if (!\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                    return $next($request);
+                }
+
+                $installedVal = Setting::getGlobal('app_installed');
+                
+                if ($installedVal !== null) {
+                    $isInstalled = (bool) $installedVal;
+                } else {
+                    // In automated tests where app_installed is unseeded, default to true
+                    // In production/local where app_installed is unseeded, default to false (needs setup)
+                    $isInstalled = app()->runningUnitTests();
+                }
+
+                // Self-healing check: if app_installed flag is missing in DB but users exist, mark as installed
+                if (!$isInstalled && \Illuminate\Support\Facades\Schema::hasTable('users') && User::count() > 0) {
+                    Setting::setGlobal('app_installed', true);
+                    $isInstalled = true;
+                }
+
+                if ($isInstalled && !app()->runningUnitTests()) {
+                    $isInstalledMemo = true;
+                }
+            } catch (\Throwable $e) {
                 return $next($request);
             }
-
-            $installedVal = Setting::getGlobal('app_installed');
-            
-            if ($installedVal !== null) {
-                $isInstalled = (bool) $installedVal;
-            } else {
-                // In automated tests where app_installed is unseeded, default to true
-                // In production/local where app_installed is unseeded, default to false (needs setup)
-                $isInstalled = app()->runningUnitTests();
-            }
-
-            // Self-healing check: if app_installed flag is missing in DB but users exist, mark as installed
-            if (!$isInstalled && \Illuminate\Support\Facades\Schema::hasTable('users') && User::count() > 0) {
-                Setting::setGlobal('app_installed', true);
-                $isInstalled = true;
-            }
-        } catch (\Throwable $e) {
-            return $next($request);
         }
 
         // ── 2. If ALREADY installed: prevent accessing setup wizard ───────

@@ -7,7 +7,7 @@
     <style>
         @page {
             size: a4 landscape;
-            margin: 5mm 6mm; /* Tight print margins matching aSc Timetables */
+            margin: 6mm 7mm;
         }
 
         * {
@@ -21,7 +21,6 @@
             padding: 0;
             background-color: #ffffff;
             color: #000000;
-            /* Condensed font stack to match aSc high-density metrics */
             font-family: 'Arial Narrow', 'Liberation Sans Narrow', 'Roboto Condensed', 'Nimbus Sans L', Arial, sans-serif;
             font-size: 7.5pt;
             line-height: 1.15;
@@ -30,7 +29,7 @@
 
         .sheet-page {
             width: 100%;
-            max-width: 285mm;
+            max-width: 283mm;
             margin: 0 auto 16px auto;
             page-break-inside: avoid;
             page-break-after: always;
@@ -108,10 +107,40 @@
             background-color: #e5e7eb;
         }
 
-        .school-header-block {
+        /* Institutional Title Block with Logo (First Page Only) */
+        .school-header-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: none;
+            margin-bottom: 2.5mm;
+            table-layout: fixed;
+        }
+
+        .school-header-table td {
+            border: none;
+            padding: 0;
+            vertical-align: middle;
+        }
+
+        .header-logo-cell {
+            width: 70px;
+            text-align: left;
+        }
+
+        .header-spacer-cell {
+            width: 70px;
+            text-align: right;
+        }
+
+        .school-logo {
+            max-height: 40px;
+            max-width: 65px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .header-center-cell {
             text-align: center;
-            margin-bottom: 4px;
-            padding-top: 1px;
         }
 
         .school-main-title {
@@ -125,25 +154,73 @@
         }
 
         .school-sub-title {
-            font-size: 10.5pt;
+            font-size: 10pt;
             font-weight: 400;
-            margin: 1px 0 0 0;
+            margin: 1.5px 0 0 0;
             line-height: 1.15;
             color: #111;
         }
 
-        table.timetable-table {
+        /* Continuation Header Block (Subsequent Pages) */
+        .continuation-header-table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed; /* Strictly bound by colgroup for stable columns */
+            border: none;
+            border-bottom: 1.5px solid #000000;
+            margin-bottom: 2.5mm;
+            padding-bottom: 1mm;
+        }
+
+        .continuation-header-table td {
+            border: none;
+            padding: 1px 0 2px 0;
+            vertical-align: middle;
+        }
+
+        .continuation-left {
+            text-align: left;
+        }
+
+        .continuation-right {
+            text-align: right;
+            font-size: 7.5pt;
+            font-weight: 600;
+            color: #111;
+        }
+
+        .continuation-title {
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #000;
+        }
+
+        .continuation-badge {
+            font-size: 7.5pt;
+            font-weight: 400;
+            font-style: italic;
+            color: #444;
+            margin-left: 6px;
+        }
+
+        /* Table Structure with Zero Border Glitches */
+        table.timetable-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
             border: 1.25px solid #000000;
             background-color: #ffffff;
         }
 
         table.timetable-table th,
         table.timetable-table td {
-            border: 0.75px solid #000000;
-            padding: 1.5px 1.5px;
+            border-right: 1px solid #000000;
+            border-bottom: 1px solid #000000;
+            border-top: none;
+            border-left: none;
+            padding: 2px 1.5px;
             text-align: center;
             vertical-align: middle;
             font-size: 7.5pt;
@@ -152,16 +229,29 @@
             overflow-wrap: break-word;
         }
 
+        table.timetable-table tr > th:last-child,
+        table.timetable-table tr > td:last-child {
+            border-right: none;
+        }
+
+        table.timetable-table tbody tr {
+            height: 14mm;
+        }
+
+        table.timetable-table tbody td {
+            height: 14mm;
+        }
+
         .th-blank-class {
             background-color: #ffffff;
-            border-bottom: 0.75px solid #000000;
+            border-bottom: 1px solid #000000;
         }
 
         .th-assembly-head {
             font-size: 7.2pt;
             font-weight: 700;
             background-color: #ffffff;
-            padding: 4px 2px;
+            padding: 3px 2px;
             line-height: 1.25;
             letter-spacing: 0.4px;
             white-space: nowrap;
@@ -208,7 +298,7 @@
             font-size: 6.2pt;
             font-weight: 400;
             display: block;
-            margin-top: 2px;
+            margin-top: 1.5px;
             letter-spacing: -0.1px;
             white-space: nowrap;
             color: #111;
@@ -218,10 +308,9 @@
             font-size: 9pt;
             font-weight: 700;
             text-align: center;
-            padding: 3px 2px;
+            padding: 2px 2px;
             background-color: #ffffff;
             letter-spacing: 0.2px;
-            /* Dynamic height adaptation: no rigid pixel height */
         }
 
         .td-vertical-text {
@@ -237,7 +326,7 @@
 
         .vertical-char-stack {
             display: inline-block;
-            line-height: 1.25;
+            line-height: 1.35;
             font-weight: 700;
         }
 
@@ -246,21 +335,20 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            min-height: 24px;
+            min-height: 26px;
         }
 
         .slot-item {
-            padding: 1px 0;
+            padding: 0.5px 0;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
 
-        /* Subtle hairline divider between split elective teachers */
         .slot-item + .slot-item {
             border-top: 0.5px solid #000000;
-            margin-top: 1.5px;
-            padding-top: 1.5px;
+            margin-top: 1px;
+            padding-top: 1px;
         }
 
         .slot-teacher {
@@ -268,16 +356,26 @@
             font-weight: 400;
             color: #111111;
             line-height: 1.05;
-            white-space: normal; /* Enables natural wrap instead of truncation */
+            white-space: normal;
         }
 
         .slot-subject {
             font-size: 7.2pt;
-            font-weight: 700; /* Bold subjects match the PDF hierarchy */
+            font-weight: 700;
             color: #000000;
             line-height: 1.1;
             white-space: normal;
             margin-top: 0.5px;
+        }
+
+        .slot-empty {
+            min-height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: transparent;
+            font-size: 1pt;
+            visibility: hidden;
         }
 
         .td-sum-val {
@@ -291,7 +389,7 @@
             width: 100%;
             border-collapse: collapse;
             border: none;
-            margin-top: 3px;
+            margin-top: 2.5mm;
             font-size: 6.8pt;
             color: #111111;
         }
@@ -329,34 +427,60 @@
     @endif
 
     @php
-        // Count non-break and break periods to compute precise column ratios
         $nonBreakCount = collect($nonAssemblyPeriods)->where('is_break', false)->count();
         $breakCount = collect($nonAssemblyPeriods)->where('is_break', true)->count();
         $hasAssembly = !empty($assemblyPeriod);
 
-        // Calculate flexible column width for periods (Assembly expanded to 4.8% to prevent squeezed text on screens)
         $fixedWidthPercentage = 5.5 + ($hasAssembly ? 4.8 : 0) + ($breakCount * 3.8) + 4.4;
         $periodWidthPercentage = $nonBreakCount > 0 ? ((100 - $fixedWidthPercentage) / $nonBreakCount) : 11.5;
+        $hasLogo = !empty($logoBase64) || (!empty($instituteLogo) && file_exists(public_path($instituteLogo)));
     @endphp
 
     @foreach($classPages as $pageIndex => $pageClasses)
     <div class="sheet-page">
-        <div class="school-header-block">
-            <div class="school-main-title">{{ $instituteName ?? \App\Models\Setting::getFormalInstituteName() }}</div>
-            <div class="school-sub-title">Summary timetable of classes</div>
-        </div>
+        @if($pageIndex === 0)
+        <table class="school-header-table">
+            <tr>
+                @if($hasLogo)
+                <td class="header-logo-cell">
+                    @if(!empty($logoBase64))
+                        <img src="{{ $logoBase64 }}" alt="Logo" class="school-logo">
+                    @else
+                        <img src="{{ asset($instituteLogo) }}" alt="Logo" class="school-logo">
+                    @endif
+                </td>
+                @endif
+                <td class="header-center-cell">
+                    <div class="school-main-title">{{ $instituteName ?? \App\Models\Setting::getFormalInstituteName() }}</div>
+                    <div class="school-sub-title">Summary timetable of classes</div>
+                </td>
+                @if($hasLogo)
+                <td class="header-spacer-cell"></td>
+                @endif
+            </tr>
+        </table>
+        @else
+        <table class="continuation-header-table">
+            <tr>
+                <td class="continuation-left">
+                    <span class="continuation-title">Summary timetable of classes</span>
+                    <span class="continuation-badge">(continued)</span>
+                </td>
+                <td class="continuation-right">
+                    Page {{ $pageIndex + 1 }} of {{ count($classPages) }}
+                </td>
+            </tr>
+        </table>
+        @endif
 
         <table class="timetable-table">
             <colgroup>
-                {{-- Column 1: Class Name --}}
                 <col style="width: 5.5%;">
 
-                {{-- Column 2: Assembly (expanded with min-width for browser legibility) --}}
                 @if($hasAssembly)
                     <col style="width: 4.8%; min-width: 50px;">
                 @endif
 
-                {{-- Lesson Periods & Break Columns --}}
                 @foreach($nonAssemblyPeriods as $p)
                     @if($p->is_break)
                         <col style="width: 3.8%; min-width: 44px;">
@@ -365,12 +489,10 @@
                     @endif
                 @endforeach
 
-                {{-- Column Last: Sum of Lessons --}}
                 <col style="width: 4.4%;">
             </colgroup>
 
             <thead>
-                {{-- Header Row 1: Merged Lessons & Anchors --}}
                 <tr>
                     <th rowspan="2" class="th-blank-class"></th>
 
@@ -392,7 +514,6 @@
                     </th>
                 </tr>
 
-                {{-- Header Row 2: Period Ordinals and Times --}}
                 <tr>
                     @foreach($nonAssemblyPeriods as $p)
                         @if($p->is_break)
@@ -417,12 +538,10 @@
             <tbody>
                 @foreach($pageClasses as $cIndex => $cls)
                 <tr>
-                    {{-- Class Identifier --}}
                     <td class="td-class-name">
                         {{ $cls->name }}
                     </td>
 
-                    {{-- Assembly Spanned Column --}}
                     @if($hasAssembly)
                         @if($loop->first)
                             <td rowspan="{{ count($pageClasses) }}" class="td-vertical-text">
@@ -433,10 +552,8 @@
                         @endif
                     @endif
 
-                    {{-- Period Columns --}}
                     @foreach($nonAssemblyPeriods as $p)
                         @if($p->is_break)
-                            {{-- Break Spanned Column --}}
                             @if($loop->parent->first)
                                 <td rowspan="{{ count($pageClasses) }}" class="td-vertical-text">
                                     <span class="vertical-char-stack">
@@ -445,7 +562,6 @@
                                 </td>
                             @endif
                         @else
-                            {{-- Period Lesson Slot --}}
                             @php
                                 $slots = $timetableGrid->get($cls->id . '_' . $p->period_no, collect());
                             @endphp
@@ -472,12 +588,15 @@
                                             </div>
                                         @endforeach
                                     </div>
+                                @else
+                                    <div class="slot-container">
+                                        <div class="slot-empty">&nbsp;</div>
+                                    </div>
                                 @endif
                             </td>
                         @endif
                     @endforeach
 
-                    {{-- Sum of Lessons --}}
                     <td class="td-sum-val">
                         {{ $sumOfLessons[$cls->id] ?? 0 }}
                     </td>

@@ -154,10 +154,15 @@ class UserManager extends Component
             $classTeacherSubjects = DB::table('subjects')->where('class_id', $this->class_id)->get();
         }
 
-        $totalUsers = User::count();
+        $userCounts = User::selectRaw("
+            COUNT(*) as total,
+            SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as admins,
+            SUM(CASE WHEN role = 'teacher' THEN 1 ELSE 0 END) as teachers
+        ")->first();
+        $totalUsers = (int) ($userCounts->total ?? 0);
+        $totalAdmins = (int) ($userCounts->admins ?? 0);
+        $totalTeachers = (int) ($userCounts->teachers ?? 0);
         $activeUsers = User::activeInSession($activeSessionId, $shiftType)->count();
-        $totalAdmins = User::where('role', 'admin')->count();
-        $totalTeachers = User::where('role', 'teacher')->count();
 
         $layout = (request()->is('teacher/*') || (auth()->check() && auth()->user()->role === 'teacher'))
             ? 'components.layouts.teacher'

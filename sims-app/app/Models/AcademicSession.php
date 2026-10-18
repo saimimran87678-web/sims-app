@@ -64,6 +64,7 @@ class AcademicSession extends Model
     protected static function booted()
     {
         static::saved(function ($session) {
+            self::flushActiveSessionMemo();
             if ($session->is_active) {
                 static::where('id', '!=', $session->id)->update(['is_active' => false]);
             }
@@ -75,7 +76,29 @@ class AcademicSession extends Model
         return $query->where('is_archived', false);
     }
 
+    /** @var array{key:string,at:float,id:mixed}|null Answer of the last lookup, kept for a moment. */
+    private static ?array $activeIdMemo = null;
+
+    public static function flushActiveSessionMemo(): void
+    {
+        self::$activeIdMemo = null;
+    }
+
     public static function getActiveSessionId()
+    {
+        $key = (auth()->id() ?? 0).'|'.session('selected_academic_session_id').'|'.session('current_session_id');
+        $memo = self::$activeIdMemo;
+        if ($memo !== null && $memo['key'] === $key && (microtime(true) - $memo['at']) < 2.0) {
+            return $memo['id'];
+        }
+
+        $id = static::lookupActiveSessionId();
+        self::$activeIdMemo = ['key' => $key, 'at' => microtime(true), 'id' => $id];
+
+        return $id;
+    }
+
+    private static function lookupActiveSessionId()
     {
         // 1. Admin overrides for viewing other sessions
         if (session()->has('selected_academic_session_id') && auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->hasRole('Super Admin'))) {

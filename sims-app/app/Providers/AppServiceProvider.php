@@ -50,8 +50,12 @@ class AppServiceProvider extends ServiceProvider
             } catch (\Throwable $e) {}
         }
 
-        if (request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https') {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
+        if (!app()->runningInConsole() && app()->bound('request')) {
+            try {
+                if (request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https') {
+                    \Illuminate\Support\Facades\URL::forceScheme('https');
+                }
+            } catch (\Throwable $e) {}
         }
 
         // Dynamically bootstrap SMTP configuration from database Setting table
@@ -74,6 +78,14 @@ class AppServiceProvider extends ServiceProvider
             // Ignore during early bootstrap or migration runs
         }
 
+        // A write to the sessions table clears the remembered active session (see AcademicSession::getActiveSessionId)
+        \Illuminate\Support\Facades\DB::listen(function ($query) {
+            $first = $query->sql[0] ?? '';
+            if (($first === 'u' || $first === 'i' || $first === 'd') && str_contains($query->sql, 'academic_sessions')) {
+                \App\Models\AcademicSession::flushActiveSessionMemo();
+            }
+        });
+
         // Guarantee $errors is always available to every Blade view, preventing Undefined variable $errors
         \Illuminate\Support\Facades\View::composer('*', function ($view) {
             if (!\Illuminate\Support\Facades\View::shared('errors')) {
@@ -92,7 +104,11 @@ class AppServiceProvider extends ServiceProvider
             }
 
             // Check if the permission is a Spatie permission
-            $allSpatiePermissions = cache()->remember('spatie_permission_names', 3600, function () {
+            static $namesThisRequest = null;
+            if (app()->runningUnitTests()) {
+                $namesThisRequest = null;
+            }
+            $allSpatiePermissions = $namesThisRequest ??= cache()->remember('spatie_permission_names', 3600, function () {
                 return \Spatie\Permission\Models\Permission::pluck('name')->toArray();
             });
 
@@ -107,29 +123,17 @@ class AppServiceProvider extends ServiceProvider
                     return false;
                 }
 
-                $shiftType = session('selected_shift_type', 'morning');
-                $cacheKey = "{$user->id}_{$activeSessionId}_{$shiftType}";
+                $effectiveShift = \App\Support\ActiveShift::current($activeSessionId);
+                $cacheKey = "{$user->id}_{$activeSessionId}_{$effectiveShift}";
 
                 if (!isset($requestPermissionCache[$cacheKey])) {
-                    $sessionObj = \App\Models\AcademicSession::find($activeSessionId);
-                    $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-                    $effectiveShift = $isRegular ? 'regular' : $shiftType;
-
-                    $query = \Illuminate\Support\Facades\DB::table('session_user_permissions')
+                    $requestPermissionCache[$cacheKey] = \Illuminate\Support\Facades\DB::table('session_user_permissions')
                         ->where('user_id', $user->id)
-                        ->where('academic_session_id', $activeSessionId);
-
-                    if ($effectiveShift === 'both') {
-                        $requestPermissionCache[$cacheKey] = $query->whereIn('shift_type', ['morning', 'evening', 'both'])
-                            ->pluck('permission_name')
-                            ->flip()
-                            ->toArray();
-                    } else {
-                        $requestPermissionCache[$cacheKey] = $query->where('shift_type', $effectiveShift)
-                            ->pluck('permission_name')
-                            ->flip()
-                            ->toArray();
-                    }
+                        ->where('academic_session_id', $activeSessionId)
+                        ->whereIn('shift_type', \App\Support\ActiveShift::permissionShifts($activeSessionId))
+                        ->pluck('permission_name')
+                        ->flip()
+                        ->toArray();
                 }
 
                 return isset($requestPermissionCache[$cacheKey][$ability]);

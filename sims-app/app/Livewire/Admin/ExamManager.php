@@ -73,9 +73,7 @@ class ExamManager extends Component
 
     public function render()
     {
-        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
-        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $shiftType = \App\Support\ActiveShift::current($this->selectedSessionId);
 
         $exams = Exam::query()
             ->with('academicSession')
@@ -92,8 +90,6 @@ class ExamManager extends Component
             ->orderBy('start_date', 'desc')
             ->paginate(10);
 
-        $sessions = AcademicSession::all();
-
         // Detect which layout to use based on route
         $layout = request()->is('teacher/*') 
             ? 'components.layouts.teacher' 
@@ -107,9 +103,7 @@ class ExamManager extends Component
 
     public function getActiveClassesQuery($sessionId)
     {
-        $sessionObj = \App\Models\AcademicSession::find($sessionId);
-        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $shiftType = \App\Support\ActiveShift::current($sessionId);
 
         return \App\Models\Classes::withoutGlobalScope('active_session')
             ->where('academic_session_id', $sessionId)

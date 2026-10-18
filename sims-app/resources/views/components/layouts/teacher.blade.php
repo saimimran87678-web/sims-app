@@ -340,5 +340,6 @@
     @livewireScripts
     <x-security-scripts />
     <x-license-realtime-listener />
+    <x-navigation-helpers />
 </body>
 </html>

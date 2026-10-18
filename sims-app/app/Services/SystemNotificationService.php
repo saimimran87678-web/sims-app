@@ -64,69 +64,46 @@ class SystemNotificationService
     }
 
     /**
-     * Check if a newer version or hotfix patch is available (cached for 30 minutes).
+     * Check if a newer version or hotfix patch is available from local database setting.
+     * ZERO external network blocking during web page render.
      *
      * @return array|null
      */
     public static function checkUpdateNotification(): ?array
     {
-        return Cache::remember('sims_update_notification_cache', 1800, function () {
-            try {
-                $installedVer = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
-                $manifestUrl = config('app.update_manifest_url', 'https://raw.githubusercontent.com/saimimran87678-web/sims-app/main/manifest.json');
+        try {
+            $offer = json_decode((string) Setting::getGlobal('update_available'), true);
+            if (!is_array($offer) || empty($offer['version'])) {
+                return null;
+            }
 
-                $ctx = stream_context_create([
-                    'http' => [
-                        'timeout'       => 2, // Non-blocking 2s timeout
-                        'ignore_errors' => true,
-                        'user_agent'    => 'SIMS-Update-Probe/2.5.2',
-                    ],
-                ]);
+            $installedVer = Setting::getGlobal('installed_version') ?: config('app.version', '2.5.2');
+            $latestVer = trim($offer['version']);
 
-                $raw = @file_get_contents($manifestUrl, false, $ctx);
-                if (!$raw) {
-                    return null;
-                }
+            if (version_compare($latestVer, $installedVer, '<=')) {
+                return null;
+            }
 
-                $clean = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-                $manifest = json_decode(trim($clean), true);
+            $mandatory = (bool) ($offer['mandatory'] ?? false);
+            $notes = $offer['changelog'] ?? ($offer['notes'] ?? 'Includes performance optimizations, bug fixes, and security patches.');
 
-                if (!is_array($manifest) || empty($manifest['version'])) {
-                    return null;
-                }
-
-                $latestVer = trim($manifest['version']);
-                $installedChecksum = Setting::getGlobal('last_update_checksum', '');
-                $manifestHash = strtolower(trim($manifest['checksum'] ?? $manifest['sha256'] ?? ''));
-
-                $isNewerVersion = version_compare($latestVer, $installedVer, '>');
-                $isSameVersion = version_compare($latestVer, $installedVer, '==');
-                $isHotfixDiff = (!empty($manifestHash) && !empty($installedChecksum) && !in_array($installedChecksum, ['None', 'None (Initial installation)', 'Manual Patch']) && $manifestHash !== $installedChecksum);
-
-                if ($isNewerVersion || ($isSameVersion && $isHotfixDiff)) {
-                    $isPatch = !$isNewerVersion && $isHotfixDiff;
-                    $title = $isPatch ? "⚡ Hotfix Patch Available (v{$latestVer})" : "🚀 New Version Available (v{$latestVer})";
-                    $notes = $manifest['changelog'] ?? 'Includes performance optimizations, bug fixes, and security patches.';
-
-                    return [
-                        'id'           => 'update_' . $latestVer . '_' . substr($manifestHash, 0, 6),
-                        'type'         => 'update',
-                        'title'        => $title,
-                        'message'      => $notes,
-                        'version'      => $latestVer,
-                        'current'      => $installedVer,
-                        'action_url'   => route('admin.settings', ['tab' => 'updates']) . '#updates-tab',
-                        'action_label' => 'Update System Now',
-                        'badge'        => $isPatch ? 'Hotfix' : "v{$latestVer}",
-                        'badge_color'  => 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                        'icon_bg'      => 'bg-gradient-to-br from-emerald-500 to-teal-600',
-                        'created_at'   => 'Update Available',
-                    ];
-                }
-            } catch (\Throwable) {}
-
+            return [
+                'id'           => 'update_' . $latestVer,
+                'type'         => 'update',
+                'title'        => ($mandatory ? '⚡ Required Update (v' : '🚀 New Version (v') . $latestVer . ')',
+                'message'      => $notes,
+                'version'      => $latestVer,
+                'current'      => $installedVer,
+                'action_url'   => route('admin.settings', ['tab' => 'updates']) . '#updates-tab',
+                'action_label' => 'Update System Now',
+                'badge'        => $mandatory ? 'Required' : "v{$latestVer}",
+                'badge_color'  => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                'icon_bg'      => 'bg-gradient-to-br from-emerald-500 to-teal-600',
+                'created_at'   => 'Update Available',
+            ];
+        } catch (\Throwable) {
             return null;
-        });
+        }
     }
 
     /**

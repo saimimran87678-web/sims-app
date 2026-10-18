@@ -125,13 +125,20 @@ class VerifyLicense
             return;
         }
 
+        // Only PHP-FPM can finish the response before this runs. In other web runtimes (like FrankenPHP or php-cgi),
+        // the browser would wait for remote Firebase network calls on page loads.
+        if (!function_exists('fastcgi_finish_request')) {
+            return;
+        }
+
         $record = LicenseStatus::getLicenseRecord();
         if ($record && $record->last_online_verified_at) {
             $lastVerified = \Carbon\Carbon::parse($record->last_online_verified_at);
             $now = \Carbon\Carbon::now();
 
-            // Sync if more than 3 mins passed OR if it's a new day
-            if ($now->diffInMinutes($lastVerified) >= 3 || !$lastVerified->isSameDay($now)) {
+            // Sync if more than 3 mins passed OR if it's a new day, throttled by a 180-second mutex
+            if (($now->diffInMinutes($lastVerified) >= 3 || !$lastVerified->isSameDay($now))
+                && \Illuminate\Support\Facades\Cache::add('license-sync-attempt', 1, 180)) {
                 \App\Services\LicenseSyncService::syncBackground();
             }
         }
