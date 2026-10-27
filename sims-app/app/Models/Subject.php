@@ -4,8 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\LogsActivity;
+
 class Subject extends Model
 {
+    use LogsActivity;
+
+    public function getActivitySubjectLabel(): string
+    {
+        return "Subject: {$this->name}" . ($this->code ? " ({$this->code})" : '');
+    }
+
     protected $fillable = ['class_id', 'name', 'code'];
 
     protected $appends = ['abbreviation'];

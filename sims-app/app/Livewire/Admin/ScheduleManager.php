@@ -1057,6 +1057,30 @@ class ScheduleManager extends Component
         )));
         $this->syncClassSubjectAllocations($affectedClassIds);
 
+        $className = DB::table('classes')->where('id', $this->modalClassId)->value('name') ?? "Class #{$this->modalClassId}";
+        $teacherNames = DB::table('users')->whereIn('id', array_column($allSlots, 'teacher_id'))->pluck('name')->implode(', ');
+        $allSubjectIds = [];
+        foreach ($allSlots as $s) {
+            $allSubjectIds = array_merge($allSubjectIds, $s['subject_ids'] ?? []);
+        }
+        $subjectNames = DB::table('subjects')->whereIn('id', array_unique($allSubjectIds))->pluck('name')->implode(', ');
+
+        \App\Services\ActivityLogger::log(
+            action: 'updated',
+            module: 'schedule',
+            description: "Updated schedule for {$className}, Period {$this->modalPeriodNo} ({$subjectNames}) with {$teacherNames}",
+            subjectLabel: "Schedule: {$className} (Period {$this->modalPeriodNo})",
+            newValues: [
+                'class' => $className,
+                'period_no' => $this->modalPeriodNo,
+                'subjects' => $subjectNames,
+                'teachers' => $teacherNames,
+                'schedule_type' => $this->scheduleType,
+                'is_divided' => (bool)$this->isDivided,
+                'is_merged' => (bool)$this->isMerged,
+            ]
+        );
+
         session()->flash('message', 'Schedule saved successfully!');
         $this->closeModal();
         $this->loadData();
@@ -1070,6 +1094,9 @@ class ScheduleManager extends Component
         if (!$entry) return;
 
         $affectedClassId = $entry->class_id;
+        $className = DB::table('classes')->where('id', $entry->class_id)->value('name') ?? "Class #{$entry->class_id}";
+        $teacherName = $entry->teacher_id ? (DB::table('users')->where('id', $entry->teacher_id)->value('name') ?? 'Teacher') : 'None';
+        $subjectName = $entry->subject_id ? (DB::table('subjects')->where('id', $entry->subject_id)->value('name') ?? 'Subject') : 'None';
 
         if ($this->scheduleType === 'single_schedule') {
             DB::table('timetables')
@@ -1118,6 +1145,21 @@ class ScheduleManager extends Component
         if ($affectedClassId) {
             $this->syncClassSubjectAllocations([$affectedClassId]);
         }
+
+        \App\Services\ActivityLogger::log(
+            action: 'deleted',
+            module: 'schedule',
+            description: "Deleted schedule entry for {$className}, Period {$entry->period_no} ({$subjectName} - {$teacherName})",
+            subjectLabel: "Schedule: {$className} (Period {$entry->period_no})",
+            oldValues: [
+                'class' => $className,
+                'period_no' => $entry->period_no,
+                'day' => $entry->day,
+                'subject' => $subjectName,
+                'teacher' => $teacherName,
+                'schedule_type' => $this->scheduleType,
+            ]
+        );
 
         session()->flash('message', 'Schedule entry deleted.');
         $this->closeModal();
@@ -1181,6 +1223,18 @@ class ScheduleManager extends Component
             }
         }
 
+        \App\Services\ActivityLogger::log(
+            action: 'updated',
+            module: 'schedule',
+            description: "Copied schedule for {$this->selectedDay} to all weekdays ({$currentDayEntries->count()} entries replicated across target days)",
+            subjectLabel: "Schedule: Copy {$this->selectedDay} to all days",
+            newValues: [
+                'source_day' => $this->selectedDay,
+                'entries_copied' => $currentDayEntries->count(),
+                'target_days' => $targetDays->values()->all(),
+            ]
+        );
+
         session()->flash('message', $this->selectedDay . ' schedule copied to all weekdays!');
         $this->loadData();
     }
@@ -1224,6 +1278,17 @@ class ScheduleManager extends Component
                 }
             });
 
+        \App\Services\ActivityLogger::log(
+            action: 'deleted',
+            module: 'schedule',
+            description: $clearMessage,
+            subjectLabel: "Schedule: Clear " . ($this->scheduleType === 'single_schedule' ? 'Universal' : $this->selectedDay),
+            oldValues: [
+                'schedule_type' => $this->scheduleType,
+                'cleared_day' => $this->scheduleType === 'single_schedule' ? 'Universal' : $this->selectedDay,
+            ]
+        );
+
         session()->flash('message', $clearMessage);
         $this->loadData();
     }
@@ -1241,6 +1306,17 @@ class ScheduleManager extends Component
             ->toArray();
 
         $this->syncClassSubjectAllocations($sessionClassIds);
+
+        \App\Services\ActivityLogger::log(
+            action: 'updated',
+            module: 'schedule',
+            description: "Synchronized timetable subject allocations with active sessions and purged obsolete permissions",
+            subjectLabel: "Schedule: Sync Allocations",
+            newValues: [
+                'session_id' => $this->selectedSessionId,
+                'affected_classes_count' => count($sessionClassIds),
+            ]
+        );
 
         session()->flash('message', "Successfully synchronized all timetable allocations and removed obsolete permissions from Gradebook and User Management!");
         $this->loadData();

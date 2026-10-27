@@ -17,13 +17,19 @@ class SystemNotificationService
     {
         $notifications = [];
 
-        // 1. Check for Software Updates & Patches
-        $updateNotice = self::checkUpdateNotification();
-        if ($updateNotice) {
-            $notifications[] = $updateNotice;
+        $user = auth()->user();
+        // Only admins and super admins receive system update and license notifications
+        $isAdmin = !$user || $user->role === 'admin' || (method_exists($user, 'hasRole') && $user->hasRole('Super Admin'));
+
+        // 1. Check for Software Updates & Patches (Admin Only)
+        if ($isAdmin) {
+            $updateNotice = self::checkUpdateNotification();
+            if ($updateNotice) {
+                $notifications[] = $updateNotice;
+            }
         }
 
-        // 2. Check for Cloud Broadcast Announcement
+        // 2. Check for Cloud Broadcast Announcement (Available for both Admin and Teachers)
         $broadcast = LicenseStatus::getBroadcastAnnouncement();
         if (!empty($broadcast)) {
             $notifications[] = [
@@ -37,27 +43,33 @@ class SystemNotificationService
                 'badge_color'  => 'bg-purple-100 text-purple-800 border-purple-200',
                 'icon_bg'      => 'bg-gradient-to-br from-indigo-500 to-purple-600',
                 'created_at'   => 'Live Announcement',
+                'timestamp'    => now()->toIso8601String(),
+                'priority'     => 'high',
             ];
         }
 
-        // 3. Check for License Expiry / Status Warnings
-        $licenseStatus = LicenseStatus::getStatus();
-        $stage = $licenseStatus['stage'] ?? 'ACTIVE';
+        // 3. Check for License Expiry / Status Warnings (Admin Only)
+        if ($isAdmin) {
+            $licenseStatus = LicenseStatus::getStatus();
+            $stage = $licenseStatus['stage'] ?? 'ACTIVE';
 
-        if ($stage === LicenseStatus::STAGE_WARNING || $stage === LicenseStatus::STAGE_GRACE) {
-            $daysLeft = $licenseStatus['days_left'] ?? ($licenseStatus['days_past'] ?? 0);
-            $notifications[] = [
-                'id'           => 'license_warning_' . date('Ymd'),
-                'type'         => 'license',
-                'title'        => '⚠️ License Subscription Notice',
-                'message'      => $licenseStatus['message'] ?? "Your subscription requires attention ({$daysLeft} days remaining).",
-                'action_url'   => route('license.blocked'),
-                'action_label' => 'View License Details',
-                'badge'        => 'Urgent',
-                'badge_color'  => 'bg-amber-100 text-amber-800 border-amber-200',
-                'icon_bg'      => 'bg-gradient-to-br from-amber-500 to-orange-600',
-                'created_at'   => 'Subscription Alert',
-            ];
+            if ($stage === LicenseStatus::STAGE_WARNING || $stage === LicenseStatus::STAGE_GRACE) {
+                $daysLeft = $licenseStatus['days_left'] ?? ($licenseStatus['days_past'] ?? 0);
+                $notifications[] = [
+                    'id'           => 'license_warning_' . date('Ymd'),
+                    'type'         => 'license',
+                    'title'        => '⚠️ License Subscription Notice',
+                    'message'      => $licenseStatus['message'] ?? "Your subscription requires attention ({$daysLeft} days remaining).",
+                    'action_url'   => route('license.blocked', [], false),
+                    'action_label' => 'View License Details',
+                    'badge'        => 'Urgent',
+                    'badge_color'  => 'bg-rose-100 text-rose-800 border-rose-200',
+                    'icon_bg'      => 'bg-gradient-to-br from-amber-500 to-rose-600',
+                    'created_at'   => 'Subscription Alert',
+                    'timestamp'    => now()->toIso8601String(),
+                    'priority'     => 'urgent',
+                ];
+            }
         }
 
         return $notifications;
@@ -72,6 +84,14 @@ class SystemNotificationService
     public static function checkUpdateNotification(): ?array
     {
         try {
+            // Never serve update notifications to teachers or non-admin users
+            if (auth()->check()) {
+                $user = auth()->user();
+                if ($user->role !== 'admin' && !(method_exists($user, 'hasRole') && $user->hasRole('Super Admin'))) {
+                    return null;
+                }
+            }
+
             $offer = json_decode((string) Setting::getGlobal('update_available'), true);
             if (!is_array($offer) || empty($offer['version'])) {
                 return null;
@@ -86,6 +106,7 @@ class SystemNotificationService
 
             $mandatory = (bool) ($offer['mandatory'] ?? false);
             $notes = $offer['changelog'] ?? ($offer['notes'] ?? 'Includes performance optimizations, bug fixes, and security patches.');
+            $isAdmin = auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->hasRole('Super Admin'));
 
             return [
                 'id'           => 'update_' . $latestVer,
@@ -94,12 +115,14 @@ class SystemNotificationService
                 'message'      => $notes,
                 'version'      => $latestVer,
                 'current'      => $installedVer,
-                'action_url'   => route('admin.settings', ['tab' => 'updates']) . '#updates-tab',
-                'action_label' => 'Update System Now',
+                'action_url'   => $isAdmin ? (route('admin.settings', ['tab' => 'updates'], false) . '#updates-tab') : null,
+                'action_label' => $isAdmin ? 'Update System Now' : null,
                 'badge'        => $mandatory ? 'Required' : "v{$latestVer}",
                 'badge_color'  => 'bg-emerald-100 text-emerald-800 border-emerald-200',
                 'icon_bg'      => 'bg-gradient-to-br from-emerald-500 to-teal-600',
                 'created_at'   => 'Update Available',
+                'timestamp'    => now()->toIso8601String(),
+                'priority'     => $mandatory ? 'urgent' : 'high',
             ];
         } catch (\Throwable) {
             return null;

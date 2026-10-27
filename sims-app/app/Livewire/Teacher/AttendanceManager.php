@@ -256,15 +256,40 @@ class AttendanceManager extends Component
                     ]
                 );
             }
+
             DB::commit();
             
+            $className = \App\Models\Classes::find($this->classId)?->name ?? "Class #{$this->classId}";
+            $totalCount = count($this->students);
+            $absentCount = count($absentStudents);
+            $leaveCount = count($leaveStudents);
+            $presentCount = $totalCount - $absentCount - $leaveCount;
+
+            \App\Services\ActivityLogger::log(
+                action: 'saved',
+                module: 'attendance',
+                description: "Saved student attendance for {$className} on {$this->date} ({$presentCount} Present, {$absentCount} Absent, {$leaveCount} Leave)",
+                subjectLabel: "Class Attendance: {$className} ({$this->date})",
+                newValues: [
+                    'class_id' => $this->classId,
+                    'class_name' => $className,
+                    'date' => $this->date,
+                    'total_students' => $totalCount,
+                    'present' => $presentCount,
+                    'absent' => $absentCount,
+                    'leave' => $leaveCount,
+                    'absent_students' => array_column($absentStudents, 'name'),
+                    'leave_students' => array_column($leaveStudents, 'name'),
+                ]
+            );
+
             $this->attendance_status = 'submitted';
             $this->calculateMissedDates();
             
             // Send WhatsApp notifications
             $this->sendWhatsAppNotifications($absentStudents, $leaveStudents);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             session()->flash('error', 'Error saving attendance: ' . $e->getMessage());
         }
@@ -407,6 +432,15 @@ class AttendanceManager extends Component
             }
 
             DB::commit();
+
+            \App\Services\ActivityLogger::log(
+                action: 'updated',
+                module: 'attendance',
+                description: "Marked student {$attendance->name} as Late (status changed from {$attendance->status} to P) on {$this->date}",
+                subjectLabel: "Student Attendance: {$attendance->name} ({$this->date})",
+                oldValues: ['status' => $attendance->status],
+                newValues: ['status' => 'P', 'marked_late' => true, 'time' => $formattedTime]
+            );
 
             $this->loadAttendance();
             session()->flash('message', "Student {$attendance->name} marked as Late. Present status saved and parent notification queued.");

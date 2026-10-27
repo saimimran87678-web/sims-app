@@ -3,9 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\LogsActivity;
 
 class Timetable extends Model
 {
+    use LogsActivity;
+
+    public function getActivitySubjectLabel(): string
+    {
+        $className = $this->class?->name ?? "Class #{$this->class_id}";
+        $subjectName = $this->subject?->name ?? "Subject #{$this->subject_id}";
+        $day = $this->day ? ucfirst($this->day) : 'Universal';
+        return "Timetable: {$className} - {$subjectName} (Period {$this->period_no}, {$day})";
+    }
     protected $fillable = [
         'class_id',
         'subject_id',

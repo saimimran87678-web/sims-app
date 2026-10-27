@@ -34,6 +34,14 @@ class LicenseBanner extends Component
 
     public function render()
     {
+        $user = auth()->user();
+        // License banner is strictly for admins / school owners, never for teachers
+        if ($user && $user->role !== 'admin' && !(method_exists($user, 'hasRole') && $user->hasRole('Super Admin'))) {
+            return <<<'HTML'
+            <div></div>
+            HTML;
+        }
+
         return view('livewire.license-banner');
     }
 }

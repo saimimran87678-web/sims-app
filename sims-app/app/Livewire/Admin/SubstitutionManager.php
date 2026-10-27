@@ -317,6 +317,21 @@ class SubstitutionManager extends Component
 
         $this->teacherStatuses[$teacherId] = $value;
 
+        $teacherObj = User::find($teacherId);
+        $teacherName = $teacherObj?->name ?? "Teacher #{$teacherId}";
+        \App\Services\ActivityLogger::log(
+            action: 'updated',
+            module: 'attendance',
+            description: "Marked teacher {$teacherName} as {$value} for {$selectedDate}",
+            subjectLabel: "Teacher Attendance: {$teacherName} ({$selectedDate})",
+            newValues: [
+                'teacher' => $teacherName,
+                'status' => $value,
+                'date' => $selectedDate,
+                'shift_type' => $shiftType,
+            ]
+        );
+
         if ($value !== 'Present') {
             $this->loadExistingSubstitutions($teacherId);
 
@@ -485,6 +500,18 @@ class SubstitutionManager extends Component
                 $this->clearSubstitutionsForTeacher($teacher->id);
             }
             DB::commit();
+
+            \App\Services\ActivityLogger::log(
+                action: 'saved',
+                module: 'attendance',
+                description: "Marked all active teachers as Present for {$selectedDate}",
+                subjectLabel: "Teacher Attendance: Bulk Present ({$selectedDate})",
+                newValues: [
+                    'date' => $selectedDate,
+                    'shift_type' => $shiftType,
+                ]
+            );
+
             $this->loadData();
             session()->flash('message', 'All remaining teachers marked present successfully.');
         } catch (\Exception $e) {
@@ -861,7 +888,7 @@ class SubstitutionManager extends Component
             ->first();
 
         // Create or update in dedicated substitutions table
-        Substitution::updateOrCreate(
+        $subRecord = Substitution::updateOrCreate(
             [
                 'academic_session_id' => $this->selectedSessionId,
                 'shift_type' => $shiftType,
@@ -879,6 +906,37 @@ class SubstitutionManager extends Component
                 'created_by' => auth()->id(),
             ]
         );
+
+        if ($isBusy) {
+            \App\Services\ActivityLogger::logOverride(
+                "Admin override applied: Assigned {$subTeacherName} to Period {$periodNo} on {$selectedDate} while already busy",
+                $subRecord,
+                [
+                    'period_no' => $periodNo,
+                    'class_id' => $classId,
+                    'substitute_teacher_id' => $substituteTeacherId,
+                    'absent_teacher_id' => $absentTeacherId,
+                    'date' => $selectedDate,
+                ]
+            );
+        } else {
+            $absentName = collect($this->teachers)->firstWhere('id', $absentTeacherId)->name ?? 'Teacher';
+            $className = Classes::find($classId)?->name ?? "Class #{$classId}";
+            \App\Services\ActivityLogger::log(
+                action: 'created',
+                module: 'substitutions',
+                description: "Assigned substitute {$subTeacherName} for absent teacher {$absentName} ({$className}, Period {$periodNo}) on {$selectedDate}",
+                model: $subRecord,
+                subjectLabel: "Arrangement: {$className} P{$periodNo} ({$selectedDate})",
+                newValues: [
+                    'substitute' => $subTeacherName,
+                    'absent_teacher' => $absentName,
+                    'class' => $className,
+                    'period_no' => $periodNo,
+                    'date' => $selectedDate,
+                ]
+            );
+        }
 
         // Also sync to timetables table for schedule queries & backward compatibility
         DB::table('timetables')

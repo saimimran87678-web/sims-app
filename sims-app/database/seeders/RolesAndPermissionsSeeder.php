@@ -80,6 +80,9 @@ class RolesAndPermissionsSeeder extends Seeder
             // Substitution Management
             'substitutions.manage',
             'substitutions.view-sessions',
+
+            // Security & Audit Logs
+            'security.view-logs',
         ];
 
         foreach ($permissions as $permission) {

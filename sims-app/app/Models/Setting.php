@@ -4,8 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\LogsActivity;
+
 class Setting extends Model
 {
+    use LogsActivity;
+
+    public function getActivitySubjectLabel(): string
+    {
+        return "System Setting: {$this->key}";
+    }
 
     /**
      * In-memory cache to prevent redundant database queries during a single request cycle.

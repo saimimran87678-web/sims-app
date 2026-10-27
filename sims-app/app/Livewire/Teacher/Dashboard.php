@@ -86,13 +86,16 @@ class Dashboard extends Component
         
         $todaySchedule = collect();
         if ($activeSessionId) {
-            $todaySchedule = DB::table('timetables')
+            $scheduleType = \App\Services\LicenseStatus::getEffectiveScheduleType();
+            $dayToQuery = ($scheduleType === 'single_schedule') ? 'Monday' : $day;
+
+            $baseSchedule = DB::table('timetables')
                 ->join('classes', 'timetables.class_id', '=', 'classes.id')
                 ->join('subjects', 'timetables.subject_id', '=', 'subjects.id')
                 ->where('teacher_id', $user->id)
                 ->where('classes.academic_session_id', $activeSessionId)
-                ->where('day', $day)
-                ->where('is_substitute', 0) // What about substitutes?
+                ->where('day', $dayToQuery)
+                ->where('is_substitute', 0)
                 ->when($shiftType !== 'both', function ($q) use ($shiftType) {
                     $q->where('classes.shift_type', $shiftType);
                 })
@@ -100,35 +103,87 @@ class Dashboard extends Component
                 ->get();
                 
             // Fetch substitute duties for today from dedicated substitutions table
-            $substitutions = \App\Models\Substitution::where('date', $now->format('Y-m-d'))
+            $assignedSubs = \App\Models\Substitution::where('date', $now->format('Y-m-d'))
                 ->where('substitute_teacher_id', $user->id)
                 ->with(['classRoom', 'subject', 'absentTeacher'])
                 ->get()
-                ->map(function ($sub) {
-                    return (object) [
-                        'id' => 'sub_' . $sub->id,
-                        'period_no' => $sub->period_no,
-                        'class_id' => $sub->class_id,
-                        'subject_id' => $sub->subject_id,
-                        'teacher_id' => $sub->substitute_teacher_id,
-                        'day' => $sub->date ? $sub->date->format('l') : now()->format('l'),
-                        'is_substitute' => 1,
-                        'class_name' => $sub->classRoom?->name ?? 'N/A',
-                        'subject_name' => ($sub->subject?->name ?? 'Arrangement') . ($sub->absentTeacher ? ' (Sub for ' . $sub->absentTeacher->name . ')' : ''),
-                    ];
-                });
+                ->keyBy('period_no');
 
             // Check if user is absent or has a substitute covering their periods today
-            $relievedPeriods = \App\Models\Substitution::where('date', $now->format('Y-m-d'))
+            $relievedSubs = \App\Models\Substitution::where('date', $now->format('Y-m-d'))
                 ->where('absent_teacher_id', $user->id)
-                ->pluck('period_no')
-                ->toArray();
+                ->with(['classRoom', 'subject', 'substituteTeacher'])
+                ->get()
+                ->keyBy('period_no');
 
-            $todaySchedule = $todaySchedule->reject(function ($item) use ($relievedPeriods) {
-                return in_array($item->period_no, $relievedPeriods);
-            });
+            $allPeriodNos = $baseSchedule->pluck('period_no')->merge($assignedSubs->keys())->merge($relievedSubs->keys())->unique();
+            $combinedSchedule = collect();
 
-            $todaySchedule = $todaySchedule->merge($substitutions)->keyBy('period_no');
+            foreach ($allPeriodNos as $pNo) {
+                $regular = $baseSchedule->firstWhere('period_no', $pNo);
+                $arr = $assignedSubs->get($pNo);
+                $rel = $relievedSubs->get($pNo);
+
+                if ($arr && $regular) {
+                    // Admin override! Regular period is overridden by arrangement duty
+                    $combinedSchedule->push((object) [
+                        'id' => 'override_' . $arr->id,
+                        'period_no' => $pNo,
+                        'class_id' => $arr->class_id,
+                        'subject_id' => $arr->subject_id,
+                        'teacher_id' => $arr->substitute_teacher_id,
+                        'day' => $day,
+                        'is_substitute' => 1,
+                        'is_override' => true,
+                        'is_relieved' => false,
+                        'class_name' => $arr->classRoom?->name ?? 'N/A',
+                        'subject_name' => ($arr->subject?->name ?? 'Arrangement') . ($arr->absentTeacher ? ' (Covering for ' . $arr->absentTeacher->name . ')' : ''),
+                        'overridden_class_name' => $regular->class_name,
+                        'overridden_subject_name' => $regular->subject_name,
+                        'absent_teacher_name' => $arr->absentTeacher?->name,
+                    ]);
+                } elseif ($arr) {
+                    // Arrangement duty on free period
+                    $combinedSchedule->push((object) [
+                        'id' => 'sub_' . $arr->id,
+                        'period_no' => $pNo,
+                        'class_id' => $arr->class_id,
+                        'subject_id' => $arr->subject_id,
+                        'teacher_id' => $arr->substitute_teacher_id,
+                        'day' => $day,
+                        'is_substitute' => 1,
+                        'is_override' => false,
+                        'is_relieved' => false,
+                        'class_name' => $arr->classRoom?->name ?? 'N/A',
+                        'subject_name' => ($arr->subject?->name ?? 'Arrangement') . ($arr->absentTeacher ? ' (Covering for ' . $arr->absentTeacher->name . ')' : ''),
+                        'absent_teacher_name' => $arr->absentTeacher?->name,
+                    ]);
+                } elseif ($rel && $regular) {
+                    // Relieved by another teacher
+                    $combinedSchedule->push((object) [
+                        'id' => 'rel_' . $rel->id,
+                        'period_no' => $pNo,
+                        'class_id' => $regular->class_id,
+                        'subject_id' => $regular->subject_id,
+                        'teacher_id' => $regular->teacher_id,
+                        'day' => $day,
+                        'is_substitute' => 0,
+                        'is_override' => false,
+                        'is_relieved' => true,
+                        'class_name' => $regular->class_name,
+                        'subject_name' => $regular->subject_name,
+                        'substitute_teacher_name' => $rel->substituteTeacher?->name ?? 'Substitute',
+                    ]);
+                } elseif ($regular) {
+                    // Normal regular class
+                    $combinedSchedule->push((object) array_merge((array) $regular, [
+                        'is_override' => false,
+                        'is_relieved' => false,
+                    ]));
+                }
+            }
+
+            $todaySchedule = $combinedSchedule->keyBy('period_no');
         }
 
         $stats = [

@@ -93,6 +93,17 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         // Load the session requested by the user, fallback to active session
         $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
         $manager->loadData();
+
+        \App\Services\ActivityLogger::logPrint(
+            type: 'Daily Substitutions',
+            description: "Printed Daily Substitution Schedule for {$manager->selectedDate}",
+            details: [
+                'date' => $manager->selectedDate,
+                'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
+                'shift_type' => $manager->getActiveShiftType(),
+            ]
+        );
+
         return view('pdf.daily-substitutions', [
             'date' => $manager->selectedDate, 
             'data' => $manager->prepareReportData(),
@@ -115,6 +126,17 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
         $manager->loadData();
         $manager->loadMonthlyAttendanceData();
+
+        \App\Services\ActivityLogger::logPrint(
+            type: 'Monthly Teacher Attendance',
+            description: "Printed Monthly Teacher Attendance Report for {$manager->selectedMonth}",
+            details: [
+                'month' => $manager->selectedMonth,
+                'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
+                'shift_type' => $manager->getActiveShiftType(),
+            ]
+        );
+
         return view('pdf.monthly-teacher-attendance', [
             'month' => $manager->selectedMonth,
             'days' => $manager->monthlyDays,
@@ -140,6 +162,18 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         $manager->loadMonthlyAttendanceData();
         $details = $manager->getSelectedTeacherMonthlyDetails();
         
+        $teacherName = $details['teacher']->name ?? 'Teacher';
+        \App\Services\ActivityLogger::logPrint(
+            type: 'Individual Teacher Attendance',
+            description: "Printed Attendance Slip for {$teacherName} ({$manager->selectedMonth})",
+            details: [
+                'teacher' => $teacherName,
+                'month' => $manager->selectedMonth,
+                'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
+                'shift_type' => $manager->getActiveShiftType(),
+            ]
+        );
+
         return view('pdf.teacher-individual-attendance', [
             'month' => $manager->selectedMonth,
             'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
@@ -197,6 +231,9 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
 
     // Subject Allocation Manager (Requires granular allocations.view)
     Route::get('/allocations', \App\Livewire\Admin\AccessControl\SubjectAllocationManager::class)->name('allocations');
+
+    // Security & Activity Audit Logs
+    Route::get('/activity-logs', \App\Livewire\Admin\ActivityLogManager::class)->name('activity-logs');
 
     // Guided Product Tour Completion Handler
     Route::post('/tour/complete', function () {
@@ -256,6 +293,17 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
             $manager->selectedDate = request('date', now()->format('Y-m-d'));
             $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
             $manager->loadData();
+
+            \App\Services\ActivityLogger::logPrint(
+                type: 'Daily Substitutions',
+                description: "Printed Daily Substitution Schedule for {$manager->selectedDate}",
+                details: [
+                    'date' => $manager->selectedDate,
+                    'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
+                    'shift_type' => $manager->getActiveShiftType(),
+                ]
+            );
+
             return view('pdf.daily-substitutions', [
                 'date' => $manager->selectedDate, 
                 'data' => $manager->prepareReportData(),
@@ -273,6 +321,17 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
             $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
             $manager->loadData();
             $manager->loadMonthlyAttendanceData();
+
+            \App\Services\ActivityLogger::logPrint(
+                type: 'Monthly Teacher Attendance',
+                description: "Printed Monthly Teacher Attendance Report for {$manager->selectedMonth}",
+                details: [
+                    'month' => $manager->selectedMonth,
+                    'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
+                    'shift_type' => $manager->getActiveShiftType(),
+                ]
+            );
+
             return view('pdf.monthly-teacher-attendance', [
                 'month' => $manager->selectedMonth,
                 'days' => $manager->monthlyDays,
@@ -293,6 +352,18 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
             $manager->loadMonthlyAttendanceData();
             $details = $manager->getSelectedTeacherMonthlyDetails();
             
+            $teacherName = $details['teacher']->name ?? 'Teacher';
+            \App\Services\ActivityLogger::logPrint(
+                type: 'Individual Teacher Attendance',
+                description: "Printed Attendance Slip for {$teacherName} ({$manager->selectedMonth})",
+                details: [
+                    'teacher' => $teacherName,
+                    'month' => $manager->selectedMonth,
+                    'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
+                    'shift_type' => $manager->getActiveShiftType(),
+                ]
+            );
+
             return view('pdf.teacher-individual-attendance', [
                 'month' => $manager->selectedMonth,
                 'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),

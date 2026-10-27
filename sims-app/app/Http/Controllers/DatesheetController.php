@@ -52,6 +52,17 @@ class DatesheetController extends Controller
                 return $items->pluck('total_marks', 'subject');
             });
 
+        \App\Services\ActivityLogger::logPrint(
+            type: 'Exam Datesheet',
+            description: "Printed Examination Datesheet for {$exam->name}",
+            details: [
+                'exam_id' => $exam->id,
+                'exam_name' => $exam->name,
+                'classes_count' => $allClasses->count(),
+                'dates_count' => $schedules->keys()->count(),
+            ]
+        );
+
         return view('admin.datesheet.print', compact('exam', 'grades', 'schedules', 'marksData'));
     }
 }

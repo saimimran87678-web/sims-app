@@ -65,6 +65,37 @@ class TimetablePrintController extends Controller
         $isPdf = ($request->query('format') === 'pdf' || $request->has('pdf') || $request->has('download'));
         $viewData['isPdf'] = $isPdf;
 
+        $scheduleTypes = [
+            'print.schedule.master-classwise' => 'Master Classwise Timetable',
+            'print.schedule.master-teacherwise' => 'Master Teacherwise Timetable',
+            'print.schedule.class-timetable' => 'Single Class Timetable',
+            'print.schedule.teacher-single' => 'Individual Teacher Timetable Slip',
+            'print.schedule.teachers-bulk' => 'Teachers Bulk Timetable Slips',
+            'print.schedule.daywise-master-classwise' => 'Day-Wise Master Classwise Timetable',
+            'print.schedule.daywise-master-teacherwise' => 'Day-Wise Master Teacherwise Timetable',
+        ];
+        $typeName = $scheduleTypes[$viewName] ?? 'Schedule Timetable';
+        if (!empty($viewData['class']->name)) {
+            $typeName .= " - " . $viewData['class']->name;
+        } elseif (!empty($viewData['teacher']->name)) {
+            $typeName .= " - " . $viewData['teacher']->name;
+        }
+
+        \App\Services\ActivityLogger::logPrint(
+            type: $typeName,
+            description: "Printed / Exported {$typeName} ({$filename})",
+            details: [
+                'filename' => $filename,
+                'format' => $isPdf ? 'pdf' : 'web_print',
+                'view' => $viewName,
+                'paper' => $paper,
+                'orientation' => $orientation,
+                'class' => $viewData['class']->name ?? null,
+                'teacher' => $viewData['teacher']->name ?? null,
+                'session' => $viewData['session']->name ?? null,
+            ]
+        );
+
         if ($isPdf) {
             $pdf = Pdf::loadView($viewName, $viewData)
                 ->setPaper($paper, $orientation)

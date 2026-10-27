@@ -173,6 +173,7 @@ class AppServiceProvider extends ServiceProvider
                             str_contains($sqlLower, 'sqlite_sequence') || 
                             str_contains($sqlLower, 'sessions') ||
                             str_contains($sqlLower, 'cache') ||
+                            str_contains($sqlLower, 'activity_logs') ||
                             $isSetup ||
                             request()->is('login') || 
                             request()->is('logout') ||

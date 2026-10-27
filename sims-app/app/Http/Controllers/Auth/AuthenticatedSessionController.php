@@ -28,6 +28,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        \App\Services\ActivityLogger::logAuth('login', $request->user(), "User logged in ({$request->user()->name})");
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -57,6 +59,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+        if ($user) {
+            \App\Services\ActivityLogger::logAuth('logout', $user, "User logged out ({$user->name})");
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

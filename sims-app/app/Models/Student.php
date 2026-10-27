@@ -6,8 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Classes;
 use App\Models\Section;
 
+use App\Traits\LogsActivity;
+
 class Student extends Model
 {
+    use LogsActivity;
+
+    public function getActivitySubjectLabel(): string
+    {
+        return "Student: {$this->name}" . ($this->roll_no ? " (Roll #{$this->roll_no})" : '');
+    }
+
     public const SPORTS_OPTIONS = ['Cricket', 'Football', 'Hockey', 'Badminton', 'Table Tennis', 'Volleyball', 'Basketball', 'Athletics'];
     public const ACTIVITY_OPTIONS = ['Naat', 'Tilawat', 'Speech (Urdu)', 'Speech (English)', 'Debate', 'Quiz', 'Drama'];
     public const TRANSPORT_OPTIONS = ['none' => 'None', 'school_bus' => 'School Bus', 'private_van' => 'Private Van', 'car' => 'Car', 'bike' => 'Bike'];

@@ -5,9 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\LogsActivity;
+
 class FeePayment extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
+
+    public function getActivitySubjectLabel(): string
+    {
+        return "Fee Payment: Rs. " . number_format((float)$this->amount_paid, 0) . " (Student #{$this->student_id})";
+    }
 
     protected $fillable = [
         'fee_record_id',

@@ -190,6 +190,24 @@ class FeatureSharingManager extends Component
             }
         }
         
+        $targetUser = User::find($this->selectedUserId);
+        $targetName = $targetUser?->name ?? "User #{$this->selectedUserId}";
+        $actionVerb = $enable ? 'Granted' : 'Revoked';
+
+        \App\Services\ActivityLogger::log(
+            action: 'updated',
+            module: 'access_control',
+            description: "{$actionVerb} feature group '{$groupName}' for {$targetName}",
+            model: $targetUser,
+            subjectLabel: "Feature Sharing: {$targetName}",
+            newValues: [
+                'user' => $targetName,
+                'group' => $groupName,
+                'status' => $enable ? 'granted' : 'revoked',
+                'shifts' => $shiftsToToggle,
+            ]
+        );
+
         $this->loadUserPermissions();
     }
 
@@ -211,7 +229,12 @@ class FeatureSharingManager extends Component
     {
         if (!$this->selectedUserId) return;
 
-        if (in_array($classId, $this->userClassAccess)) {
+        $targetUser = User::find($this->selectedUserId);
+        $targetName = $targetUser?->name ?? "User #{$this->selectedUserId}";
+        $className = DB::table('classes')->where('id', $classId)->value('name') ?? "Class #{$classId}";
+        $isRevoke = in_array($classId, $this->userClassAccess);
+
+        if ($isRevoke) {
             DB::table('user_class_access')
                 ->where('user_id', $this->selectedUserId)
                 ->where('class_id', $classId)
@@ -224,6 +247,20 @@ class FeatureSharingManager extends Component
                 'updated_at' => now(),
             ]);
         }
+
+        \App\Services\ActivityLogger::log(
+            action: 'updated',
+            module: 'access_control',
+            description: ($isRevoke ? 'Revoked' : 'Granted') . " class access for {$className} to {$targetName}",
+            model: $targetUser,
+            subjectLabel: "Class Access: {$targetName} - {$className}",
+            newValues: [
+                'user' => $targetName,
+                'class' => $className,
+                'status' => $isRevoke ? 'revoked' : 'granted',
+            ]
+        );
+
         $this->loadClassAccess();
     }
 
@@ -259,6 +296,22 @@ class FeatureSharingManager extends Component
             }
             DB::table('user_class_access')->insert($data);
         }
+
+        $targetUser = User::find($this->selectedUserId);
+        $targetName = $targetUser?->name ?? "User #{$this->selectedUserId}";
+
+        \App\Services\ActivityLogger::log(
+            action: 'updated',
+            module: 'access_control',
+            description: (empty($diff) ? 'Deselected all classes' : 'Selected all classes') . " access for {$targetName}",
+            model: $targetUser,
+            subjectLabel: "Class Access: {$targetName}",
+            newValues: [
+                'user' => $targetName,
+                'status' => empty($diff) ? 'revoked_all' : 'granted_all',
+            ]
+        );
+
         $this->loadClassAccess();
     }
 
@@ -316,7 +369,11 @@ class FeatureSharingManager extends Component
         $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
         $shiftsToToggle = $shiftType === 'both' ? ['morning', 'evening'] : [$shiftType];
 
-        if (in_array($permissionName, $this->userPermissions)) {
+        $targetUser = User::find($this->selectedUserId);
+        $targetName = $targetUser?->name ?? "User #{$this->selectedUserId}";
+        $isRevoke = in_array($permissionName, $this->userPermissions);
+
+        if ($isRevoke) {
             DB::table('session_user_permissions')
                 ->where('user_id', $this->selectedUserId)
                 ->where('academic_session_id', $activeSessionId)
@@ -336,6 +393,20 @@ class FeatureSharingManager extends Component
                 ]);
             }
         }
+
+        \App\Services\ActivityLogger::log(
+            action: 'updated',
+            module: 'access_control',
+            description: ($isRevoke ? 'Revoked' : 'Granted') . " permission '{$permissionName}' for {$targetName}",
+            model: $targetUser,
+            subjectLabel: "Feature Sharing: {$targetName}",
+            newValues: [
+                'user' => $targetName,
+                'permission' => $permissionName,
+                'status' => $isRevoke ? 'revoked' : 'granted',
+                'shifts' => $shiftsToToggle,
+            ]
+        );
 
         $this->loadUserPermissions();
         session()->flash('message', 'Permission updated.');

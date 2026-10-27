@@ -5,9 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\LogsActivity;
+
 class Substitution extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
+
+    public function getActivitySubjectLabel(): string
+    {
+        $dateStr = $this->date ? \Carbon\Carbon::parse($this->date)->format('d M') : 'Date';
+        return "Substitution Duty: Period {$this->period_no} on {$dateStr} (Class #{$this->class_id})";
+    }
 
     protected $fillable = [
         'academic_session_id',

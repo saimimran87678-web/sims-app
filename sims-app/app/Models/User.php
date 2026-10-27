@@ -9,10 +9,17 @@ use Illuminate\Notifications\Notifiable;
 use App\Models\Classes;
 use App\Models\AcademicSession;
 
+use App\Traits\LogsActivity;
+
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, \Spatie\Permission\Traits\HasRoles;
+    use HasFactory, Notifiable, \Spatie\Permission\Traits\HasRoles, LogsActivity;
+
+    public function getActivitySubjectLabel(): string
+    {
+        return "User: {$this->name} ({$this->email})";
+    }
 
     /**
      * The attributes that are mass assignable.
