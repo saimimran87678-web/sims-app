@@ -4,6 +4,15 @@
     @endif
 
     @if(!$onlyModal)
+    @if(session()->has('message'))
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between text-sm font-semibold shadow-sm">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span>{{ session('message') }}</span>
+            </div>
+        </div>
+    @endif
+
     <div class="glass-card p-6 rounded-2xl">
         {{-- Advanced Filter Section --}}
         <div x-data="{ showFilters: false }" class="mb-6">
@@ -70,7 +79,11 @@
                     <select wire:model.live="filterStatus" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                         <option value="">All Statuses</option>
                         <option value="active">Active Only</option>
-                        <option value="inactive">Inactive Only</option>
+                        <option value="withdrawn">Withdrawn / SLC Issued</option>
+                        <option value="graduated">Graduated</option>
+                        <option value="struck_off">Struck Off</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="archived">Archived / Deleted (Recycle Bin)</option>
                     </select>
                 </div>
             </div>
@@ -250,9 +263,36 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $student->phone }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold {{ $student->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                    {{ ucfirst($student->status) }}
-                                </span>
+                                @if($student->trashed())
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        Archived Profile
+                                    </span>
+                                @elseif($student->status === 'active')
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        Active
+                                    </span>
+                                @elseif($student->status === 'withdrawn' || $student->status === 'slc_issued')
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                        SLC Issued
+                                    </span>
+                                @elseif($student->status === 'graduated')
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                        Graduated
+                                    </span>
+                                @elseif($student->status === 'struck_off')
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        Struck Off
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200">
+                                        {{ ucfirst($student->status) }}
+                                    </span>
+                                @endif
                             </td>
                             @if($selectedClassId && $this->bulkSubjects->isNotEmpty())
                                 <td class="px-4 py-3 whitespace-nowrap">
@@ -270,19 +310,49 @@
                                 </td>
                             @endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                                <div class="flex gap-2 justify-end items-center">
+                                <div class="flex gap-1.5 justify-end items-center">
+                                    {{-- 360 Lifetime Portfolio / Audit --}}
+                                    <button
+                                        wire:click="openLifetimeHistory({{ $student->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-all transform hover:scale-105"
+                                        title="360° Lifetime History & Audit"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </button>
+
+                                    {{-- Institutional Departure / Issue SLC --}}
+                                    @if($student->status === 'active')
+                                    <button
+                                        wire:click="startIssueSlc({{ $student->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-amber-600 hover:text-amber-900 p-1.5 hover:bg-amber-50 rounded-lg transition-all transform hover:scale-105"
+                                        title="Institutional Departure / Issue SLC"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    </button>
+                                    @elseif($student->status === 'withdrawn' || $student->status === 'slc_issued')
+                                    <button
+                                        wire:click="openLifetimeHistory({{ $student->id }})"
+                                        class="text-amber-600 hover:text-amber-900 p-1.5 hover:bg-amber-50 rounded-lg transition-all transform hover:scale-105"
+                                        title="SLC Issued - View & Reprint from Portfolio"
+                                    >
+                                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    </button>
+                                    @endif
+
                                     @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
                                     <a
                                         href="{{ route('admin.fee.ledger', $student->id) }}"
-                                        class="text-emerald-600 hover:text-emerald-950 p-1 hover:bg-emerald-50 rounded-lg transition-colors"
+                                        class="text-emerald-600 hover:text-emerald-950 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors"
                                         title="Fee Ledger"
                                     >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                                     </a>
                                     @endif
                                     <button
                                         wire:click="view({{ $student->id }})"
-                                        class="text-gray-600 hover:text-gray-900 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                                        class="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                                         title="View Profile"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -290,20 +360,36 @@
                                     @can('student.edit')
                                     <button
                                         wire:click="edit({{ $student->id }})"
-                                        class="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded-lg transition-colors"
+                                        class="text-blue-600 hover:text-blue-900 p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
+                                        title="Edit Student"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                                     </button>
                                     @endcan
-                                    @can('student.delete')
-                                    <button
-                                        wire:click="delete({{ $student->id }})"
-                                        wire:confirm="Are you sure you want to delete {{ $student->name }}?"
-                                        class="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded-lg transition-colors"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                                    </button>
-                                    @endcan
+                                    @if($student->trashed())
+                                        @can('student.edit')
+                                        <button
+                                            wire:click="restoreStudent({{ $student->id }})"
+                                            wire:confirm="Restore {{ $student->name }} to active student status?"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors"
+                                            title="Restore Student Profile"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                            Restore
+                                        </button>
+                                        @endcan
+                                    @else
+                                        @can('student.delete')
+                                        <button
+                                            wire:click="delete({{ $student->id }})"
+                                            wire:confirm="Archive {{ $student->name }}? This soft-deletes the student profile while permanently preserving all academic, attendance, and financial audit records. You can restore them anytime from the Archived filter."
+                                            class="text-rose-600 hover:text-rose-900 p-1.5 hover:bg-rose-50 rounded-lg transition-colors"
+                                            title="Archive Student (Audit-Safe)"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                        </button>
+                                        @endcan
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -376,29 +462,55 @@
                     </div>
                 
                     <div class="pt-4 border-t border-gray-100 flex items-center justify-between">
-                         <div class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 {{ $student->status === 'active' ? 'text-green-600' : 'text-red-500' }}">
-                             <span class="w-2.5 h-2.5 rounded-full {{ $student->status === 'active' ? 'bg-green-500' : 'bg-red-500' }}"></span>
-                             {{ ucfirst($student->status) }}
+                         <div class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 
+                            {{ $student->trashed() ? 'text-rose-700' : ($student->status === 'active' ? 'text-emerald-700' : ($student->status === 'withdrawn' || $student->status === 'slc_issued' ? 'text-amber-700' : ($student->status === 'graduated' ? 'text-indigo-700' : 'text-rose-600'))) }}">
+                             <span class="w-2 h-2 rounded-full {{ $student->trashed() ? 'bg-rose-500' : ($student->status === 'active' ? 'bg-emerald-500 animate-pulse' : ($student->status === 'withdrawn' || $student->status === 'slc_issued' ? 'bg-amber-500' : ($student->status === 'graduated' ? 'bg-indigo-500' : 'bg-rose-500'))) }}"></span>
+                             {{ $student->trashed() ? 'Archived Profile' : ($student->status === 'withdrawn' || $student->status === 'slc_issued' ? 'SLC Issued' : ucfirst($student->status)) }}
                           </div>
-                         <div class="flex gap-2 items-center">
+                         <div class="flex gap-1.5 items-center">
+                             {{-- 360 Lifetime Portfolio / Audit --}}
+                             <button wire:click="openLifetimeHistory({{ $student->id }})" wire:loading.attr="disabled" class="text-gray-400 hover:text-indigo-600 p-1 rounded-lg transition-all hover:scale-110" title="360° Lifetime History & Audit">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                             </button>
+
+                             {{-- Institutional Departure / Issue SLC --}}
+                             @if($student->status === 'active')
+                             <button wire:click="startIssueSlc({{ $student->id }})" wire:loading.attr="disabled" class="text-gray-400 hover:text-amber-600 p-1 rounded-lg transition-all hover:scale-110" title="Institutional Departure / Issue SLC">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                             </button>
+                             @elseif($student->status === 'withdrawn' || $student->status === 'slc_issued')
+                             <button wire:click="openLifetimeHistory({{ $student->id }})" class="text-amber-500 hover:text-amber-700 p-1 rounded-lg transition-all hover:scale-110" title="SLC Issued - View & Reprint from Portfolio">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                             </button>
+                             @endif
+
                              @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
-                             <a href="{{ route('admin.fee.ledger', $student->id) }}" class="text-gray-400 hover:text-emerald-600 p-1 flex items-center" title="Fee Ledger">
-                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 12-2h5.586a1 1 0 0 1.707.293l5.414 5.414a1 1 0 0 1.293.707V19a2 2 0 0 1-2 2z"></path></svg>
+                             <a href="{{ route('admin.fee.ledger', $student->id) }}" class="text-gray-400 hover:text-emerald-600 p-1 flex items-center rounded-lg transition-colors" title="Fee Ledger">
+                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                              </a>
                              @endif
-                             <button wire:click="view({{ $student->id }})" class="text-gray-400 hover:text-blue-600 p-1" title="View Bio-Data">
+                             <button wire:click="view({{ $student->id }})" class="text-gray-400 hover:text-blue-600 p-1 rounded-lg transition-colors" title="View Bio-Data">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
                              </button>
                              @can('student.edit')
-                             <button wire:click="edit({{ $student->id }})" class="text-gray-400 hover:text-blue-600 p-1">
+                             <button wire:click="edit({{ $student->id }})" class="text-gray-400 hover:text-blue-600 p-1 rounded-lg transition-colors" title="Edit Student">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                              </button>
                              @endcan
+                             @if($student->trashed())
+                             @can('student.edit')
+                             <button wire:click="restoreStudent({{ $student->id }})" wire:confirm="Restore {{ $student->name }} to active student status?" class="text-emerald-600 hover:text-emerald-800 p-1 flex items-center gap-1 rounded-lg transition-colors font-bold text-xs" title="Restore Student">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                <span>Restore</span>
+                             </button>
+                             @endcan
+                             @else
                              @can('student.delete')
-                             <button wire:click="delete({{ $student->id }})" wire:confirm="Are you sure?" class="text-gray-400 hover:text-red-600 p-1">
+                             <button wire:click="delete({{ $student->id }})" wire:confirm="Archive {{ $student->name }}? This soft-deletes the student profile while permanently preserving all academic, attendance, and financial audit records. You can restore them anytime from the Archived filter." class="text-gray-400 hover:text-rose-600 p-1 rounded-lg transition-colors" title="Archive Student (Audit-Safe)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                              </button>
                              @endcan
+                             @endif
                          </div>
                     </div>
                 </div>
@@ -425,7 +537,12 @@
                 {{-- Modal Panel --}}
                 <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl">
                     <div class="bg-white px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-800">{{ $isEditing ? 'Edit Student' : 'Add New Student' }}</h3>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">{{ $isEditing ? 'Edit Student' : ($isReadmission ? 'Re-Admit Alumni Student' : 'Add New Student') }}</h3>
+                            @if($isReadmission)
+                                <p class="text-xs text-amber-700 mt-0.5 font-medium">Re-admission mode active: enrolling student into active session while preserving historical portfolio.</p>
+                            @endif
+                        </div>
                         <button wire:click="$set('showModal', false)" class="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                         </button>
@@ -500,6 +617,31 @@
                                         <input wire:model="dob" type="date" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
                                         @error('dob') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                     </div>
+
+                                    {{-- Student NADRA B-Form / Child Registration Certificate (CRC) --}}
+                                    <div x-data="{
+                                        formatBForm(e) {
+                                            let v = e.target.value.replace(/\D/g, '').slice(0, 13);
+                                            let res = v;
+                                            if (v.length > 5) res = v.slice(0, 5) + '-' + v.slice(5);
+                                            if (v.length > 12) res = res.slice(0, 13) + '-' + res.slice(13, 14);
+                                            e.target.value = res;
+                                            $wire.set('b_form_number', res);
+                                        }
+                                    }">
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">
+                                            Student B-Form / CRC <span class="text-gray-400 font-normal">(13 digits)</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            wire:model.live.debounce.300ms="b_form_number"
+                                            @input="formatBForm($event)"
+                                            placeholder="XXXXX-XXXXXXX-X"
+                                            maxlength="15"
+                                            class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                        />
+                                        @error('b_form_number') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
                                 </div>
                             </div>
 
@@ -540,7 +682,8 @@
                                         @error('father_cnic') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                     </div>
 
-                                    {{-- Sibling Concession Policy --}}
+                                    {{-- Sibling Concession Policy (Gated by Fees License) --}}
+                                    @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-600 mb-1">Sibling Fee Policy</label>
                                         <select wire:model.live="sibling_concession_status" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all bg-white font-medium">
@@ -559,6 +702,7 @@
                                             <input wire:model="custom_concession_amount" type="number" step="0.01" placeholder="e.g. 500" class="w-full px-3.5 py-2 text-sm rounded-xl border border-amber-300 bg-amber-50/30 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all" />
                                             @error('custom_concession_amount') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                         </div>
+                                    @endif
                                     @endif
                                 </div>
 
@@ -582,6 +726,61 @@
                                                     </span>
                                                 </div>
                                             @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Institutional Alumni / Returning Student Alert Card --}}
+                                @if(!empty($detectedAlumni))
+                                    <div class="mt-4 p-4 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-500/10 border border-amber-300 rounded-2xl shadow-sm backdrop-blur-sm relative overflow-hidden transition-all">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0 ring-1 ring-amber-500/30">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="flex items-center gap-2">
+                                                        <h5 class="text-sm font-bold text-amber-950">Institutional Alumni Record Detected</h5>
+                                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/15 text-amber-800 text-[10px] font-bold rounded-full uppercase tracking-wider border border-amber-400/30">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                            {{ $detectedAlumni['status'] }}
+                                                        </span>
+                                                    </div>
+                                                    <p class="text-xs text-amber-900/90 mt-0.5 leading-relaxed">
+                                                        <strong>{{ $detectedAlumni['name'] }}</strong> (Admission #<strong>{{ $detectedAlumni['admission_no'] }}</strong>) is previously registered. Historical records and transcripts remain safely preserved.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-3.5 pt-3 border-t border-amber-200/60 flex items-center justify-between flex-wrap gap-2">
+                                            <span class="text-[11px] text-amber-700 font-medium">Original Admission: {{ $detectedAlumni['original_admission_date'] ?? '-' }}</span>
+                                            @if($isReadmission)
+                                                <div class="flex items-center gap-2">
+                                                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100/90 px-3 py-1.5 rounded-xl border border-emerald-300 shadow-sm">
+                                                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                                        Re-Admission Mode Active
+                                                    </span>
+                                                    <button 
+                                                        type="button" 
+                                                        wire:click="cancelReadmission" 
+                                                        class="text-xs text-rose-600 hover:text-rose-800 font-semibold hover:underline px-2 py-1"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            @else
+                                                <button 
+                                                    type="button" 
+                                                    wire:click="initiateReadmit({{ $detectedAlumni['id'] }})"
+                                                    wire:loading.attr="disabled"
+                                                    class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all hover:shadow-md transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60"
+                                                >
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                                    <span wire:loading.remove wire:target="initiateReadmit({{ $detectedAlumni['id'] }})">Re-Admit to Active Session</span>
+                                                    <span wire:loading wire:target="initiateReadmit({{ $detectedAlumni['id'] }})">Loading Profile...</span>
+                                                </button>
+                                            @endif
                                         </div>
                                     </div>
                                 @endif
@@ -892,8 +1091,8 @@
 
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 rounded-b-2xl">
                             <button type="button" wire:click="$set('showModal', false)" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium">Cancel</button>
-                            <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center gap-2 active:scale-95 duration-150">
-                                <span wire:loading.remove wire:target="save">{{ $isEditing ? 'Update Student' : 'Add Student' }}</span>
+                            <button type="submit" class="px-5 py-2 {{ $isReadmission ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700' : 'bg-blue-600 hover:bg-blue-700' }} text-white rounded-xl transition-all text-sm font-semibold flex items-center gap-2 active:scale-95 duration-150 shadow-sm">
+                                <span wire:loading.remove wire:target="save">{{ $isEditing ? 'Update Student' : ($isReadmission ? 'Confirm & Re-Admit Student' : 'Add Student') }}</span>
                                 <span wire:loading wire:target="save" class="flex items-center gap-1.5">
                                     <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     Saving...
@@ -1381,6 +1580,707 @@
                     }
                 </script>
 
+            </div>
+        </div>
+    @endif
+
+    {{-- 3-STEP INSTITUTIONAL DEPARTURE / SLC WIZARD MODAL --}}
+    @if($showSlcModal && $slcStudent)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden" aria-labelledby="slc-modal-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" wire:click="closeSlcModal"></div>
+
+            <div class="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col z-10 overflow-hidden transform transition-all">
+                {{-- Header --}}
+                <div class="bg-gradient-to-r from-amber-600 via-amber-700 to-orange-700 px-6 sm:px-7 py-5 sm:py-6 text-white relative overflow-hidden shrink-0">
+                    <div class="absolute -right-8 -top-8 w-36 h-36 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                    <div class="flex items-center justify-between relative z-10">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/25 shadow-inner shrink-0">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold tracking-tight">Institutional Departure & School Leaving Certificate</h3>
+                                <div class="flex items-center gap-2 mt-0.5 text-xs text-amber-100">
+                                    <span class="font-semibold text-white">{{ $slcStudent->name }}</span>
+                                    <span>•</span>
+                                    <span class="font-mono bg-white/15 px-2 py-0.5 rounded-md text-[11px]">Adm #{{ $slcStudent->admission_no }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button wire:click="closeSlcModal" class="text-white/70 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
+                    {{-- Modern Interactive Stepper Indicator --}}
+                    <div class="flex items-center justify-between mt-6 px-1 relative z-10">
+                        {{-- Step 1 --}}
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all {{ $slcStep === 1 ? 'bg-white text-amber-900 shadow-md ring-4 ring-white/20' : ($slcStep > 1 ? 'bg-emerald-500 text-white shadow-sm' : 'bg-black/25 text-white/60') }}">
+                                @if($slcStep > 1)
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                @else
+                                    1
+                                @endif
+                            </div>
+                            <div class="text-left hidden sm:block">
+                                <span class="block text-[11px] font-bold leading-tight {{ $slcStep === 1 ? 'text-white' : 'text-amber-100/75' }}">Clearance</span>
+                                <span class="block text-[9px] text-amber-200/60 font-medium">Fee Dues</span>
+                            </div>
+                        </div>
+
+                        {{-- Line 1-2 --}}
+                        <div class="flex-1 h-0.5 mx-2.5 {{ $slcStep > 1 ? 'bg-amber-300' : 'bg-white/20' }} rounded-full"></div>
+
+                        {{-- Step 2 --}}
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all {{ $slcStep === 2 ? 'bg-white text-amber-900 shadow-md ring-4 ring-white/20' : ($slcStep > 2 ? 'bg-emerald-500 text-white shadow-sm' : 'bg-black/25 text-white/60') }}">
+                                @if($slcStep > 2)
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                @else
+                                    2
+                                @endif
+                            </div>
+                            <div class="text-left hidden sm:block">
+                                <span class="block text-[11px] font-bold leading-tight {{ $slcStep === 2 ? 'text-white' : 'text-amber-100/75' }}">Assessment</span>
+                                <span class="block text-[9px] text-amber-200/60 font-medium">Conduct & Reason</span>
+                            </div>
+                        </div>
+
+                        {{-- Line 2-3 --}}
+                        <div class="flex-1 h-0.5 mx-2.5 {{ $slcStep > 2 ? 'bg-amber-300' : 'bg-white/20' }} rounded-full"></div>
+
+                        {{-- Step 3 --}}
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all {{ $slcStep === 3 ? 'bg-white text-amber-900 shadow-md ring-4 ring-white/20' : 'bg-black/25 text-white/60' }}">
+                                3
+                            </div>
+                            <div class="text-left hidden sm:block">
+                                <span class="block text-[11px] font-bold leading-tight {{ $slcStep === 3 ? 'text-white' : 'text-amber-100/75' }}">Issuance</span>
+                                <span class="block text-[9px] text-amber-200/60 font-medium">Preview & Seal</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 sm:p-7 overflow-y-auto flex-1">
+                    @if($issuedSlc)
+                        {{-- Success View --}}
+                        <div class="text-center py-6">
+                            <div class="w-16 h-16 bg-gradient-to-tr from-emerald-500 to-teal-400 text-white rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20 ring-8 ring-emerald-50">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <h4 class="text-2xl font-bold text-gray-900 mb-1">School Leaving Certificate Issued</h4>
+                            <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-xl my-2">
+                                <span class="text-xs text-amber-800 font-medium">Official Serial:</span>
+                                <span class="font-mono font-bold text-amber-900 text-sm tracking-wider">{{ $issuedSlc->certificate_number }}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 max-w-md mx-auto mb-6 leading-relaxed">Student profile has officially transitioned to <strong class="text-gray-800">Withdrawn</strong>. All historical academic, attendance, and financial ledgers remain permanently preserved in the institutional 360° audit portfolio.</p>
+                            
+                            <div class="flex items-center justify-center gap-3 flex-wrap">
+                                <a 
+                                    href="{{ route('admin.students.slc.print', $issuedSlc->id) }}" 
+                                    target="_blank"
+                                    class="px-6 py-2.5 bg-gradient-to-r from-amber-600 via-amber-700 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white font-bold text-sm rounded-xl shadow-md transition-all inline-flex items-center gap-2 transform hover:-translate-y-0.5 active:translate-y-0"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                    Print Official SLC (PDF)
+                                </a>
+                                <button 
+                                    type="button" 
+                                    wire:click="closeSlcModal"
+                                    class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition-all"
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    @elseif($slcStep === 1)
+                        {{-- Step 1: Clearance Check --}}
+                        <div class="space-y-5">
+                            {{-- Student Summary Pill Grid --}}
+                            <div class="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                <div>
+                                    <span class="text-slate-400 block text-[10px] uppercase font-semibold">Class & Section</span>
+                                    <span class="font-bold text-slate-800">{{ $slcEnrollment->classModel->name ?? '-' }} ({{ $slcStudent->section->name ?? ($slcEnrollment->section->name ?? 'A') }})</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[10px] uppercase font-semibold">Roll Number</span>
+                                    <span class="font-bold font-mono text-slate-800">{{ $slcEnrollment->roll_no ?? ($slcStudent->roll_no ?? '-') }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[10px] uppercase font-semibold">Shift</span>
+                                    <span class="font-bold capitalize text-slate-800">{{ $slcEnrollment->shift_type ?? 'Regular' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[10px] uppercase font-semibold">Session</span>
+                                    <span class="font-bold text-slate-800 truncate block">{{ $slcEnrollment->academicSession->name ?? 'Current' }}</span>
+                                </div>
+                            </div>
+
+                            {{-- Financial Clearance Status --}}
+                            @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
+                                @if(!empty($slcClearance['cleared']))
+                                    <div class="p-5 bg-gradient-to-br from-emerald-50 via-teal-50/40 to-emerald-50 border border-emerald-200/90 rounded-2xl flex items-start gap-3.5 shadow-sm">
+                                        <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm ring-4 ring-emerald-100">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                                <h4 class="text-sm font-bold text-emerald-950">Financial Clearance Certified</h4>
+                                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Balance: Rs. 0.00</span>
+                                            </div>
+                                            <p class="text-xs text-emerald-700/90 mt-1 leading-relaxed">All institutional fee records are fully cleared for the current academic session. Student is fully certified for institutional departure.</p>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="p-5 bg-gradient-to-br from-rose-50 via-red-50/40 to-rose-50 border border-rose-300 rounded-2xl shadow-sm">
+                                        <div class="flex items-start gap-3.5">
+                                            <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm ring-4 ring-rose-100">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                                    <h4 class="text-sm font-bold text-rose-950">Departure Blocked: Outstanding Fee Arrears</h4>
+                                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-200/80 text-rose-900 border border-rose-300">
+                                                        Pending: Rs. {{ number_format($slcClearance['outstanding_balance'] ?? 0, 2) }}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-rose-700/90 mt-1 leading-relaxed">
+                                                    School policy prohibits issuing School Leaving Certificates with pending dues. Please settle the remaining balance or submit an authorized institutional waiver below.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {{-- Unpaid Records Table --}}
+                                        <div class="mt-4 bg-white rounded-xl border border-rose-200/80 overflow-hidden shadow-sm">
+                                            <table class="w-full text-left text-xs">
+                                                <thead class="bg-rose-100/60 text-rose-900 font-bold border-b border-rose-200/60">
+                                                    <tr>
+                                                        <th class="p-2.5">Fee Period</th>
+                                                        <th class="p-2.5">Status</th>
+                                                        <th class="p-2.5 text-right">Balance Due</th>
+                                                        <th class="p-2.5 text-right">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-rose-100">
+                                                    @foreach($slcClearance['unpaid_records'] ?? [] as $record)
+                                                        <tr class="hover:bg-rose-50/50 transition-colors">
+                                                            <td class="p-2.5 font-medium text-gray-800">{{ $record['fee_type'] }} ({{ $record['fee_period'] }})</td>
+                                                            <td class="p-2.5">
+                                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider {{ $record['status'] === 'unpaid' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-amber-100 text-amber-800 border border-amber-200' }}">
+                                                                    {{ $record['status'] }}
+                                                                </span>
+                                                            </td>
+                                                            <td class="p-2.5 text-right font-mono font-bold text-rose-700">Rs. {{ number_format($record['balance'], 2) }}</td>
+                                                            <td class="p-2.5 text-right">
+                                                                <button 
+                                                                    type="button" 
+                                                                    wire:click="openWaiverModal({{ $record['id'] }})"
+                                                                    class="px-2.5 py-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition-all flex items-center gap-1 ml-auto"
+                                                                >
+                                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                                                    Apply Waiver
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                @endif
+                            @else
+                                {{-- Fee Module Disabled by License --}}
+                                <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-3">
+                                    <div class="p-2 bg-slate-200/70 text-slate-700 rounded-xl shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-800">Fee Module Inactive (License Policy)</h4>
+                                        <p class="text-xs text-slate-600 mt-0.5">The Fee Management module is disabled under the current software license. Financial clearance is automatically certified for departure.</p>
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                <button type="button" wire:click="closeSlcModal" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-colors">Cancel</button>
+                                <button 
+                                    type="button" 
+                                    wire:click="advanceSlcStep"
+                                    @if(\App\Services\LicenseStatus::isModuleEnabled('fees') && empty($slcClearance['cleared'])) disabled @endif
+                                    class="px-5 py-2.5 text-sm font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 {{ (\App\Services\LicenseStatus::isModuleEnabled('fees') && empty($slcClearance['cleared'])) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-md' }}"
+                                >
+                                    Proceed to Assessment →
+                                </button>
+                            </div>
+                        </div>
+                        @elseif($slcStep === 2)
+                            {{-- Step 2: Assessment & Reason --}}
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">Date of Leaving <span class="text-red-500">*</span></label>
+                                        <input wire:model="slcLeavingDate" type="date" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
+                                        @error('slcLeavingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">Reason for Departure <span class="text-red-500">*</span></label>
+                                        <select wire:model="slcReason" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white">
+                                            <option value="parent_relocation">Parent Relocation / Residence Change</option>
+                                            <option value="school_transfer">Transfer to Another Institution</option>
+                                            <option value="course_completion">Completed Course of Studies</option>
+                                            <option value="financial_hardship">Financial Constraints</option>
+                                            <option value="personal">Personal / Domestic Reasons</option>
+                                            <option value="other">Other Institutional Reason</option>
+                                        </select>
+                                        @error('slcReason') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">General Conduct & Character <span class="text-red-500">*</span></label>
+                                        <select wire:model="slcConduct" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white">
+                                            <option value="Exemplary">Exemplary</option>
+                                            <option value="Very Good">Very Good</option>
+                                            <option value="Good">Good</option>
+                                            <option value="Satisfactory">Satisfactory</option>
+                                            <option value="Needs Improvement">Needs Improvement</option>
+                                        </select>
+                                        @error('slcConduct') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-700 mb-1">Institutional Remarks</label>
+                                        <input wire:model="slcRemarks" type="text" placeholder="e.g. Eligible for promotion to higher class" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                                    <button type="button" wire:click="$set('slcStep', 1)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-colors">← Back</button>
+                                    <button type="button" wire:click="advanceSlcStep" class="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white text-sm font-bold rounded-xl shadow-md transition-all">Preview & Confirm →</button>
+                                </div>
+                            </div>
+                        @elseif($slcStep === 3)
+                            {{-- Step 3: Certificate Preview & Confirmation --}}
+                            <div class="space-y-4">
+                                <div class="p-6 border-2 border-amber-300/80 bg-gradient-to-b from-amber-50/60 to-orange-50/40 rounded-2xl relative shadow-inner">
+                                    <div class="text-center pb-3 border-b border-amber-200/80">
+                                        <span class="text-[10px] uppercase font-bold tracking-widest text-amber-800">Provisional Certificate Specification</span>
+                                        <h4 class="text-lg font-bold text-gray-900 mt-0.5">Official School Leaving Certificate</h4>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3.5 mt-4 text-xs">
+                                        <div><span class="text-gray-500">Student Name:</span> <strong class="text-gray-900 block text-sm">{{ $slcStudent->name }}</strong></div>
+                                        <div><span class="text-gray-500">Father's Name:</span> <strong class="text-gray-900 block text-sm">{{ $slcStudent->father_name ?? '-' }}</strong></div>
+                                        <div><span class="text-gray-500">Admission No:</span> <strong class="font-mono text-gray-900 block">{{ $slcStudent->admission_no }}</strong></div>
+                                        <div><span class="text-gray-500">B-Form / CNIC:</span> <strong class="font-mono text-gray-900 block">{{ $slcStudent->b_form_number ?? ($slcStudent->father_cnic ?? '-') }}</strong></div>
+                                        <div><span class="text-gray-500">Class & Section:</span> <strong class="text-gray-900 block">{{ $slcEnrollment->classModel->name ?? '-' }} ({{ $slcStudent->section->name ?? ($slcEnrollment->section->name ?? '-') }})</strong></div>
+                                        <div><span class="text-gray-500">Date of Leaving:</span> <strong class="text-gray-900 block">{{ $slcLeavingDate }}</strong></div>
+                                        <div><span class="text-gray-500">Reason:</span> <strong class="capitalize text-gray-900 block">{{ str_replace('_', ' ', $slcReason) }}</strong></div>
+                                        <div><span class="text-gray-500">Conduct:</span> <strong class="text-gray-900 block">{{ $slcConduct }}</strong></div>
+                                    </div>
+                                </div>
+
+                                <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2.5">
+                                    <svg class="w-5 h-5 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <div class="leading-relaxed">
+                                        <strong>Important Institutional Audit Notice:</strong> Issuing this certificate will update the student status to <em>Withdrawn</em> and terminate the active session enrollment. All historical academic, attendance, and financial ledgers will be permanently protected and accessible in the 360° Lifetime Portfolio.
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                                    <button type="button" wire:click="$set('slcStep', 2)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-colors">← Back</button>
+                                    <button 
+                                        type="button" 
+                                        wire:click="finalizeSlc"
+                                        wire:loading.attr="disabled"
+                                        class="px-6 py-2.5 bg-gradient-to-r from-amber-600 via-amber-700 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center gap-2 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed"
+                                    >
+                                        <span wire:loading.remove wire:target="finalizeSlc" class="flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            Issue Certificate & Seal Archive
+                                        </span>
+                                        <span wire:loading wire:target="finalizeSlc" class="flex items-center gap-2">
+                                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            Issuing Certificate & Archiving...
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- FEE WAIVER / DEBT ADJUSTMENT MODAL --}}
+    @if($showWaiverModal && $waiverFeeRecord)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden" aria-labelledby="waiver-modal-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" wire:click="closeWaiverModal"></div>
+
+            <div class="relative w-full max-w-lg max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col z-10 overflow-hidden transform transition-all">
+                <div class="bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 px-6 py-5 text-white flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center border border-white/20 shadow-inner shrink-0">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold">Apply Institutional Fee Waiver</h3>
+                            <p class="text-[11px] text-purple-200">{{ $waiverFeeRecord->student->name ?? 'Student' }} • Record #{{ $waiverFeeRecord->id }}</p>
+                        </div>
+                    </div>
+                    <button wire:click="closeWaiverModal" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                    <div class="p-3.5 bg-gradient-to-br from-purple-50 to-indigo-50/60 rounded-2xl border border-purple-100 text-xs">
+                        <div class="flex justify-between mb-1.5">
+                            <span class="text-purple-700 font-medium">Fee Period:</span>
+                            <span class="font-bold text-purple-950">{{ $waiverFeeRecord->fee_type }} ({{ $waiverFeeRecord->fee_period }})</span>
+                        </div>
+                        <div class="flex justify-between mb-1.5">
+                            <span class="text-purple-700 font-medium">Original Invoice:</span>
+                            <span class="font-mono text-purple-950">Rs. {{ number_format($waiverFeeRecord->amount, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between pt-1.5 border-t border-purple-200/50">
+                            <span class="text-purple-700 font-bold">Outstanding Balance:</span>
+                            <span class="font-mono font-bold text-rose-600 text-sm">Rs. {{ number_format($waiverFeeRecord->balance, 2) }}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-semibold text-gray-700">Waiver Amount (Rs.) <span class="text-red-500">*</span></label>
+                            <div class="flex gap-1.5">
+                                <button 
+                                    type="button" 
+                                    wire:click="$set('waiverAmount', '{{ $waiverFeeRecord->balance }}')"
+                                    class="px-2 py-0.5 rounded bg-purple-100 hover:bg-purple-200 text-purple-800 text-[10px] font-bold transition-colors"
+                                >
+                                    100% (Full)
+                                </button>
+                                <button 
+                                    type="button" 
+                                    wire:click="$set('waiverAmount', '{{ round($waiverFeeRecord->balance / 2, 2) }}')"
+                                    class="px-2 py-0.5 rounded bg-purple-100 hover:bg-purple-200 text-purple-800 text-[10px] font-bold transition-colors"
+                                >
+                                    50%
+                                </button>
+                                <button 
+                                    type="button" 
+                                    wire:click="$set('waiverAmount', '{{ round($waiverFeeRecord->balance / 4, 2) }}')"
+                                    class="px-2 py-0.5 rounded bg-purple-100 hover:bg-purple-200 text-purple-800 text-[10px] font-bold transition-colors"
+                                >
+                                    25%
+                                </button>
+                            </div>
+                        </div>
+                        <input wire:model="waiverAmount" type="number" step="0.01" max="{{ $waiverFeeRecord->balance }}" required class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none" />
+                        @error('waiverAmount') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Approving Authority <span class="text-red-500">*</span></label>
+                            <input wire:model="waiverApprovedBy" type="text" placeholder="e.g. Principal" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none" />
+                            @error('waiverApprovedBy') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Order / Diary Ref <span class="text-red-500">*</span></label>
+                            <input wire:model="waiverReference" type="text" placeholder="e.g. APP-2026-99" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none" />
+                            @error('waiverReference') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Concession Category</label>
+                        <select wire:model="waiverConcessionType" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white">
+                            <option value="hardship">Financial Hardship / Need-Based</option>
+                            <option value="departure">Institutional Departure Clearance</option>
+                            <option value="management_discretion">Management Discretion / Board Order</option>
+                            <option value="sibling_departure">Sibling Policy Adjustment</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Official Justification / Reason <span class="text-red-500">*</span></label>
+                        <textarea wire:model="waiverReason" rows="2" placeholder="e.g. Humanitarian departure clearance authorized by Principal." required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"></textarea>
+                        @error('waiverReason') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                        <button type="button" wire:click="closeWaiverModal" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-colors">Cancel</button>
+                        <button 
+                            type="button" 
+                            wire:click="submitFeeWaiver"
+                            wire:loading.attr="disabled"
+                            class="px-5 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            <span wire:loading.remove wire:target="submitFeeWaiver">Apply & Post to Ledger</span>
+                            <span wire:loading wire:target="submitFeeWaiver" class="flex items-center gap-2">
+                                <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Posting Waiver...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- 360° LIFETIME PORTFOLIO & AUDIT TIMELINE MODAL --}}
+    @if($showHistoryModal && $historyPortfolio)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden" aria-labelledby="history-modal-title" role="dialog" aria-modal="true">
+            {{-- Backdrop --}}
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity no-print" wire:click="closeHistoryModal"></div>
+
+            {{-- Dialog Shell --}}
+            <div id="printable-portfolio" class="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col z-10 overflow-hidden transform transition-all">
+                {{-- Header (pinned top, shrink-0) --}}
+                <div class="bg-gradient-to-r from-slate-50 via-indigo-50/50 to-slate-50 px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-200/90 shrink-0 relative overflow-hidden">
+                    <div class="absolute -right-12 -top-12 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div class="flex items-center justify-between relative z-10 gap-4">
+                        <div class="flex items-center gap-4 min-w-0">
+                            @if(!empty($historyPortfolio['student']['profile_photo_path']))
+                                <img src="{{ \Illuminate\Support\Facades\Storage::url($historyPortfolio['student']['profile_photo_path']) }}" alt="{{ $historyPortfolio['student']['name'] }}" class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover ring-2 ring-indigo-200 shadow-sm shrink-0">
+                            @else
+                                <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 flex items-center justify-center text-white font-black text-2xl shadow-sm ring-4 ring-indigo-100 shrink-0">
+                                    {{ substr($historyPortfolio['student']['name'] ?? 'S', 0, 1) }}
+                                </div>
+                            @endif
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2.5 flex-wrap">
+                                    <h3 id="history-modal-title" class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 truncate">{{ $historyPortfolio['student']['name'] }}</h3>
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider {{ ($historyPortfolio['student']['status'] ?? '') === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300' }}">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ ($historyPortfolio['student']['status'] ?? '') === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500' }}"></span>
+                                        {{ ($historyPortfolio['student']['status'] ?? '') === 'withdrawn' ? 'SLC Issued' : ucfirst($historyPortfolio['student']['status'] ?? 'Unknown') }}
+                                    </span>
+                                    <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                        <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                                        360° Lifetime Portfolio
+                                    </span>
+                                </div>
+                                <div class="text-xs text-slate-600 mt-1.5 flex items-center gap-2 flex-wrap font-medium">
+                                    <span class="font-mono bg-white px-2 py-0.5 rounded text-[11px] font-bold text-indigo-700 border border-indigo-200 shadow-xs">Adm #{{ $historyPortfolio['student']['admission_no'] }}</span>
+                                    <span>•</span>
+                                    <span>Enrolled: <strong class="text-slate-800 font-bold">{{ $historyPortfolio['student']['original_admission_date'] ?? ($historyPortfolio['student']['admission_date'] ?? '-') }}</strong></span>
+                                    @if(!empty($historyPortfolio['student']['father_name']))
+                                        <span>•</span>
+                                        <span class="truncate">S/D of <strong class="text-slate-800 font-bold">{{ $historyPortfolio['student']['father_name'] }}</strong></span>
+                                    @endif
+                                    @if(!empty($historyPortfolio['student']['b_form_number']))
+                                        <span>•</span>
+                                        <span class="font-mono text-[11px] text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">B-Form: {{ $historyPortfolio['student']['b_form_number'] }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0 no-print">
+                            <button type="button" onclick="window.print()" class="text-slate-500 hover:text-indigo-600 p-2 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 transition-colors" title="Print Student 360 Portfolio">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            </button>
+                            <button type="button" wire:click="closeHistoryModal" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-200/60 transition-colors" title="Close Portfolio">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Quick Stats KPI Cards --}}
+                    <div class="grid grid-cols-2 {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'md:grid-cols-4' : 'md:grid-cols-3' }} gap-3 sm:gap-3.5 mt-5 text-xs relative z-10">
+                        <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span class="block text-[10px] uppercase font-bold tracking-wider">Sessions Enrolled</span>
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ count($historyPortfolio['sessions']) }}</span>
+                            <span class="text-[11px] text-slate-500 block mt-0.5">Cross-Session History</span>
+                        </div>
+
+                        <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span class="block text-[10px] uppercase font-bold tracking-wider">Lifetime Attendance</span>
+                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ $historyPortfolio['attendance_rate'] }}%</span>
+                            <div class="w-full bg-slate-100 h-2 rounded-full mt-2 overflow-hidden border border-slate-200/50">
+                                <div class="h-full rounded-full transition-all duration-500 {{ $historyPortfolio['attendance_rate'] >= 85 ? 'bg-emerald-500' : ($historyPortfolio['attendance_rate'] >= 75 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $historyPortfolio['attendance_rate'] }}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span class="block text-[10px] uppercase font-bold tracking-wider">Academic Exams</span>
+                                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path></svg>
+                            </div>
+                            <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ $historyPortfolio['exams_summary']['total_exams'] }} Exams</span>
+                            <span class="text-[11px] text-emerald-600 font-bold block mt-0.5">{{ $historyPortfolio['exams_summary']['passed_exams'] ?? 0 }} Passed Overall</span>
+                        </div>
+
+                        @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
+                        <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
+                            <div class="flex items-center justify-between text-slate-500">
+                                <span class="block text-[10px] uppercase font-bold tracking-wider">Financial Ledger</span>
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </div>
+                            <span class="text-xl sm:text-2xl font-black font-mono mt-1 block {{ ($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
+                                @if(($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0) > 0)
+                                    Rs. {{ number_format($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0, 0) }}
+                                @else
+                                    Cleared
+                                @endif
+                            </span>
+                            <span class="text-[11px] text-slate-500 block mt-0.5">Total Invoiced: Rs. {{ number_format($historyPortfolio['financial_summary']['total_billed'] ?? 0, 0) }}</span>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Scrollable Timeline Body (flex-1 overflow-y-auto) --}}
+                <div class="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6 bg-slate-50/70">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Institutional Session Audit Trail</h4>
+                        </div>
+                        <span class="text-xs font-medium text-slate-500">Total Recorded Sessions: <strong class="text-slate-800">{{ count($historyPortfolio['sessions']) }}</strong></span>
+                    </div>
+
+                    <div class="relative pl-6 sm:pl-8 space-y-6 sm:space-y-8">
+                        {{-- Timeline Continuous Line --}}
+                        <div class="absolute left-2.5 sm:left-3.5 top-3 bottom-3 w-0.5 bg-indigo-200 pointer-events-none"></div>
+
+                        @forelse($historyPortfolio['sessions'] as $session)
+                            <div class="relative group">
+                                {{-- Centered Timeline Node Bullet --}}
+                                @if($session['is_active_session'])
+                                    <div class="absolute -left-6 sm:-left-8 top-5 w-5 h-5 rounded-full bg-indigo-600 border-2 border-white ring-4 ring-indigo-100 shadow-sm flex items-center justify-center z-10 -translate-x-[2px]">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                                    </div>
+                                @else
+                                    <div class="absolute -left-6 sm:-left-8 top-5.5 w-4 h-4 rounded-full bg-slate-400 border-2 border-white ring-2 ring-slate-200 shadow-xs z-10"></div>
+                                @endif
+
+                                <div class="bg-white rounded-2xl p-5 sm:p-6 border {{ $session['is_active_session'] ? 'border-indigo-300 shadow-sm ring-1 ring-indigo-50' : 'border-slate-200' }} hover:border-indigo-300 hover:shadow-md transition-all">
+                                    {{-- Session Header --}}
+                                    <div class="flex items-center justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-slate-100">
+                                        <div>
+                                            <div class="flex items-center gap-2.5 flex-wrap">
+                                                <h5 class="font-black text-slate-900 text-base sm:text-lg">{{ $session['session_name'] }}</h5>
+                                                @if($session['is_active_session'])
+                                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                                        Active Session
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="flex items-center gap-2 mt-1.5 text-xs text-slate-500 flex-wrap">
+                                                <span>Class: <strong class="text-slate-800 font-semibold">{{ $session['class_name'] }} ({{ $session['section_name'] }})</strong></span>
+                                                <span>•</span>
+                                                <span>Roll #<strong class="font-mono text-slate-800 font-bold">{{ $session['roll_no'] }}</strong></span>
+                                                <span>•</span>
+                                                <span>Shift: <strong class="capitalize text-slate-800 font-semibold">{{ $session['shift_type'] }}</strong></span>
+                                            </div>
+                                        </div>
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider {{ $session['enrollment_status'] === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : ($session['enrollment_status'] === 'slc_issued' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200') }}">
+                                            {{ $session['enrollment_status'] === 'slc_issued' ? 'SLC Issued' : ucfirst($session['enrollment_status']) }}
+                                        </span>
+                                    </div>
+
+                                    {{-- Stats in this Session --}}
+                                    <div class="grid grid-cols-1 {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }} gap-3 text-xs mb-3">
+                                        <div class="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/70">
+                                            <div class="flex items-center justify-between text-slate-500">
+                                                <span class="block text-[10px] uppercase font-bold tracking-wider">Attendance</span>
+                                                <span class="text-[10px] font-semibold text-slate-400">({{ $session['attendance']['present'] }}/{{ $session['attendance']['total'] }} days)</span>
+                                            </div>
+                                            <span class="font-black text-slate-900 text-lg mt-0.5 block">{{ $session['attendance']['percentage'] }}%</span>
+                                            <div class="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
+                                                <div class="h-full rounded-full transition-all duration-500 {{ $session['attendance']['percentage'] >= 85 ? 'bg-emerald-500' : ($session['attendance']['percentage'] >= 75 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $session['attendance']['percentage'] }}%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/70">
+                                            <div class="flex items-center justify-between text-slate-500">
+                                                <span class="block text-[10px] uppercase font-bold tracking-wider">Exams Performance</span>
+                                                <span class="text-[10px] font-semibold text-slate-400">{{ $session['exams']['total'] }} Total</span>
+                                            </div>
+                                            <span class="font-black text-slate-900 text-lg mt-0.5 block">{{ $session['exams']['passed'] }} / {{ $session['exams']['total'] }} Passed</span>
+                                            <span class="text-[11px] text-slate-600 block mt-1 font-medium">Average Marks: <strong class="text-slate-900 font-bold">{{ $session['exams']['avg_marks'] }}%</strong></span>
+                                        </div>
+
+                                        @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
+                                        <div class="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/70">
+                                            <div class="flex items-center justify-between text-slate-500">
+                                                <span class="block text-[10px] uppercase font-bold tracking-wider">Financial Status</span>
+                                                <span class="text-[10px] font-semibold text-slate-400">Ledger</span>
+                                            </div>
+                                            <span class="font-black font-mono text-lg mt-0.5 block {{ ($session['fees']['balance'] ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
+                                                {{ ($session['fees']['balance'] ?? 0) > 0 ? 'Dues: Rs. ' . number_format($session['fees']['balance'], 0) : 'Fully Cleared' }}
+                                            </span>
+                                            <span class="text-[11px] text-slate-600 block mt-1 font-medium">Billed: Rs. {{ number_format($session['fees']['invoiced'] ?? 0, 0) }}</span>
+                                        </div>
+                                        @endif
+                                    </div>
+
+                                    {{-- School Leaving Certificate in this session if any --}}
+                                    @if(!empty($session['slc']))
+                                        <div class="p-4 bg-gradient-to-r from-amber-50 to-orange-50/80 rounded-xl border border-amber-200 text-xs shadow-xs mt-3.5">
+                                            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                                <span class="font-bold text-amber-950 flex items-center gap-2 text-sm">
+                                                    <svg class="w-4 h-4 text-amber-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                    Official Certificate: <span class="font-mono text-amber-900 font-black">{{ $session['slc']['certificate_number'] }}</span>
+                                                </span>
+                                                <a 
+                                                    href="{{ route('admin.students.slc.print', $session['slc']['id']) }}" 
+                                                    target="_blank"
+                                                    class="px-3.5 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-xs font-bold shadow-sm inline-flex items-center gap-1.5 transition-all transform hover:-translate-y-0.5 no-print"
+                                                >
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                                    Print Official SLC
+                                                </a>
+                                            </div>
+                                            <p class="text-xs text-amber-900/90 leading-relaxed font-medium">
+                                                Leaving Date: <strong class="text-amber-950 font-bold">{{ $session['slc']['leaving_date'] }}</strong> • Reason: <strong class="text-amber-950 font-bold">{{ ucfirst(str_replace('_', ' ', $session['slc']['reason_for_leaving'])) }}</strong> • Conduct: <strong class="text-amber-950 font-bold">{{ $session['slc']['conduct'] }}</strong>
+                                                @if(!empty($session['slc']['remarks']))
+                                                    • Remarks: <em class="text-amber-800">"{{ $session['slc']['remarks'] }}"</em>
+                                                @endif
+                                            </p>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                                <svg class="w-10 h-10 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                                <p class="text-sm font-semibold text-slate-600">No historical enrollment records found.</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Historical records will populate as sessions advance.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+
+                {{-- Footer (fixed bottom, shrink-0) --}}
+                <div class="p-4 sm:p-5 bg-white border-t border-slate-200 flex items-center justify-between shrink-0 no-print">
+                    <div class="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Institutional Audit Trail & Historical Protection Active</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="window.print()" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-xs flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            Print Portfolio
+                        </button>
+                        <button type="button" wire:click="closeHistoryModal" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-sm hover:shadow active:scale-95">
+                            Close Portfolio
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     @endif

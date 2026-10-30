@@ -17,6 +17,7 @@ class DefaulterList extends Component
 
     public $filter_class = '';
     public $min_due = 1;
+    public $filter_student_status = 'all'; // 'all', 'active', 'archived'
 
     protected $paginationTheme = 'tailwind';
 
@@ -26,6 +27,11 @@ class DefaulterList extends Component
     }
 
     public function updatingMinDue()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterStudentStatus()
     {
         $this->resetPage();
     }
@@ -54,6 +60,19 @@ class DefaulterList extends Component
 
         if ($this->filter_class) {
             $query->where('class_id', $this->filter_class);
+        }
+
+        if ($this->filter_student_status === 'active') {
+            $query->whereHas('student', function ($q) {
+                $q->whereNull('deleted_at')->where('status', 'active');
+            });
+        } elseif ($this->filter_student_status === 'archived') {
+            $query->whereHas('student', function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereNotNull('deleted_at')
+                        ->orWhereIn('status', ['withdrawn', 'slc_issued', 'archived']);
+                });
+            });
         }
 
         return $query->orderBy('total_due', 'desc');
@@ -239,11 +258,12 @@ class DefaulterList extends Component
             $index = 1;
             foreach ($defaulters as $def) {
                 $student = $def->student;
+                $statusBadge = ($student && $student->trashed()) ? ' (Archived)' : (($student && in_array($student->status, ['withdrawn', 'slc_issued'])) ? ' (Withdrawn)' : '');
                 echo '<tr>';
                 echo '<td class="center">' . $index++ . '</td>';
                 echo '<td>' . htmlspecialchars($student ? $student->admission_no : 'N/A') . '</td>';
                 echo '<td class="center">' . htmlspecialchars($student ? ($student->roll_no ?? '-') : '-') . '</td>';
-                echo '<td><b>' . htmlspecialchars($student ? $student->name : 'N/A') . '</b></td>';
+                echo '<td><b>' . htmlspecialchars(($student ? $student->name : 'Unknown Student') . $statusBadge) . '</b></td>';
                 echo '<td>' . htmlspecialchars($student ? ($student->father_name ?? '-') : '-') . '</td>';
                 echo '<td>' . htmlspecialchars($def->class ? $def->class->name : 'N/A') . '</td>';
                 echo '<td>' . htmlspecialchars($student ? ($student->phone ?? 'N/A') : 'N/A') . '</td>';
@@ -315,11 +335,12 @@ class DefaulterList extends Component
             $index = 1;
             foreach ($defaulters as $def) {
                 $student = $def->student;
+                $statusBadge = ($student && $student->trashed()) ? ' (Archived)' : (($student && in_array($student->status, ['withdrawn', 'slc_issued'])) ? ' (Withdrawn)' : '');
                 fputcsv($handle, [
                     $index++,
                     $student ? $student->admission_no : 'N/A',
                     $student ? ($student->roll_no ?? '-') : '-',
-                    $student ? $student->name : 'N/A',
+                    ($student ? $student->name : 'Unknown Student') . $statusBadge,
                     $student ? ($student->father_name ?? '-') : '-',
                     $def->class ? $def->class->name : 'N/A',
                     ucfirst($shiftType),

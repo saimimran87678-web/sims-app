@@ -28,10 +28,20 @@ class Enrollment extends Model
 
     public function student()
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Student::class)->withTrashed();
     }
 
     public function currentClass()
+    {
+        return $this->belongsTo(Classes::class, 'class_id');
+    }
+
+    public function classModel()
+    {
+        return $this->belongsTo(Classes::class, 'class_id');
+    }
+
+    public function class()
     {
         return $this->belongsTo(Classes::class, 'class_id');
     }
@@ -59,6 +69,11 @@ class Enrollment extends Model
     public function feeInvoices()
     {
         return $this->hasMany(FeeInvoice::class, 'student_id', 'student_id'); // Temporary mapping until Step 3 adjusts column to enrollment_id
+    }
+
+    public function schoolLeavingCertificate()
+    {
+        return $this->hasOne(SchoolLeavingCertificate::class);
     }
 
     public function scopeActive($query)

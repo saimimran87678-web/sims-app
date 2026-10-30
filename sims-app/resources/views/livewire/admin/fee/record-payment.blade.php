@@ -37,6 +37,7 @@
                             <select wire:model.live="filter_status" class="block w-full px-4 py-4 border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-2xl focus:border-emerald-500 focus:ring-emerald-500 text-base font-semibold transition-all shadow-sm">
                                 <option value="active">Active Only</option>
                                 <option value="inactive">Inactive Only</option>
+                                <option value="archived">Archived / Deleted</option>
                                 <option value="">All Statuses</option>
                             </select>
                         </div>
@@ -44,17 +45,22 @@
 
                     <!-- Search Results -->
                     <div class="mt-8">
-                        @if(!empty(trim($search)) || $filter_class)
+                        @if(!empty(trim($search)) || $filter_class || $filter_status === 'archived')
                             <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Matching Students</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 @forelse($studentsList as $st)
                                     <div class="bg-gray-50 dark:bg-gray-900/50 hover:bg-emerald-50/55 dark:hover:bg-emerald-950/20 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group">
                                         <div class="space-y-1">
-                                            <h4 class="font-bold text-gray-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors text-base">{{ $st->name }}</h4>
+                                            <div class="flex items-center gap-2">
+                                                <h4 class="font-bold text-gray-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors text-base">{{ $st->name }}</h4>
+                                                @if($st->trashed())
+                                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-700">Archived</span>
+                                                @endif
+                                            </div>
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                Father: {{ $st->father_name }} | Class: {{ $st->class->name }} | Admn: {{ $st->admission_no }} | 
-                                                <span class="font-bold {{ $st->status === 'active' ? 'text-green-650 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
-                                                    {{ ucfirst($st->status ?? 'Active') }}
+                                                Father: {{ $st->father_name ?? 'N/A' }} | Class: {{ $st->class ? $st->class->name : 'N/A' }} | Admn: {{ $st->admission_no ?? 'N/A' }} | 
+                                                <span class="font-bold {{ $st->trashed() ? 'text-amber-600 dark:text-amber-400' : ($st->status === 'active' ? 'text-green-650 dark:text-green-400' : 'text-red-600 dark:text-red-400') }}">
+                                                    {{ $st->trashed() ? 'Archived' : ucfirst($st->status ?? 'Active') }}
                                                 </span>
                                             </p>
                                             @if($st->total_due > 0)
@@ -101,8 +107,13 @@
                     <div class="bg-gray-50 dark:bg-gray-900/50 p-6 md:p-8 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <div class="flex items-center gap-2">
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">{{ $selectedStudent->class->name }}</span>
-                                <span class="text-xs text-gray-500">Admn: {{ $selectedStudent->admission_no }} | Father: {{ $selectedStudent->father_name }}</span>
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">
+                                    {{ $selectedStudent->class ? $selectedStudent->class->name : 'No Class' }}
+                                </span>
+                                @if($selectedStudent->trashed())
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-700">Archived Profile</span>
+                                @endif
+                                <span class="text-xs text-gray-500">Admn: {{ $selectedStudent->admission_no ?? 'N/A' }} | Father: {{ $selectedStudent->father_name ?? 'N/A' }}</span>
                             </div>
                             <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{{ $selectedStudent->name }}</h2>
                         </div>
@@ -190,11 +201,16 @@
                         <div class="bg-gradient-to-br from-emerald-50/70 to-teal-50/30 dark:from-emerald-950/20 dark:to-teal-950/5 rounded-2xl p-4 sm:p-5 border border-emerald-100/50 dark:border-emerald-900/35 text-xs sm:text-sm shadow-sm">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Student:</span>
-                                <span class="font-extrabold text-emerald-950 dark:text-white text-sm sm:text-base">{{ $record->student->name }}</span>
+                                <span class="font-extrabold text-emerald-950 dark:text-white text-sm sm:text-base flex items-center gap-1.5">
+                                    {{ $record->student ? $record->student->name : 'N/A' }}
+                                    @if($record->student && $record->student->trashed())
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Archived</span>
+                                    @endif
+                                </span>
                             </div>
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Father Name:</span>
-                                <span class="font-bold text-emerald-900 dark:text-gray-250">{{ $record->student->father_name }}</span>
+                                <span class="font-bold text-emerald-900 dark:text-gray-250">{{ $record->student ? $record->student->father_name : 'N/A' }}</span>
                             </div>
                             <div class="flex justify-between items-center mb-2.5">
                                 <span class="text-emerald-800 dark:text-emerald-400 font-semibold">Bill Period:</span>

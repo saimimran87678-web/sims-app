@@ -28,16 +28,13 @@ class StudentLedger extends Component
         }
 
         $this->studentId = $studentId;
-        $this->student = Student::with('class')->findOrFail($studentId);
+        $this->student = Student::withTrashed()->with('class')->findOrFail($studentId);
     }
 
     public function render()
     {
-        $sessionId = AcademicSession::getActiveSessionId();
-
         $records = FeeRecord::with(['items', 'payments'])
             ->where('student_id', $this->studentId)
-            ->where('academic_session_id', $sessionId)
             ->orderBy('period', 'desc')
             ->get();
 

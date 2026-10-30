@@ -49,18 +49,24 @@ class RecordPayment extends Component
             $shiftType = 'morning';
         }
 
-        if (!empty(trim($this->search)) || $this->filter_class) {
-            $studentsQuery = \App\Models\Student::with('class')
-                ->whereHas('enrollments', function ($q) use ($sessionId, $shiftType) {
-                    $q->where('academic_session_id', $sessionId)
-                      ->where('shift_type', $shiftType);
-                    if ($this->filter_class) {
-                        $q->where('class_id', $this->filter_class);
-                    }
-                });
+        if (!empty(trim($this->search)) || $this->filter_class || $this->filter_status === 'archived') {
+            if ($this->filter_status === 'archived') {
+                $studentsQuery = \App\Models\Student::onlyTrashed()->with('class');
+            } elseif ($this->filter_status === 'all') {
+                $studentsQuery = \App\Models\Student::withTrashed()->with('class');
+            } else {
+                $studentsQuery = \App\Models\Student::with('class');
+                if ($this->filter_status) {
+                    $studentsQuery->where('status', $this->filter_status);
+                }
+            }
 
-            if ($this->filter_status) {
-                $studentsQuery->where('status', $this->filter_status);
+            if ($this->filter_class) {
+                $studentsQuery->whereHas('enrollments', function ($q) use ($sessionId, $shiftType) {
+                    $q->where('academic_session_id', $sessionId)
+                      ->where('shift_type', $shiftType)
+                      ->where('class_id', $this->filter_class);
+                });
             }
 
             if (!empty(trim($this->search))) {
@@ -101,7 +107,7 @@ class RecordPayment extends Component
     public function selectStudent($studentId)
     {
         $this->selectedStudentId = $studentId;
-        $this->selectedStudent = \App\Models\Student::with('class')->findOrFail($studentId);
+        $this->selectedStudent = \App\Models\Student::withTrashed()->with('class')->findOrFail($studentId);
         $this->unpaidRecords = \App\Models\FeeRecord::where('student_id', $studentId)
             ->where('status', '!=', 'paid')
             ->orderBy('period', 'asc')

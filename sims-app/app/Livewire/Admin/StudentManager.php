@@ -147,6 +147,7 @@ class StudentManager extends Component
     public $roll_no = '';
     public $auto_roll_no = true;
     public $admission_no = '';
+    public $b_form_number = '';
     public $father_name = '';
     public $father_cnic = '';
     public $guardian_cnic = '';
@@ -155,6 +156,9 @@ class StudentManager extends Component
     public $sibling_concession_status = 'none';
     public $custom_concession_amount = '';
     public $detectedSiblings = [];
+    public $detectedAlumni = null;
+    public $isReadmission = false;
+    public $readmitStudentId = null;
     public $phone = '';
     public $email = '';
     public $class_id = '';
@@ -168,9 +172,49 @@ class StudentManager extends Component
     public $admission_date = '';
     public $address = '';
     public $status = 'active';
+    public $status_reason = '';
     public $photo;
     public $student_shift = 'morning';
     public $currentSessionIsRegular = false;
+
+    // Student Lifecycle: 3-Step SLC Departure Wizard State
+    public $showSlcModal = false;
+    public $slcStudentId = null;
+    public $slcStudent = null;
+    public $slcEnrollment = null;
+    public $slcStep = 1; // 1: Financial Clearance, 2: Assessment, 3: Certificate Preview & Sealing
+    public $slcClearance = [];
+    public $slcLeavingDate = '';
+    public $slcReason = 'Parent Relocation';
+    public $slcConduct = 'Good';
+    public $slcRemarks = '';
+    public $issuedSlc = null;
+
+    // SLC Step 1: Fee Waiver Application Modal State
+    public $showWaiverModal = false;
+    public $waiverFeeRecordId = null;
+    public $waiverFeeRecord = null;
+    public $waiverAmount = '';
+    public $waiverReference = '';
+    public $waiverApprovedBy = 'Principal';
+    public $waiverReason = 'Institutional Departure Clearance / Hardship Waiver';
+    public $waiverConcessionType = 'hardship';
+
+    // Student Lifecycle: 360° Lifetime History Modal State
+    public $showHistoryModal = false;
+    public $historyStudentId = null;
+    public $historyPortfolio = null;
+
+    public function updatedBFormNumber($value)
+    {
+        $clean = trim($value);
+        if (preg_match('/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/', $clean)) {
+            $service = app(\App\Services\StudentLifecycleService::class);
+            $this->detectedAlumni = $service->lookupAlumni($clean);
+        } else {
+            $this->detectedAlumni = null;
+        }
+    }
 
     public function updatedFatherCnic($value)
     {
@@ -189,9 +233,58 @@ class StudentManager extends Component
                     'admission_date' => $s->admission_date?->format('d M, Y') ?? 'N/A',
                 ])
                 ->toArray();
+
+            if (!$this->detectedAlumni && !$this->isEditing && !$this->b_form_number) {
+                $service = app(\App\Services\StudentLifecycleService::class);
+                $this->detectedAlumni = $service->lookupAlumni($clean);
+            }
         } else {
             $this->detectedSiblings = [];
+            if (!$this->b_form_number) {
+                $this->detectedAlumni = null;
+            }
         }
+    }
+
+    public function initiateReadmit($studentId)
+    {
+        $student = Student::findOrFail($studentId);
+        $this->isEditing = false;
+        $this->isReadmission = true;
+        $this->readmitStudentId = $student->id;
+        
+        $this->name = $student->name;
+        $this->b_form_number = $student->b_form_number ?? '';
+        $this->admission_no = $student->admission_no;
+        $this->father_name = $student->father_name ?? '';
+        $this->father_cnic = $student->father_cnic ?? '';
+        $this->guardian_cnic = $student->guardian_cnic ?? '';
+        $this->guardian_relation = $student->guardian_relation ?? '';
+        $this->is_guardian_primary = (bool) $student->is_guardian_primary;
+        $this->sibling_concession_status = $student->sibling_concession_status ?? 'none';
+        $this->custom_concession_amount = $student->custom_concession_amount ?? '';
+        $this->phone = $student->phone ?? '';
+        $this->email = $student->email ?? '';
+        $this->gender = $student->gender ? ucfirst($student->gender) : 'Male';
+        $this->dob = $student->dob ? $student->dob->format('Y-m-d') : '';
+        $this->address = $student->address ?? '';
+        $this->admission_date = now()->format('Y-m-d');
+        $this->status = 'active';
+
+        $this->detectedAlumni = null;
+        $this->showModal = true;
+    }
+
+    public function cancelReadmission()
+    {
+        $this->isReadmission = false;
+        $this->readmitStudentId = null;
+        $this->reset([
+            'name', 'b_form_number', 'admission_no', 'father_name', 'father_cnic',
+            'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status',
+            'custom_concession_amount', 'phone', 'email', 'gender', 'dob', 'address', 'photo'
+        ]);
+        $this->detectedAlumni = null;
     }
 
     // Option Editing State
@@ -226,8 +319,9 @@ class StudentManager extends Component
             'admission_no' => [
                 'required', 
                 'string', 
-                Rule::unique('students', 'admission_no')->ignore($this->editingStudentId)
+                Rule::unique('students', 'admission_no')->ignore($this->editingStudentId ?: $this->readmitStudentId)
             ],
+            'b_form_number' => ['nullable', 'string', 'max:20'],
             'gender' => 'required|in:Male,Female,Other',
             'sports' => 'array',
             'extra_curriculars' => 'array',
@@ -398,7 +492,7 @@ class StudentManager extends Component
     #[On('open-add-student-modal')]
     public function openModal()
     {
-        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
         
         $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
         $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
@@ -491,6 +585,7 @@ class StudentManager extends Component
         }
 
         $this->admission_no = $student->admission_no;
+        $this->b_form_number = $student->b_form_number ?? '';
         $this->father_name = $student->father_name;
         $this->father_cnic = $student->father_cnic ?? '';
         $this->guardian_cnic = $student->guardian_cnic ?? '';
@@ -532,10 +627,68 @@ class StudentManager extends Component
         $this->admission_no = trim($this->admission_no);
         $validated = $this->validate();
 
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+
+        if ($isRegular) {
+            $this->student_shift = 'regular';
+        } else {
+            if ($this->student_shift_option === 'both') {
+                $this->class_id = $this->singleStudentClasses['morning'] ?? $this->class_id;
+                $this->student_shift = 'morning';
+            } elseif ($this->student_shift_option === 'morning') {
+                $this->class_id = $this->singleStudentClasses['morning'] ?? $this->class_id;
+                $this->student_shift = 'morning';
+            } elseif ($this->student_shift_option === 'evening') {
+                $this->class_id = $this->singleStudentClasses['evening'] ?? $this->class_id;
+                $this->student_shift = 'evening';
+            }
+        }
+
+        // 1-Click Re-Admission of returning student
+        if ($this->isReadmission && $this->readmitStudentId) {
+            $lifecycleService = app(\App\Services\StudentLifecycleService::class);
+            $student = Student::findOrFail($this->readmitStudentId);
+            $student->update([
+                'name' => $this->name,
+                'b_form_number' => $this->b_form_number ?: $student->b_form_number,
+                'father_name' => $this->father_name,
+                'father_cnic' => $this->father_cnic ?: null,
+                'guardian_cnic' => $this->guardian_cnic ?: null,
+                'guardian_relation' => $this->guardian_relation ?: null,
+                'is_guardian_primary' => (bool) $this->is_guardian_primary,
+                'sibling_concession_status' => $this->sibling_concession_status ?: 'none',
+                'custom_concession_amount' => $this->sibling_concession_status === 'custom_waiver' && is_numeric($this->custom_concession_amount) ? $this->custom_concession_amount : null,
+                'phone' => $this->phone,
+                'email' => $this->email,
+                'gender' => strtolower($this->gender),
+                'dob' => $this->dob ?: null,
+                'address' => $this->address,
+                'status' => 'active',
+                'status_reason' => 'Re-admitted to Session ID ' . $this->selectedSessionId,
+            ]);
+
+            $lifecycleService->readmitStudent(
+                $student,
+                $this->selectedSessionId,
+                $this->class_id,
+                $this->student_shift,
+                $this->roll_no,
+                auth()->id() ?? 1
+            );
+
+            $this->showModal = false;
+            $this->isReadmission = false;
+            $this->readmitStudentId = null;
+            session()->flash('message', "Student {$student->name} re-admitted successfully to active session!");
+            return;
+        }
+
         // Serialize arrays
         $data = [
             'name' => $this->name,
             'admission_no' => $this->admission_no,
+            'b_form_number' => $this->b_form_number ?: null,
             'father_name' => $this->father_name,
             'father_cnic' => $this->father_cnic ?: null,
             'guardian_cnic' => $this->guardian_cnic ?: null,
@@ -553,6 +706,7 @@ class StudentManager extends Component
             'vehicle_number' => $this->vehicle_number,
             'dob' => $this->dob ?: null,
             'admission_date' => $this->admission_date ?: null,
+            'original_admission_date' => $this->admission_date ?: null,
             'address' => $this->address,
             'status' => $this->status,
         ];
@@ -706,7 +860,7 @@ class StudentManager extends Component
         });
 
         $this->showModal = false;
-        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'singleStudentClasses']);
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'singleStudentClasses']);
 
         if ($this->onlyModal) {
             return redirect(request()->header('Referer'));
@@ -776,50 +930,239 @@ class StudentManager extends Component
     public function delete($id)
     {
         DB::transaction(function() use ($id) {
-            // 1. Delete all enrollments of this student in the selected session
-            DB::table('enrollments')
-                ->where('student_id', $id)
+            // Soft-delete current session enrollment using Eloquent
+            \App\Models\Enrollment::where('student_id', $id)
                 ->where('academic_session_id', $this->selectedSessionId)
                 ->delete();
 
-            // 2. Check if the student has any enrollments left in any session
-            $hasOtherEnrollments = DB::table('enrollments')
-                ->where('student_id', $id)
+            // Check if the student has any active enrollments left in any session
+            $hasOtherEnrollments = \App\Models\Enrollment::where('student_id', $id)
+                ->where('status', '!=', 'withdrawn')
                 ->exists();
 
             if (!$hasOtherEnrollments) {
-                // If no enrollments left in any session, we can delete the student completely.
-                // This will trigger cascade deletes on all other tables.
+                // If no active enrollments left, safely soft-delete student profile
                 Student::where('id', $id)->delete();
-            } else {
-                // If there are other enrollments, keep the student but delete session-specific data:
-                
-                // Delete attendances for this session
-                DB::table('attendances')
-                    ->where('student_id', $id)
-                    ->where('academic_session_id', $this->selectedSessionId)
-                    ->delete();
-
-                // Delete exam marks for this session
-                $examIds = DB::table('exams')
-                    ->where('academic_session_id', $this->selectedSessionId)
-                    ->pluck('id');
-                if ($examIds->isNotEmpty()) {
-                    DB::table('exam_marks')
-                        ->where('student_id', $id)
-                        ->whereIn('exam_id', $examIds)
-                        ->delete();
-                }
-
-                // Delete fee records for this session
-                DB::table('fee_records')
-                    ->where('student_id', $id)
-                    ->where('academic_session_id', $this->selectedSessionId)
-                    ->delete();
             }
+            // Institutional integrity: Financial records, exam marks, and attendances are NEVER deleted!
         });
 
-        session()->flash('message', 'Student deleted successfully.');
+        session()->flash('message', 'Student record safely archived. You can view or restore it anytime by selecting "Archived" in the Status filter.');
+    }
+
+    public function restoreStudent($id)
+    {
+        $student = Student::withTrashed()->findOrFail($id);
+
+        DB::transaction(function() use ($student, $id) {
+            // 1. Restore the student profile if trashed
+            if ($student->trashed()) {
+                $student->restore();
+            }
+            $student->status = 'active';
+            $student->save();
+
+            // 2. Restore or recreate session enrollment
+            $enrollment = \App\Models\Enrollment::withTrashed()
+                ->where('student_id', $id)
+                ->where('academic_session_id', $this->selectedSessionId)
+                ->first();
+
+            if ($enrollment) {
+                if ($enrollment->trashed()) {
+                    $enrollment->restore();
+                }
+                $enrollment->status = 'active';
+                $enrollment->save();
+            } else {
+                // Determine a valid class ID for restoration
+                $classId = $this->selectedClassId;
+                if (!$classId) {
+                    $classId = \App\Models\FeeRecord::where('student_id', $id)->latest()->value('class_id')
+                        ?? \App\Models\Classes::withoutGlobalScope('active_session')->where('academic_session_id', $this->selectedSessionId)->value('id');
+                }
+
+                if ($classId) {
+                    $shiftType = session('selected_shift_type', 'morning');
+                    if ($shiftType === 'both') {
+                        $shiftType = 'morning';
+                    }
+                    \App\Models\Enrollment::create([
+                        'student_id' => $student->id,
+                        'class_id' => $classId,
+                        'academic_session_id' => $this->selectedSessionId,
+                        'roll_number' => $student->roll_no ?? '1',
+                        'shift_type' => $shiftType,
+                        'status' => 'active',
+                    ]);
+                }
+            }
+
+            // 3. Log audit trail
+            \App\Services\ActivityLogger::log(
+                'restored',
+                "Restored student {$student->name} (Admn: {$student->admission_no}) to active class status",
+                $student,
+                null,
+                ['status' => 'active'],
+                'Students'
+            );
+        });
+
+        session()->flash('message', "Student {$student->name} (Admn: {$student->admission_no}) has been restored successfully to active class.");
+    }
+
+    // ==========================================
+    // STUDENT LIFECYCLE: 3-STEP SLC WIZARD
+    // ==========================================
+
+    public function startIssueSlc($studentId)
+    {
+        $this->slcStudentId = $studentId;
+        $this->slcStudent = Student::with(['class'])->findOrFail($studentId);
+        $this->slcEnrollment = \App\Models\Enrollment::where('student_id', $studentId)
+            ->where('academic_session_id', $this->selectedSessionId)
+            ->with(['currentClass', 'academicSession'])
+            ->first();
+
+        if (!$this->slcEnrollment) {
+            $this->slcEnrollment = \App\Models\Enrollment::where('student_id', $studentId)
+                ->with(['currentClass', 'academicSession'])
+                ->latest('academic_session_id')
+                ->first();
+        }
+
+        $service = app(\App\Services\StudentLifecycleService::class);
+        $this->slcClearance = $service->checkFinancialClearance($this->slcStudent, $this->selectedSessionId);
+        $this->slcLeavingDate = now()->format('Y-m-d');
+        $this->slcReason = 'Parent Relocation';
+        $this->slcConduct = 'Good';
+        $this->slcRemarks = '';
+        $this->issuedSlc = null;
+        $this->slcStep = 1;
+        $this->showSlcModal = true;
+    }
+
+    public function openWaiverModal($feeRecordId)
+    {
+        $this->waiverFeeRecordId = $feeRecordId;
+        $this->waiverFeeRecord = \App\Models\FeeRecord::find($feeRecordId);
+        $this->waiverAmount = $this->waiverFeeRecord ? (string)$this->waiverFeeRecord->balance : '';
+        $this->waiverReference = 'APP-' . now()->format('Ymd') . '-' . rand(100, 999);
+        $this->waiverApprovedBy = 'Principal';
+        $this->waiverReason = 'Institutional Departure Clearance / Hardship Waiver';
+        $this->waiverConcessionType = 'hardship';
+        $this->showWaiverModal = true;
+    }
+
+    public function closeWaiverModal()
+    {
+        $this->showWaiverModal = false;
+        $this->waiverFeeRecordId = null;
+        $this->waiverFeeRecord = null;
+    }
+
+    public function submitFeeWaiver()
+    {
+        $this->validate([
+            'waiverAmount' => 'required|numeric|min:0.01',
+            'waiverReference' => 'required|string|max:100',
+            'waiverApprovedBy' => 'required|string|max:100',
+            'waiverReason' => 'required|string|max:500',
+        ]);
+
+        $service = app(\App\Services\StudentLifecycleService::class);
+        $service->applyFeeWaiver(
+            $this->slcStudent,
+            $this->waiverFeeRecordId,
+            (float) $this->waiverAmount,
+            $this->waiverReference,
+            $this->waiverApprovedBy,
+            $this->waiverReason,
+            null,
+            auth()->id() ?? 1,
+            $this->waiverConcessionType
+        );
+
+        $this->closeWaiverModal();
+
+        // Refresh clearance dynamically
+        $this->slcClearance = $service->checkFinancialClearance($this->slcStudent, $this->selectedSessionId);
+        session()->flash('slc_message', 'Fee waiver approved and posted to ledger. Clearance status updated.');
+    }
+
+    public function advanceSlcStep()
+    {
+        if ($this->slcStep === 1) {
+            if (!$this->slcClearance['cleared']) {
+                $this->addError('slc', 'Clearance blocked: outstanding dues must be paid or officially waived.');
+                return;
+            }
+            $this->slcStep = 2;
+        } elseif ($this->slcStep === 2) {
+            $this->validate([
+                'slcLeavingDate' => 'required|date',
+                'slcReason' => 'required|string|max:100',
+                'slcConduct' => 'required|string|max:50',
+                'slcRemarks' => 'nullable|string|max:500',
+            ]);
+            $this->slcStep = 3;
+        }
+    }
+
+    public function finalizeSlc()
+    {
+        if (!$this->slcEnrollment) {
+            $this->addError('slc', 'No active enrollment found to issue certificate.');
+            return;
+        }
+
+        $service = app(\App\Services\StudentLifecycleService::class);
+        $this->issuedSlc = $service->issueSchoolLeavingCertificate(
+            $this->slcStudent,
+            $this->slcEnrollment,
+            [
+                'leaving_date' => $this->slcLeavingDate,
+                'class_at_leaving' => $this->slcEnrollment->currentClass?->name ?? 'N/A',
+                'reason_for_leaving' => $this->slcReason,
+                'conduct' => $this->slcConduct,
+                'remarks' => $this->slcRemarks,
+                'concession_reference' => $this->waiverReference ?: null,
+            ],
+            auth()->id() ?? 1
+        );
+
+        session()->flash('message', "Official School Leaving Certificate #{$this->issuedSlc->certificate_number} issued.");
+    }
+
+    public function closeSlcModal()
+    {
+        $this->showSlcModal = false;
+        $this->slcStudent = null;
+        $this->slcEnrollment = null;
+        $this->slcClearance = [];
+        $this->issuedSlc = null;
+        $this->slcStep = 1;
+    }
+
+    // ==========================================
+    // STUDENT LIFECYCLE: 360° LIFETIME TIMELINE
+    // ==========================================
+
+    public function openLifetimeHistory($studentId)
+    {
+        $this->historyStudentId = $studentId;
+        $student = Student::with(['class'])->findOrFail($studentId);
+        $service = app(\App\Services\StudentLifecycleService::class);
+        $this->historyPortfolio = $service->getLifetimePortfolio($student);
+        $this->showHistoryModal = true;
+    }
+
+    public function closeHistoryModal()
+    {
+        $this->showHistoryModal = false;
+        $this->historyStudentId = null;
+        $this->historyPortfolio = null;
     }
 
     public function getBulkSubjectsProperty()
@@ -1284,63 +1627,105 @@ class StudentManager extends Component
 
         $shiftType = $this->currentSessionIsRegular ? 'regular' : session('selected_shift_type', 'morning');
 
-        $studentsQuery = Student::query()
-            ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
-            ->join('classes', 'enrollments.class_id', '=', 'classes.id')
-            ->select('students.*', 'classes.name as class_name', 'enrollments.roll_number as roll_no', 'enrollments.shift_type')
-            ->where('enrollments.academic_session_id', $this->selectedSessionId)
-            ->when($shiftType !== 'both', function($q) use ($shiftType) {
-                $q->where('enrollments.shift_type', $shiftType);
-            })
-            ->when($this->selectedClassId, function($q) {
-                $q->where('enrollments.class_id', $this->selectedClassId);
-            })
-            ->when($this->search, function ($q) {
-                $q->where(function ($subQuery) {
-                    $subQuery->where('students.name', 'like', '%' . $this->search . '%')
-                      ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
-                      ->orWhere('students.admission_no', 'like', '%' . $this->search . '%')
-                      ->orWhere('students.father_cnic', 'like', '%' . $this->search . '%')
-                      ->orWhere('students.guardian_cnic', 'like', '%' . $this->search . '%');
+        if ($this->filterStatus === 'archived') {
+            $studentsQuery = Student::onlyTrashed()
+                ->leftJoin('enrollments', function($join) {
+                    $join->on('students.id', '=', 'enrollments.student_id')
+                         ->where('enrollments.academic_session_id', '=', $this->selectedSessionId);
+                })
+                ->leftJoin('classes', 'enrollments.class_id', '=', 'classes.id')
+                ->select(
+                    'students.*',
+                    DB::raw('COALESCE(classes.name, (SELECT c.name FROM fee_records fr JOIN classes c ON fr.class_id = c.id WHERE fr.student_id = students.id ORDER BY fr.id DESC LIMIT 1), "Archived Profile") as class_name'),
+                    DB::raw('COALESCE(enrollments.roll_number, "—") as roll_no'),
+                    DB::raw('COALESCE(enrollments.shift_type, "morning") as shift_type')
+                )
+                ->when($this->search, function ($q) {
+                    $q->where(function ($subQuery) {
+                        $subQuery->where('students.name', 'like', '%' . $this->search . '%')
+                          ->orWhere('students.admission_no', 'like', '%' . $this->search . '%')
+                          ->orWhere('students.father_cnic', 'like', '%' . $this->search . '%')
+                          ->orWhere('students.guardian_cnic', 'like', '%' . $this->search . '%');
+                    });
+                })
+                ->when($this->selectedClassId, function($q) {
+                    $q->where('enrollments.class_id', $this->selectedClassId);
                 });
-            })
-            ->when($this->filterSport, function($q) {
-                $q->where('students.sports', 'like', '%' . $this->filterSport . '%');
-            })
-            ->when($this->filterActivity, function($q) {
-                $q->where('students.extra_curriculars', 'like', '%' . $this->filterActivity . '%');
-            })
-            ->when($this->filterTransport, function($q) {
-                $q->where('students.transport_mode', $this->filterTransport);
-            })
-            ->when($this->filterTransport === 'school_bus' && $this->filterBus, function($q) {
-                $q->where('students.vehicle_number', $this->filterBus);
-            })
-            ->when($this->filterStatus, function($q) {
-                $q->where('enrollments.status', $this->filterStatus);
-            });
 
-        // 1. Mandatory Teacher Restriction (Always apply)
-        if ($isTeacher) {
-            $studentsQuery->whereIn('enrollments.class_id', $allowedClassIds);
-        }
+            if ($isTeacher) {
+                $studentsQuery->whereIn('enrollments.class_id', $allowedClassIds);
+            }
 
-        // 2. Selection Filter
-        if ($this->selectedClassId) {
-            $studentsQuery->where('enrollments.class_id', $this->selectedClassId);
-        }
-
-        // Always sort class-wise first to avoid mixing students from different classes
-        $studentsQuery->orderBy('classes.name', 'asc');
-
-        if ($this->sortBy === 'roll_no') {
-            $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ' . ($this->sortDir === 'desc' ? 'DESC' : 'ASC'));
-        } elseif ($this->sortBy === 'name') {
-            $studentsQuery->orderBy('students.name', $this->sortDir === 'desc' ? 'desc' : 'asc');
-        } elseif ($this->sortBy === 'admission_no') {
-            $studentsQuery->orderBy('students.admission_no', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            if ($this->sortBy === 'name') {
+                $studentsQuery->orderBy('students.name', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            } elseif ($this->sortBy === 'admission_no') {
+                $studentsQuery->orderBy('students.admission_no', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            } else {
+                $studentsQuery->orderBy('students.id', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            }
         } else {
-            $studentsQuery->orderBy('students.id', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            $studentsQuery = Student::query()
+                ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+                ->join('classes', 'enrollments.class_id', '=', 'classes.id')
+                ->select('students.*', 'classes.name as class_name', 'enrollments.roll_number as roll_no', 'enrollments.shift_type')
+                ->where('enrollments.academic_session_id', $this->selectedSessionId)
+                ->when($shiftType !== 'both', function($q) use ($shiftType) {
+                    $q->where('enrollments.shift_type', $shiftType);
+                })
+                ->when($this->selectedClassId, function($q) {
+                    $q->where('enrollments.class_id', $this->selectedClassId);
+                })
+                ->when($this->search, function ($q) {
+                    $q->where(function ($subQuery) {
+                        $subQuery->where('students.name', 'like', '%' . $this->search . '%')
+                          ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
+                          ->orWhere('students.admission_no', 'like', '%' . $this->search . '%')
+                          ->orWhere('students.father_cnic', 'like', '%' . $this->search . '%')
+                          ->orWhere('students.guardian_cnic', 'like', '%' . $this->search . '%');
+                    });
+                })
+                ->when($this->filterSport, function($q) {
+                    $q->where('students.sports', 'like', '%' . $this->filterSport . '%');
+                })
+                ->when($this->filterActivity, function($q) {
+                    $q->where('students.extra_curriculars', 'like', '%' . $this->filterActivity . '%');
+                })
+                ->when($this->filterTransport, function($q) {
+                    $q->where('students.transport_mode', $this->filterTransport);
+                })
+                ->when($this->filterTransport === 'school_bus' && $this->filterBus, function($q) {
+                    $q->where('students.vehicle_number', $this->filterBus);
+                })
+                ->when($this->filterStatus, function($q) {
+                    if ($this->filterStatus === 'withdrawn') {
+                        $q->whereIn('enrollments.status', ['withdrawn', 'slc_issued']);
+                    } else {
+                        $q->where('enrollments.status', $this->filterStatus);
+                    }
+                });
+
+            // 1. Mandatory Teacher Restriction (Always apply)
+            if ($isTeacher) {
+                $studentsQuery->whereIn('enrollments.class_id', $allowedClassIds);
+            }
+
+            // 2. Selection Filter
+            if ($this->selectedClassId) {
+                $studentsQuery->where('enrollments.class_id', $this->selectedClassId);
+            }
+
+            // Always sort class-wise first to avoid mixing students from different classes
+            $studentsQuery->orderBy('classes.name', 'asc');
+
+            if ($this->sortBy === 'roll_no') {
+                $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ' . ($this->sortDir === 'desc' ? 'DESC' : 'ASC'));
+            } elseif ($this->sortBy === 'name') {
+                $studentsQuery->orderBy('students.name', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            } elseif ($this->sortBy === 'admission_no') {
+                $studentsQuery->orderBy('students.admission_no', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            } else {
+                $studentsQuery->orderBy('students.id', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            }
         }
 
         $students = $studentsQuery->paginate(10);

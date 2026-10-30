@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Classes;
 use App\Models\Section;
 
@@ -10,7 +11,7 @@ use App\Traits\LogsActivity;
 
 class Student extends Model
 {
-    use LogsActivity;
+    use LogsActivity, SoftDeletes;
 
     public function getActivitySubjectLabel(): string
     {
@@ -29,6 +30,7 @@ class Student extends Model
         'name',
         'roll_no',
         'admission_no',
+        'b_form_number',
         'class_id',
         'section_id',
         'father_name',
@@ -42,8 +44,10 @@ class Student extends Model
         'vehicle_number',
         'profile_photo_path',
         'admission_date',
+        'original_admission_date',
         'address',
         'status',
+        'status_reason',
         'father_cnic',
         'guardian_cnic',
         'guardian_relation',
@@ -65,12 +69,23 @@ class Student extends Model
     protected $casts = [
         'dob' => 'date',
         'admission_date' => 'date',
+        'original_admission_date' => 'date',
         'is_guardian_primary' => 'boolean',
         'custom_concession_amount' => 'decimal:2',
     ];
 
     protected static function booted()
     {
+        static::deleting(function ($student) {
+            if ($student->isForceDeleting()) {
+                $hasFinancial = $student->feeRecords()->exists() || $student->feePayments()->exists();
+                $hasAcademic = $student->enrollments()->withTrashed()->exists() || \Illuminate\Support\Facades\DB::table('exam_marks')->where('student_id', $student->id)->exists();
+                if ($hasFinancial || $hasAcademic) {
+                    throw new \DomainException("Institutional integrity violation: Student has archived financial or academic records and cannot be permanently erased.");
+                }
+            }
+        });
+
         static::created(function ($student) {
             $classId = $student->tempClassId ?? request('class_id') ?? null;
             $rollNo = $student->tempRollNo ?? request('roll_no') ?? null;
@@ -102,6 +117,16 @@ class Student extends Model
         });
     }
 
+    public function schoolLeavingCertificates()
+    {
+        return $this->hasMany(SchoolLeavingCertificate::class);
+    }
+
+    public function feeWaiverApplications()
+    {
+        return $this->hasMany(FeeWaiverApplication::class);
+    }
+
     public function class()
     {
         return $this->hasOneThrough(
@@ -114,21 +139,22 @@ class Student extends Model
         )->where('enrollments.academic_session_id', \App\Models\AcademicSession::getActiveSessionId());
     }
 
+    public function section()
+    {
+        return $this->belongsTo(Section::class);
+    }
+
     public function getRollNoAttribute()
     {
         if (array_key_exists('roll_no', $this->attributes)) {
             return $this->attributes['roll_no'];
         }
 
-        static $cachedSessionId = null;
-        static $cachedShiftType = null;
-        if ($cachedSessionId === null) {
-            $cachedSessionId = \App\Models\AcademicSession::getActiveSessionId();
-            $sessionObj = \App\Models\AcademicSession::find($cachedSessionId);
-            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-            $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
-            $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
-        }
+        $cachedSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($cachedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
 
         return $this->enrollments()
             ->where('academic_session_id', $cachedSessionId)
@@ -142,15 +168,11 @@ class Student extends Model
             return $this->attributes['class_id'];
         }
 
-        static $cachedSessionId = null;
-        static $cachedShiftType = null;
-        if ($cachedSessionId === null) {
-            $cachedSessionId = \App\Models\AcademicSession::getActiveSessionId();
-            $sessionObj = \App\Models\AcademicSession::find($cachedSessionId);
-            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-            $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
-            $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
-        }
+        $cachedSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($cachedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
 
         return $this->enrollments()
             ->where('academic_session_id', $cachedSessionId)

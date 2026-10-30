@@ -249,6 +249,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     Route::middleware(['feature:students'])->group(function () {
         Route::get('/students', \App\Livewire\Admin\StudentManager::class)->name('students');
         Route::get('/students/import', \App\Livewire\Admin\StudentImportManager::class)->name('students.import');
+        Route::get('/students/slc/{certificate}/print', \App\Http\Controllers\Admin\SlcPrintController::class)->name('students.slc.print');
     });
 
     Route::get('/academic-sessions', \App\Livewire\Admin\AcademicSessionManager::class)->name('academic-sessions');

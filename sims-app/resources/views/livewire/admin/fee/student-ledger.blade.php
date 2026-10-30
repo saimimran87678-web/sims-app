@@ -5,7 +5,20 @@
         </a>
         <div>
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Student Ledger</h2>
-            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $student->name }} (Admn: {{ $student->admission_no }}) - {{ $student->class->name }}</p>
+            <div class="flex items-center gap-2 mt-0.5">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ $student->name }} (Admn: {{ $student->admission_no ?? 'N/A' }}) - {{ $student->class ? $student->class->name : 'No Class Assigned' }}
+                </p>
+                @if($student->trashed())
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+                        Archived Profile
+                    </span>
+                @elseif($student->status === 'withdrawn')
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                        Withdrawn
+                    </span>
+                @endif
+            </div>
         </div>
     </div>
 

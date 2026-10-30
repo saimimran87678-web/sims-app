@@ -259,8 +259,8 @@ class StudentShiftAssignmentTest extends TestCase
             ->call('delete', $student->id)
             ->assertHasNoErrors();
 
-        // 3. Enrollment for dualSession should be deleted, but regularSession should remain
-        $this->assertDatabaseMissing('enrollments', [
+        // 3. Enrollment for dualSession should be soft-deleted, but regularSession should remain
+        $this->assertSoftDeleted('enrollments', [
             'id' => $enrollment1->id
         ]);
         $this->assertDatabaseHas('enrollments', [
@@ -278,11 +278,11 @@ class StudentShiftAssignmentTest extends TestCase
             ->call('delete', $student->id)
             ->assertHasNoErrors();
 
-        // 6. Both enrollments are now gone, so the student model should be fully deleted
-        $this->assertDatabaseMissing('enrollments', [
+        // 6. Both enrollments are now gone, so the student model should be soft deleted
+        $this->assertSoftDeleted('enrollments', [
             'id' => $enrollment2->id
         ]);
-        $this->assertDatabaseMissing('students', [
+        $this->assertSoftDeleted('students', [
             'id' => $student->id
         ]);
     }

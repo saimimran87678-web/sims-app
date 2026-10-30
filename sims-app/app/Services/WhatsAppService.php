@@ -365,7 +365,7 @@ class WhatsAppService
     public function sendPaymentNotification($payment): void
     {
         $student = $payment->student;
-        if (empty($student->phone)) {
+        if (!$student || empty($student->phone)) {
             return;
         }
 
@@ -404,7 +404,7 @@ class WhatsAppService
 
         foreach ($records as $record) {
             $student = $record->student;
-            if (empty($student->phone) || $record->balance <= 0) {
+            if (!$student || empty($student->phone) || $record->balance <= 0) {
                 continue;
             }
 

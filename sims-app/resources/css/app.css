@@ -113,3 +113,33 @@ body > div[style*="z-index:2147483647"] {
     opacity: 0.3;
     animation: ring-pulse 1.5s ease-out infinite;
 }
+
+/* 360 Lifetime Portfolio Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    body * {
+        visibility: hidden;
+    }
+    #printable-portfolio,
+    #printable-portfolio * {
+        visibility: visible;
+    }
+    #printable-portfolio {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    #printable-portfolio > div {
+        overflow: visible !important;
+        max-height: none !important;
+    }
+}

@@ -118,8 +118,8 @@
     </div>
 
     <!-- Filters Container -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-5 mb-6 flex flex-col sm:flex-row gap-4 print:hidden">
-        <div class="w-full sm:w-1/2">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-5 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
+        <div>
             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Class Filter</label>
             <select wire:model.live="filter_class" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition-all">
                 <option value="">All Classes</option>
@@ -128,7 +128,15 @@
                 @endforeach
             </select>
         </div>
-        <div class="w-full sm:w-1/2">
+        <div>
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Student Status</label>
+            <select wire:model.live="filter_student_status" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition-all">
+                <option value="all">All Profiles (Active & Archived)</option>
+                <option value="active">Active Students Only</option>
+                <option value="archived">Archived / Withdrawn Only</option>
+            </select>
+        </div>
+        <div>
             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Minimum Due Amount (Rs.)</label>
             <input type="number" wire:model.live.debounce.500ms="min_due" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition-all" placeholder="e.g. 1000">
         </div>
@@ -153,7 +161,18 @@
                     @forelse($defaulters as $def)
                         <tr class="hover:bg-gray-50/60 dark:hover:bg-gray-700/40 transition-colors">
                             <td class="px-5 py-4">
-                                <div class="font-bold text-gray-900 dark:text-white text-base">{{ $def->student ? $def->student->name : 'N/A' }}</div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-bold text-gray-900 dark:text-white text-base">{{ $def->student ? $def->student->name : 'Unknown Student' }}</span>
+                                    @if($def->student && $def->student->trashed())
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                            Archived Profile
+                                        </span>
+                                    @elseif($def->student && in_array($def->student->status, ['withdrawn', 'slc_issued']))
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                                            Withdrawn (SLC)
+                                        </span>
+                                    @endif
+                                </div>
                                 <div class="text-xs font-medium text-gray-500 mt-0.5">
                                     Admn: <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $def->student ? $def->student->admission_no : 'N/A' }}</span> 
                                     @if($def->student && $def->student->roll_no)
@@ -175,17 +194,23 @@
                             </td>
                             <td class="px-5 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
-                                    <!-- WhatsApp Reminder Button (matching View Voucher style) -->
-                                    <button 
-                                        wire:click="sendSingleReminder({{ $def->student_id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="sendSingleReminder({{ $def->student_id }})"
-                                        title="Send friendly fee reminder to parent via WhatsApp"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/45 dark:text-green-400 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
-                                    >
-                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.377 3.469 2.235 2.235 3.466 5.21 3.466 8.377-.003 6.534-5.328 11.859-11.859 11.859-1.996-.001-3.957-.503-5.707-1.46L0 24zm5.835-4.265c1.62.962 3.218 1.488 4.931 1.49 5.373 0 9.742-4.369 9.745-9.743 0-2.602-1.012-5.05-2.849-6.888C15.83 2.756 13.38 1.745 10.781 1.745c-5.372 0-9.742 4.37-9.745 9.743-.001 1.83.491 3.58 1.42 5.176l-.991 3.616 3.7-.971zm13.14-8.122c-.27-.135-1.597-.787-1.845-.877-.247-.09-.427-.135-.607.135-.18.27-.697.877-.855 1.057-.158.18-.315.202-.585.067-.27-.135-1.139-.42-2.17-1.34-.801-.715-1.343-1.6-1.5-1.871-.158-.27-.017-.417.118-.552.122-.122.27-.315.405-.472.135-.158.18-.27.27-.45.09-.18.045-.337-.022-.472-.067-.135-.607-1.462-.832-2.002-.22-.53-.442-.457-.607-.466-.158-.008-.338-.01-.518-.01-.18 0-.472.067-.72.338-.247.27-.945.922-.945 2.25s.967 2.61 1.102 2.79c.135.18 1.902 2.904 4.609 4.073.644.279 1.147.445 1.54.57.647.206 1.236.177 1.701.108.518-.077 1.598-.652 1.823-1.282.225-.63.225-1.17.157-1.282-.068-.113-.248-.18-.518-.315z"/></svg>
-                                        <span>WhatsApp</span>
-                                    </button>
+                                    @if($def->student && $def->student->trashed())
+                                        <span class="text-xs text-amber-700 font-semibold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                            Archived Record
+                                        </span>
+                                    @else
+                                        <!-- WhatsApp Reminder Button (matching View Voucher style) -->
+                                        <button 
+                                            wire:click="sendSingleReminder({{ $def->student_id }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="sendSingleReminder({{ $def->student_id }})"
+                                            title="Send friendly fee reminder to parent via WhatsApp"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/45 dark:text-green-400 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.377 3.469 2.235 2.235 3.466 5.21 3.466 8.377-.003 6.534-5.328 11.859-11.859 11.859-1.996-.001-3.957-.503-5.707-1.46L0 24zm5.835-4.265c1.62.962 3.218 1.488 4.931 1.49 5.373 0 9.742-4.369 9.745-9.743 0-2.602-1.012-5.05-2.849-6.888C15.83 2.756 13.38 1.745 10.781 1.745c-5.372 0-9.742 4.37-9.745 9.743-.001 1.83.491 3.58 1.42 5.176l-.991 3.616 3.7-.971zm13.14-8.122c-.27-.135-1.597-.787-1.845-.877-.247-.09-.427-.135-.607.135-.18.27-.697.877-.855 1.057-.158.18-.315.202-.585.067-.27-.135-1.139-.42-2.17-1.34-.801-.715-1.343-1.6-1.5-1.871-.158-.27-.017-.417.118-.552.122-.122.27-.315.405-.472.135-.158.18-.27.27-.45.09-.18.045-.337-.022-.472-.067-.135-.607-1.462-.832-2.002-.22-.53-.442-.457-.607-.466-.158-.008-.338-.01-.518-.01-.18 0-.472.067-.72.338-.247.27-.945.922-.945 2.25s.967 2.61 1.102 2.79c.135.18 1.902 2.904 4.609 4.073.644.279 1.147.445 1.54.57.647.206 1.236.177 1.701.108.518-.077 1.598-.652 1.823-1.282.225-.63.225-1.17.157-1.282-.068-.113-.248-.18-.518-.315z"/></svg>
+                                            <span>WhatsApp</span>
+                                        </button>
+                                    @endif
 
                                     <!-- View Ledger Action Button -->
                                     <a href="{{ route('admin.fee.ledger', $def->student_id) }}" class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold text-xs bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
