@@ -311,4 +311,63 @@ class TeacherScheduleArrangementTest extends TestCase
             ->assertSee('Mathematics')
             ->assertSee('Grade 9-A');
     }
+
+    public function test_teacher_schedule_view_mobile_optimizations_and_summary_stats()
+    {
+        $this->actingAs($this->teacher);
+        Setting::set('schedule_type', 'day_wise');
+
+        // Insert timetable entry
+        DB::table('timetables')->insert([
+            'class_id' => $this->classA->id,
+            'subject_id' => $this->subjectMath->id,
+            'teacher_id' => $this->teacher->id,
+            'day' => 'Monday',
+            'period_no' => 1,
+            'room' => 'Room 101',
+            'is_divided' => false,
+            'is_substitute' => false,
+        ]);
+
+        $test = Livewire::test(\App\Livewire\Teacher\ScheduleView::class)
+            ->set('selectedDay', 'Monday');
+
+        // Check summary stats
+        $stats = $test->get('summaryStats');
+        $this->assertIsArray($stats);
+        $this->assertEquals(1, $stats['regular_classes']);
+        $this->assertEquals(1, $stats['teaching_classes']);
+
+        // Check mobile layout elements
+        $test->assertSee('Classes Today')
+            ->assertSee('Arrangements')
+            ->assertSee('Free Periods')
+            ->assertSee('Mathematics')
+            ->assertSee('Room 101');
+    }
+
+    public function test_jump_to_today_functionality()
+    {
+        $this->actingAs($this->teacher);
+
+        $test = Livewire::test(\App\Livewire\Teacher\ScheduleView::class)
+            ->set('selectedDay', 'Sunday'); // Set to non-weekday
+
+        $test->call('jumpToToday');
+
+        $dayOfWeek = now()->dayOfWeek;
+        $dayMap = [
+            1 => 'Monday',
+            2 => 'Tuesday',
+            3 => 'Wednesday',
+            4 => 'Thursday',
+            5 => 'Friday',
+            6 => 'Monday',
+            0 => 'Monday',
+        ];
+        $expectedDay = $dayMap[$dayOfWeek] ?? 'Monday';
+
+        $this->assertEquals($expectedDay, $test->get('selectedDay'));
+    }
 }
+

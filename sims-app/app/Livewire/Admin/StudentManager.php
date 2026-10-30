@@ -104,7 +104,9 @@ class StudentManager extends Component
                 $query->where(function($q) {
                     $q->where('students.name', 'like', '%' . $this->search . '%')
                       ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
-                      ->orWhere('students.admission_no', 'like', '%' . $this->search . '%');
+                      ->orWhere('students.admission_no', 'like', '%' . $this->search . '%')
+                      ->orWhere('students.father_cnic', 'like', '%' . $this->search . '%')
+                      ->orWhere('students.guardian_cnic', 'like', '%' . $this->search . '%');
                 });
             }
             if ($this->filterSport) {
@@ -146,6 +148,13 @@ class StudentManager extends Component
     public $auto_roll_no = true;
     public $admission_no = '';
     public $father_name = '';
+    public $father_cnic = '';
+    public $guardian_cnic = '';
+    public $guardian_relation = '';
+    public $is_guardian_primary = false;
+    public $sibling_concession_status = 'none';
+    public $custom_concession_amount = '';
+    public $detectedSiblings = [];
     public $phone = '';
     public $email = '';
     public $class_id = '';
@@ -162,6 +171,28 @@ class StudentManager extends Component
     public $photo;
     public $student_shift = 'morning';
     public $currentSessionIsRegular = false;
+
+    public function updatedFatherCnic($value)
+    {
+        $clean = trim($value);
+        if (preg_match('/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/', $clean)) {
+            $this->detectedSiblings = Student::where('father_cnic', $clean)
+                ->when($this->isEditing, fn($q) => $q->where('id', '!=', $this->editingStudentId))
+                ->where('status', 'active')
+                ->get()
+                ->map(fn($s) => [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'roll_no' => $s->roll_no,
+                    'class_name' => $s->class->name ?? 'N/A',
+                    'admission_no' => $s->admission_no,
+                    'admission_date' => $s->admission_date?->format('d M, Y') ?? 'N/A',
+                ])
+                ->toArray();
+        } else {
+            $this->detectedSiblings = [];
+        }
+    }
 
     // Option Editing State
     public $newSportName = '';
@@ -184,6 +215,12 @@ class StudentManager extends Component
         $rules = [
             'name' => 'required|string|max:255',
             'father_name' => 'nullable|string|max:255',
+            'father_cnic' => ['nullable', 'string', 'max:15', 'regex:/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/'],
+            'guardian_cnic' => ['nullable', 'string', 'max:15', 'regex:/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/'],
+            'guardian_relation' => ['nullable', 'string', 'max:50'],
+            'is_guardian_primary' => ['boolean'],
+            'sibling_concession_status' => ['required', 'string', 'in:none,policy_eligible,custom_waiver,disallowed'],
+            'custom_concession_amount' => ['nullable', 'numeric', 'min:0'],
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'admission_no' => [
@@ -361,7 +398,7 @@ class StudentManager extends Component
     #[On('open-add-student-modal')]
     public function openModal()
     {
-        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
         
         $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
         $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
@@ -455,6 +492,13 @@ class StudentManager extends Component
 
         $this->admission_no = $student->admission_no;
         $this->father_name = $student->father_name;
+        $this->father_cnic = $student->father_cnic ?? '';
+        $this->guardian_cnic = $student->guardian_cnic ?? '';
+        $this->guardian_relation = $student->guardian_relation ?? '';
+        $this->is_guardian_primary = (bool) ($student->is_guardian_primary ?? false);
+        $this->sibling_concession_status = $student->sibling_concession_status ?? 'none';
+        $this->custom_concession_amount = $student->custom_concession_amount ?? '';
+        $this->updatedFatherCnic($this->father_cnic);
         $this->phone = $student->phone;
         $this->email = $student->email;
         $this->section_id = $student->section_id;
@@ -478,7 +522,7 @@ class StudentManager extends Component
 
     public function view($id)
     {
-        $this->viewingStudent = Student::with('class')->findOrFail($id);
+        $this->viewingStudent = Student::with(['class', 'siblings'])->findOrFail($id);
         $this->showViewModal = true;
     }
 
@@ -493,6 +537,12 @@ class StudentManager extends Component
             'name' => $this->name,
             'admission_no' => $this->admission_no,
             'father_name' => $this->father_name,
+            'father_cnic' => $this->father_cnic ?: null,
+            'guardian_cnic' => $this->guardian_cnic ?: null,
+            'guardian_relation' => $this->guardian_relation ?: null,
+            'is_guardian_primary' => (bool) $this->is_guardian_primary,
+            'sibling_concession_status' => $this->sibling_concession_status ?: 'none',
+            'custom_concession_amount' => $this->sibling_concession_status === 'custom_waiver' && is_numeric($this->custom_concession_amount) ? $this->custom_concession_amount : null,
             'phone' => $this->phone,
             'email' => $this->email,
             'section_id' => $this->section_id ?: null,
@@ -656,7 +706,7 @@ class StudentManager extends Component
         });
 
         $this->showModal = false;
-        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'father_name', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'singleStudentClasses']);
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'singleStudentClasses']);
 
         if ($this->onlyModal) {
             return redirect(request()->header('Referer'));
@@ -1249,7 +1299,9 @@ class StudentManager extends Component
                 $q->where(function ($subQuery) {
                     $subQuery->where('students.name', 'like', '%' . $this->search . '%')
                       ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
-                      ->orWhere('students.admission_no', 'like', '%' . $this->search . '%');
+                      ->orWhere('students.admission_no', 'like', '%' . $this->search . '%')
+                      ->orWhere('students.father_cnic', 'like', '%' . $this->search . '%')
+                      ->orWhere('students.guardian_cnic', 'like', '%' . $this->search . '%');
                 });
             })
             ->when($this->filterSport, function($q) {

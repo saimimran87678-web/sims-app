@@ -54,6 +54,14 @@ class SubstitutionManager extends Component
     public $warningMessage = '';
     public $focusedTeacherId = null;
 
+    // Modal state for Teacher Attendance period assignment (IMCB Stable layout)
+    public $showSubstitutionModal = false;
+    public $manageForTeacherId = null;
+    public $manageForTeacherName = '';
+
+    // Teacher sort order in Attendance list: 'unavailable_first' (default) or 'name_asc'
+    public $teacherSortOrder = 'unavailable_first';
+
     // Close Classroom State
     public $showCloseClassModal = false;
     public $closeClassId = '';
@@ -157,6 +165,13 @@ class SubstitutionManager extends Component
         }
     }
 
+    public function updatedExcludeWeekends()
+    {
+        if ($this->activeTab === 'reports') {
+            $this->loadMonthlyAttendanceData();
+        }
+    }
+
     public function setTab($tab)
     {
         $this->activeTab = $tab;
@@ -185,6 +200,48 @@ class SubstitutionManager extends Component
     {
         $this->activeTab = 'arrangement';
         $this->focusedTeacherId = $teacherId;
+    }
+
+    public function openSubstitutionModal($teacherId)
+    {
+        $this->manageForTeacherId = $teacherId;
+        $teacher = collect($this->teachers)->firstWhere('id', $teacherId);
+        $this->manageForTeacherName = $teacher ? $teacher->name : 'Teacher';
+        $this->showSubstitutionModal = true;
+    }
+
+    public function closeSubstitutionModal()
+    {
+        $this->showSubstitutionModal = false;
+        $this->manageForTeacherId = null;
+        $this->manageForTeacherName = '';
+        $this->warningMessage = '';
+    }
+
+    public function toggleTeacherSortOrder()
+    {
+        $this->teacherSortOrder = ($this->teacherSortOrder === 'unavailable_first') ? 'name_asc' : 'unavailable_first';
+    }
+
+    public function getSortedTeachersProperty()
+    {
+        if ($this->teacherSortOrder === 'name_asc') {
+            return collect($this->teachers)->sortBy('name')->values();
+        }
+
+        // 'unavailable_first': absent/leave/short_leave/official_duty float to top
+        $statusPriority = [
+            'Absent' => 0,
+            'Leave' => 1,
+            'Short Leave' => 2,
+            'Official Duty' => 3,
+        ];
+
+        return collect($this->teachers)->sortBy(function ($teacher) use ($statusPriority) {
+            $status = $this->teacherStatuses[$teacher->id] ?? 'Present';
+            $priority = $statusPriority[$status] ?? ($status === 'Present' ? 99 : 4);
+            return sprintf('%02d_%s', $priority, $teacher->name);
+        })->values();
     }
 
     public function getActiveShiftType(): string
@@ -838,7 +895,9 @@ class SubstitutionManager extends Component
         $shiftType = $this->getActiveShiftType();
         $selectedDate = Carbon::parse($this->selectedDate)->format('Y-m-d');
         $substituteTeacherId = $this->substitutions[$absentTeacherId][$periodNo] ?? null;
-        $this->activeTab = 'arrangement';
+        if (!$this->showSubstitutionModal) {
+            $this->activeTab = 'arrangement';
+        }
         $this->warningMessage = '';
 
         if (!$substituteTeacherId) {
@@ -873,10 +932,11 @@ class SubstitutionManager extends Component
             return;
         }
 
+        $subTeacherName = collect($this->teachers)->firstWhere('id', $substituteTeacherId)?->name ?? 'Teacher';
+
         // Logic Check: Is the selected substitute already busy?
         $isBusy = $this->checkIfTeacherIsBusy($substituteTeacherId, $periodNo, $classId);
         if ($isBusy) {
-            $subTeacherName = collect($this->teachers)->firstWhere('id', $substituteTeacherId)->name ?? 'Teacher';
             $this->warningMessage = "Notice: {$subTeacherName} is already assigned during Period {$periodNo}. Override assignment applied.";
         }
 
@@ -1361,19 +1421,23 @@ class SubstitutionManager extends Component
         ];
     }
 
-    public function getSelectedTeacherMonthlyDetails(): ?array
+    public function getSelectedTeacherMonthlyDetails($teacherId = null): ?array
     {
-        if (!$this->selectedTeacherId) {
-            $this->selectedTeacherId = collect($this->teachers)->first()?->id;
+        $targetId = $teacherId ?: $this->selectedTeacherId;
+        if (!$targetId) {
+            $targetId = collect($this->teachers)->first()?->id;
+            if (!$teacherId) {
+                $this->selectedTeacherId = $targetId;
+            }
         }
 
-        if (!$this->selectedTeacherId) {
+        if (!$targetId) {
             return null;
         }
 
-        $teacher = collect($this->teachers)->firstWhere('id', $this->selectedTeacherId);
+        $teacher = collect($this->teachers)->firstWhere('id', $targetId);
         if (!$teacher) {
-            $teacher = User::find($this->selectedTeacherId);
+            $teacher = User::find($targetId);
         }
         if (!$teacher) {
             return null;
@@ -1385,7 +1449,7 @@ class SubstitutionManager extends Component
         $endOfMonth = $date->copy()->endOfMonth();
 
         // 1. Fetch attendance records for this teacher in this month
-        $attendances = TeacherAttendance::where('teacher_id', $this->selectedTeacherId)
+        $attendances = TeacherAttendance::where('teacher_id', $targetId)
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
             ->where('date', '>=', $startOfMonth->format('Y-m-d'))
@@ -1397,7 +1461,7 @@ class SubstitutionManager extends Component
         $substitutions = Substitution::with(['class', 'subject', 'absentTeacher'])
             ->where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
-            ->where('substitute_teacher_id', $this->selectedTeacherId)
+            ->where('substitute_teacher_id', $targetId)
             ->where('date', '>=', $startOfMonth->format('Y-m-d'))
             ->where('date', '<=', $endOfMonth->format('Y-m-d'))
             ->get()
@@ -1511,6 +1575,19 @@ class SubstitutionManager extends Component
         ];
     }
 
+    public function getAllTeachersMonthlyDetails(): array
+    {
+        $list = [];
+        $teachers = collect($this->teachers)->sortBy('name');
+        foreach ($teachers as $teacher) {
+            $details = $this->getSelectedTeacherMonthlyDetails($teacher->id);
+            if ($details) {
+                $list[] = $details;
+            }
+        }
+        return $list;
+    }
+
     public function getTeacherPrintUrl($teacherId = null)
     {
         $tId = $teacherId ?: $this->selectedTeacherId;
@@ -1520,6 +1597,19 @@ class SubstitutionManager extends Component
 
         return route($routeName, [
             'teacher_id' => $tId,
+            'month' => $this->selectedMonth,
+            'session_id' => $this->selectedSessionId,
+            'exclude_weekends' => $this->excludeWeekends ? 1 : 0,
+        ]);
+    }
+
+    public function getAllTeachersPrintUrl()
+    {
+        $routeName = request()->is('teacher/*') 
+            ? 'teacher.shared.substitutions.all_teachers_attendance.print' 
+            : 'admin.substitutions.all_teachers_attendance.print';
+
+        return route($routeName, [
             'month' => $this->selectedMonth,
             'session_id' => $this->selectedSessionId,
             'exclude_weekends' => $this->excludeWeekends ? 1 : 0,
@@ -1547,7 +1637,8 @@ class SubstitutionManager extends Component
 
         return route($routeName, [
             'month' => $this->selectedMonth,
-            'session_id' => $this->selectedSessionId
+            'session_id' => $this->selectedSessionId,
+            'exclude_weekends' => $this->excludeWeekends ? 1 : 0,
         ]);
     }
 

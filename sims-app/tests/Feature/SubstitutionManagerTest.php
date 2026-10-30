@@ -347,4 +347,157 @@ class SubstitutionManagerTest extends TestCase
                 ->exists()
         );
     }
+
+    public function test_open_and_close_substitution_modal_in_teacher_attendance(): void
+    {
+        $this->actingAs($this->admin);
+        $today = now()->format('Y-m-d');
+        $dayOfWeek = now()->format('l');
+
+        DB::table('timetables')->insert([
+            'class_id' => $this->class->id,
+            'subject_id' => $this->subject->id,
+            'teacher_id' => $this->absentTeacher->id,
+            'day' => $dayOfWeek,
+            'period_no' => 3,
+            'is_divided' => false,
+            'is_substitute' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $comp = Livewire::test(SubstitutionManager::class)
+            ->set('selectedDate', $today)
+            ->set('selectedSessionId', $this->session->id);
+
+        $comp->set('teacherStatuses.' . $this->absentTeacher->id, 'Leave');
+
+        // Initially modal is closed
+        $comp->assertSet('showSubstitutionModal', false)
+            ->assertSee('Manage Substitute');
+
+        // Open modal for absentTeacher
+        $comp->call('openSubstitutionModal', $this->absentTeacher->id)
+            ->assertSet('showSubstitutionModal', true)
+            ->assertSet('manageForTeacherId', $this->absentTeacher->id)
+            ->assertSet('manageForTeacherName', $this->absentTeacher->name)
+            ->assertSee('Manage Substitution: ' . $this->absentTeacher->name)
+            ->assertSee('Period 3')
+            ->assertSee($this->class->name);
+
+        // Close modal
+        $comp->call('closeSubstitutionModal')
+            ->assertSet('showSubstitutionModal', false)
+            ->assertSet('manageForTeacherId', null);
+    }
+
+    public function test_assign_substitution_inside_modal_preserves_attendance_tab(): void
+    {
+        $this->actingAs($this->admin);
+        $today = now()->format('Y-m-d');
+        $dayOfWeek = now()->format('l');
+
+        DB::table('timetables')->insert([
+            'class_id' => $this->class->id,
+            'subject_id' => $this->subject->id,
+            'teacher_id' => $this->absentTeacher->id,
+            'day' => $dayOfWeek,
+            'period_no' => 2,
+            'is_divided' => false,
+            'is_substitute' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $comp = Livewire::test(SubstitutionManager::class)
+            ->set('selectedDate', $today)
+            ->set('selectedSessionId', $this->session->id);
+
+        $comp->set('teacherStatuses.' . $this->absentTeacher->id, 'Absent');
+        $comp->set('teacherStatuses.' . $this->substituteTeacher->id, 'Present');
+
+        // Open modal from attendance tab
+        $comp->call('openSubstitutionModal', $this->absentTeacher->id);
+        $this->assertEquals('attendance', $comp->get('activeTab'));
+
+        // Assign substitution while modal is open
+        $comp->set('substitutions.' . $this->absentTeacher->id . '.2', $this->substituteTeacher->id)
+            ->call('assignSubstitute', $this->absentTeacher->id, 2, $this->class->id, $this->subject->id);
+
+        // Verify still on attendance tab
+        $this->assertEquals('attendance', $comp->get('activeTab'));
+        $this->assertTrue($comp->get('showSubstitutionModal'));
+
+        // Verify substitution is recorded in database
+        $this->assertTrue(
+            \App\Models\Substitution::where('date', $today)
+                ->where('period_no', 2)
+                ->where('substitute_teacher_id', $this->substituteTeacher->id)
+                ->exists()
+        );
+    }
+
+    public function test_monthly_register_exclude_weekends_toggle(): void
+    {
+        $this->actingAs($this->admin);
+
+        $comp = Livewire::test(SubstitutionManager::class)
+            ->set('selectedSessionId', $this->session->id)
+            ->set('activeTab', 'reports')
+            ->set('reportTab', 'monthly_attendance');
+
+        // Initially excludeWeekends is true
+        $this->assertTrue($comp->get('excludeWeekends'));
+        $printUrl = $comp->instance()->getMonthlyPrintUrl();
+        $this->assertStringContainsString('exclude_weekends=1', $printUrl);
+
+        // Toggle to false
+        $comp->set('excludeWeekends', false);
+        $this->assertFalse($comp->get('excludeWeekends'));
+        $printUrlFalse = $comp->instance()->getMonthlyPrintUrl();
+        $this->assertStringContainsString('exclude_weekends=0', $printUrlFalse);
+
+        // Verify Exclude Weekends checkbox exists in Monthly Register view
+        $comp->assertSee('Exclude Weekends');
+    }
+
+    public function test_batch_all_teachers_individual_attendance_print_route(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->get(route('admin.substitutions.all_teachers_attendance.print', [
+            'month' => now()->format('Y-m'),
+            'session_id' => $this->session->id,
+            'exclude_weekends' => 1,
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertSee('All Teachers Monthly Dossiers');
+        $response->assertSee($this->absentTeacher->name);
+        $response->assertSee($this->substituteTeacher->name);
+        $response->assertSee('Weekends Excluded');
+
+        // Verify ActivityLogger recorded batch print
+        $this->assertDatabaseHas('activity_logs', [
+            'user_id' => $this->admin->id,
+            'action' => 'printed',
+        ]);
+    }
+
+    public function test_monthly_attendance_print_with_exclude_weekends(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->get(route('admin.substitutions.monthly_attendance.print', [
+            'month' => now()->format('Y-m'),
+            'session_id' => $this->session->id,
+            'exclude_weekends' => 1,
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertSee('Weekends Excluded');
+        $response->assertSee($this->absentTeacher->name);
+        $response->assertSee($this->substituteTeacher->name);
+    }
 }
+

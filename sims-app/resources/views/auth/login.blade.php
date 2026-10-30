@@ -16,7 +16,16 @@
                 @endif
             </div>
             <h1 style="font-size: 22px; font-weight: 700; color: #1e3a5f; margin: 0;">{{ $instituteName }}</h1>
-            <p style="font-size: 13px; color: #64748b; margin-top: 5px;">Information Management System</p>
+        </div>
+
+        {{-- Role / Portal Segmented Toggle --}}
+        <div style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+            <div style="flex: 1; text-align: center; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 700; background: #ffffff; color: #1e3a5f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                Staff / Teacher
+            </div>
+            <a href="{{ route('student.login') }}" style="flex: 1; text-align: center; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #64748b; text-decoration: none; transition: all 0.2s;">
+                Student / Parent
+            </a>
         </div>
 
         {{-- Session Status --}}

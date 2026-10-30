@@ -240,7 +240,14 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 bg-blue-50/50">
                                 <span class="px-2 py-1 rounded-md">{{ $student->class_name }}</span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $student->father_name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div class="font-medium text-gray-800">{{ $student->father_name }}</div>
+                                @if($student->father_cnic)
+                                    <span class="text-[11px] font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 block w-max mt-0.5" title="Father CNIC">
+                                        {{ $student->father_cnic }}
+                                    </span>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $student->phone }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                 <span class="px-2.5 py-1 rounded-full text-xs font-semibold {{ $student->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
@@ -351,6 +358,9 @@
                         <div class="flex items-center gap-2 text-sm text-gray-500">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             <span class="truncate" title="{{ $student->father_name }}">{{ $student->father_name }}</span>
+                            @if($student->father_cnic)
+                                <span class="text-[10px] font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 shrink-0" title="Father CNIC">{{ $student->father_cnic }}</span>
+                            @endif
                         </div>
                         @endif
 
@@ -490,6 +500,113 @@
                                         <input wire:model="dob" type="date" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
                                         @error('dob') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                     </div>
+                                </div>
+                            </div>
+
+                            {{-- 2.5 FAMILY & GUARDIAN CNIC SECTION --}}
+                            <div>
+                                <div class="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                                    <span class="p-1.5 bg-purple-50 text-purple-600 rounded-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </span>
+                                    <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider">Family Unit & NADRA CNIC</h4>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {{-- Father CNIC with Auto-Hyphenation --}}
+                                    <div x-data="{
+                                        formatCNIC(e) {
+                                            let v = e.target.value.replace(/\D/g, '').slice(0, 13);
+                                            let res = v;
+                                            if (v.length > 5) res = v.slice(0, 5) + '-' + v.slice(5);
+                                            if (v.length > 12) res = res.slice(0, 13) + '-' + res.slice(13, 14);
+                                            e.target.value = res;
+                                            $wire.set('father_cnic', res);
+                                        }
+                                    }">
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">
+                                            Father's CNIC <span class="text-gray-400 font-normal">(13 digits)</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            wire:model.live.debounce.300ms="father_cnic"
+                                            @input="formatCNIC($event)"
+                                            placeholder="XXXXX-XXXXXXX-X"
+                                            maxlength="15"
+                                            class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                                        />
+                                        @error('father_cnic') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    {{-- Sibling Concession Policy --}}
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Sibling Fee Policy</label>
+                                        <select wire:model.live="sibling_concession_status" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all bg-white font-medium">
+                                            <option value="none">Standard Fee (No Family Concession)</option>
+                                            <option value="policy_eligible">Policy Eligible (Auto Sibling Discount)</option>
+                                            <option value="custom_waiver">Custom Approved Waiver (Manual Amount)</option>
+                                            <option value="disallowed">Strictly Disallowed (Barred from Concession)</option>
+                                        </select>
+                                        @error('sibling_concession_status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    {{-- Custom Concession Amount Input --}}
+                                    @if($sibling_concession_status === 'custom_waiver')
+                                        <div class="md:col-span-2">
+                                            <label class="block text-xs font-semibold text-gray-600 mb-1">Custom Approved Concession (Rs.)</label>
+                                            <input wire:model="custom_concession_amount" type="number" step="0.01" placeholder="e.g. 500" class="w-full px-3.5 py-2 text-sm rounded-xl border border-amber-300 bg-amber-50/30 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all" />
+                                            @error('custom_concession_amount') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                        </div>
+                                    @endif
+                                </div>
+
+                                {{-- Live Sibling Detection Card --}}
+                                @if(!empty($detectedSiblings))
+                                    <div class="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                                        <div class="flex items-center gap-2 text-blue-900 font-bold text-xs mb-1">
+                                            <span>👨‍👩‍👧‍👦 Family Unit Detected</span>
+                                            <span class="px-2 py-0.5 bg-blue-200 text-blue-800 text-[10px] rounded-full font-mono">{{ count($detectedSiblings) }} Sibling(s) Enrolled</span>
+                                        </div>
+                                        <p class="text-[11px] text-blue-700 mb-2">The following active siblings share this Father's CNIC:</p>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            @foreach($detectedSiblings as $sibling)
+                                                <div class="flex items-center justify-between p-2 bg-white rounded-lg border border-blue-100 shadow-xs text-xs">
+                                                    <div>
+                                                        <span class="font-bold text-gray-800">{{ $sibling['name'] }}</span>
+                                                        <span class="text-gray-400 text-[10px] block">Roll #{{ $sibling['roll_no'] }} • {{ $sibling['class_name'] }}</span>
+                                                    </div>
+                                                    <span class="text-[10px] text-indigo-600 font-semibold bg-indigo-50 px-2 py-1 rounded">
+                                                        Adm: {{ $sibling['admission_date'] }}
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Expandable Guardian Options --}}
+                                <div class="mt-3">
+                                    <label class="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-gray-600">
+                                        <input type="checkbox" wire:model.live="is_guardian_primary" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                        <span>Guardian is Primary Contact (or Father Deceased/Abroad)</span>
+                                    </label>
+
+                                    @if($is_guardian_primary)
+                                        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-600 mb-1">Guardian's CNIC</label>
+                                                <input wire:model="guardian_cnic" type="text" placeholder="XXXXX-XXXXXXX-X" maxlength="15" class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all bg-white" />
+                                                @error('guardian_cnic') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-600 mb-1">Guardian Relation</label>
+                                                <input wire:model="guardian_relation" type="text" placeholder="e.g. Uncle, Grandfather, Mother" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all bg-white" />
+                                                @error('guardian_relation') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
 
@@ -1104,6 +1221,57 @@
                                     <div class="profile-row">
                                         <span class="profile-label">Gender</span>
                                         <span class="profile-value" style="text-transform: capitalize;">{{ $viewingStudent->gender ?? '-' }}</span>
+                                    </div>
+                                </div>
+
+                                {{-- Family & Sibling Unit Section --}}
+                                <div style="margin-bottom: 25px;">
+                                    <div class="profile-section-title">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM5.5 12.5c0-.6.4-1 1-1H7v-1h-.5c-.8 0-1.5-.7-1.5-1.5V8c0-.6-.4-1-1-1H3c-.6 0-1 .4-1 1v1c0 .8-.7 1.5-1.5 1.5H0v1h.5c.6 0 1 .4 1 1v1c0 .6.4 1 1 1h1c.6 0 1-.4 1-1v-1h.5c.8 0 1.5-.7 1.5-1.5v-1c0-.6.4-1 1-1h.5v-1h-.5c-.8 0-1.5-.7-1.5-1.5V5z"/></svg>
+                                        Family Unit & Sibling Profile
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="profile-label">Father CNIC</span>
+                                        <span class="profile-value" style="font-family: monospace; font-weight: 700; color: #6b21a8;">{{ $viewingStudent->father_cnic ?? 'Not Registered' }}</span>
+                                    </div>
+                                    @if($viewingStudent->guardian_cnic)
+                                        <div class="profile-row">
+                                            <span class="profile-label">Guardian ({{ $viewingStudent->guardian_relation }})</span>
+                                            <span class="profile-value" style="font-family: monospace;">{{ $viewingStudent->guardian_cnic }}</span>
+                                        </div>
+                                    @endif
+                                    <div class="profile-row">
+                                        <span class="profile-label">Sibling Order</span>
+                                        <span class="profile-value">
+                                            <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background-color: #f3e8ff; color: #7e22ce;">
+                                                Child #{{ $viewingStudent->sibling_rank + 1 }}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="profile-label">Active Siblings</span>
+                                        <span class="profile-value">
+                                            @if($viewingStudent->siblings->count() > 0)
+                                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                                    @foreach($viewingStudent->siblings as $sib)
+                                                        <div style="font-size: 12px; font-weight: 500; color: #374151;">
+                                                            • {{ $sib->name }} (Roll #{{ $sib->roll_no }}, {{ $sib->class->name ?? 'Class' }})
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <span style="color: #9ca3af;">No other enrolled siblings</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="profile-label">Concession Status</span>
+                                        <span class="profile-value" style="text-transform: capitalize; font-size: 12px;">
+                                            {{ str_replace('_', ' ', $viewingStudent->sibling_concession_status ?? 'none') }}
+                                            @if($viewingStudent->sibling_concession_status === 'custom_waiver' && $viewingStudent->custom_concession_amount)
+                                                (Rs. {{ number_format($viewingStudent->custom_concession_amount, 2) }})
+                                            @endif
+                                        </span>
                                     </div>
                                 </div>
 

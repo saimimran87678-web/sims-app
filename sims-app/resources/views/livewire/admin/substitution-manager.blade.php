@@ -249,8 +249,34 @@
                 </div>
             @endif
 
-            {{-- Daily Attendance Table --}}
+            {{-- Daily Attendance Table with Sort Controls --}}
             <div class="border border-gray-150 rounded-2xl overflow-hidden shadow-sm bg-white">
+                <div class="px-5 py-3 border-b border-gray-150 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-gray-700 uppercase tracking-wider">Teacher Attendance List</span>
+                        @php
+                            $unavailableCount = collect($teachers)->filter(fn($t) => ($teacherStatuses[$t->id] ?? 'Present') !== 'Present')->count();
+                        @endphp
+                        @if($unavailableCount > 0)
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                {{ $unavailableCount }} Unavailable (Top)
+                            </span>
+                        @endif
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button 
+                            type="button" 
+                            wire:click="toggleTeacherSortOrder" 
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all {{ $teacherSortOrder === 'unavailable_first' ? 'bg-purple-50 text-purple-700 border-purple-200 shadow-2xs hover:bg-purple-100' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' }}"
+                            title="Toggle between sorting unavailable teachers at top vs alphabetical A-Z"
+                        >
+                            <svg class="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                            </svg>
+                            <span>{{ $teacherSortOrder === 'unavailable_first' ? 'Sorted: Unavailable First' : 'Sorted: Alphabetical (A-Z)' }}</span>
+                        </button>
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-gray-50/75 border-b border-gray-150 text-gray-600 font-semibold uppercase text-xs tracking-wider">
@@ -263,7 +289,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            @forelse($teachers as $index => $teacher)
+                            @forelse($this->sortedTeachers as $index => $teacher)
                                 @php
                                     $currentStatus = $teacherStatuses[$teacher->id] ?? 'Present';
                                     $isNonPresent  = ($currentStatus !== 'Present');
@@ -341,18 +367,21 @@
                                         </div>
                                     </td>
 
-                                    {{-- Arrangement Shortcut --}}
+                                    {{-- Arrangement / Substitution Modal Shortcut --}}
                                     <td class="py-3 px-4 text-center">
                                         @if($isNonPresent)
                                             <button 
                                                 type="button"
-                                                wire:click="openArrangementForTeacher({{ $teacher->id }})" 
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl border border-blue-200 transition-all"
-                                                title="Open substitute arrangement for this teacher"
+                                                wire:click="openSubstitutionModal({{ $teacher->id }})" 
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl border border-purple-200 transition-all shadow-xs"
+                                                title="Manage Substitute Periods for this teacher"
                                             >
-                                                <span>Assign Subs</span>
+                                                <svg class="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                </svg>
+                                                <span>Manage Substitute</span>
                                                 @if($schedCount > 0)
-                                                    <span class="px-1.5 py-0.2 bg-blue-600 text-white text-[10px] rounded-full font-bold">
+                                                    <span class="px-1.5 py-0.2 bg-purple-600 text-white text-[10px] rounded-full font-bold">
                                                         {{ $schedCount }}
                                                     </span>
                                                 @endif
@@ -396,7 +425,7 @@
 
                     {{-- Quick indicator & Download PDF action --}}
                     @php
-                        $nonPresentTeachers = collect($teachers)->filter(fn($t) => ($teacherStatuses[$t->id] ?? 'Present') !== 'Present');
+                        $nonPresentTeachers = collect($this->sortedTeachers)->filter(fn($t) => ($teacherStatuses[$t->id] ?? 'Present') !== 'Present');
                     @endphp
                     <div class="flex flex-wrap items-center gap-3">
                         <div class="text-sm text-gray-600">
@@ -418,7 +447,7 @@
             </div>
 
             {{-- Cards for Absent/Leave Teachers --}}
-            <div class="space-y-4">
+            <div class="space-y-6">
                 @forelse($nonPresentTeachers as $teacher)
                     @php
                         $status = $teacherStatuses[$teacher->id] ?? 'Absent';
@@ -426,192 +455,186 @@
                         $remark = $teacherRemarks[$teacher->id] ?? '';
                         $isFocused = ($focusedTeacherId == $teacher->id);
                     @endphp
-                    <div wire:key="arrangement-card-{{ $teacher->id }}" class="border rounded-2xl overflow-hidden shadow-sm transition-all {{ $isFocused ? 'ring-2 ring-blue-500 border-blue-400' : 'border-gray-200 bg-white' }}">
-                        {{-- Card Header --}}
-                        <div class="p-4 bg-gray-50/80 border-b border-gray-150 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                            <div class="flex flex-wrap items-center gap-2.5">
-                                <h3 class="text-base sm:text-lg font-bold text-gray-800">{{ $teacher->name }}</h3>
-                                
-                                {{-- Status Badge --}}
-                                @if($status === 'Leave')
-                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200">Leave</span>
-                                @elseif($status === 'Official Duty')
-                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">Official Duty</span>
-                                @elseif($status === 'Short Leave')
-                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">Short Leave</span>
-                                @else
-                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">Absent</span>
-                                @endif
-
-                                {{-- Remarks if any --}}
-                                @if(!empty($remark))
-                                    <span class="text-xs text-gray-500 italic bg-white px-2 py-0.5 rounded-md border border-gray-200">
-                                        &ldquo;{{ $remark }}&rdquo;
+                    <div wire:key="arrangement-card-{{ $teacher->id }}" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all {{ $isFocused ? 'ring-2 ring-blue-500 border-blue-400' : '' }}">
+                        {{-- Card Header matching IMCB Stable --}}
+                        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h3 class="font-bold text-gray-900 text-base">{{ $teacher->name }}</h3>
+                                <div class="text-sm text-gray-500 mt-1 flex flex-wrap items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold
+                                        {{ $status === 'Absent' ? 'bg-red-100 text-red-700' : '' }}
+                                        {{ $status === 'Leave' ? 'bg-orange-100 text-orange-700' : '' }}
+                                        {{ $status === 'Short Leave' ? 'bg-amber-100 text-amber-700' : '' }}
+                                        {{ $status === 'Official Duty' ? 'bg-blue-100 text-blue-700' : '' }}
+                                    ">
+                                        {{ strtoupper($status) }}
                                     </span>
-                                @endif
+                                    @if(!empty($remark))
+                                        <span class="text-gray-400">&bull;</span>
+                                        <span class="text-gray-500 italic">&ldquo;{{ $remark }}&rdquo;</span>
+                                    @endif
+                                </div>
                             </div>
-
                             <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold px-2.5 py-1 bg-white rounded-lg border border-gray-200 text-gray-600">
+                                <span class="text-xs font-bold px-2.5 py-1 bg-white rounded-lg border border-gray-200 text-gray-600 shadow-xs">
                                     {{ $schedule->count() }} Class Period{{ $schedule->count() != 1 ? 's' : '' }}
                                 </span>
                             </div>
                         </div>
 
-                        {{-- Scheduled Periods for this teacher --}}
-                        <div class="p-4 bg-white">
-                            @if($schedule->isEmpty())
-                                <div class="text-gray-400 text-sm text-center py-6">
-                                    No regular classes scheduled for this teacher on {{ \Carbon\Carbon::parse($selectedDate)->format('l') }}.
-                                </div>
-                            @else
-                                <div class="space-y-3">
-                                    @foreach($schedule as $period)
-                                        @php
-                                            $showAll = $showAllTeachersToggle[$teacher->id][$period->period_no] ?? false;
-                                            $currentSub = $substitutions[$teacher->id][$period->period_no] ?? null;
-                                            $availableList = $this->getAvailableTeachersForPeriod(
-                                                $period->period_no, 
-                                                $currentSub, 
-                                                $period->class_id, 
-                                                $teacher->id, 
-                                                $showAll
-                                            );
-                                        @endphp
-                                        <div wire:key="period-{{ $teacher->id }}-{{ $period->period_no }}" class="flex flex-col lg:flex-row lg:items-center justify-between p-4 bg-gray-50/70 rounded-xl border border-gray-150 gap-4">
-                                            {{-- Period Info --}}
-                                            <div class="w-full lg:w-1/3">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-md">
+                        {{-- Period Table matching IMCB Stable layout with current project's live selector --}}
+                        <div class="p-0">
+                            @if($schedule->count() > 0)
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase border-b border-gray-100">
+                                        <tr>
+                                            <th class="px-6 py-3 w-32">Period</th>
+                                            <th class="px-6 py-3 w-64">Class & Subject</th>
+                                            <th class="px-6 py-3">Substitute Teacher</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        @foreach($schedule as $period)
+                                            @php
+                                                $showAll = $showAllTeachersToggle[$teacher->id][$period->period_no] ?? false;
+                                                $currentSub = $substitutions[$teacher->id][$period->period_no] ?? null;
+                                                $availableList = $this->getAvailableTeachersForPeriod(
+                                                    $period->period_no, 
+                                                    $currentSub, 
+                                                    $period->class_id, 
+                                                    $teacher->id, 
+                                                    $showAll
+                                                );
+                                            @endphp
+                                            <tr wire:key="period-{{ $teacher->id }}-{{ $period->period_no }}" class="hover:bg-gray-50/40 transition-colors">
+                                                <td class="px-6 py-3.5 font-medium text-gray-900 align-top">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-150">
                                                         Period {{ $period->period_no }}
                                                     </span>
-                                                    <span class="font-extrabold text-gray-900 text-base">
-                                                        {{ $period->class_name }}
-                                                    </span>
-                                                </div>
-                                                <div class="text-sm font-medium text-gray-600 mt-1">
-                                                    {{ $period->subject_name }}
-                                                </div>
-                                            </div>
-
-                                            {{-- Substitute Assignment Area --}}
-                                            <div class="w-full lg:flex-1 flex flex-col sm:flex-row sm:items-center gap-3">
-                                                @if(!empty($period->is_closed))
-                                                    <div class="w-full p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between">
-                                                        <div class="flex items-center gap-2 text-rose-800 text-xs font-bold">
-                                                            <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                                            </svg>
-                                                            <span>Class Closed for Today: {{ $period->closed_reason ?: 'Closed' }}</span>
+                                                </td>
+                                                <td class="px-6 py-3.5 text-gray-800 align-top">
+                                                    <div class="font-bold text-gray-900">{{ $period->class_name }}</div>
+                                                    <div class="text-xs text-gray-500 mt-0.5">{{ $period->subject_name }}</div>
+                                                </td>
+                                                <td class="px-6 py-3.5 align-top">
+                                                    @if(!empty($period->is_closed))
+                                                        <div class="flex items-center justify-between p-2.5 bg-rose-50 border border-rose-200 rounded-xl">
+                                                            <div class="flex items-center gap-2 text-rose-800 text-xs font-bold">
+                                                                <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                </svg>
+                                                                <span>Class Closed for Today: {{ $period->closed_reason ?: 'Closed' }}</span>
+                                                            </div>
+                                                            <span class="text-[11px] text-rose-700 font-bold bg-rose-100 px-2 py-0.5 rounded-md border border-rose-200">No Sub Needed</span>
                                                         </div>
-                                                        <span class="text-[11px] text-rose-700 font-bold bg-rose-100 px-2 py-0.5 rounded-md border border-rose-200">No Sub Needed</span>
-                                                    </div>
-                                                @elseif(!empty($period->is_merged_away))
-                                                    <div class="w-full p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between">
-                                                        <div class="flex items-center gap-2 text-purple-800 text-xs font-bold">
-                                                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                                            </svg>
-                                                            <span>Combined with {{ $period->merged_with_class_name }}</span>
+                                                    @elseif(!empty($period->is_merged_away))
+                                                        <div class="flex items-center justify-between p-2.5 bg-purple-50 border border-purple-200 rounded-xl">
+                                                            <div class="flex items-center gap-2 text-purple-800 text-xs font-bold">
+                                                                <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                                </svg>
+                                                                <span>Combined with {{ $period->merged_with_class_name }}</span>
+                                                            </div>
+                                                            <span class="text-[11px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">Merged Session</span>
                                                         </div>
-                                                        <span class="text-[11px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">Merged Session</span>
-                                                    </div>
-                                                @else
-                                                    <div class="flex-1">
-                                                        {{-- CLEAN SELECTOR: Only Teacher Names inside <option> tag --}}
-                                                        <select 
-                                                            wire:model="substitutions.{{ $teacher->id }}.{{ $period->period_no }}"
-                                                            wire:change="assignSubstitute({{ $teacher->id }}, {{ $period->period_no }}, {{ $period->class_id }}, {{ $period->subject_id }})"
-                                                            class="w-full px-4 py-2 border {{ $showAll ? 'border-amber-400 focus:ring-amber-500' : 'border-gray-200 focus:ring-blue-500' }} rounded-xl outline-none bg-white text-sm font-semibold transition-all shadow-sm"
-                                                        >
-                                                            <option value="">-- Assign Substitute --</option>
-                                                            @foreach($availableList as $t)
-                                                                <option value="{{ $t->id }}">{{ $t->name }}</option>
-                                                            @endforeach
-                                                        </select>
+                                                    @else
+                                                        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                                                            <div class="flex-1">
+                                                                {{-- Live Selector retained as requested --}}
+                                                                <select 
+                                                                    wire:model="substitutions.{{ $teacher->id }}.{{ $period->period_no }}"
+                                                                    wire:change="assignSubstitute({{ $teacher->id }}, {{ $period->period_no }}, {{ $period->class_id }}, {{ $period->subject_id }})"
+                                                                    class="w-full px-3 py-1.5 border {{ $showAll ? 'border-amber-400 focus:ring-amber-500' : 'border-gray-200 focus:ring-blue-500' }} rounded-xl outline-none bg-white text-xs font-semibold transition-all shadow-xs"
+                                                                >
+                                                                    <option value="">-- Assign Substitute --</option>
+                                                                    @foreach($availableList as $t)
+                                                                        <option value="{{ $t->id }}">
+                                                                            {{ $t->name }} ({{ $dailySubCounts[$t->id] ?? 0 }})
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
 
-                                                        {{-- VISUAL BADGES / WORKLOAD OUTSIDE SELECTOR (Clean UI) --}}
-                                                        @if($currentSub)
-                                                            @php
-                                                                $selDaily   = $dailySubCounts[$currentSub] ?? 0;
-                                                                $selMonthly = $monthlySubCounts[$currentSub] ?? 0;
-                                                                $selTeacher = collect($teachers)->firstWhere('id', $currentSub);
-                                                                $selName    = $selTeacher?->name ?? 'Teacher';
-                                                                $assignedDuties = $teacherAssignedSubs[$currentSub] ?? [];
-
-                                                                if ($selDaily >= 3)      $loadBadge = 'text-red-700 bg-red-50 border-red-200';
-                                                                elseif ($selDaily == 2)  $loadBadge = 'text-amber-800 bg-amber-50 border-amber-200';
-                                                                else                     $loadBadge = 'text-emerald-700 bg-emerald-50 border-emerald-200';
-                                                            @endphp
-                                                            <div class="mt-2 flex flex-wrap items-center gap-2">
-                                                                {{-- Workload Badge --}}
-                                                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold {{ $loadBadge }}">
-                                                                    <span class="w-2 h-2 rounded-full {{ $selDaily >= 3 ? 'bg-red-500' : ($selDaily == 2 ? 'bg-amber-500' : 'bg-emerald-500') }}"></span>
-                                                                    <span class="font-bold">{{ $selDaily }} sub{{ $selDaily != 1 ? 's' : '' }} today</span>
-                                                                    @if($showMonthlyCount)
-                                                                        <span class="text-gray-400">&bull;</span>
-                                                                        <span class="font-normal text-gray-600">{{ $selMonthly }} this month</span>
-                                                                    @endif
-                                                                </div>
-
-                                                                {{-- Extra period duties badge --}}
-                                                                @if(count($assignedDuties) > 1)
+                                                                {{-- Visual Workload Badges --}}
+                                                                @if($currentSub)
                                                                     @php
-                                                                        $otherDuties = collect($assignedDuties)->filter(fn($d) => !($d['period_no'] == $period->period_no && $d['class_name'] == $period->class_name));
+                                                                        $selDaily   = $dailySubCounts[$currentSub] ?? 0;
+                                                                        $selMonthly = $monthlySubCounts[$currentSub] ?? 0;
+                                                                        $assignedDuties = $teacherAssignedSubs[$currentSub] ?? [];
+
+                                                                        if ($selDaily >= 3)      $loadBadge = 'text-red-700 bg-red-50 border-red-200';
+                                                                        elseif ($selDaily == 2)  $loadBadge = 'text-amber-800 bg-amber-50 border-amber-200';
+                                                                        else                     $loadBadge = 'text-emerald-700 bg-emerald-50 border-emerald-200';
                                                                     @endphp
-                                                                    @if($otherDuties->isNotEmpty())
-                                                                        <div class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-150 text-[11px] font-medium" title="Other substitute periods today">
-                                                                            <span>Also:</span>
-                                                                            @foreach($otherDuties as $duty)
-                                                                                <span class="font-bold">{{ $duty['class_name'] }} (P{{ $duty['period_no'] }})</span>{{ !$loop->last ? ',' : '' }}
-                                                                            @endforeach
+                                                                    <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                                                                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[11px] font-semibold {{ $loadBadge }}">
+                                                                            <span class="w-1.5 h-1.5 rounded-full {{ $selDaily >= 3 ? 'bg-red-500' : ($selDaily == 2 ? 'bg-amber-500' : 'bg-emerald-500') }}"></span>
+                                                                            <span class="font-bold">{{ $selDaily }} sub{{ $selDaily != 1 ? 's' : '' }} today</span>
+                                                                            @if($showMonthlyCount)
+                                                                                <span class="text-gray-400">&bull;</span>
+                                                                                <span class="font-normal text-gray-600">{{ $selMonthly }} this month</span>
+                                                                            @endif
                                                                         </div>
-                                                                    @endif
+
+                                                                        @if(count($assignedDuties) > 1)
+                                                                            @php
+                                                                                $otherDuties = collect($assignedDuties)->filter(fn($d) => !($d['period_no'] == $period->period_no && $d['class_name'] == $period->class_name));
+                                                                            @endphp
+                                                                            @if($otherDuties->isNotEmpty())
+                                                                                <div class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-150 text-[10px] font-medium" title="Other substitute periods today">
+                                                                                    <span>Also:</span>
+                                                                                    @foreach($otherDuties as $duty)
+                                                                                        <span class="font-bold">{{ $duty['class_name'] }} (P{{ $duty['period_no'] }})</span>{{ !$loop->last ? ',' : '' }}
+                                                                                    @endforeach
+                                                                                </div>
+                                                                            @endif
+                                                                        @endif
+                                                                    </div>
+                                                                @endif
+
+                                                                @if($showAll)
+                                                                    <div class="text-[10px] text-amber-700 font-medium mt-1 flex items-center gap-1">
+                                                                        <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                                        </svg>
+                                                                        <span>Showing all teachers (Conflict Override).</span>
+                                                                    </div>
                                                                 @endif
                                                             </div>
-                                                        @endif
 
-                                                        {{-- Override warning badge --}}
-                                                        @if($showAll)
-                                                            <div class="text-[11px] text-amber-700 font-medium mt-1.5 flex items-center gap-1">
-                                                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                                                </svg>
-                                                                <span>Showing all teachers. Assignment may cause timetable conflict.</span>
+                                                            {{-- Override Checkbox --}}
+                                                            <div class="shrink-0">
+                                                                <label class="flex items-center gap-1.5 cursor-pointer bg-gray-50 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg border border-gray-200 transition-all text-[11px] font-medium text-gray-600">
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        wire:model.live="showAllTeachersToggle.{{ $teacher->id }}.{{ $period->period_no }}" 
+                                                                        class="w-3.5 h-3.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                                    >
+                                                                    <span>Override</span>
+                                                                </label>
                                                             </div>
-                                                        @endif
-                                                    </div>
-
-                                                    {{-- Override Checkbox --}}
-                                                    <div class="w-full sm:w-auto shrink-0">
-                                                        <label class="flex items-center gap-2 cursor-pointer group bg-white px-3 py-2 rounded-xl border border-gray-200 hover:border-gray-300 transition-all">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                wire:model.live="showAllTeachersToggle.{{ $teacher->id }}.{{ $period->period_no }}" 
-                                                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                                            >
-                                                            <span class="text-xs font-semibold text-gray-600 group-hover:text-gray-800">Show All (Override)</span>
-                                                        </label>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @endforeach
+                                                        </div>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @else
+                                <div class="p-6 text-center text-gray-400 text-sm italic">
+                                    No regular classes scheduled for this teacher on {{ \Carbon\Carbon::parse($selectedDate)->format('l') }}.
                                 </div>
                             @endif
                         </div>
                     </div>
                 @empty
-                    <div class="glass-card rounded-2xl p-12 text-center">
-                        <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    <div class="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-sm">
+                        <div class="bg-emerald-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-800">All Teachers are Present!</h3>
-                        <p class="text-gray-500 text-sm max-w-md mx-auto mt-1">
-                            No teachers are marked absent or on leave for {{ \Carbon\Carbon::parse($selectedDate)->format('F j, Y') }}. No class period arrangements are required.
-                        </p>
+                        <h3 class="text-lg font-bold text-gray-900">All Teachers Present</h3>
+                        <p class="text-gray-500 text-sm mt-1">No arrangements needed at the moment for {{ \Carbon\Carbon::parse($selectedDate)->format('F j, Y') }}.</p>
                     </div>
                 @endforelse
             </div>
@@ -651,13 +674,21 @@
 
                 {{-- Month selector (for Monthly Attendance) --}}
                 @if($reportTab === 'monthly_attendance')
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Select Month:</label>
                         <input 
                             type="month" 
                             wire:model.live="selectedMonth" 
                             class="px-3 py-1.5 border border-gray-200 rounded-xl text-sm font-bold bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                         >
+                        <label class="flex items-center gap-2 cursor-pointer select-none bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-700 transition-all shadow-xs">
+                            <input 
+                                type="checkbox" 
+                                wire:model.live="excludeWeekends" 
+                                class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                            />
+                            <span>Exclude Weekends</span>
+                        </label>
                         <a 
                             href="{{ $this->getMonthlyPrintUrl() }}" 
                             target="_blank" 
@@ -737,10 +768,12 @@
                                     <th class="py-3 px-3 text-center min-w-[90px]">Rate %</th>
                                     {{-- Day Columns --}}
                                     @foreach($monthlyDays as $dayInfo)
-                                        <th class="py-2 px-1 text-center font-bold {{ $dayInfo['is_weekend'] ? 'bg-gray-100 text-gray-400' : ($dayInfo['is_holiday'] ? 'bg-purple-50 text-purple-600' : 'text-gray-700') }}" title="{{ $dayInfo['date'] }} ({{ $dayInfo['day_name'] }})">
-                                            <div>{{ $dayInfo['day'] }}</div>
-                                            <div class="text-[9px] font-normal lowercase">{{ substr($dayInfo['day_name'], 0, 1) }}</div>
-                                        </th>
+                                        @if(!$excludeWeekends || !$dayInfo['is_weekend'])
+                                            <th class="py-2 px-1 text-center font-bold {{ $dayInfo['is_weekend'] ? 'bg-gray-100 text-gray-400' : ($dayInfo['is_holiday'] ? 'bg-purple-50 text-purple-600' : 'text-gray-700') }}" title="{{ $dayInfo['date'] }} ({{ $dayInfo['day_name'] }})">
+                                                <div>{{ $dayInfo['day'] }}</div>
+                                                <div class="text-[9px] font-normal lowercase">{{ substr($dayInfo['day_name'], 0, 1) }}</div>
+                                            </th>
+                                        @endif
                                     @endforeach
                                 </tr>
                             </thead>
@@ -779,41 +812,46 @@
                                                 {{ $pct }}%
                                             </span>
                                         </td>
-                                        {{-- 1-31 Day Cells (Clean: No remarks in register as requested) --}}
+                                        {{-- Day Cells --}}
                                         @foreach($monthlyDays as $dayInfo)
-                                            @php
-                                                $dayNum = $dayInfo['day'];
-                                                $rec = $tRow['days'][$dayNum] ?? null;
-                                                $cellStatus = $rec['code'] ?? ($rec['status'] ?? '-');
+                                            @if(!$excludeWeekends || !$dayInfo['is_weekend'])
+                                                @php
+                                                    $dayNum = $dayInfo['day'];
+                                                    $rec = $tRow['days'][$dayNum] ?? null;
+                                                    $cellStatus = $rec['code'] ?? ($rec['status'] ?? '-');
 
-                                                if ($cellStatus === 'P') {
-                                                    $cellBg = 'bg-emerald-100 text-emerald-800 font-bold';
-                                                } elseif ($cellStatus === 'L') {
-                                                    $cellBg = 'bg-orange-100 text-orange-800 font-bold';
-                                                } elseif ($cellStatus === 'OD') {
-                                                    $cellBg = 'bg-blue-100 text-blue-800 font-bold';
-                                                } elseif ($cellStatus === 'SL') {
-                                                    $cellBg = 'bg-amber-100 text-amber-800 font-bold';
-                                                } elseif ($cellStatus === 'A') {
-                                                    $cellBg = 'bg-red-100 text-red-800 font-bold';
-                                                } elseif ($cellStatus === 'H') {
-                                                    $cellBg = 'bg-purple-100 text-purple-700 font-semibold';
-                                                } elseif ($cellStatus === 'W') {
-                                                    $cellBg = 'bg-gray-100 text-gray-400 font-normal';
-                                                } else {
-                                                    $cellBg = 'text-gray-300';
-                                                }
-                                            @endphp
-                                            <td class="py-1 px-1 text-center {{ $dayInfo['is_weekend'] ? 'bg-gray-50/50' : '' }}" title="{{ $dayInfo['date'] }}: {{ $cellStatus }}">
-                                                <div class="w-6 h-6 mx-auto rounded flex items-center justify-center text-[10px] {{ $cellBg }}">
-                                                    {{ $cellStatus }}
-                                                </div>
-                                            </td>
+                                                    if ($cellStatus === 'P') {
+                                                        $cellBg = 'bg-emerald-100 text-emerald-800 font-bold';
+                                                    } elseif ($cellStatus === 'L') {
+                                                        $cellBg = 'bg-orange-100 text-orange-800 font-bold';
+                                                    } elseif ($cellStatus === 'OD') {
+                                                        $cellBg = 'bg-blue-100 text-blue-800 font-bold';
+                                                    } elseif ($cellStatus === 'SL') {
+                                                        $cellBg = 'bg-amber-100 text-amber-800 font-bold';
+                                                    } elseif ($cellStatus === 'A') {
+                                                        $cellBg = 'bg-red-100 text-red-800 font-bold';
+                                                    } elseif ($cellStatus === 'H') {
+                                                        $cellBg = 'bg-purple-100 text-purple-700 font-semibold';
+                                                    } elseif ($cellStatus === 'W') {
+                                                        $cellBg = 'bg-gray-100 text-gray-400 font-normal';
+                                                    } else {
+                                                        $cellBg = 'text-gray-300';
+                                                    }
+                                                @endphp
+                                                <td class="py-1 px-1 text-center {{ $dayInfo['is_weekend'] ? 'bg-gray-50/50' : '' }}" title="{{ $dayInfo['date'] }}: {{ $cellStatus }}">
+                                                    <div class="w-6 h-6 mx-auto rounded flex items-center justify-center text-[10px] {{ $cellBg }}">
+                                                        {{ $cellStatus }}
+                                                    </div>
+                                                </td>
+                                            @endif
                                         @endforeach
                                     </tr>
                                 @empty
+                                    @php
+                                        $visibleDaysCount = $excludeWeekends ? collect($monthlyDays)->where('is_weekend', false)->count() : count($monthlyDays);
+                                    @endphp
                                     <tr>
-                                        <td colspan="{{ count($monthlyDays) + 9 }}" class="py-8 text-center text-gray-400 text-sm">
+                                        <td colspan="{{ $visibleDaysCount + 9 }}" class="py-8 text-center text-gray-400 text-sm">
                                             No teacher attendance data found for this month.
                                         </td>
                                     </tr>
@@ -997,7 +1035,7 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             @if($selTeacherObj)
                                 <a 
                                     href="{{ $this->getTeacherPrintUrl() }}" 
@@ -1011,6 +1049,18 @@
                                     <span>Print Teacher Report</span>
                                 </a>
                             @endif
+
+                            <a 
+                                href="{{ $this->getAllTeachersPrintUrl() }}" 
+                                target="_blank" 
+                                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-md shadow-purple-100 transition-all flex items-center gap-2"
+                                title="Print monthly attendance dossiers for all teachers at once"
+                            >
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                </svg>
+                                <span>Print All Teachers (Batch)</span>
+                            </a>
                         </div>
                     </div>
 
@@ -1432,6 +1482,154 @@
                         class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all"
                     >
                         Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ============================================================ --}}
+    {{-- SUBSTITUTION MODAL (TEACHER ATTENDANCE PERIOD ASSIGNMENT)     --}}
+    {{-- ============================================================ --}}
+    @if($showSubstitutionModal && $manageForTeacherId)
+        @php
+            $modalTeacher = collect($teachers)->firstWhere('id', $manageForTeacherId);
+            $modalStatus = $teacherStatuses[$manageForTeacherId] ?? 'Absent';
+            $modalSchedule = $this->getTeacherSchedule($manageForTeacherId);
+            $modalRemark = $teacherRemarks[$manageForTeacherId] ?? '';
+        @endphp
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+             x-transition
+             @click.self="$wire.closeSubstitutionModal()">
+            
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col border border-gray-150 animate-in fade-in zoom-in-95 duration-150">
+                {{-- Modal Header matching IMCB Stable --}}
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-gray-900 text-base">Manage Substitution: {{ $manageForTeacherName }}</h3>
+                            <span class="px-2 py-0.5 rounded text-xs font-semibold
+                                {{ $modalStatus === 'Absent' ? 'bg-red-100 text-red-700' : '' }}
+                                {{ $modalStatus === 'Leave' ? 'bg-orange-100 text-orange-700' : '' }}
+                                {{ $modalStatus === 'Short Leave' ? 'bg-amber-100 text-amber-700' : '' }}
+                                {{ $modalStatus === 'Official Duty' ? 'bg-blue-100 text-blue-700' : '' }}
+                            ">
+                                {{ strtoupper($modalStatus) }}
+                            </span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                            <span>{{ \Carbon\Carbon::parse($selectedDate)->format('l, F j, Y') }}</span>
+                            @if(!empty($modalRemark))
+                                <span class="text-gray-400">&bull;</span>
+                                <span class="italic text-gray-600">{{ $modalRemark }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    <button 
+                        type="button"
+                        wire:click="closeSubstitutionModal" 
+                        class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                        title="Close"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                {{-- Modal Body --}}
+                <div class="p-6 overflow-y-auto space-y-4">
+                    @if($warningMessage)
+                        <div class="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl flex items-center gap-2">
+                            <svg class="w-4 h-4 shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span>{{ $warningMessage }}</span>
+                        </div>
+                    @endif
+
+                    @if($modalSchedule->count() > 0)
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-gray-700 font-medium border-b border-gray-200 text-xs uppercase">
+                                <tr>
+                                    <th class="p-3 w-28">Period</th>
+                                    <th class="p-3">Class</th>
+                                    <th class="p-3">Subject</th>
+                                    <th class="p-3">Substitute Teacher</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @foreach($modalSchedule as $period)
+                                    @php
+                                        $currentSub = $substitutions[$manageForTeacherId][$period->period_no] ?? null;
+                                        $availableList = $this->getAvailableTeachersForPeriod(
+                                            $period->period_no, 
+                                            $currentSub, 
+                                            $period->class_id, 
+                                            $manageForTeacherId, 
+                                            false
+                                        );
+                                    @endphp
+                                    <tr class="hover:bg-gray-50/50 transition-colors">
+                                        <td class="p-3 font-medium text-gray-900">
+                                            <span>Period {{ $period->period_no }}</span>
+                                        </td>
+                                        <td class="p-3 font-semibold text-gray-800">
+                                            {{ $period->class_name }}
+                                        </td>
+                                        <td class="p-3 text-gray-600">
+                                            {{ $period->subject_name }}
+                                        </td>
+                                        <td class="p-3">
+                                            @if(!empty($period->is_closed))
+                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                                                    Closed ({{ $period->closed_reason ?: 'No Sub Needed' }})
+                                                </span>
+                                            @elseif(!empty($period->is_merged_away))
+                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
+                                                    Merged with {{ $period->merged_with_class_name }}
+                                                </span>
+                                            @else
+                                                <select 
+                                                    wire:model="substitutions.{{ $manageForTeacherId }}.{{ $period->period_no }}" 
+                                                    wire:change="assignSubstitute({{ $manageForTeacherId }}, {{ $period->period_no }}, {{ $period->class_id }}, {{ $period->subject_id }})"
+                                                    class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                                >
+                                                    <option value="">-- No Substitute --</option>
+                                                    @foreach($availableList as $ft)
+                                                        <option value="{{ $ft->id }}">
+                                                            {{ $ft->name }} ({{ $dailySubCounts[$ft->id] ?? 0 }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @else
+                        <div class="text-center py-8 text-gray-500">
+                            No classes found for this teacher today.
+                        </div>
+                    @endif
+                </div>
+
+                {{-- Modal Footer matching IMCB Stable --}}
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 shrink-0">
+                    <button 
+                        type="button"
+                        wire:click="closeSubstitutionModal" 
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-xs"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button"
+                        wire:click="closeSubstitutionModal" 
+                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                        Done
                     </button>
                 </div>
             </div>

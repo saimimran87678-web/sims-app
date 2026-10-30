@@ -17,6 +17,23 @@ Route::get('/v/{token}/pdf', [\App\Http\Controllers\PublicVoucherController::cla
     ->name('public.voucher.pdf')
     ->middleware('throttle:60,1');
 
+// Student & Parent Portal (NADRA CNIC + Admission Number Verified)
+Route::get('/portal', function () {
+    if (session()->has('student_portal_id')) {
+        return redirect()->route('student.dashboard');
+    }
+    return redirect()->route('student.login');
+})->name('portal');
+
+Route::prefix('student')->name('student.')->group(function () {
+    Route::get('/login', \App\Livewire\Student\Auth\PortalLogin::class)->name('login');
+    Route::get('/dashboard', \App\Livewire\Student\PortalDashboard::class)->name('dashboard');
+    Route::post('/logout', function () {
+        session()->forget(['student_portal_id', 'student_portal_cnic', 'student_portal_name']);
+        return redirect()->route('student.login');
+    })->name('logout');
+});
+
 Route::get('/dashboard', function () {
     $user = \Illuminate\Support\Facades\Auth::user();
     
@@ -124,6 +141,9 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         $manager = new \App\Livewire\Admin\SubstitutionManager();
         $manager->selectedMonth = request('month', now()->format('Y-m'));
         $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
+        $manager->excludeWeekends = request()->has('exclude_weekends') 
+            ? request()->boolean('exclude_weekends') 
+            : true;
         $manager->loadData();
         $manager->loadMonthlyAttendanceData();
 
@@ -134,6 +154,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
                 'month' => $manager->selectedMonth,
                 'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
                 'shift_type' => $manager->getActiveShiftType(),
+                'exclude_weekends' => $manager->excludeWeekends,
             ]
         );
 
@@ -144,6 +165,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
             'stats' => $manager->monthlyStats,
             'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
             'shiftType' => $manager->getActiveShiftType(),
+            'excludeWeekends' => $manager->excludeWeekends,
         ]);
     })->name('substitutions.monthly_attendance.print');
 
@@ -184,6 +206,43 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
             'excludeWeekends' => $manager->excludeWeekends,
         ]);
     })->name('substitutions.teacher_attendance.print');
+
+    Route::get('/substitutions/all-teachers-attendance/print', function() {
+        $user = request()->user();
+        $isAdmin = $user && ($user->role === 'admin' || $user->hasRole('Super Admin'));
+        if (!$isAdmin) {
+            abort_if(!$user || ($user->cannot('schedule.manage') && $user->cannot('substitutions.manage')), 403);
+        }
+        $manager = new \App\Livewire\Admin\SubstitutionManager();
+        $manager->selectedMonth = request('month', now()->format('Y-m'));
+        $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
+        $manager->excludeWeekends = request()->has('exclude_weekends') 
+            ? request()->boolean('exclude_weekends') 
+            : true;
+        $manager->loadData();
+        $manager->loadMonthlyAttendanceData();
+        $allTeachersData = $manager->getAllTeachersMonthlyDetails();
+        
+        \App\Services\ActivityLogger::logPrint(
+            type: 'All Teachers Attendance Dossier',
+            description: "Printed Batch Attendance Dossiers for All Teachers ({$manager->selectedMonth})",
+            details: [
+                'month' => $manager->selectedMonth,
+                'total_teachers' => count($allTeachersData),
+                'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
+                'shift_type' => $manager->getActiveShiftType(),
+                'exclude_weekends' => $manager->excludeWeekends,
+            ]
+        );
+
+        return view('pdf.all-teachers-individual-attendance', [
+            'month' => $manager->selectedMonth,
+            'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
+            'shiftType' => $manager->getActiveShiftType(),
+            'allTeachersData' => $allTeachersData,
+            'excludeWeekends' => $manager->excludeWeekends,
+        ]);
+    })->name('substitutions.all_teachers_attendance.print');
     Route::get('/classes', \App\Livewire\Admin\ClassManager::class)->name('classes');
     
     // Student Management (Remotely Gated)
@@ -319,6 +378,9 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
             $manager = new \App\Livewire\Admin\SubstitutionManager();
             $manager->selectedMonth = request('month', now()->format('Y-m'));
             $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
+            $manager->excludeWeekends = request()->has('exclude_weekends') 
+                ? request()->boolean('exclude_weekends') 
+                : true;
             $manager->loadData();
             $manager->loadMonthlyAttendanceData();
 
@@ -329,6 +391,7 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
                     'month' => $manager->selectedMonth,
                     'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
                     'shift_type' => $manager->getActiveShiftType(),
+                    'exclude_weekends' => $manager->excludeWeekends,
                 ]
             );
 
@@ -339,6 +402,7 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
                 'stats' => $manager->monthlyStats,
                 'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
                 'shiftType' => $manager->getActiveShiftType(),
+                'excludeWeekends' => $manager->excludeWeekends,
             ]);
         })->name('shared.substitutions.monthly_attendance.print');
 
@@ -374,6 +438,38 @@ Route::middleware(['auth', 'isTeacher'])->prefix('teacher')->name('teacher.')->g
                 'excludeWeekends' => $manager->excludeWeekends,
             ]);
         })->name('shared.substitutions.teacher_attendance.print');
+
+        Route::get('/shared/substitutions/all-teachers-attendance/print', function() {
+            $manager = new \App\Livewire\Admin\SubstitutionManager();
+            $manager->selectedMonth = request('month', now()->format('Y-m'));
+            $manager->selectedSessionId = request('session_id', \App\Models\AcademicSession::getActiveSessionId());
+            $manager->excludeWeekends = request()->has('exclude_weekends') 
+                ? request()->boolean('exclude_weekends') 
+                : true;
+            $manager->loadData();
+            $manager->loadMonthlyAttendanceData();
+            $allTeachersData = $manager->getAllTeachersMonthlyDetails();
+            
+            \App\Services\ActivityLogger::logPrint(
+                type: 'All Teachers Attendance Dossier',
+                description: "Printed Batch Attendance Dossiers for All Teachers ({$manager->selectedMonth})",
+                details: [
+                    'month' => $manager->selectedMonth,
+                    'total_teachers' => count($allTeachersData),
+                    'session' => \App\Models\AcademicSession::find($manager->selectedSessionId)?->name,
+                    'shift_type' => $manager->getActiveShiftType(),
+                    'exclude_weekends' => $manager->excludeWeekends,
+                ]
+            );
+
+            return view('pdf.all-teachers-individual-attendance', [
+                'month' => $manager->selectedMonth,
+                'session' => \App\Models\AcademicSession::find($manager->selectedSessionId),
+                'shiftType' => $manager->getActiveShiftType(),
+                'allTeachersData' => $allTeachersData,
+                'excludeWeekends' => $manager->excludeWeekends,
+            ]);
+        })->name('shared.substitutions.all_teachers_attendance.print');
     });
 
     Route::middleware(['permission:fees.manage'])->group(function () {

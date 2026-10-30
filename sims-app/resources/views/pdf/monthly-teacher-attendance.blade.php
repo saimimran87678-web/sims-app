@@ -218,6 +218,9 @@
             @if(isset($session))
                 &nbsp;&bull;&nbsp; Session: {{ $session->name }}
             @endif
+            @if(!empty($excludeWeekends))
+                &nbsp;&bull;&nbsp; <span style="color: #166534; font-weight: 700;">Weekends Excluded</span>
+            @endif
         </div>
         <div class="meta-info">
             Generated on: {{ now()->format('l, d F Y - h:i A') }}
@@ -233,16 +236,22 @@
         <div class="summary-item">Substitutions Covered: <span>{{ $stats['total_substitutions'] }}</span></div>
     </div>
 
+    @php
+        $displayDays = !empty($excludeWeekends) 
+            ? array_values(array_filter($days, fn($d) => empty($d['is_weekend']))) 
+            : $days;
+    @endphp
+
     <table class="matrix-table">
         <thead>
             <tr>
                 <th rowspan="2" style="width: 25px;">S#</th>
                 <th rowspan="2" class="teacher-col" style="min-width: 140px;">Teacher Name</th>
-                <th colspan="{{ count($days) }}">Days of the Month</th>
+                <th colspan="{{ count($displayDays) }}">Days of the Month</th>
                 <th colspan="7">Monthly Summary</th>
             </tr>
             <tr>
-                @foreach($days as $day)
+                @foreach($displayDays as $day)
                     <th class="{{ $day['is_weekend'] ? 'day-weekend' : ($day['is_holiday'] ? 'day-holiday' : '') }}" style="width: 16px;">
                         <div>{{ $day['day'] }}</div>
                         <div style="font-size: 7px; color: #64748b;">{{ substr($day['day_name'], 0, 1) }}</div>
@@ -265,7 +274,7 @@
                         <strong>{{ $row['name'] }}</strong>
                     </td>
 
-                    @foreach($days as $day)
+                    @foreach($displayDays as $day)
                         @php
                             $c = $row['days'][$day['day']]['code'] ?? '-';
                         @endphp
@@ -300,7 +309,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ count($days) + 9 }}" style="text-align: center; padding: 20px; color: #94a3b8;">
+                    <td colspan="{{ count($displayDays) + 9 }}" style="text-align: center; padding: 20px; color: #94a3b8;">
                         No teachers enrolled or attendance records found for this period.
                     </td>
                 </tr>

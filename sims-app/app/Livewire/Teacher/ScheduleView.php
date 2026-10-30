@@ -137,6 +137,22 @@ class ScheduleView extends Component
         $this->loadTimetables();
     }
 
+    public function jumpToToday()
+    {
+        $dayOfWeek = now()->dayOfWeek;
+        $dayMap = [
+            1 => 'Monday',
+            2 => 'Tuesday',
+            3 => 'Wednesday',
+            4 => 'Thursday',
+            5 => 'Friday',
+            6 => in_array('Saturday', $this->days) ? 'Saturday' : 'Monday',
+            0 => 'Monday',
+        ];
+        $this->selectedDay = $dayMap[$dayOfWeek] ?? 'Monday';
+        $this->loadTimetables();
+    }
+
     public function getClassScheduleByPeriod($periodNo)
     {
         return $this->timetables->where('period_no', $periodNo)->first();
@@ -182,6 +198,43 @@ class ScheduleView extends Component
         return count($this->relievedSubstitutions);
     }
 
+    public function getSummaryStatsProperty(): array
+    {
+        $regularCount = $this->timetables->count();
+        $assignedCount = count($this->assignedSubstitutions);
+        $relievedCount = count($this->relievedSubstitutions);
+        $overrideCount = $this->overrideCount;
+
+        $teachingPeriodsCount = 0;
+        $freePeriodsCount = 0;
+
+        foreach ($this->periods as $period) {
+            if ($period->is_break || $period->is_assembly) {
+                continue;
+            }
+
+            $pNo = $period->period_no;
+            $hasRegular = $this->getClassScheduleByPeriod($pNo) !== null;
+            $hasAssigned = isset($this->assignedSubstitutions[$pNo]);
+            $isRelieved = isset($this->relievedSubstitutions[$pNo]);
+
+            if ($hasAssigned || ($hasRegular && !$isRelieved)) {
+                $teachingPeriodsCount++;
+            } else {
+                $freePeriodsCount++;
+            }
+        }
+
+        return [
+            'regular_classes' => $regularCount,
+            'teaching_classes' => $teachingPeriodsCount,
+            'arrangement_duties' => $assignedCount,
+            'relieved_periods' => $relievedCount,
+            'override_count' => $overrideCount,
+            'free_periods' => $freePeriodsCount,
+        ];
+    }
+
     public function render()
     {
         $dayDates = [];
@@ -194,12 +247,17 @@ class ScheduleView extends Component
             $scheduleDataByPeriod[$period->period_no] = $this->getPeriodScheduleData($period->period_no);
         }
 
+        $subjectIds = $this->timetables->pluck('subject_id')->filter()->unique();
+        $subjects = Subject::whereIn('id', $subjectIds)->get()->keyBy('id');
+
         return view('livewire.teacher.schedule-view', [
             'dayDates' => $dayDates,
             'arrangementCount' => $this->arrangementCount,
             'overrideCount' => $this->overrideCount,
             'relievedCount' => $this->relievedCount,
             'scheduleDataByPeriod' => $scheduleDataByPeriod,
+            'summaryStats' => $this->summaryStats,
+            'subjects' => $subjects,
         ])->layout('components.layouts.teacher', ['title' => 'My Schedule']);
     }
 }

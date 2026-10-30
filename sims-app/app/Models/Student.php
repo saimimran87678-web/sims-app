@@ -44,6 +44,12 @@ class Student extends Model
         'admission_date',
         'address',
         'status',
+        'father_cnic',
+        'guardian_cnic',
+        'guardian_relation',
+        'is_guardian_primary',
+        'sibling_concession_status',
+        'custom_concession_amount',
     ];
 
     public function setClassIdAttribute($value)
@@ -59,6 +65,8 @@ class Student extends Model
     protected $casts = [
         'dob' => 'date',
         'admission_date' => 'date',
+        'is_guardian_primary' => 'boolean',
+        'custom_concession_amount' => 'decimal:2',
     ];
 
     protected static function booted()
@@ -165,9 +173,55 @@ class Student extends Model
         return $this->hasMany(FeePayment::class);
     }
 
-    public function feeOverrides()
+    /**
+     * Resolves the primary family CNIC based on guardianship precedence.
+     */
+    public function getPrimaryFamilyCnicAttribute(): ?string
     {
-        return $this->hasMany(StudentFeeOverride::class);
+        return $this->is_guardian_primary 
+            ? ($this->guardian_cnic ?: $this->father_cnic)
+            : ($this->father_cnic ?: $this->guardian_cnic);
+    }
+
+    /**
+     * Dynamic relationship: all other active siblings sharing the family CNIC.
+     */
+    public function siblings()
+    {
+        $cnic = $this->primary_family_cnic;
+
+        return $this->hasMany(Student::class, 'father_cnic', 'father_cnic')
+            ->where('id', '!=', $this->id)
+            ->where('status', 'active');
+    }
+
+    /**
+     * Returns complete family unit including self, ordered chronologically by admission.
+     */
+    public function getFamilyUnitAttribute()
+    {
+        $cnic = $this->primary_family_cnic;
+        if (empty($cnic)) {
+            return collect([$this]);
+        }
+
+        return Student::where(function ($query) use ($cnic) {
+                $query->where('father_cnic', $cnic)
+                      ->orWhere('guardian_cnic', $cnic);
+            })
+            ->where('status', 'active')
+            ->orderBy('admission_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+    }
+
+    /**
+     * Determines sibling rank for concession calculation (0 = 1st child, 1 = 2nd child, etc.)
+     */
+    public function getSiblingRankAttribute(): int
+    {
+        $index = $this->family_unit->search(fn($student) => $student->id === $this->id);
+        return $index !== false ? $index : 0;
     }
 
     public function enrollments()
