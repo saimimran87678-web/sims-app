@@ -37,11 +37,15 @@
                 </div>
 
                 {{-- Status --}}
-                <div class="w-full md:w-48">
+                <div class="w-full md:w-56">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select wire:model.live="filterStatus" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                         <option value="active">Active Only</option>
-                        <option value="inactive">Inactive Only</option>
+                        <option value="withdrawn">Withdrawn / SLC Issued</option>
+                        <option value="graduated">Graduated</option>
+                        <option value="struck_off">Struck Off</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="archived">Archived / Deleted</option>
                         <option value="">All Statuses</option>
                     </select>
                 </div>

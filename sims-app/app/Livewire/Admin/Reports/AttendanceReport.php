@@ -62,30 +62,19 @@ class AttendanceReport extends Component
                 ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status');
 
             if ($this->filterStatus === 'active') {
-                $studentsQuery->where('enrollments.status', 'active');
+                $studentsQuery->whereNull('students.deleted_at')->where('enrollments.status', 'active');
+            } elseif ($this->filterStatus === 'withdrawn') {
+                $studentsQuery->whereNull('students.deleted_at')->whereIn('enrollments.status', ['withdrawn', 'slc_issued']);
+            } elseif ($this->filterStatus === 'graduated') {
+                $studentsQuery->whereNull('students.deleted_at')->where('enrollments.status', 'graduated');
+            } elseif ($this->filterStatus === 'struck_off') {
+                $studentsQuery->whereNull('students.deleted_at')->where('enrollments.status', 'struck_off');
             } elseif ($this->filterStatus === 'inactive') {
-                $studentsQuery->where('enrollments.status', 'inactive')
-                    ->whereExists(function ($q) use ($startOfMonth, $endOfMonth, $activeSessionId) {
-                        $q->select(DB::raw(1))
-                          ->from('attendances')
-                          ->whereColumn('attendances.student_id', 'students.id')
-                          ->where('attendances.academic_session_id', $activeSessionId)
-                          ->whereBetween('attendances.date', [$startOfMonth, $endOfMonth]);
-                    });
+                $studentsQuery->whereNull('students.deleted_at')->where('enrollments.status', 'inactive');
+            } elseif ($this->filterStatus === 'archived') {
+                $studentsQuery->whereNotNull('students.deleted_at');
             } else {
-                $studentsQuery->where(function ($q) use ($startOfMonth, $endOfMonth, $activeSessionId) {
-                    $q->where('enrollments.status', 'active')
-                      ->orWhere(function ($sq) use ($startOfMonth, $endOfMonth, $activeSessionId) {
-                          $sq->where('enrollments.status', 'inactive')
-                            ->whereExists(function ($eq) use ($startOfMonth, $endOfMonth, $activeSessionId) {
-                                $eq->select(DB::raw(1))
-                                  ->from('attendances')
-                                  ->whereColumn('attendances.student_id', 'students.id')
-                                  ->where('attendances.academic_session_id', $activeSessionId)
-                                  ->whereBetween('attendances.date', [$startOfMonth, $endOfMonth]);
-                            });
-                      });
-                });
+                $studentsQuery->whereNull('students.deleted_at');
             }
 
             $students = $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')->get();

@@ -102,7 +102,11 @@
                     <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
                     <select wire:model.live="filterStatus" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                         <option value="active">Active Only</option>
-                        <option value="inactive">Inactive Only</option>
+                        <option value="withdrawn">Withdrawn / SLC Issued</option>
+                        <option value="graduated">Graduated</option>
+                        <option value="struck_off">Struck Off</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="archived">Archived / Deleted</option>
                         <option value="">All Statuses</option>
                     </select>
                 </div>

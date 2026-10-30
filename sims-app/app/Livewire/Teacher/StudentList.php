@@ -376,7 +376,18 @@ class StudentList extends Component
               ->where('shift_type', $shiftType);
         });
 
-        if ($this->filterStatus) {
+        if ($this->filterStatus === 'archived') {
+            $query = \App\Models\Student::onlyTrashed()->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                $q->where('class_id', $this->classId)
+                  ->where('academic_session_id', $activeSessionId);
+            });
+        } elseif ($this->filterStatus === 'withdrawn') {
+            $query->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
+                $q->where('academic_session_id', $activeSessionId)
+                  ->where('shift_type', $shiftType)
+                  ->whereIn('status', ['withdrawn', 'slc_issued']);
+            });
+        } elseif ($this->filterStatus) {
             $query->whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
                 $q->where('academic_session_id', $activeSessionId)
                   ->where('shift_type', $shiftType)

@@ -140,27 +140,18 @@ class ResultReport extends Component
 
             if ($this->filterStatus === 'active') {
                 $studentsQuery->where('enrollments.status', 'active');
+            } elseif ($this->filterStatus === 'withdrawn') {
+                $studentsQuery->whereIn('enrollments.status', ['withdrawn', 'slc_issued']);
+            } elseif ($this->filterStatus === 'graduated') {
+                $studentsQuery->where('enrollments.status', 'graduated');
+            } elseif ($this->filterStatus === 'struck_off') {
+                $studentsQuery->where('enrollments.status', 'struck_off');
             } elseif ($this->filterStatus === 'inactive') {
-                $studentsQuery->where('enrollments.status', 'inactive')
-                    ->whereExists(function ($q) {
-                        $q->select(DB::raw(1))
-                          ->from('exam_marks')
-                          ->whereColumn('exam_marks.student_id', 'students.id')
-                          ->where('exam_marks.exam_id', $this->selectedExamId);
-                    });
+                $studentsQuery->where('enrollments.status', 'inactive');
+            } elseif ($this->filterStatus === 'archived') {
+                $studentsQuery->onlyTrashed();
             } else {
-                $studentsQuery->where(function ($q) {
-                    $q->where('enrollments.status', 'active')
-                      ->orWhere(function ($sq) {
-                          $sq->where('enrollments.status', 'inactive')
-                            ->whereExists(function ($eq) {
-                                $eq->select(DB::raw(1))
-                                  ->from('exam_marks')
-                                  ->whereColumn('exam_marks.student_id', 'students.id')
-                                  ->where('exam_marks.exam_id', $this->selectedExamId);
-                            });
-                      });
-                });
+                $studentsQuery->withTrashed();
             }
 
             $students = $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')->get();
