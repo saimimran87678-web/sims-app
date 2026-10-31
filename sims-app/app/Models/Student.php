@@ -78,8 +78,14 @@ class Student extends Model
     {
         static::deleting(function ($student) {
             if ($student->isForceDeleting()) {
-                $hasFinancial = $student->feeRecords()->exists() || $student->feePayments()->exists();
-                $hasAcademic = $student->enrollments()->withTrashed()->exists() || \Illuminate\Support\Facades\DB::table('exam_marks')->where('student_id', $student->id)->exists();
+                $hasFinancial = $student->feeRecords()->exists() 
+                             || $student->feePayments()->exists()
+                             || \Illuminate\Support\Facades\DB::table('fee_invoices')->where('student_id', $student->id)->exists();
+
+                $hasAcademic = $student->enrollments()->withTrashed()->exists() 
+                            || \Illuminate\Support\Facades\DB::table('exam_marks')->where('student_id', $student->id)->exists()
+                            || \Illuminate\Support\Facades\DB::table('attendances')->where('student_id', $student->id)->exists();
+
                 if ($hasFinancial || $hasAcademic) {
                     throw new \DomainException("Institutional integrity violation: Student has archived financial or academic records and cannot be permanently erased.");
                 }
