@@ -1,10 +1,11 @@
 {
-  "version": "2.5.2",
-  "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.5.2/sims-patch-v2.5.2.zip",
+  "version": "2.6.0",
+  "download_url": "https://github.com/saimimran87678-web/sims-app/releases/download/v2.6.0/sims-patch-v2.6.0.zip",
   "checksum": "a9dea5c0fe966ae5022bba6699d75a04c3e660471521dd78c3bdf92c4b214afc",
   "sha256": "a9dea5c0fe966ae5022bba6699d75a04c3e660471521dd78c3bdf92c4b214afc",
   "min_php_version": "8.2.0",
-  "changelog": "routine updates, bug fixes, and security patches.",
-  "size_bytes": 1326410,
-  "released_at": "2026-10-10T15:41:37Z"
+  "changelog": "v2.6.0: Student Lifecycle Subsystem, School Leaving Certificates (SLC), 360 Lifetime Portfolio, Returning Alumni Re-Admission, NADRA B-Form/CRC Identity & Parent CNIC Anti-Collision, Sibling Discovery Network.",
+  "size_bytes": 1428500,
+  "released_at": "2026-10-31T08:30:00Z"
 }
+
