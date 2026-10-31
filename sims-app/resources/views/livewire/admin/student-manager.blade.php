@@ -367,24 +367,36 @@
                                     </button>
                                     @endcan
                                     @if($student->trashed())
-                                        @can('student.edit')
-                                        <button
-                                            wire:click="restoreStudent({{ $student->id }})"
-                                            wire:confirm="Restore {{ $student->name }} to active student status?"
-                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors"
-                                            title="Restore Student Profile"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                                            Restore
-                                        </button>
-                                        @endcan
+                                        <div class="flex items-center gap-1">
+                                            @can('student.edit')
+                                            <button
+                                                wire:click="restoreStudent({{ $student->id }})"
+                                                wire:confirm="Restore {{ $student->name }} to active student status?"
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors"
+                                                title="Restore Student Profile"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                                Restore
+                                            </button>
+                                            @endcan
+                                            @can('student.delete')
+                                            <button
+                                                wire:click="forceDeleteStudent({{ $student->id }})"
+                                                wire:confirm="Permanently purge {{ $student->name }}? If they have zero financial/academic records, this completely erases them from the database."
+                                                class="p-1.5 text-gray-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+                                                title="Permanently Purge Record"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                            </button>
+                                            @endcan
+                                        </div>
                                     @else
                                         @can('student.delete')
                                         <button
                                             wire:click="delete({{ $student->id }})"
-                                            wire:confirm="Archive {{ $student->name }}? This soft-deletes the student profile while permanently preserving all academic, attendance, and financial audit records. You can restore them anytime from the Archived filter."
+                                            wire:confirm="Delete {{ $student->name }}? If this is a fresh student with no records, they will be deleted completely. If they have attendance or fee history, they will be safely archived."
                                             class="text-rose-600 hover:text-rose-900 p-1.5 hover:bg-rose-50 rounded-lg transition-colors"
-                                            title="Archive Student (Audit-Safe)"
+                                            title="Delete Student"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                         </button>
@@ -498,15 +510,22 @@
                              </button>
                              @endcan
                              @if($student->trashed())
-                             @can('student.edit')
-                             <button wire:click="restoreStudent({{ $student->id }})" wire:confirm="Restore {{ $student->name }} to active student status?" class="text-emerald-600 hover:text-emerald-800 p-1 flex items-center gap-1 rounded-lg transition-colors font-bold text-xs" title="Restore Student">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                                <span>Restore</span>
-                             </button>
-                             @endcan
+                             <div class="flex items-center gap-1">
+                                 @can('student.edit')
+                                 <button wire:click="restoreStudent({{ $student->id }})" wire:confirm="Restore {{ $student->name }} to active student status?" class="text-emerald-600 hover:text-emerald-800 p-1 flex items-center gap-1 rounded-lg transition-colors font-bold text-xs" title="Restore Student">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                    <span>Restore</span>
+                                 </button>
+                                 @endcan
+                                 @can('student.delete')
+                                 <button wire:click="forceDeleteStudent({{ $student->id }})" wire:confirm="Permanently purge {{ $student->name }}? If they have zero financial/academic records, this completely erases them from the database." class="text-gray-400 hover:text-rose-700 p-1 rounded-lg transition-colors" title="Permanently Purge Record">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                 </button>
+                                 @endcan
+                             </div>
                              @else
                              @can('student.delete')
-                             <button wire:click="delete({{ $student->id }})" wire:confirm="Archive {{ $student->name }}? This soft-deletes the student profile while permanently preserving all academic, attendance, and financial audit records. You can restore them anytime from the Archived filter." class="text-gray-400 hover:text-rose-600 p-1 rounded-lg transition-colors" title="Archive Student (Audit-Safe)">
+                             <button wire:click="delete({{ $student->id }})" wire:confirm="Delete {{ $student->name }}? If this is a fresh student with no records, they will be deleted completely. If they have attendance or fee history, they will be safely archived." class="text-gray-400 hover:text-rose-600 p-1 rounded-lg transition-colors" title="Delete Student">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                              </button>
                              @endcan

@@ -535,7 +535,17 @@ class StudentLifecycleTest extends TestCase
             'status' => 'active',
         ]);
 
-        // 1. Archive student from StudentManager
+        // Attach an attendance record so this student has audit history and triggers safe archival
+        \Illuminate\Support\Facades\DB::table('attendances')->insert([
+            'student_id' => $student->id,
+            'date' => '2026-05-01',
+            'status' => 'P',
+            'academic_session_id' => $this->session2026->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // 1. Archive student with records from StudentManager
         Livewire::test(StudentManager::class)
             ->set('selectedSessionId', $this->session2026->id)
             ->call('delete', $student->id)
@@ -567,6 +577,39 @@ class StudentLifecycleTest extends TestCase
             'status' => 'active',
             'deleted_at' => null,
         ]);
+    }
+
+    public function test_fresh_student_with_no_records_is_permanently_deleted_directly(): void
+    {
+        $this->actingAs($this->admin);
+
+        // A freshly created student with no attendance, fees, marks, or foreign sessions
+        $student = Student::create([
+            'name' => 'Brand New Student',
+            'admission_no' => 'ADM-FRESH-001',
+            'father_name' => 'Fresh Parent',
+            'gender' => 'male',
+            'status' => 'active',
+        ]);
+
+        $enrollment = Enrollment::create([
+            'student_id' => $student->id,
+            'class_id' => $this->class8->id,
+            'academic_session_id' => $this->session2026->id,
+            'roll_number' => '99',
+            'shift_type' => 'regular',
+            'status' => 'active',
+        ]);
+
+        // Deleting this fresh student should permanently purge them from the database
+        Livewire::test(StudentManager::class)
+            ->set('selectedSessionId', $this->session2026->id)
+            ->call('delete', $student->id)
+            ->assertHasNoErrors()
+            ->assertSee('was permanently deleted');
+
+        $this->assertDatabaseMissing('students', ['id' => $student->id]);
+        $this->assertDatabaseMissing('enrollments', ['id' => $enrollment->id]);
     }
 
     public function test_defaulter_list_and_ledger_for_archived_student_with_unpaid_fees(): void

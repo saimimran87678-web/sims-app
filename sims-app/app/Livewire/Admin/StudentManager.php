@@ -1263,25 +1263,70 @@ class StudentManager extends Component
 
     public function delete($id)
     {
-        DB::transaction(function() use ($id) {
-            // Soft-delete current session enrollment using Eloquent
-            \App\Models\Enrollment::where('student_id', $id)
-                ->where('academic_session_id', $this->selectedSessionId)
-                ->delete();
+        $student = Student::withTrashed()->findOrFail($id);
 
-            // Check if the student has any active enrollments left in any session
-            $hasOtherEnrollments = \App\Models\Enrollment::where('student_id', $id)
-                ->where('status', '!=', 'withdrawn')
-                ->exists();
+        // Check if student has ANY financial, academic, or attendance records
+        $hasFinancial = $student->feeRecords()->exists() 
+                     || $student->feePayments()->exists()
+                     || \Illuminate\Support\Facades\DB::table('fee_invoices')->where('student_id', $id)->exists();
 
-            if (!$hasOtherEnrollments) {
-                // If no active enrollments left, safely soft-delete student profile
-                Student::where('id', $id)->delete();
+        $hasAcademic = \Illuminate\Support\Facades\DB::table('exam_marks')->where('student_id', $id)->exists()
+                    || \Illuminate\Support\Facades\DB::table('attendances')->where('student_id', $id)->exists()
+                    || \App\Models\SchoolLeavingCertificate::where('student_id', $id)->exists();
+
+        // Also check if they have historical enrollments in OTHER academic sessions
+        $hasHistoricalEnrollments = \App\Models\Enrollment::where('student_id', $id)
+            ->where('academic_session_id', '!=', $this->selectedSessionId)
+            ->exists();
+
+        DB::transaction(function() use ($student, $id, $hasFinancial, $hasAcademic, $hasHistoricalEnrollments) {
+            if (!$hasFinancial && !$hasAcademic && !$hasHistoricalEnrollments) {
+                // FRESH / EMPTY STUDENT: Permanently remove enrollments and the student record completely
+                \App\Models\Enrollment::where('student_id', $id)->forceDelete();
+                $student->forceDelete();
+                session()->flash('message', "Student '{$student->name}' had no academic or financial history and was permanently deleted.");
+            } else {
+                // HAS HISTORICAL / AUDIT DATA: Archive safely via soft-delete
+                \App\Models\Enrollment::where('student_id', $id)
+                    ->where('academic_session_id', $this->selectedSessionId)
+                    ->delete();
+
+                $hasOtherActive = \App\Models\Enrollment::where('student_id', $id)
+                    ->where('status', '!=', 'withdrawn')
+                    ->exists();
+
+                if (!$hasOtherActive) {
+                    $student->delete();
+                }
+
+                session()->flash('message', "Student '{$student->name}' has existing audit records and was safely archived. You can view or restore it anytime from the 'Archived' status filter.");
             }
-            // Institutional integrity: Financial records, exam marks, and attendances are NEVER deleted!
+        });
+    }
+
+    public function forceDeleteStudent($id)
+    {
+        $student = Student::withTrashed()->findOrFail($id);
+
+        $hasFinancial = $student->feeRecords()->exists() 
+                     || $student->feePayments()->exists()
+                     || \Illuminate\Support\Facades\DB::table('fee_invoices')->where('student_id', $id)->exists();
+
+        $hasAcademic = \Illuminate\Support\Facades\DB::table('exam_marks')->where('student_id', $id)->exists()
+                    || \Illuminate\Support\Facades\DB::table('attendances')->where('student_id', $id)->exists()
+                    || \App\Models\SchoolLeavingCertificate::where('student_id', $id)->exists();
+
+        if ($hasFinancial || $hasAcademic) {
+            session()->flash('error', "Cannot permanently erase '{$student->name}': Institutional integrity violation. Student has financial, exam, or attendance audit history.");
+            return;
+        }
+
+        DB::transaction(function() use ($student, $id) {
+            \App\Models\Enrollment::where('student_id', $id)->forceDelete();
+            $student->forceDelete();
         });
 
-        session()->flash('message', 'Student record safely archived. You can view or restore it anytime by selecting "Archived" in the Status filter.');
+        session()->flash('message', "Student '{$student->name}' was permanently deleted from the database.");
     }
 
     public function restoreStudent($id)
