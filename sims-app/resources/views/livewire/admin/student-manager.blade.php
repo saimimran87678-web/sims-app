@@ -589,37 +589,86 @@
                                     <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider">Personal Information</h4>
                                 </div>
                                 
+                                @if($isActiveStudentDuplicate && !empty($activeStudentDetails))
+                                    <div class="mb-4 p-4 bg-gradient-to-br from-rose-50 via-red-50/40 to-white border border-rose-200 rounded-2xl shadow-xs relative overflow-hidden">
+                                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-500"></div>
+                                        <div class="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+                                            <div class="flex items-start gap-3">
+                                                <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 border border-rose-200/80 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <h5 class="text-xs font-black text-rose-950 uppercase tracking-wider">Student Is Already Actively Enrolled</h5>
+                                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-extrabold rounded-full uppercase tracking-wider border border-rose-200">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+                                                            Active in School
+                                                        </span>
+                                                    </div>
+                                                    <p class="text-xs text-slate-800 mt-1.5 leading-relaxed">
+                                                        <strong class="text-slate-900 font-bold">{{ $activeStudentDetails['name'] }}</strong> (Admission #<strong class="text-slate-900 font-bold">{{ $activeStudentDetails['admission_no'] }}</strong>) is currently enrolled in 
+                                                        <span class="inline-block px-2 py-0.5 rounded-md bg-white border border-rose-200 font-bold text-rose-900 shadow-2xs">{{ $activeStudentDetails['class_name'] }}</span> 
+                                                        (Roll #<strong class="text-slate-900 font-bold">{{ $activeStudentDetails['roll_no'] }}</strong>, {{ $activeStudentDetails['shift_name'] }} Shift, {{ $activeStudentDetails['session_name'] }}).
+                                                    </p>
+                                                    <p class="text-[11px] text-rose-700 font-semibold mt-1.5 flex items-center gap-1.5">
+                                                        <svg class="w-3.5 h-3.5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                                                        <span>Duplicate admission is disallowed. Actively enrolled students cannot be re-admitted or added again.</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-2 shrink-0 mt-2 sm:mt-0">
+                                                <button 
+                                                    type="button"
+                                                    wire:click="openLifetimeHistory({{ $activeStudentDetails['id'] }})" 
+                                                    class="px-3 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                                    title="Open 360° Lifetime Portfolio"
+                                                >
+                                                    <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                    View Profile
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    wire:click="clearExistingStudentRecordLock(false)" 
+                                                    class="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-2xs transition-all whitespace-nowrap cursor-pointer active:scale-95"
+                                                    title="Clear locked student record to enter a different B-Form"
+                                                >
+                                                    Clear / New B-Form
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @elseif($isExistingStudentRecord && $isReadmission)
+                                    <div class="mb-4 p-4 bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-500/10 border border-amber-300 rounded-2xl shadow-xs">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="flex items-center gap-2">
+                                                        <h5 class="text-xs font-bold text-amber-950 uppercase tracking-wide">Institutional Alumni Record Found & Locked</h5>
+                                                        <span class="px-2 py-0.5 bg-amber-200/80 text-amber-900 text-[10px] font-bold rounded-full">Integrity Protected</span>
+                                                    </div>
+                                                    <p class="text-xs text-amber-900/90 mt-0.5 leading-relaxed">
+                                                        {{ $existingStudentMessage ?: 'This B-Form is registered to a departed student. Core demographic fields are locked to preserve institutional consistency and transcript integrity.' }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                type="button" 
+                                                wire:click="clearExistingStudentRecordLock(false)" 
+                                                class="px-2.5 py-1 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg transition-colors whitespace-nowrap shrink-0"
+                                                title="Clear locked student record to enter a different student"
+                                            >
+                                                Clear / New B-Form
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endif
+
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Full Name <span class="text-red-500">*</span></label>
-                                        <input wire:model="name" type="text" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" placeholder="Student Full Name" />
-                                        @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Father's Name</label>
-                                        <input wire:model="father_name" type="text" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" placeholder="Father's Full Name" />
-                                        @error('father_name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Gender <span class="text-red-500">*</span></label>
-                                        <select wire:model="gender" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white">
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                        @error('gender') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Date of Birth</label>
-                                        <input wire:model="dob" type="date" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
-                                        @error('dob') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                                    </div>
-
                                     {{-- Student NADRA B-Form / Child Registration Certificate (CRC) --}}
-                                    <div x-data="{
+                                    <div class="md:col-span-2" x-data="{
                                         formatBForm(e) {
                                             let v = e.target.value.replace(/\D/g, '').slice(0, 13);
                                             let res = v;
@@ -629,18 +678,72 @@
                                             $wire.set('b_form_number', res);
                                         }
                                     }">
-                                        <label class="block text-xs font-semibold text-gray-600 mb-1">
-                                            Student B-Form / CRC <span class="text-gray-400 font-normal">(13 digits)</span>
-                                        </label>
-                                        <input 
-                                            type="text" 
-                                            wire:model.live.debounce.300ms="b_form_number"
-                                            @input="formatBForm($event)"
-                                            placeholder="XXXXX-XXXXXXX-X"
-                                            maxlength="15"
-                                            class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                                        />
-                                        @error('b_form_number') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-xs font-semibold text-gray-600">
+                                                Student B-Form / CRC Number <span class="text-gray-400 font-normal">(13 digits) <span class="text-red-500">*</span> </span>
+                                            </label>
+                                            @if($isActiveStudentDuplicate)
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md border border-rose-300">
+                                                    <svg class="w-3 h-3 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                                                    Active Student (Duplicate Disallowed)
+                                                </span>
+                                            @elseif($isExistingStudentRecord)
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                                                    <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                                    Alumni Record Locked
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <div class="relative">
+                                            <input 
+                                                type="text" 
+                                                required
+                                                wire:model.live.debounce.300ms="b_form_number"
+                                                @input="formatBForm($event)"
+                                                placeholder="XXXXX-XXXXXXX-X"
+                                                maxlength="15"
+                                                class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all {{ $isActiveStudentDuplicate ? 'bg-rose-50/50 border-rose-400 focus:border-rose-500 focus:ring-rose-500/20' : ($isExistingStudentRecord ? 'bg-amber-50/50 border-amber-300' : '') }}"
+                                            />
+                                            @if($isExistingStudentRecord)
+                                                <button 
+                                                    type="button" 
+                                                    wire:click="clearExistingStudentRecordLock(false)" 
+                                                    class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-semibold {{ $isActiveStudentDuplicate ? 'text-rose-700 hover:text-rose-900 bg-rose-100 hover:bg-rose-200 border-rose-300' : 'text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 border-amber-200' }} px-2 py-1 rounded-lg border transition-colors"
+                                                >
+                                                    Change
+                                                </button>
+                                            @endif
+                                        </div>
+                                        <p class="text-[10px] text-gray-400 mt-1">NADRA 13-digit Child Registration Certificate (CRC) / B-Form. Primary unique student identifier.</p>
+                                        @error('b_form_number') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Full Name <span class="text-red-500">*</span></label>
+                                        <input wire:model="name" type="text" required @disabled($isExistingStudentRecord) class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" placeholder="Student Full Name" />
+                                        @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Father's Name <span class="text-red-500">*</span></label>
+                                        <input wire:model="father_name" type="text" required @disabled($isExistingStudentRecord) class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" placeholder="Father's Full Name" />
+                                        @error('father_name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Gender <span class="text-red-500">*</span></label>
+                                        <select wire:model="gender" required @disabled($isExistingStudentRecord) class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}">
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        @error('gender') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Date of Birth <span class="text-red-500">*</span> </label>
+                                        <input wire:model="dob" type="date" required @disabled($isExistingStudentRecord) class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" />
+                                        @error('dob') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
                             </div>
@@ -669,17 +772,19 @@
                                         }
                                     }">
                                         <label class="block text-xs font-semibold text-gray-600 mb-1">
-                                            Father's CNIC <span class="text-gray-400 font-normal">(13 digits)</span>
+                                            Father's CNIC <span class="text-gray-400 font-normal">(13 digits) <span class="text-red-500">*</span> </span>
                                         </label>
                                         <input 
                                             type="text" 
+                                            required
+                                            @disabled($isExistingStudentRecord)
                                             wire:model.live.debounce.300ms="father_cnic"
                                             @input="formatCNIC($event)"
                                             placeholder="XXXXX-XXXXXXX-X"
                                             maxlength="15"
-                                            class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                                            class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}"
                                         />
-                                        @error('father_cnic') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                        @error('father_cnic') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                                     </div>
 
                                     {{-- Sibling Concession Policy (Gated by Fees License) --}}
@@ -730,8 +835,8 @@
                                     </div>
                                 @endif
 
-                                {{-- Institutional Alumni / Returning Student Alert Card --}}
-                                @if(!empty($detectedAlumni))
+                                {{-- Institutional Alumni / Returning Student Alert Card (Departed Students Only) --}}
+                                @if(!$isActiveStudentDuplicate && !empty($detectedAlumni))
                                     <div class="mt-4 p-4 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-500/10 border border-amber-300 rounded-2xl shadow-sm backdrop-blur-sm relative overflow-hidden transition-all">
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="flex items-center gap-3">
@@ -788,20 +893,43 @@
                                 {{-- Expandable Guardian Options --}}
                                 <div class="mt-3">
                                     <label class="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-gray-600">
-                                        <input type="checkbox" wire:model.live="is_guardian_primary" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                        <input type="checkbox" wire:model.live="is_guardian_primary" @disabled($isExistingStudentRecord) class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 {{ $isExistingStudentRecord ? 'cursor-not-allowed' : '' }}">
                                         <span>Guardian is Primary Contact (or Father Deceased/Abroad)</span>
                                     </label>
 
                                     @if($is_guardian_primary)
                                         <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 border border-gray-200 rounded-xl">
-                                            <div>
+                                            <div x-data="{
+                                                formatGuardianCNIC(e) {
+                                                    let v = e.target.value.replace(/\D/g, '').slice(0, 13);
+                                                    let res = v;
+                                                    if (v.length > 5) res = v.slice(0, 5) + '-' + v.slice(5);
+                                                    if (v.length > 12) res = res.slice(0, 13) + '-' + res.slice(13, 14);
+                                                    e.target.value = res;
+                                                    $wire.set('guardian_cnic', res);
+                                                }
+                                            }">
                                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Guardian's CNIC</label>
-                                                <input wire:model="guardian_cnic" type="text" placeholder="XXXXX-XXXXXXX-X" maxlength="15" class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all bg-white" />
-                                                @error('guardian_cnic') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                                <input 
+                                                    wire:model.live.debounce.300ms="guardian_cnic" 
+                                                    @input="formatGuardianCNIC($event)"
+                                                    @disabled($isExistingStudentRecord)
+                                                    type="text" 
+                                                    placeholder="XXXXX-XXXXXXX-X" 
+                                                    maxlength="15" 
+                                                    class="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all bg-white {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" 
+                                                />
+                                                @error('guardian_cnic') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Guardian Relation</label>
-                                                <input wire:model="guardian_relation" type="text" placeholder="e.g. Uncle, Grandfather, Mother" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all bg-white" />
+                                                <input 
+                                                    wire:model="guardian_relation" 
+                                                    @disabled($isExistingStudentRecord)
+                                                    type="text" 
+                                                    placeholder="e.g. Uncle, Grandfather, Mother" 
+                                                    class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all bg-white {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" 
+                                                />
                                                 @error('guardian_relation') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                             </div>
                                         </div>
@@ -821,7 +949,7 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-600 mb-1">Admission No <span class="text-red-500">*</span></label>
-                                        <input wire:model="admission_no" type="text" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" placeholder="e.g. ADM-2025-001" />
+                                        <input wire:model="admission_no" type="text" required @disabled($isExistingStudentRecord) class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" placeholder="e.g. ADM-2025-001" />
                                         @error('admission_no') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                     </div>
 
@@ -852,9 +980,11 @@
                                         </div>
 
                                         <div>
-                                            <label class="block text-xs font-semibold text-gray-600 mb-1">Admission Date</label>
-                                            <input wire:model="admission_date" type="date" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
-                                            @error('admission_date') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                            <label class="block text-xs font-semibold text-gray-600 mb-1">
+                                                Admission Date <span class="text-red-500">*</span>
+                                            </label>
+                                            <input wire:model="admission_date" type="date" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
+                                            @error('admission_date') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                                         </div>
                                     @else
                                         <div class="md:col-span-2 p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
@@ -913,9 +1043,11 @@
                                         </div>
 
                                         <div class="md:col-span-2">
-                                            <label class="block text-xs font-semibold text-gray-600 mb-1">Admission Date</label>
-                                            <input wire:model="admission_date" type="date" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
-                                            @error('admission_date') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                            <label class="block text-xs font-semibold text-gray-600 mb-1">
+                                                Admission Date <span class="text-red-500">*</span>
+                                            </label>
+                                            <input wire:model="admission_date" type="date" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
+                                            @error('admission_date') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                                         </div>
                                     @endif
                                 </div>
@@ -959,14 +1091,14 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-600 mb-1">Phone Number</label>
-                                        <input wire:model="phone" type="tel" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" placeholder="e.g. 03001234567" />
+                                        <input wire:model="phone" type="tel" @disabled($isExistingStudentRecord) class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" placeholder="e.g. 03001234567" />
                                         <p class="text-[10px] text-gray-400 mt-1">Pakistani format: 03XX-XXXXXXX</p>
                                         @error('phone') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-600 mb-1">Email Address (Optional)</label>
-                                        <input wire:model="email" type="email" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" placeholder="student@example.com" />
+                                        <input wire:model="email" type="email" @disabled($isExistingStudentRecord) class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" placeholder="student@example.com" />
                                         @error('email') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                     </div>
 
@@ -999,18 +1131,46 @@
                                     </div>
                                     @endif
 
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Status <span class="text-red-500">*</span></label>
-                                        <select wire:model="status" required class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white">
-                                            <option value="active">Active</option>
-                                            <option value="inactive">Inactive</option>
-                                        </select>
-                                        @error('status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    @if($isEditing)
+                                    <div class="p-3 bg-gray-50/80 rounded-xl border border-gray-100 flex flex-col justify-center">
+                                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Institutional Lifecycle Status</label>
+                                        <div class="flex items-center gap-2">
+                                            @php
+                                                $st = strtolower($status ?? 'active');
+                                                $badgeClasses = match($st) {
+                                                    'active' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                                    'withdrawn', 'slc_issued' => 'bg-amber-50 text-amber-700 border-amber-200',
+                                                    'graduated' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                                                    'struck_off' => 'bg-rose-50 text-rose-700 border-rose-200',
+                                                    default => 'bg-gray-50 text-gray-700 border-gray-200'
+                                                };
+                                                $dotClasses = match($st) {
+                                                    'active' => 'bg-emerald-500',
+                                                    'withdrawn', 'slc_issued' => 'bg-amber-500',
+                                                    'graduated' => 'bg-indigo-500',
+                                                    'struck_off' => 'bg-rose-500',
+                                                    default => 'bg-gray-400'
+                                                };
+                                                $statusLabel = match($st) {
+                                                    'active' => 'Active Enrolled Student',
+                                                    'withdrawn', 'slc_issued' => 'Withdrawn (SLC Issued)',
+                                                    'graduated' => 'Graduated Alumni',
+                                                    'struck_off' => 'Struck Off (Absence/Dues)',
+                                                    default => ucfirst($st)
+                                                };
+                                            @endphp
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border {{ $badgeClasses }}">
+                                                <span class="w-2 h-2 rounded-full {{ $dotClasses }}"></span>
+                                                {{ $statusLabel }}
+                                            </span>
+                                        </div>
+                                        <p class="text-[10px] text-gray-400 mt-1">Lifecycle transitions are governed via 360° Profile & formal departure workflows.</p>
                                     </div>
+                                    @endif
 
                                     <div class="md:col-span-2">
                                         <label class="block text-xs font-semibold text-gray-600 mb-1">Address</label>
-                                        <textarea wire:model="address" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none h-20" placeholder="Street Address, Block, City"></textarea>
+                                        <textarea wire:model="address" @disabled($isExistingStudentRecord) class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none h-20 {{ $isExistingStudentRecord ? 'bg-gray-100 text-gray-700 cursor-not-allowed border-gray-200 shadow-none' : '' }}" placeholder="Street Address, Block, City"></textarea>
                                         @error('address') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
@@ -1091,13 +1251,24 @@
 
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 rounded-b-2xl">
                             <button type="button" wire:click="$set('showModal', false)" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium">Cancel</button>
-                            <button type="submit" class="px-5 py-2 {{ $isReadmission ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700' : 'bg-blue-600 hover:bg-blue-700' }} text-white rounded-xl transition-all text-sm font-semibold flex items-center gap-2 active:scale-95 duration-150 shadow-sm">
-                                <span wire:loading.remove wire:target="save">{{ $isEditing ? 'Update Student' : ($isReadmission ? 'Confirm & Re-Admit Student' : 'Add Student') }}</span>
-                                <span wire:loading wire:target="save" class="flex items-center gap-1.5">
-                                    <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    Saving...
-                                </span>
-                            </button>
+                            @if($isActiveStudentDuplicate)
+                                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200 text-xs font-bold shadow-2xs select-none">
+                                    <span class="flex h-2 w-2 relative">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                                    </span>
+                                    <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                                    <span>Admission Blocked (Student Already Active)</span>
+                                </div>
+                            @else
+                                <button type="submit" class="px-5 py-2 {{ $isReadmission ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700' : 'bg-blue-600 hover:bg-blue-700' }} text-white rounded-xl transition-all text-sm font-semibold flex items-center gap-2 active:scale-95 duration-150 shadow-sm">
+                                    <span wire:loading.remove wire:target="save">{{ $isEditing ? 'Update Student' : ($isReadmission ? 'Confirm & Re-Admit Student' : 'Add Student') }}</span>
+                                    <span wire:loading wire:target="save" class="flex items-center gap-1.5">
+                                        <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        Saving...
+                                    </span>
+                                </button>
+                            @endif
                         </div>
                     </form>
                 </div>

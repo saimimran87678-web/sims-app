@@ -204,20 +204,34 @@ class StudentLifecycleService
 
     /**
      * Searches for returning alumni by B-Form or Father CNIC.
+     * Excludes currently active students (active students are not alumni).
      */
     public function lookupAlumni(string $identifier): ?array
     {
         $clean = trim($identifier);
-        if (empty($clean) || strlen($clean) < 13) {
+        $digits = preg_replace('/\D/', '', $clean);
+        if (empty($digits) || strlen($digits) < 13) {
             return null;
         }
 
-        $student = Student::where('b_form_number', $clean)
-            ->orWhere('father_cnic', $clean)
+        $student = Student::withTrashed()
+            ->where(function ($q) use ($clean, $digits) {
+                $q->where('b_form_number', $clean)
+                  ->orWhere('b_form_number', $digits)
+                  ->orWhereRaw("REPLACE(REPLACE(b_form_number, '-', ''), ' ', '') = ?", [$digits])
+                  ->orWhere('father_cnic', $clean)
+                  ->orWhere('father_cnic', $digits);
+            })
             ->with(['enrollments.academicSession', 'enrollments.currentClass', 'schoolLeavingCertificates'])
             ->first();
 
         if (!$student) {
+            return null;
+        }
+
+        // Active, non-trashed students are not alumni candidates
+        $isAlumni = in_array(strtolower($student->status ?? ''), ['withdrawn', 'graduated', 'struck_off', 'inactive', 'slc_issued']) || $student->trashed();
+        if (!$isAlumni) {
             return null;
         }
 
@@ -229,10 +243,10 @@ class StudentLifecycleService
             'id' => $student->id,
             'name' => $student->name,
             'admission_no' => $student->admission_no,
-            'status' => $student->status,
+            'status' => $student->trashed() ? 'archived' : $student->status,
             'original_admission_date' => $student->original_admission_date?->format('Y-m-d') ?? $student->admission_date?->format('Y-m-d'),
             'student' => $student,
-            'is_alumni' => in_array($student->status, ['withdrawn', 'graduated', 'struck_off', 'inactive']),
+            'is_alumni' => true,
             'last_class' => $latestEnrollment?->currentClass?->name ?? 'N/A',
             'last_session' => $latestEnrollment?->academicSession?->name ?? 'N/A',
             'last_shift' => ucfirst($latestEnrollment?->shift_type ?? 'regular'),

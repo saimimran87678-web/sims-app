@@ -159,6 +159,10 @@ class StudentManager extends Component
     public $detectedAlumni = null;
     public $isReadmission = false;
     public $readmitStudentId = null;
+    public $isExistingStudentRecord = false;
+    public $isActiveStudentDuplicate = false;
+    public $activeStudentDetails = [];
+    public $existingStudentMessage = '';
     public $phone = '';
     public $email = '';
     public $class_id = '';
@@ -208,10 +212,35 @@ class StudentManager extends Component
     public function updatedBFormNumber($value)
     {
         $clean = trim($value);
-        if (preg_match('/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/', $clean)) {
-            $service = app(\App\Services\StudentLifecycleService::class);
-            $this->detectedAlumni = $service->lookupAlumni($clean);
+        $this->validateCnicSecurity();
+
+        // B-form lookup & auto-fill is strictly for New Admission mode
+        if ($this->isEditing) {
+            return;
+        }
+
+        $digits = preg_replace('/\D/', '', $clean);
+        if (strlen($digits) === 13) {
+            $existingStudent = Student::withTrashed()
+                ->where(function ($q) use ($clean, $digits) {
+                    $q->where('b_form_number', $clean)
+                      ->orWhere('b_form_number', $digits)
+                      ->orWhereRaw("REPLACE(REPLACE(b_form_number, '-', ''), ' ', '') = ?", [$digits]);
+                })
+                ->first();
+
+            if ($existingStudent) {
+                $this->applyExistingStudentData($existingStudent);
+            } else {
+                if ($this->isExistingStudentRecord) {
+                    $this->clearExistingStudentRecordLock(true);
+                }
+                $this->detectedAlumni = null;
+            }
         } else {
+            if ($this->isExistingStudentRecord) {
+                $this->clearExistingStudentRecordLock(true);
+            }
             $this->detectedAlumni = null;
         }
     }
@@ -219,6 +248,8 @@ class StudentManager extends Component
     public function updatedFatherCnic($value)
     {
         $clean = trim($value);
+        $this->validateCnicSecurity();
+
         if (preg_match('/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/', $clean)) {
             $this->detectedSiblings = Student::where('father_cnic', $clean)
                 ->when($this->isEditing, fn($q) => $q->where('id', '!=', $this->editingStudentId))
@@ -233,34 +264,66 @@ class StudentManager extends Component
                     'admission_date' => $s->admission_date?->format('d M, Y') ?? 'N/A',
                 ])
                 ->toArray();
-
-            if (!$this->detectedAlumni && !$this->isEditing && !$this->b_form_number) {
-                $service = app(\App\Services\StudentLifecycleService::class);
-                $this->detectedAlumni = $service->lookupAlumni($clean);
-            }
         } else {
             $this->detectedSiblings = [];
-            if (!$this->b_form_number) {
-                $this->detectedAlumni = null;
-            }
         }
     }
 
-    public function initiateReadmit($studentId)
+    public function updatedGuardianCnic($value)
     {
-        $student = Student::findOrFail($studentId);
-        $this->isEditing = false;
-        $this->isReadmission = true;
-        $this->readmitStudentId = $student->id;
-        
+        $this->validateCnicSecurity();
+    }
+
+    public function updatedIsGuardianPrimary($value)
+    {
+        $this->validateCnicSecurity();
+    }
+
+    public function validateCnicSecurity(): bool
+    {
+        $this->resetErrorBag(['b_form_number', 'father_cnic', 'guardian_cnic']);
+
+        $bDigits = preg_replace('/\D/', '', $this->b_form_number ?? '');
+        $fDigits = preg_replace('/\D/', '', $this->father_cnic ?? '');
+        $gDigits = preg_replace('/\D/', '', $this->guardian_cnic ?? '');
+
+        $hasError = false;
+
+        if (!empty($bDigits) && strlen($bDigits) >= 5) {
+            if (!empty($fDigits) && $bDigits === $fDigits) {
+                $this->addError('b_form_number', "Security Alert: Student B-Form / CNIC cannot be identical to Father's CNIC.");
+                $this->addError('father_cnic', "Security Alert: Father's CNIC cannot be identical to Student B-Form / CNIC.");
+                $hasError = true;
+            }
+
+            if (!empty($gDigits) && $bDigits === $gDigits) {
+                $this->addError('b_form_number', "Security Alert: Student B-Form / CNIC cannot be identical to Guardian's CNIC.");
+                $this->addError('guardian_cnic', "Security Alert: Guardian's CNIC cannot be identical to Student B-Form / CNIC.");
+                $hasError = true;
+            }
+        }
+
+        if ($this->isActiveStudentDuplicate && !empty($this->activeStudentDetails)) {
+            $cls = $this->activeStudentDetails['class_name'] ?? 'Class';
+            $roll = $this->activeStudentDetails['roll_no'] ?? '';
+            $name = $this->activeStudentDetails['name'] ?? 'Student';
+            $this->addError('b_form_number', "Student {$name} is already actively enrolled in {$cls} (Roll #{$roll}). Duplicate admission is disallowed.");
+            $hasError = true;
+        }
+
+        return !$hasError;
+    }
+
+    public function applyExistingStudentData(Student $student)
+    {
         $this->name = $student->name;
-        $this->b_form_number = $student->b_form_number ?? '';
+        $this->b_form_number = $student->b_form_number ?? $this->b_form_number;
         $this->admission_no = $student->admission_no;
         $this->father_name = $student->father_name ?? '';
         $this->father_cnic = $student->father_cnic ?? '';
         $this->guardian_cnic = $student->guardian_cnic ?? '';
         $this->guardian_relation = $student->guardian_relation ?? '';
-        $this->is_guardian_primary = (bool) $student->is_guardian_primary;
+        $this->is_guardian_primary = (bool) ($student->is_guardian_primary ?? false);
         $this->sibling_concession_status = $student->sibling_concession_status ?? 'none';
         $this->custom_concession_amount = $student->custom_concession_amount ?? '';
         $this->phone = $student->phone ?? '';
@@ -268,23 +331,113 @@ class StudentManager extends Component
         $this->gender = $student->gender ? ucfirst($student->gender) : 'Male';
         $this->dob = $student->dob ? $student->dob->format('Y-m-d') : '';
         $this->address = $student->address ?? '';
-        $this->admission_date = now()->format('Y-m-d');
-        $this->status = 'active';
+        $this->sports = $student->sports ? (is_array($student->sports) ? $student->sports : explode(',', $student->sports)) : [];
+        $this->extra_curriculars = $student->extra_curriculars ? (is_array($student->extra_curriculars) ? $student->extra_curriculars : explode(',', $student->extra_curriculars)) : [];
+        $this->transport_mode = $student->transport_mode ?? 'none';
+        $this->vehicle_number = $student->vehicle_number ?? '';
+        $this->admission_date = $student->admission_date ? $student->admission_date->format('Y-m-d') : ($this->admission_date ?: now()->format('Y-m-d'));
 
+        if ($this->father_cnic) {
+            $this->updatedFatherCnic($this->father_cnic);
+        }
+
+        $this->isExistingStudentRecord = true;
+
+        $isDeparted = in_array(strtolower($student->status ?? 'active'), ['withdrawn', 'slc_issued', 'graduated', 'struck_off', 'inactive']) || $student->trashed();
+
+        if ($isDeparted) {
+            // Case 1: Returning Alumni / Departed Student -> Enable Re-Admission
+            $this->isActiveStudentDuplicate = false;
+            $this->activeStudentDetails = [];
+            $this->isReadmission = true;
+            $this->readmitStudentId = $student->id;
+
+            $service = app(\App\Services\StudentLifecycleService::class);
+            $this->detectedAlumni = $service->lookupAlumni($student->b_form_number ?: ($student->father_cnic ?: ''));
+
+            $statusName = $student->trashed() ? 'Archived' : ucfirst($student->status ?? 'Departed');
+            $this->existingStudentMessage = "Institutional alumni record found for B-Form ({$student->b_form_number}). Student departed as {$statusName}. Historical profile data is locked for transcript integrity. Select class and roll number to re-admit.";
+        } else {
+            // Case 2: Currently Active Enrolled Student -> Block Duplicate Admission & Disallow Re-Admission
+            $this->isActiveStudentDuplicate = true;
+            $this->isReadmission = false;
+            $this->readmitStudentId = null;
+            $this->detectedAlumni = null;
+
+            $activeEnrollment = $student->enrollments()
+                ->where('academic_session_id', $this->selectedSessionId)
+                ->where('status', 'active')
+                ->first();
+
+            if (!$activeEnrollment) {
+                $activeEnrollment = $student->enrollments()->where('status', 'active')->latest('id')->first();
+            }
+
+            $cls = $activeEnrollment ? Classes::find($activeEnrollment->class_id) : Classes::find($student->class_id);
+            $className = $cls ? $cls->name : 'Assigned Class';
+            $rollNo = $activeEnrollment ? $activeEnrollment->roll_number : ($student->roll_no ?: 'N/A');
+            $session = $activeEnrollment ? \App\Models\AcademicSession::find($activeEnrollment->academic_session_id) : \App\Models\AcademicSession::find($this->selectedSessionId);
+            $sessionName = $session ? $session->name : 'Current Session';
+            $shiftName = ucfirst($activeEnrollment?->shift_type ?? 'Regular');
+
+            $this->activeStudentDetails = [
+                'id' => $student->id,
+                'name' => $student->name,
+                'admission_no' => $student->admission_no,
+                'class_name' => $className,
+                'roll_no' => $rollNo,
+                'session_name' => $sessionName,
+                'shift_name' => $shiftName,
+                'status' => 'active',
+            ];
+
+            $this->existingStudentMessage = "Student {$student->name} (Admission #{$student->admission_no}) is ALREADY an active student currently enrolled in {$className} (Roll #{$rollNo}, {$sessionName}). An active student cannot be added again or re-admitted.";
+
+            $this->addError('b_form_number', "Student {$student->name} is already actively enrolled in {$className} (Roll #{$rollNo}). Duplicate admission is disallowed.");
+        }
+
+        $this->validateCnicSecurity();
+    }
+
+    public function clearExistingStudentRecordLock(bool $keepBForm = false)
+    {
+        $currentBform = $this->b_form_number;
+        $this->isExistingStudentRecord = false;
+        $this->isActiveStudentDuplicate = false;
+        $this->activeStudentDetails = [];
+        $this->isReadmission = false;
+        $this->readmitStudentId = null;
+        $this->existingStudentMessage = '';
         $this->detectedAlumni = null;
+        $this->detectedSiblings = [];
+
+        $this->reset([
+            'name', 'admission_no', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation',
+            'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount',
+            'phone', 'email', 'gender', 'dob', 'address', 'photo', 'sports', 'extra_curriculars',
+            'transport_mode', 'vehicle_number'
+        ]);
+
+        if ($keepBForm) {
+            $this->b_form_number = $currentBform;
+        } else {
+            $this->b_form_number = '';
+        }
+
+        $this->resetErrorBag(['b_form_number', 'father_cnic', 'guardian_cnic']);
+    }
+
+    public function initiateReadmit($studentId)
+    {
+        $student = Student::withTrashed()->findOrFail($studentId);
+        $this->isEditing = false;
+        $this->applyExistingStudentData($student);
         $this->showModal = true;
     }
 
     public function cancelReadmission()
     {
-        $this->isReadmission = false;
-        $this->readmitStudentId = null;
-        $this->reset([
-            'name', 'b_form_number', 'admission_no', 'father_name', 'father_cnic',
-            'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status',
-            'custom_concession_amount', 'phone', 'email', 'gender', 'dob', 'address', 'photo'
-        ]);
-        $this->detectedAlumni = null;
+        $this->clearExistingStudentRecordLock(false);
     }
 
     // Option Editing State
@@ -308,8 +461,34 @@ class StudentManager extends Component
         $rules = [
             'name' => 'required|string|max:255',
             'father_name' => 'nullable|string|max:255',
-            'father_cnic' => ['nullable', 'string', 'max:15', 'regex:/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/'],
-            'guardian_cnic' => ['nullable', 'string', 'max:15', 'regex:/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/'],
+            'father_cnic' => [
+                'nullable', 
+                'string', 
+                'max:15', 
+                'regex:/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/',
+                function ($attribute, $value, $fail) {
+                    $bDigits = preg_replace('/\D/', '', $this->b_form_number ?? '');
+                    $fDigits = preg_replace('/\D/', '', $value ?? '');
+
+                    if (!empty($bDigits) && !empty($fDigits) && $bDigits === $fDigits) {
+                        $fail("Security Alert: Father's CNIC cannot be identical to Student's B-Form / CNIC.");
+                    }
+                }
+            ],
+            'guardian_cnic' => [
+                'nullable', 
+                'string', 
+                'max:15', 
+                'regex:/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/',
+                function ($attribute, $value, $fail) {
+                    $bDigits = preg_replace('/\D/', '', $this->b_form_number ?? '');
+                    $gDigits = preg_replace('/\D/', '', $value ?? '');
+
+                    if (!empty($bDigits) && !empty($gDigits) && $bDigits === $gDigits) {
+                        $fail("Security Alert: Guardian's CNIC cannot be identical to Student's B-Form / CNIC.");
+                    }
+                }
+            ],
             'guardian_relation' => ['nullable', 'string', 'max:50'],
             'is_guardian_primary' => ['boolean'],
             'sibling_concession_status' => ['required', 'string', 'in:none,policy_eligible,custom_waiver,disallowed'],
@@ -321,17 +500,34 @@ class StudentManager extends Component
                 'string', 
                 Rule::unique('students', 'admission_no')->ignore($this->editingStudentId ?: $this->readmitStudentId)
             ],
-            'b_form_number' => ['nullable', 'string', 'max:20'],
+            'b_form_number' => [
+                'nullable', 
+                'string', 
+                'max:20',
+                function ($attribute, $value, $fail) {
+                    $bDigits = preg_replace('/\D/', '', $value ?? '');
+                    $fDigits = preg_replace('/\D/', '', $this->father_cnic ?? '');
+                    $gDigits = preg_replace('/\D/', '', $this->guardian_cnic ?? '');
+
+                    if (!empty($bDigits) && strlen($bDigits) >= 5) {
+                        if (!empty($fDigits) && $bDigits === $fDigits) {
+                            $fail("Security Alert: Student B-Form / CNIC cannot be identical to Father's CNIC.");
+                        }
+                        if (!empty($gDigits) && $bDigits === $gDigits) {
+                            $fail("Security Alert: Student B-Form / CNIC cannot be identical to Guardian's CNIC.");
+                        }
+                    }
+                }
+            ],
             'gender' => 'required|in:Male,Female,Other',
             'sports' => 'array',
             'extra_curriculars' => 'array',
             'transport_mode' => 'required|string',
             'vehicle_number' => 'nullable|string|max:255',
             'dob' => 'nullable|date',
-            'admission_date' => 'nullable|date',
+            'admission_date' => 'required|date',
             'photo' => 'nullable|image|max:1024',
             'address' => 'nullable|string|max:1000',
-            'status' => 'required|string|in:active,inactive',
         ];
 
         $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
@@ -492,7 +688,13 @@ class StudentManager extends Component
     #[On('open-add-student-modal')]
     public function openModal()
     {
-        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status']);
+        $this->isExistingStudentRecord = false;
+        $this->isActiveStudentDuplicate = false;
+        $this->activeStudentDetails = [];
+        $this->existingStudentMessage = '';
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'isExistingStudentRecord', 'isActiveStudentDuplicate', 'activeStudentDetails', 'existingStudentMessage']);
+        $this->resetErrorBag(['b_form_number', 'father_cnic', 'guardian_cnic']);
+        $this->admission_date = now()->format('Y-m-d');
         
         $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
         $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
@@ -526,7 +728,11 @@ class StudentManager extends Component
     {
         $student = Student::findOrFail($id);
         
+        $this->isEditing = true;
         $this->editingStudentId = $id;
+        $this->isExistingStudentRecord = false;
+        $this->existingStudentMessage = '';
+        $this->resetErrorBag(['b_form_number', 'father_cnic', 'guardian_cnic']);
         $this->name = $student->name;
         
         $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
@@ -604,7 +810,7 @@ class StudentManager extends Component
         $this->transport_mode = $student->transport_mode ?? 'none';
         $this->vehicle_number = $student->vehicle_number ?? '';
         $this->dob = $student->dob ? $student->dob->format('Y-m-d') : '';
-        $this->admission_date = $student->admission_date ? $student->admission_date->format('Y-m-d') : '';
+        $this->admission_date = $student->admission_date ? $student->admission_date->format('Y-m-d') : ($student->created_at ? $student->created_at->format('Y-m-d') : now()->format('Y-m-d'));
         $this->address = $student->address;
 
         // Load assigned subjects
@@ -625,6 +831,16 @@ class StudentManager extends Component
     {
         $this->roll_no = trim($this->roll_no);
         $this->admission_no = trim($this->admission_no);
+
+        if (!$this->validateCnicSecurity()) {
+            return;
+        }
+
+        if ($this->isActiveStudentDuplicate) {
+            $this->addError('b_form_number', "Cannot proceed: Student is already actively enrolled in school. Duplicate admission is disallowed.");
+            return;
+        }
+
         $validated = $this->validate();
 
         $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
@@ -645,27 +861,23 @@ class StudentManager extends Component
             }
         }
 
-        // 1-Click Re-Admission of returning student
+        // 1-Click Re-Admission of returning student / Existing B-Form Student
         if ($this->isReadmission && $this->readmitStudentId) {
             $lifecycleService = app(\App\Services\StudentLifecycleService::class);
-            $student = Student::findOrFail($this->readmitStudentId);
+            $student = Student::withTrashed()->findOrFail($this->readmitStudentId);
+            
+            if ($student->trashed()) {
+                $student->restore();
+            }
+
             $student->update([
-                'name' => $this->name,
-                'b_form_number' => $this->b_form_number ?: $student->b_form_number,
-                'father_name' => $this->father_name,
-                'father_cnic' => $this->father_cnic ?: null,
-                'guardian_cnic' => $this->guardian_cnic ?: null,
-                'guardian_relation' => $this->guardian_relation ?: null,
-                'is_guardian_primary' => (bool) $this->is_guardian_primary,
-                'sibling_concession_status' => $this->sibling_concession_status ?: 'none',
-                'custom_concession_amount' => $this->sibling_concession_status === 'custom_waiver' && is_numeric($this->custom_concession_amount) ? $this->custom_concession_amount : null,
-                'phone' => $this->phone,
-                'email' => $this->email,
-                'gender' => strtolower($this->gender),
-                'dob' => $this->dob ?: null,
-                'address' => $this->address,
+                'phone' => $this->phone ?: $student->phone,
+                'email' => $this->email ?: $student->email,
+                'address' => $this->address ?: $student->address,
+                'transport_mode' => $this->transport_mode,
+                'vehicle_number' => $this->vehicle_number,
                 'status' => 'active',
-                'status_reason' => 'Re-admitted to Session ID ' . $this->selectedSessionId,
+                'status_reason' => 'Admitted/Re-admitted to Session ID ' . $this->selectedSessionId,
             ]);
 
             $lifecycleService->readmitStudent(
@@ -677,11 +889,107 @@ class StudentManager extends Component
                 auth()->id() ?? 1
             );
 
+            // If dual shift session and both shifts selected:
+            if ($this->student_shift_option === 'both') {
+                $morningClassId = $this->singleStudentClasses['morning'] ?? $this->class_id;
+                $eveningClassId = $this->singleStudentClasses['evening'] ?? $this->class_id;
+
+                \App\Models\Enrollment::updateOrCreate(
+                    [
+                        'student_id' => $student->id,
+                        'academic_session_id' => $this->selectedSessionId,
+                        'shift_type' => 'morning',
+                    ],
+                    [
+                        'class_id' => $morningClassId,
+                        'roll_number' => $this->roll_no,
+                        'status' => 'active',
+                    ]
+                );
+
+                \App\Models\Enrollment::updateOrCreate(
+                    [
+                        'student_id' => $student->id,
+                        'academic_session_id' => $this->selectedSessionId,
+                        'shift_type' => 'evening',
+                    ],
+                    [
+                        'class_id' => $eveningClassId,
+                        'roll_number' => $this->roll_no,
+                        'status' => 'active',
+                    ]
+                );
+            }
+
+            if (!empty($this->studentSubjects)) {
+                $student->subjects()->sync($this->studentSubjects);
+            }
+
             $this->showModal = false;
             $this->isReadmission = false;
             $this->readmitStudentId = null;
-            session()->flash('message', "Student {$student->name} re-admitted successfully to active session!");
+            $this->isExistingStudentRecord = false;
+            $this->isActiveStudentDuplicate = false;
+            $this->activeStudentDetails = [];
+            $this->existingStudentMessage = '';
+            session()->flash('message', "Student {$student->name} admitted successfully with existing institutional record!");
             return;
+        }
+
+        // Safety catch: If B-form already exists in DB for a new admission, protect integrity and avoid duplicate
+        if (!$this->isEditing) {
+            $digits = preg_replace('/\D/', '', $this->b_form_number ?? '');
+            if (!empty($digits) && strlen($digits) === 13) {
+                $matchedStudent = Student::withTrashed()
+                    ->where(function ($q) use ($digits) {
+                        $q->where('b_form_number', $this->b_form_number)
+                          ->orWhere('b_form_number', $digits)
+                          ->orWhereRaw("REPLACE(REPLACE(b_form_number, '-', ''), ' ', '') = ?", [$digits]);
+                    })
+                    ->first();
+
+                if ($matchedStudent) {
+                    $this->applyExistingStudentData($matchedStudent);
+
+                    if ($this->isActiveStudentDuplicate) {
+                        $cls = $this->activeStudentDetails['class_name'] ?? 'Class';
+                        $roll = $this->activeStudentDetails['roll_no'] ?? '';
+                        $this->addError('b_form_number', "Student {$matchedStudent->name} is already actively enrolled in {$cls} (Roll #{$roll}). Duplicate admission is disallowed.");
+                        return;
+                    }
+
+                    $lifecycleService = app(\App\Services\StudentLifecycleService::class);
+                    if ($matchedStudent->trashed()) {
+                        $matchedStudent->restore();
+                    }
+                    $matchedStudent->update([
+                        'phone' => $this->phone ?: $matchedStudent->phone,
+                        'email' => $this->email ?: $matchedStudent->email,
+                        'address' => $this->address ?: $matchedStudent->address,
+                        'transport_mode' => $this->transport_mode,
+                        'vehicle_number' => $this->vehicle_number,
+                        'status' => 'active',
+                        'status_reason' => 'Admitted/Re-admitted to Session ID ' . $this->selectedSessionId,
+                    ]);
+                    $lifecycleService->readmitStudent(
+                        $matchedStudent,
+                        $this->selectedSessionId,
+                        $this->class_id,
+                        $this->student_shift,
+                        $this->roll_no,
+                        auth()->id() ?? 1
+                    );
+                    $this->showModal = false;
+                    $this->isReadmission = false;
+                    $this->readmitStudentId = null;
+                    $this->isExistingStudentRecord = false;
+                    $this->isActiveStudentDuplicate = false;
+                    $this->activeStudentDetails = [];
+                    $this->existingStudentMessage = '';
+                    session()->flash('message', "Student {$matchedStudent->name} admitted successfully with existing institutional record!");
+                    return;
+                }
+            }
         }
 
         // Serialize arrays
@@ -708,8 +1016,12 @@ class StudentManager extends Component
             'admission_date' => $this->admission_date ?: null,
             'original_admission_date' => $this->admission_date ?: null,
             'address' => $this->address,
-            'status' => $this->status,
         ];
+
+        // New admissions are always active. Editing never overwrites audited lifecycle status.
+        if (!$this->isEditing) {
+            $data['status'] = 'active';
+        }
 
         if ($this->photo) {
             $path = $this->photo->store('profile-photos', 'public');
@@ -746,7 +1058,15 @@ class StudentManager extends Component
                 session()->flash('message', 'Student added successfully.');
             }
 
+            // Determine status for enrollment records
+            $defaultStatus = $this->isEditing ? ($student->status ?? 'active') : 'active';
+
             if ($isRegular) {
+                $existingReg = \App\Models\Enrollment::where('student_id', $student->id)
+                    ->where('academic_session_id', $this->selectedSessionId)
+                    ->where('shift_type', 'regular')
+                    ->first();
+
                 \App\Models\Enrollment::updateOrCreate(
                     [
                         'student_id' => $student->id,
@@ -756,7 +1076,7 @@ class StudentManager extends Component
                     [
                         'class_id' => $this->class_id,
                         'roll_number' => $this->roll_no,
-                        'status' => $this->status ?: 'active',
+                        'status' => $existingReg ? $existingReg->status : $defaultStatus,
                     ]
                 );
             } else {
@@ -768,6 +1088,11 @@ class StudentManager extends Component
                         ->where('shift_type', 'evening')
                         ->delete();
 
+                    $existingMorn = \App\Models\Enrollment::where('student_id', $student->id)
+                        ->where('academic_session_id', $this->selectedSessionId)
+                        ->where('shift_type', 'morning')
+                        ->first();
+
                     \App\Models\Enrollment::updateOrCreate(
                         [
                             'student_id' => $student->id,
@@ -777,7 +1102,7 @@ class StudentManager extends Component
                         [
                             'class_id' => $this->singleStudentClasses['morning'],
                             'roll_number' => $this->roll_no,
-                            'status' => $this->status ?: 'active',
+                            'status' => $existingMorn ? $existingMorn->status : $defaultStatus,
                         ]
                     );
                 } elseif ($this->student_shift_option === 'evening') {
@@ -788,6 +1113,11 @@ class StudentManager extends Component
                         ->where('shift_type', 'morning')
                         ->delete();
 
+                    $existingEve = \App\Models\Enrollment::where('student_id', $student->id)
+                        ->where('academic_session_id', $this->selectedSessionId)
+                        ->where('shift_type', 'evening')
+                        ->first();
+
                     \App\Models\Enrollment::updateOrCreate(
                         [
                             'student_id' => $student->id,
@@ -797,7 +1127,7 @@ class StudentManager extends Component
                         [
                             'class_id' => $this->singleStudentClasses['evening'],
                             'roll_number' => $this->roll_no,
-                            'status' => $this->status ?: 'active',
+                            'status' => $existingEve ? $existingEve->status : $defaultStatus,
                         ]
                     );
                 } elseif ($this->student_shift_option === 'both') {
@@ -837,7 +1167,7 @@ class StudentManager extends Component
                         [
                             'class_id' => $morningClassId,
                             'roll_number' => $morningRoll,
-                            'status' => $this->status ?: 'active',
+                            'status' => $oldMorning ? $oldMorning->status : $defaultStatus,
                         ]
                     );
 
@@ -850,7 +1180,7 @@ class StudentManager extends Component
                         [
                             'class_id' => $eveningClassId,
                             'roll_number' => $eveningRoll,
-                            'status' => $this->status ?: 'active',
+                            'status' => $oldEvening ? $oldEvening->status : $defaultStatus,
                         ]
                     );
                 }
@@ -860,7 +1190,11 @@ class StudentManager extends Component
         });
 
         $this->showModal = false;
-        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'singleStudentClasses']);
+        $this->isExistingStudentRecord = false;
+        $this->isActiveStudentDuplicate = false;
+        $this->activeStudentDetails = [];
+        $this->existingStudentMessage = '';
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'singleStudentClasses', 'isExistingStudentRecord', 'isActiveStudentDuplicate', 'activeStudentDetails', 'existingStudentMessage']);
 
         if ($this->onlyModal) {
             return redirect(request()->header('Referer'));
@@ -1418,11 +1752,14 @@ class StudentManager extends Component
                 $student = Student::findOrFail($studentId);
 
                 if ($this->bulkActionType === 'status') {
-                    $student->update(['status' => $this->bulkStatus]);
-                    DB::table('enrollments')
-                        ->where('student_id', $studentId)
-                        ->where('academic_session_id', $this->selectedSessionId)
-                        ->update(['status' => $this->bulkStatus, 'updated_at' => now()]);
+                    if (!in_array($student->status, ['withdrawn', 'slc_issued', 'graduated'])) {
+                        $student->update(['status' => $this->bulkStatus]);
+                        DB::table('enrollments')
+                            ->where('student_id', $studentId)
+                            ->where('academic_session_id', $this->selectedSessionId)
+                            ->whereNotIn('status', ['slc_issued', 'completed'])
+                            ->update(['status' => $this->bulkStatus, 'updated_at' => now()]);
+                    }
                 } else {
                     if ($this->bulkShiftOption === 'morning') {
                         // Delete evening enrollment if any exists
