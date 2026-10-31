@@ -1,11 +1,50 @@
 <style>
+    /* ── Minimalist & High-Performance Micro-Animations (GPU Composited) ── */
+    @keyframes subtleReveal {
+        0% {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .dash-fade-in {
+        animation: subtleReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .anim-delay-1 { animation-delay: 30ms; }
+    .anim-delay-2 { animation-delay: 60ms; }
+    .anim-delay-3 { animation-delay: 90ms; }
+    .anim-delay-4 { animation-delay: 120ms; }
+
+    /* Ultra-smooth SVG line entrance */
+    @keyframes lineDraw {
+        from {
+            stroke-dashoffset: 600;
+            opacity: 0.2;
+        }
+        to {
+            stroke-dashoffset: 0;
+            opacity: 1;
+        }
+    }
+
+    .chart-line-anim {
+        stroke-dasharray: 600;
+        animation: lineDraw 1s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+    }
+
     .stat-card {
         background-color: #ffffff !important;
         border: 1px solid #e2e8f0 !important;
         border-radius: 1rem !important;
         padding: 0.875rem !important;
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.02) !important;
-        transition: all 0.2s ease-in-out !important;
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease !important;
+        will-change: transform, box-shadow;
     }
     @media (min-width: 640px) {
         .stat-card {
@@ -13,8 +52,16 @@
         }
     }
     .stat-card:hover {
+        border-color: #cbd5e1 !important;
         box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.03) !important;
-        transform: translateY(-1px) !important;
+        transform: translateY(-2px) !important;
+    }
+    .stat-card:hover .stat-icon-box {
+        transform: scale(1.06);
+    }
+    .stat-icon-box {
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: transform;
     }
     .dash-card {
         background-color: #ffffff !important;
@@ -22,6 +69,7 @@
         border-radius: 1rem !important;
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.02) !important;
         padding: 1rem !important;
+        transition: border-color 0.2s ease, box-shadow 0.25s ease;
     }
     @media (min-width: 640px) {
         .dash-card {
@@ -39,7 +87,8 @@
         border: 1px solid #e2e8f0 !important;
         background-color: #ffffff !important;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
-        transition: all 0.15s ease-in-out !important;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, box-shadow 0.2s ease, border-color 0.15s ease !important;
+        will-change: transform;
     }
     @media (min-width: 640px) {
         .action-btn {
@@ -47,10 +96,24 @@
         }
     }
     .action-btn:hover {
-        border-color: #e2e8f0 !important;
+        border-color: #cbd5e1 !important;
         background-color: #f8fafc !important;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
-        transform: translateY(-1px) !important;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05) !important;
+        transform: translateY(-2px) !important;
+    }
+    .action-btn:hover .action-btn-icon {
+        transform: scale(1.08);
+    }
+    .action-btn:active {
+        transform: scale(0.98) !important;
+    }
+    .action-btn-icon {
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: transform;
+    }
+    .progress-bar-fill {
+        transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: width;
     }
     @keyframes wiggle {
         0%, 60%, 100% { transform: rotate(0deg); }
@@ -100,6 +163,24 @@
     @media (min-width: 640px) {
         .chart-date-text {
             font-size: 10px !important;
+        }
+    }
+
+    /* Respect reduced-motion accessibility preference */
+    @media (prefers-reduced-motion: reduce) {
+        .dash-fade-in,
+        .chart-line-anim,
+        .animate-wiggle {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }
+        .stat-card,
+        .action-btn,
+        .progress-bar-fill,
+        .stat-icon-box,
+        .action-btn-icon {
+            transition: none !important;
         }
     }
 </style>
@@ -173,9 +254,9 @@
 
         {{-- Students --}}
         @if(\App\Services\LicenseStatus::isModuleEnabled('students'))
-        <div class="stat-card col-span-1">
+        <div class="stat-card col-span-1 dash-fade-in anim-delay-1">
             <div class="flex items-start justify-between mb-3">
-                <div class="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                <div class="stat-icon-box p-2 rounded-xl bg-indigo-50 text-indigo-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                 </div>
                 <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Active</span>
@@ -186,9 +267,9 @@
         @endif
 
         {{-- Classes --}}
-        <div class="stat-card col-span-1">
+        <div class="stat-card col-span-1 dash-fade-in anim-delay-1">
             <div class="flex items-start justify-between mb-3">
-                <div class="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                <div class="stat-icon-box p-2 rounded-xl bg-emerald-50 text-emerald-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><circle cx="12" cy="9" r="2"/></svg>
                 </div>
             </div>
@@ -197,9 +278,9 @@
         </div>
 
         {{-- Attendance --}}
-        <div class="stat-card col-span-1">
+        <div class="stat-card col-span-1 dash-fade-in anim-delay-2">
             <div class="flex items-start justify-between mb-3">
-                <div class="p-2 rounded-xl bg-amber-50 text-amber-600">
+                <div class="stat-icon-box p-2 rounded-xl bg-amber-50 text-amber-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </div>
                 <span class="text-[9px] font-bold {{ $stats['attendance'] >= 75 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50' }} px-1.5 py-0.5 rounded-full">
@@ -211,9 +292,9 @@
         </div>
 
         {{-- Users --}}
-        <div class="stat-card col-span-1">
+        <div class="stat-card col-span-1 dash-fade-in anim-delay-2">
             <div class="flex items-start justify-between mb-3">
-                <div class="p-2 rounded-xl bg-blue-50 text-blue-600">
+                <div class="stat-icon-box p-2 rounded-xl bg-blue-50 text-blue-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
             </div>
@@ -224,9 +305,9 @@
         {{-- Paid This Month --}}
         @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
         @can('fees.manage')
-        <div class="stat-card col-span-1">
+        <div class="stat-card col-span-1 dash-fade-in anim-delay-3">
             <div class="flex items-start justify-between mb-3">
-                <div class="p-2 rounded-xl bg-teal-50 text-teal-600">
+                <div class="stat-icon-box p-2 rounded-xl bg-teal-50 text-teal-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
                 </div>
             </div>
@@ -239,9 +320,9 @@
         {{-- Unpaid --}}
         @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
         @can('fees.manage')
-        <div class="stat-card col-span-1">
+        <div class="stat-card col-span-1 dash-fade-in anim-delay-3">
             <div class="flex items-start justify-between mb-3">
-                <div class="p-2 rounded-xl bg-rose-50 text-rose-500">
+                <div class="stat-icon-box p-2 rounded-xl bg-rose-50 text-rose-500">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
                 </div>
                 @if($stats['unpaid'] > 0)
@@ -277,7 +358,7 @@
     {{-- ═══ FINANCIALS ══════════════════════════════════════════════════════════ --}}
     @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
     @can('fees.manage')
-    <div class="dash-card">
+    <div class="dash-card dash-fade-in anim-delay-2">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <div>
                 <div class="flex items-center gap-2">
@@ -298,7 +379,7 @@
         </div>
         {{-- Progress Bar --}}
         <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-6">
-            <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
+            <div class="progress-bar-fill h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
                  style="width: {{ min($financials['collection_rate'], 100) }}%"></div>
         </div>
         {{-- 3 columns --}}
@@ -413,14 +494,15 @@
 
                             {{-- Filled area under curve --}}
                             @if($smoothFill)
-                                <path d="{{ $smoothFill }}" fill="url(#areaGrad)"/>
+                                <path d="{{ $smoothFill }}" fill="url(#areaGrad)" class="dash-fade-in anim-delay-3"/>
                             @endif
 
-                            {{-- Smooth bezier line --}}
+                            {{-- Smooth bezier line with GPU draw animation --}}
                             @if($smooth)
                                 <path d="{{ $smooth }}" fill="none"
                                       stroke="url(#lineGrad)" stroke-width="2.8"
-                                      stroke-linecap="round" stroke-linejoin="round"/>
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      class="chart-line-anim"/>
                             @endif
 
                             {{-- Data point dots --}}
@@ -526,7 +608,7 @@
                     @if(\App\Services\LicenseStatus::isModuleEnabled('students'))
                     @can('students.manage')
                     <a href="{{ route('admin.students', ['open_add_modal' => 1]) }}" class="action-btn">
-                        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <div class="action-btn-icon w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="16" x2="22" y1="11" y2="11"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Admit Student</span>
@@ -535,7 +617,7 @@
                     @endif
                     @can('classes.manage')
                     <a href="{{ route('admin.classes', ['open_add_modal' => 1]) }}" class="action-btn">
-                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <div class="action-btn-icon w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Classes</span>
@@ -544,7 +626,7 @@
                     @if(\App\Services\LicenseStatus::isModuleEnabled('attendance'))
                     @can('students.manage')
                     <a href="{{ route('admin.attendance') }}" class="action-btn">
-                        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <div class="action-btn-icon w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Attendance</span>
@@ -554,7 +636,7 @@
                     @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
                     @can('fees.manage')
                     <a href="{{ route('admin.fee.record-payment') }}" class="action-btn">
-                        <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <div class="action-btn-icon w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Record Fee</span>
@@ -564,7 +646,7 @@
                     @if(\App\Services\LicenseStatus::isModuleEnabled('whatsapp'))
                     @can('students.manage')
                     <a href="{{ route('admin.whatsapp-setup') }}" class="action-btn">
-                        <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                        <div class="action-btn-icon w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">WhatsApp</span>
@@ -574,7 +656,7 @@
                     @if(\App\Services\LicenseStatus::isModuleEnabled('reports'))
                     @can('reports.view')
                     <a href="{{ route('admin.reports') }}" class="action-btn">
-                        <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                        <div class="action-btn-icon w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Reports</span>
