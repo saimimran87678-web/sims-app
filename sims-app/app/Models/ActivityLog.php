@@ -30,6 +30,8 @@ class ActivityLog extends Model
         'method',
         'academic_session_id',
         'shift_type',
+        'previous_hash',
+        'record_hash',
     ];
 
     protected $casts = [
@@ -39,6 +41,41 @@ class ActivityLog extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    protected static function booted()
+    {
+        static::updating(function ($log) {
+            throw new \DomainException("Activity logs are cryptographically sealed and immutable.");
+        });
+    }
+
+    public static function computeRecordHash(
+        ?int $userId,
+        string $action,
+        string $module,
+        ?string $modelType,
+        ?string $modelId,
+        string $description,
+        $createdAt,
+        string $previousHash
+    ): string {
+        $createdStr = $createdAt instanceof \Carbon\CarbonInterface
+            ? $createdAt->toIso8601String()
+            : \Carbon\Carbon::parse($createdAt)->toIso8601String();
+
+        $payload = implode('|', [
+            $userId ?? 0,
+            strtolower(trim($action)),
+            strtolower(trim($module)),
+            (string)($modelType ?? ''),
+            (string)($modelId ?? ''),
+            trim($description),
+            $createdStr,
+            $previousHash,
+        ]);
+
+        return hash_hmac('sha256', $payload, config('app.key'));
+    }
 
     public function user(): BelongsTo
     {

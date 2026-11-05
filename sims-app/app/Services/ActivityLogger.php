@@ -110,6 +110,19 @@ class ActivityLogger
 
             $shiftType = session('selected_shift_type', 'morning');
 
+            $now = now();
+            $previousHash = ActivityLog::latest('id')->value('record_hash') ?? str_repeat('0', 64);
+            $recordHash = ActivityLog::computeRecordHash(
+                $user?->id,
+                $action,
+                $module,
+                $model ? get_class($model) : null,
+                $model ? (string)$model->getKey() : null,
+                $description,
+                $now,
+                $previousHash
+            );
+
             return ActivityLog::create([
                 'user_id' => $user?->id,
                 'user_name' => $user?->name ?? 'System',
@@ -130,6 +143,10 @@ class ActivityLogger
                 'method' => $method,
                 'academic_session_id' => $activeSessionId,
                 'shift_type' => $shiftType,
+                'previous_hash' => $previousHash,
+                'record_hash' => $recordHash,
+                'created_at' => $now,
+                'updated_at' => $now,
             ]);
         } catch (\Throwable $e) {
             Log::error('Failed to write activity log: ' . $e->getMessage(), [

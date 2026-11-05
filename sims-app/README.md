@@ -208,6 +208,7 @@ php artisan whatsapp:process-queue
 | :--- | :--- |
 | `php artisan db:backup` | Creates an immediate SHA-256 verified SQLite backup with retention pruning. |
 | `php artisan db:restore {file?}` | Atomically restores database from the latest or specified verified backup. |
+| `php artisan audit:verify-chain` | Cryptographically verifies the HMAC-SHA256 tamper-evident hash chain of activity logs. |
 | `php artisan whatsapp:process-queue` | Background daemon polling and dispatching WhatsApp alerts with opt-in verification. |
 | `php artisan whatsapp:purge-queue` | Prunes processed WhatsApp queue entries past the configured retention window. |
 | `php artisan data:purge-operational` | Purges expired voucher tokens, orphan upload files, and audit records. |
@@ -222,9 +223,10 @@ All tests execute against an isolated in-memory SQLite database (`:memory:`) ens
 
 ```bash
 # Run core architectural and invariant test suites
-php artisan test --filter="GuardianNormalizationTest|PiiEncryptionAndSecurityTest|DatabaseInvariantsAndModelDecouplingTest|ExamMarkNullabilityTest|GradebookShiftScopingTest|AcademicSessionManagerPromotionTest|SingleSourceOfTruthTest|RfidAttendanceSubsystemTest"
+php artisan test --filter="DatabaseHygieneAndAuditChainTest|GuardianNormalizationTest|PiiEncryptionAndSecurityTest|DatabaseInvariantsAndModelDecouplingTest|ExamMarkNullabilityTest|GradebookShiftScopingTest|AcademicSessionManagerPromotionTest|SingleSourceOfTruthTest|RfidAttendanceSubsystemTest"
 
 # Run specific functional suites
+php artisan test --filter=DatabaseHygieneAndAuditChainTest         # Redundant index pruning, NULL-safe uniqueness & audit chain
 php artisan test --filter=DatabaseInvariantsAndModelDecouplingTest # SQLite CHECK constraints & model decoupling
 php artisan test --filter=RfidAttendanceSubsystemTest             # RFID edge scanner & HMAC security
 php artisan test --filter=ExamMarkNullabilityTest                 # Exam lifecycle & nullable mark states
