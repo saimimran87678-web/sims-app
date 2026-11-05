@@ -42,7 +42,16 @@ class Dashboard extends Component
         if ($userClassId && !empty($userClassSubject)) {
              $ownClass = \App\Models\Classes::withoutGlobalScope('active_session')->find($userClassId);
              if ($ownClass && ($shiftType === 'both' || $ownClass->shift_type === $shiftType)) {
-                 $hasInherentSubject = true;
+                 $alreadyAllocated = DB::table('subject_allocations')
+                     ->join('subjects', 'subject_allocations.subject_id', '=', 'subjects.id')
+                     ->where('subject_allocations.user_id', $user->id)
+                     ->where('subject_allocations.class_id', $userClassId)
+                     ->where('subjects.name', $userClassSubject)
+                     ->exists();
+
+                 if (!$alreadyAllocated) {
+                     $hasInherentSubject = true;
+                 }
              } else {
                  $userClassId = null; // Mismatched shift, ignore
              }
@@ -95,7 +104,6 @@ class Dashboard extends Component
                 ->where('teacher_id', $user->id)
                 ->where('classes.academic_session_id', $activeSessionId)
                 ->where('day', $dayToQuery)
-                ->where('is_substitute', 0)
                 ->when($shiftType !== 'both', function ($q) use ($shiftType) {
                     $q->where('classes.shift_type', $shiftType);
                 })

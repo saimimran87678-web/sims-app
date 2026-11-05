@@ -17,6 +17,10 @@ Route::get('/v/{token}/pdf', [\App\Http\Controllers\PublicVoucherController::cla
     ->name('public.voucher.pdf')
     ->middleware('throttle:60,1');
 
+// Protected Student Photograph Route (Authorized Access Only)
+Route::get('/student/{student}/photo', [\App\Http\Controllers\StudentPhotoController::class, 'show'])
+    ->name('student.photo');
+
 // Student & Parent Portal (NADRA CNIC + Admission Number Verified)
 Route::get('/portal', function () {
     if (session()->has('student_portal_id')) {
@@ -244,6 +248,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         ]);
     })->name('substitutions.all_teachers_attendance.print');
     Route::get('/classes', \App\Livewire\Admin\ClassManager::class)->name('classes');
+    Route::get('/curriculum', \App\Livewire\Admin\CurriculumManager::class)->name('curriculum');
     
     // Student Management (Remotely Gated)
     Route::middleware(['feature:students'])->group(function () {
@@ -260,6 +265,8 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     // Global Management
     Route::get('/grades', \App\Livewire\Admin\GradeManager::class)->name('grades')->middleware('feature:gradebook');
     Route::get('/attendance', \App\Livewire\Admin\AttendanceManager::class)->name('attendance')->middleware('feature:attendance');
+    Route::get('/attendance/smart-cards', \App\Livewire\Admin\Rfid\SmartCardManager::class)->name('attendance.smart-cards')->middleware('feature:attendance');
+    Route::get('/attendance/gate-monitor', \App\Livewire\Admin\Rfid\RfidGateMonitor::class)->name('attendance.gate-monitor')->middleware('feature:attendance');
     
     // WhatsApp & Communication Hub (Remotely Gated)
     Route::middleware(['feature:whatsapp'])->group(function () {
@@ -275,7 +282,7 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
         Route::get('/invoice-generator', \App\Livewire\Admin\Fee\InvoiceGenerator::class)->name('generator');
         Route::get('/collect', \App\Livewire\Admin\Fee\RecordPayment::class)->name('record-payment');
         Route::get('/defaulters', \App\Livewire\Admin\Fee\DefaulterList::class)->name('defaulters');
-        Route::get('/ledger/{studentId}', \App\Livewire\Admin\Fee\StudentLedger::class)->name('ledger');
+        Route::get('/ledger/{studentId?}', \App\Livewire\Admin\Fee\StudentLedger::class)->name('ledger');
         Route::get('/invoice/{record}/download', \App\Http\Controllers\Admin\Fee\DownloadInvoiceController::class)->name('invoice.download');
         Route::get('/receipt/{payment}/download', \App\Http\Controllers\Admin\Fee\DownloadReceiptController::class)->name('receipt.download');
     });

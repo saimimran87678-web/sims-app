@@ -127,6 +127,11 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                     <span class="font-medium">Class Management</span>
                 </x-nav-link>
+
+                <x-nav-link :href="route('admin.curriculum')" :active="request()->routeIs('admin.curriculum')" color="indigo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    <span class="font-medium">Curriculum & Programs</span>
+                </x-nav-link>
                 @endcan
 
                 <!-- Student Management -->
@@ -153,6 +158,7 @@
                     <div x-show="feeOpen" x-transition class="pl-11 pr-3 py-2 space-y-1">
                         <a wire:navigate href="{{ route('admin.fee.generator') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.generator') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Voucher Management</a>
                         <a wire:navigate href="{{ route('admin.fee.record-payment') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.record-payment') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Collect Fees</a>
+                        <a wire:navigate href="{{ route('admin.fee.ledger') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.ledger') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Student Fee Ledger</a>
                         <a wire:navigate href="{{ route('admin.fee.defaulters') }}" class="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:text-amber-700 hover:bg-amber-50 {{ request()->routeIs('admin.fee.defaulters') ? 'text-amber-700 bg-amber-50 font-medium' : '' }}">Defaulter List</a>
                     </div>
                 </div>
@@ -174,6 +180,16 @@
                 <x-nav-link :href="route('admin.attendance')" :active="request()->routeIs('admin.attendance')" color="teal">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
                     <span class="font-medium">Attendance</span>
+                </x-nav-link>
+
+                <x-nav-link :href="route('admin.attendance.smart-cards')" :active="request()->routeIs('admin.attendance.smart-cards')" color="indigo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/><circle cx="7" cy="15" r="1"/></svg>
+                    <span class="font-medium">Smart Cards (RFID)</span>
+                </x-nav-link>
+
+                <x-nav-link :href="route('admin.attendance.gate-monitor')" :active="request()->routeIs('admin.attendance.gate-monitor')" color="cyan">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 13v9"/><path d="m9 16 3-3 3 3"/></svg>
+                    <span class="font-medium">RFID Gate Monitor</span>
                 </x-nav-link>
                 @endcan
                 @endif

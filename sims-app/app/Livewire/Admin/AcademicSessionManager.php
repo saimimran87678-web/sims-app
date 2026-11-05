@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use Livewire\Component;
 use App\Models\AcademicSession;
 use App\Models\Classes;
+use App\Models\Subject;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 
@@ -248,11 +249,15 @@ class AcademicSessionManager extends Component
                     ]);
                     $classMap[$sc->id][$tShift] = $newClass->id;
 
-                    $sourceSubjects = Subject::where('class_id', $sc->id)->get();
-                    foreach ($sourceSubjects as $subj) {
-                        Subject::create([
+                    // Clone program curriculum bundles for the new class (zero duplicate subjects)
+                    $programs = DB::table('class_programs')->where('class_id', $sc->id)->get();
+                    foreach ($programs as $prog) {
+                        DB::table('class_programs')->insert([
                             'class_id' => $newClass->id,
-                            'name' => $subj->name,
+                            'program_id' => $prog->program_id,
+                            'is_default' => $prog->is_default,
+                            'created_at' => now(),
+                            'updated_at' => now(),
                         ]);
                     }
                 }
@@ -294,7 +299,8 @@ class AcademicSessionManager extends Component
                 'classes.next_class_id',
                 'classes.numeric_value',
                 'enrollments.shift_type',
-                'enrollments.roll_number'
+                'enrollments.roll_number',
+                'enrollments.program_id'
             )
             ->get();
 
@@ -303,6 +309,12 @@ class AcademicSessionManager extends Component
             $this->showPromotionPreview = false;
             return;
         }
+
+        // Program to subjects mapping for elective filtering
+        $programSubjectsMap = DB::table('program_subjects')
+            ->get()
+            ->groupBy('program_id')
+            ->map(fn($group) => $group->pluck('subject_id')->toArray());
 
         // Fetch Final-Term exam and associated records to identify passed/failed students
         $finalExam = DB::table('exams')
@@ -316,16 +328,31 @@ class AcademicSessionManager extends Component
 
         if ($finalExam) {
             $classIds = $enrollments->pluck('class_id')->unique()->toArray();
-            $subjects = DB::table('subjects')
-                ->whereIn('class_id', $classIds)
-                ->get()
-                ->groupBy('class_id');
-
             $marksConfigs = DB::table('marks_configs')
                 ->where('exam_id', $finalExam->id)
                 ->whereIn('class_id', $classIds)
                 ->get()
                 ->groupBy('class_id');
+
+            $subjects = collect();
+            foreach ($classIds as $cId) {
+                $configuredSubjectIds = $marksConfigs->get($cId)?->pluck('subject_id')->filter()->toArray() ?? [];
+                $configuredSubjectNames = $marksConfigs->get($cId)?->pluck('subject')->toArray() ?? [];
+
+                if (!empty($configuredSubjectIds) || !empty($configuredSubjectNames)) {
+                    $cSubjects = Subject::where(function ($q) use ($configuredSubjectIds, $configuredSubjectNames) {
+                        if (!empty($configuredSubjectIds)) {
+                            $q->whereIn('id', $configuredSubjectIds);
+                        }
+                        if (!empty($configuredSubjectNames)) {
+                            $q->orWhereIn('name', $configuredSubjectNames);
+                        }
+                    })->get();
+                } else {
+                    $cSubjects = Subject::forClass($cId)->get();
+                }
+                $subjects->put($cId, $cSubjects);
+            }
 
             $studentIds = $enrollments->pluck('student_id')->unique()->toArray();
             $examMarks = DB::table('exam_marks')
@@ -384,11 +411,17 @@ class AcademicSessionManager extends Component
                 $studentMarks = $examMarks->get($e->student_id) ?? collect();
                 $classConfigs = $marksConfigs->get($e->class_id) ?? collect();
                 $configsBySubjectName = $classConfigs->keyBy('subject');
+                $allowedSubjectIds = $e->program_id && isset($programSubjectsMap[$e->program_id])
+                    ? $programSubjectsMap[$e->program_id]
+                    : null;
 
                 if ($classSubjects->isEmpty()) {
                     $hasPassedAll = true;
                 } else {
                     foreach ($classSubjects as $subject) {
+                        if ($allowedSubjectIds !== null && !in_array($subject->id, $allowedSubjectIds)) {
+                            continue; // Skip elective outside this student's curriculum track
+                        }
                         $config = $configsBySubjectName->get($subject->name);
                         $maxMarks = $config ? (int)$config->total_marks : 100;
                         $passingPct = $config ? (int)$config->passing_marks : 33;

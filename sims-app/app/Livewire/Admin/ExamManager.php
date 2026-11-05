@@ -206,7 +206,7 @@ class ExamManager extends Component
 
         // Add new class schedules for selected classes
         foreach ($selectedClassIds as $classId) {
-            $subjects = \App\Models\Subject::where('class_id', $classId)->get();
+            $subjects = \App\Models\Subject::forClass($classId)->get();
             foreach ($subjects as $subject) {
                  \App\Models\ExamSchedule::firstOrCreate(
                     [
@@ -347,7 +347,7 @@ class ExamManager extends Component
     public function getSubjectsForClass($classId)
     {
         if (!isset($this->classSubjectsMap[$classId])) {
-            $this->classSubjectsMap[$classId] = \App\Models\Subject::where('class_id', $classId)->get();
+            $this->classSubjectsMap[$classId] = \App\Models\Subject::forClass($classId)->get();
         }
         return $this->classSubjectsMap[$classId];
     }
@@ -544,6 +544,38 @@ class ExamManager extends Component
         
         session()->flash('message', 'Marks configuration saved successfully.');
         $this->closeConfigModal();
+    }
+
+    public function openMarksEntry($id)
+    {
+        $this->authorize('exam.edit');
+        $exam = Exam::findOrFail($id);
+        $exam->openForEntry(auth()->user());
+        session()->flash('message', "Exam '{$exam->name}' is now open for marks entry.");
+    }
+
+    public function lockExam($id)
+    {
+        $this->authorize('exam.edit');
+        $exam = Exam::findOrFail($id);
+        $exam->lock(auth()->user());
+        session()->flash('message', "Exam '{$exam->name}' is locked. Marks entry is closed.");
+    }
+
+    public function publishExam($id)
+    {
+        $this->authorize('exam.edit');
+        $exam = Exam::findOrFail($id);
+        $exam->publish(auth()->user());
+        session()->flash('message', "Exam '{$exam->name}' results published to Student & Parent Portals.");
+    }
+
+    public function revertToDraft($id)
+    {
+        $this->authorize('exam.edit');
+        $exam = Exam::findOrFail($id);
+        $exam->revertToDraft(auth()->user());
+        session()->flash('message', "Exam '{$exam->name}' reverted to draft. Results are hidden from portals.");
     }
 
     public function closeModal()

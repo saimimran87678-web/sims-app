@@ -44,10 +44,7 @@ class Dashboard extends Component
         $attendanceStat = 0;
         if ($activeSessionId && $activeSession) {
             $rowQuery = DB::table('attendances')
-                ->join('enrollments', function($join) use ($activeSessionId) {
-                    $join->on('attendances.student_id', '=', 'enrollments.student_id')
-                         ->where('enrollments.academic_session_id', '=', $activeSessionId);
-                })
+                ->join('enrollments', 'attendances.enrollment_id', '=', 'enrollments.id')
                 ->where('attendances.academic_session_id', $activeSessionId)
                 ->where('enrollments.status', 'active')
                 ->whereBetween('attendances.date', [$activeSession->start_date, $activeSession->end_date]);
@@ -151,10 +148,7 @@ class Dashboard extends Component
 
         if ($activeSessionId && $activeSession) {
             $trendQuery = DB::table('attendances')
-                ->join('enrollments', function($join) use ($activeSessionId) {
-                    $join->on('attendances.student_id', '=', 'enrollments.student_id')
-                         ->where('enrollments.academic_session_id', '=', $activeSessionId);
-                })
+                ->join('enrollments', 'attendances.enrollment_id', '=', 'enrollments.id')
                 ->where('attendances.academic_session_id', $activeSessionId)
                 ->where('enrollments.status', 'active')
                 ->whereBetween('attendances.date', [$activeSession->start_date, $activeSession->end_date]);

@@ -1164,16 +1164,20 @@ class InvoiceGenerator extends Component
         }
 
         // Load all subjects for the selected class
-        $this->classSubjectsList = \App\Models\Subject::where('class_id', $this->selectedClassId)
+        $this->classSubjectsList = \App\Models\Subject::forClass($this->selectedClassId)
             ->orderBy('name')
             ->get()
             ->toArray();
 
         // Load the student's currently assigned subjects (empty = all enrolled)
         $student = \App\Models\Student::find($studentId);
-        $this->studentSubjectsList = $student
+        $programSubjectIds = $student?->enrollments
+            ->where('class_id', $this->selectedClassId)
+            ->first()?->program?->subjects->pluck('id')->map(fn($id) => (string) $id)->toArray() ?? [];
+        $legacySubjectIds = $student
             ? $student->subjects()->pluck('subjects.id')->map(fn($id) => (string) $id)->toArray()
             : [];
+        $this->studentSubjectsList = !empty($programSubjectIds) ? $programSubjectIds : $legacySubjectIds;
 
         $this->showSubjectEnrollmentModal = true;
     }

@@ -26,8 +26,6 @@ class Timetable extends Model
         'is_divided',
         'is_merged',
         'merge_group_id',
-        'is_substitute',
-        'substitute_date',
         'start_time',
         'end_time',
     ];
@@ -35,8 +33,6 @@ class Timetable extends Model
     protected $casts = [
         'is_divided' => 'boolean',
         'is_merged' => 'boolean',
-        'is_substitute' => 'boolean',
-        'substitute_date' => 'date',
         'period_no' => 'integer',
     ];
 

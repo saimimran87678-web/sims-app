@@ -61,7 +61,6 @@ class ViewSchedule extends Component
         $this->timetables = DB::table('timetables')
             ->whereIn('class_id', $classIds)
             ->where('day', $dayToLoad)
-            ->where('is_substitute', false)
             ->get();
 
         if ($this->viewType === 'room') {

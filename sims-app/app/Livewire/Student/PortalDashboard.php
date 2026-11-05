@@ -23,6 +23,7 @@ class PortalDashboard extends Component
     public $studentId;
     public $activeTab = 'overview'; // 'overview', 'timetable', 'attendance', 'results', 'fees'
     public $selectedDay;
+    public $whatsappOptIn = true;
 
     public function getSchoolDays(): array
     {
@@ -54,6 +55,30 @@ class PortalDashboard extends Component
         } else {
             $this->selectedDay = $schoolDays[0] ?? 'monday';
         }
+
+        $this->loadGuardianPreferences();
+    }
+
+    protected function loadGuardianPreferences(): void
+    {
+        $student = Student::find($this->studentId);
+        $this->whatsappOptIn = (bool) ($student?->primaryGuardian?->whatsapp_opt_in ?? true);
+    }
+
+    public function toggleWhatsAppOptIn(): void
+    {
+        $student = Student::find($this->studentId);
+        if (! $student) return;
+
+        $guardian = $student->primaryGuardian;
+        if ($guardian) {
+            $guardian->whatsapp_opt_in = ! $guardian->whatsapp_opt_in;
+            $guardian->save();
+            $this->whatsappOptIn = (bool) $guardian->whatsapp_opt_in;
+            session()->flash('whatsapp_message', $guardian->whatsapp_opt_in
+                ? 'WhatsApp notification alerts enabled.'
+                : 'WhatsApp notification alerts muted by parent request.');
+        }
     }
 
     public function switchChild($childId)
@@ -73,6 +98,7 @@ class PortalDashboard extends Component
                 'student_portal_id' => $targetChild->id,
                 'student_portal_name' => $targetChild->name,
             ]);
+            $this->loadGuardianPreferences();
         }
     }
 
@@ -198,12 +224,7 @@ class PortalDashboard extends Component
                 ->get()
                 ->keyBy('period_no');
 
-            // Exclude temporary substitution records (is_substitute = 1) from the base weekly schedule
             $baseTimetableQuery = Timetable::where('class_id', $classId)
-                ->where(function ($q) {
-                    $q->where('is_substitute', false)
-                      ->orWhereNull('is_substitute');
-                })
                 ->with(['subject', 'teacher'])
                 ->orderBy('period_no');
 
@@ -283,14 +304,16 @@ class PortalDashboard extends Component
         $pendingFee = $feeRecords->whereIn('status', ['unpaid', 'partial'])->sum('balance');
         $latestInvoice = $feeRecords->first();
 
-        // 4. Exam Results & Upcoming Datesheet
+        // 4. Exam Results & Upcoming Datesheet - Strictly Gated to Published Exams
         $examMarks = DB::table('exam_marks')
             ->join('exams', 'exam_marks.exam_id', '=', 'exams.id')
             ->join('subjects', 'exam_marks.subject_id', '=', 'subjects.id')
             ->where('exam_marks.student_id', $student->id)
+            ->where('exams.lifecycle_status', \App\Models\Exam::STATUS_PUBLISHED)
             ->select(
                 'exams.name as exam_name',
                 'exams.id as exam_id',
+                'exams.published_at',
                 'subjects.name as subject_name',
                 'exam_marks.marks_obtained',
                 'exam_marks.max_marks',

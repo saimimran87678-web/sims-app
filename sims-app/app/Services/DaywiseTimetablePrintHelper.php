@@ -54,7 +54,6 @@ class DaywiseTimetablePrintHelper
             ->leftJoin('users as teachers', 'timetables.teacher_id', '=', 'teachers.id')
             ->where('classes.academic_session_id', $sessionId)
             ->where('timetables.day', $day)
-            ->where('timetables.is_substitute', false)
             ->when($shiftType !== 'regular', function ($q) use ($shiftType) {
                 $q->where('classes.shift_type', $shiftType);
             })
@@ -103,7 +102,6 @@ class DaywiseTimetablePrintHelper
             ->leftJoin('subjects', 'timetables.subject_id', '=', 'subjects.id')
             ->where('classes.academic_session_id', $sessionId)
             ->where('timetables.day', $day)
-            ->where('timetables.is_substitute', false)
             ->whereNotNull('timetables.teacher_id')
             ->select(
                 'timetables.*',

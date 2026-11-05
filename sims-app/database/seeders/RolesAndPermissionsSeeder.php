@@ -76,6 +76,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // Fee Management
             'fees.manage',
             'fees.view-sessions',
+            'fees.void',
 
             // Substitution Management
             'substitutions.manage',
@@ -93,6 +94,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // Super Admin (Has everything)
         $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin']);
         $superAdminRole->givePermissionTo(Permission::all());
+
+        // Admin (Operational / Staff Admin)
+        $adminRole = Role::firstOrCreate(['name' => 'Admin']);
+        $adminRole->givePermissionTo(
+            Permission::whereNotIn('name', ['access-control.manage', 'fees.void'])->get()
+        );
 
         // Teacher (Standard Access)
         $teacherRole = Role::firstOrCreate(['name' => 'Teacher']);

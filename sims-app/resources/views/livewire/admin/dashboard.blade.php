@@ -631,6 +631,18 @@
                         </div>
                         <span class="text-[10px] font-bold text-slate-600">Attendance</span>
                     </a>
+                    <a href="{{ route('admin.attendance.smart-cards') }}" class="action-btn">
+                        <div class="action-btn-icon w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/><circle cx="7" cy="15" r="1"/></svg>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-600">Smart Cards</span>
+                    </a>
+                    <a href="{{ route('admin.attendance.gate-monitor') }}" class="action-btn">
+                        <div class="action-btn-icon w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 13v9"/><path d="m9 16 3-3 3 3"/></svg>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-600">Gate Monitor</span>
+                    </a>
                     @endcan
                     @endif
                     @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))

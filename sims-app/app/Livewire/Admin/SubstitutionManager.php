@@ -411,13 +411,6 @@ class SubstitutionManager extends Component
                     ->where('date', $selectedDate)
                     ->where('substitute_teacher_id', $teacherId)
                     ->delete();
-
-                DB::table('timetables')
-                    ->where('teacher_id', $teacherId)
-                    ->where('is_substitute', true)
-                    ->where('substitute_date', $selectedDate)
-                    ->delete();
-
                 $this->loadTeacherAssignedSubs();
             }
         } else {
@@ -825,23 +818,6 @@ class SubstitutionManager extends Component
         $dayOfWeek = Carbon::parse($selectedDate)->format('l');
 
         // Clean up any timetable substitute records for this teacher's scheduled periods
-        $regularClasses = DB::table('timetables')
-            ->join('classes', 'timetables.class_id', '=', 'classes.id')
-            ->where('timetables.teacher_id', $teacherId)
-            ->where('timetables.day', $dayOfWeek)
-            ->where('timetables.is_substitute', false)
-            ->select('timetables.*')
-            ->get();
-
-        foreach ($regularClasses as $regClass) {
-            DB::table('timetables')
-                ->where('class_id', $regClass->class_id)
-                ->where('period_no', $regClass->period_no)
-                ->where('is_substitute', true)
-                ->where('substitute_date', $selectedDate)
-                ->delete();
-        }
-
         Substitution::where('academic_session_id', $this->selectedSessionId)
             ->where('shift_type', $shiftType)
             ->where('date', $selectedDate)
@@ -909,14 +885,6 @@ class SubstitutionManager extends Component
                 ->where('date', $selectedDate)
                 ->delete();
 
-            // Also clean up legacy timetables table for schedule queries
-            DB::table('timetables')
-                ->where('class_id', $classId)
-                ->where('period_no', $periodNo)
-                ->where('is_substitute', true)
-                ->where('substitute_date', $selectedDate)
-                ->delete();
-            
             $this->substitutions[$absentTeacherId][$periodNo] = '';
             $this->loadTeacherAssignedSubs();
             return;
@@ -997,28 +965,6 @@ class SubstitutionManager extends Component
                 ]
             );
         }
-
-        // Also sync to timetables table for schedule queries & backward compatibility
-        DB::table('timetables')
-            ->where('class_id', $classId)
-            ->where('period_no', $periodNo)
-            ->where('is_substitute', true)
-            ->where('substitute_date', $selectedDate)
-            ->delete();
-
-        DB::table('timetables')->insert([
-            'class_id' => $classId,
-            'subject_id' => $subjectId,
-            'teacher_id' => $substituteTeacherId,
-            'day' => Carbon::parse($selectedDate)->format('l'),
-            'period_no' => $periodNo,
-            'room' => '',
-            'is_divided' => false,
-            'is_substitute' => true,
-            'substitute_date' => $selectedDate,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
 
         $this->substitutions[$absentTeacherId][$periodNo] = $substituteTeacherId;
         $this->loadTeacherAssignedSubs();

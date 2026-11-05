@@ -154,29 +154,26 @@
             </div>
             
             <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-                {{-- 1. Subject/Electives Assignment --}}
+                {{-- 1. Academic Program Assignment --}}
                 <div class="flex-1 w-full flex flex-col gap-1.5 p-3 bg-white rounded-xl border border-blue-100/50">
-                    <label class="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Elective Group</label>
-                    @if(count($this->bulkSubjects) > 0)
+                    <label class="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Academic Program</label>
+                    @if(count($this->availablePrograms) > 0)
                         <div class="flex gap-2">
-                            <select wire:model="bulkSubjectId" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-blue-500 bg-white text-gray-700 font-semibold outline-none">
-                                <option value="">Choose Elective...</option>
-                                @foreach($this->bulkSubjects as $sub)
-                                    <option value="{{ $sub->id }}">{{ $sub->name }}{{ $sub->teacher_name ? ' (' . $sub->teacher_name . ')' : '' }}</option>
+                            <select wire:model="bulkProgramId" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-blue-500 bg-white text-gray-700 font-semibold outline-none">
+                                <option value="">Choose Academic Program...</option>
+                                @foreach($this->availablePrograms as $prog)
+                                    <option value="{{ $prog->id }}">{{ $prog->name }} ({{ $prog->code }})</option>
                                 @endforeach
                             </select>
                             <div class="flex gap-1 shrink-0">
-                                <button wire:click="bulkAssignSubject" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm transition-colors" title="Assign Group">
-                                    Assign
-                                </button>
-                                <button wire:click="bulkUnassignSubject" class="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold text-xs rounded-lg transition-colors" title="Remove Group">
-                                    Remove
+                                <button wire:click="bulkAssignProgram" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm transition-colors" title="Assign Academic Program">
+                                    Assign Program
                                 </button>
                             </div>
                         </div>
                     @else
                         <span class="text-[10px] text-gray-500 italic py-1">
-                            Filter by a class with electives/divided subjects to assign.
+                            No academic programs configured for this class.
                         </span>
                     @endif
                 </div>
@@ -233,8 +230,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father's Name</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        @if($selectedClassId && $this->bulkSubjects->isNotEmpty())
-                            <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Elective / Teacher</th>
+                        @if($selectedClassId)
+                            <th class="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider">Academic Program</th>
                         @endif
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -294,19 +291,25 @@
                                     </span>
                                 @endif
                             </td>
-                            @if($selectedClassId && $this->bulkSubjects->isNotEmpty())
+                            @if($selectedClassId)
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <select
-                                        wire:change="assignStudentSubject({{ $student->id }}, $event.target.value ? Number($event.target.value) : null)"
-                                        class="px-2 py-1 text-xs rounded-lg border border-purple-200 focus:ring-1 focus:ring-purple-500 bg-white text-gray-700 outline-none min-w-[140px]"
-                                    >
-                                        <option value="">-- No Elective --</option>
-                                        @foreach($this->bulkSubjects as $sub)
-                                            <option value="{{ $sub->id }}" {{ ($studentElectiveMap[$student->id] ?? null) == $sub->id ? 'selected' : '' }}>
-                                                {{ $sub->name }}{{ $sub->teacher_name ? ' (' . $sub->teacher_name . ')' : '' }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    @if($this->availablePrograms->count() > 1)
+                                        <select
+                                            wire:change="assignStudentProgram({{ $student->id }}, $event.target.value ? Number($event.target.value) : null)"
+                                            class="px-2 py-1 text-xs rounded-lg border border-indigo-200 focus:ring-1 focus:ring-indigo-500 bg-white text-gray-700 outline-none min-w-[140px] font-medium"
+                                        >
+                                            <option value="">-- No Program --</option>
+                                            @foreach($this->availablePrograms as $prog)
+                                                <option value="{{ $prog->id }}" {{ ($student->program_id ?? null) == $prog->id ? 'selected' : '' }}>
+                                                    {{ $prog->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200" title="{{ $student->program_name }}">
+                                            {{ $student->program_code ?? $student->program_name ?? 'Standard Program' }}
+                                        </span>
+                                    @endif
                                 </td>
                             @endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
@@ -441,6 +444,11 @@
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-600 border border-blue-100">
                                     {{ $student->class_name }}
                                 </span>
+                                @if(!empty($student->program_code))
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-indigo-50 text-indigo-700 border border-indigo-100" title="{{ $student->program_name }}">
+                                    {{ $student->program_code }}
+                                </span>
+                                @endif
                             </div>
                         </div>
 
@@ -953,6 +961,23 @@
                                             </div>
                                         </div>
                                     @endif
+
+                                    {{-- WhatsApp Notification Consent Toggle --}}
+                                    <div class="mt-3 flex items-center justify-between p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl">
+                                        <div class="flex items-center gap-2.5">
+                                            <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                                                WA
+                                            </div>
+                                            <div>
+                                                <span class="text-xs font-bold text-gray-800 block">WhatsApp Notification Consent</span>
+                                                <span class="text-[11px] text-gray-500">Dispatch automated attendance and fee notices to primary guardian</span>
+                                            </div>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" wire:model="guardian_whatsapp_opt_in" class="sr-only peer">
+                                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1071,30 +1096,45 @@
                                     @endif
                                 </div>
 
-                                {{-- Elective Subjects Checkbox List --}}
+                                {{-- Academic Program Selection --}}
                                 @if($class_id)
-                                    @php
-                                        $dividedSubIds = DB::table('timetables')
-                                            ->where('class_id', $class_id)
-                                            ->where('is_divided', true)
-                                            ->pluck('subject_id')
-                                            ->unique();
-                                        $divSubjects = \App\Models\Subject::whereIn('id', $dividedSubIds)->orderBy('name')->get();
-                                    @endphp
-                                    @if($divSubjects->isNotEmpty())
-                                        <div class="mt-3 bg-gray-50 border border-gray-200 rounded-2xl p-4">
-                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Subject Enrollments (Electives/Groups)</label>
-                                            <p class="text-xs text-gray-400 mb-3">If unchecked, the student is enrolled in all subjects. Check specific subjects to restrict them to an elective group (e.g. Computer Science vs Biology).</p>
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-32 overflow-y-auto">
-                                                @foreach($divSubjects as $sub)
-                                                    <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-200/30 p-1.5 rounded-lg transition-colors">
-                                                        <input type="checkbox" wire:model="studentSubjects" value="{{ $sub->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 w-4 h-4">
-                                                        <span class="text-sm text-gray-700 font-semibold">{{ $sub->name }}</span>
-                                                    </label>
-                                                @endforeach
-                                            </div>
+                                    <div class="mt-4 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                Academic Program <span class="text-red-500">*</span>
+                                            </label>
+                                            @if($this->selectedClassPrograms->count() > 1)
+                                                <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                                                    Elective Group
+                                                </span>
+                                            @endif
                                         </div>
-                                    @endif
+                                        <select wire:model.live="program_id" class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white font-medium">
+                                            <option value="">Select Academic Program...</option>
+                                            @foreach($this->selectedClassPrograms as $prog)
+                                                <option value="{{ $prog->id }}">{{ $prog->name }} ({{ $prog->code }})</option>
+                                            @endforeach
+                                        </select>
+                                        @error('program_id') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
+
+                                        @if($this->currentSelectedProgram)
+                                            <div class="mt-3 pt-3 border-t border-slate-200">
+                                                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                                                    Bundled Subjects ({{ $this->currentSelectedProgram->subjects->count() }}):
+                                                </span>
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    @foreach($this->currentSelectedProgram->subjects as $sub)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium {{ $sub->pivot->subject_type === 'compulsory' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
+                                                            {{ $sub->name }}
+                                                            @if($sub->pivot->subject_type === 'elective')
+                                                                <span class="ml-1 text-[10px] text-amber-600 font-bold uppercase">(Elective)</span>
+                                                            @endif
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endif
                             </div>
 

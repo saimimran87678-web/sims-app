@@ -73,8 +73,12 @@ class DashboardTest extends TestCase
         // 6. Record attendance:
         // - 1 Absent in Old Session (2025-05-10)
         // - 1 Present in Current Session (2026-05-10)
+        $oldEnrollment = Enrollment::where('student_id', $student->id)->where('academic_session_id', $oldSession->id)->first();
+        $currentEnrollment = Enrollment::where('student_id', $student->id)->where('academic_session_id', $currentSession->id)->first();
+
         DB::table('attendances')->insert([
             [
+                'enrollment_id' => $oldEnrollment->id,
                 'student_id' => $student->id,
                 'academic_session_id' => $oldSession->id,
                 'date' => '2025-05-10',
@@ -83,6 +87,7 @@ class DashboardTest extends TestCase
                 'updated_at' => now(),
             ],
             [
+                'enrollment_id' => $currentEnrollment->id,
                 'student_id' => $student->id,
                 'academic_session_id' => $currentSession->id,
                 'date' => '2026-05-10',
@@ -170,8 +175,12 @@ class DashboardTest extends TestCase
         // Record attendance:
         // - Active student is present on 2026-05-10
         // - Inactive student is absent on 2026-05-10
+        $activeEnrollment = Enrollment::where('student_id', $activeStudent->id)->where('academic_session_id', $session->id)->first();
+        $inactiveEnrollment = Enrollment::where('student_id', $inactiveStudent->id)->where('academic_session_id', $session->id)->first();
+
         DB::table('attendances')->insert([
             [
+                'enrollment_id' => $activeEnrollment->id,
                 'student_id' => $activeStudent->id,
                 'academic_session_id' => $session->id,
                 'date' => '2026-05-10',
@@ -180,6 +189,7 @@ class DashboardTest extends TestCase
                 'updated_at' => now(),
             ],
             [
+                'enrollment_id' => $inactiveEnrollment->id,
                 'student_id' => $inactiveStudent->id,
                 'academic_session_id' => $session->id,
                 'date' => '2026-05-10',

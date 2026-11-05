@@ -144,11 +144,45 @@ class ResultReport extends Component
             $exam = Exam::find($this->selectedExamId);
             $this->examName = $exam ? $exam->name : 'Examination';
             
-            // Fetch Subjects for this class
-            $subjects = DB::table('subjects')
+            // Fetch Subjects for this exam and class
+            $configuredSubjectIds = DB::table('marks_configs')
+                ->where('exam_id', $this->selectedExamId)
                 ->where('class_id', $this->classId)
-                ->orderBy('name')
-                ->get();
+                ->pluck('subject_id')
+                ->filter()
+                ->toArray();
+
+            $configuredSubjectNames = DB::table('marks_configs')
+                ->where('exam_id', $this->selectedExamId)
+                ->where('class_id', $this->classId)
+                ->pluck('subject')
+                ->toArray();
+
+            $subjectsQuery = DB::table('subjects');
+
+            if (!empty($configuredSubjectIds) || !empty($configuredSubjectNames)) {
+                $subjectsQuery->where(function ($q) use ($configuredSubjectIds, $configuredSubjectNames) {
+                    if (!empty($configuredSubjectIds)) {
+                        $q->whereIn('id', $configuredSubjectIds);
+                    }
+                    if (!empty($configuredSubjectNames)) {
+                        $q->orWhereIn('name', $configuredSubjectNames);
+                    }
+                });
+            } else {
+                $subjectsQuery->where(function ($q) {
+                    $q->where('class_id', $this->classId)
+                      ->orWhereExists(function ($sub) {
+                          $sub->select(DB::raw(1))
+                              ->from('class_programs')
+                              ->join('program_subjects', 'class_programs.program_id', '=', 'program_subjects.program_id')
+                              ->where('class_programs.class_id', $this->classId)
+                              ->whereColumn('program_subjects.subject_id', 'subjects.id');
+                      });
+                });
+            }
+
+            $subjects = $subjectsQuery->orderBy('name')->get();
             
             $this->columnHeaders = $subjects->pluck('name', 'id')->toArray();
             
@@ -172,12 +206,12 @@ class ResultReport extends Component
             }
 
             // Fetch Students with all needed fields
-            $studentsQuery = \App\Models\Student::with('subjects')
+            $studentsQuery = \App\Models\Student::with(['subjects', 'enrollments.program.subjects'])
                 ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
                 ->where('enrollments.class_id', $this->classId)
                 ->where('enrollments.academic_session_id', $activeSessionId)
                 ->where('enrollments.shift_type', $shiftType)
-                ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status');
+                ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status', 'enrollments.program_id');
 
             if ($this->filterStatus === 'active') {
                 $studentsQuery->where('enrollments.status', 'active');
@@ -205,7 +239,7 @@ class ResultReport extends Component
                 ->get();
 
             // Transform Data
-            $processedData = $students->map(function ($student) use ($marks, $subjects) {
+            $processedData = $students->map(function ($student) use ($marks, $subjects, $activeSessionId) {
                 $row = [
                     'id' => $student->id,
                     'roll_no' => $student->roll_no,
@@ -219,7 +253,10 @@ class ResultReport extends Component
                     'absent_subjects' => [],
                 ];
 
-                $studentSubjectIds = $student->subjects->pluck('id')->toArray();
+                $activeEnrollment = $student->enrollments->firstWhere('academic_session_id', $activeSessionId);
+                $programSubjectIds = $activeEnrollment?->program?->subjects->pluck('id')->toArray() ?? [];
+                $legacySubjectIds = $student->subjects->pluck('id')->toArray();
+                $enrolledSubjectIds = !empty($programSubjectIds) ? $programSubjectIds : $legacySubjectIds;
 
                 foreach ($subjects as $subject) {
                     $maxMarks = $this->subjectMaxMarks[$subject->id] ?? 100;
@@ -228,10 +265,10 @@ class ResultReport extends Component
                                         ->where('subject_id', $subject->id)
                                         ->first();
 
-                    // isEnrolled: true if student has no subject restrictions, or is specifically enrolled,
+                    // isEnrolled: true if student has no subject restrictions, or is specifically enrolled in program,
                     // OR if an admin has explicitly assigned marks for this subject.
-                    $isEnrolled = empty($studentSubjectIds)
-                        || in_array($subject->id, $studentSubjectIds)
+                    $isEnrolled = empty($enrolledSubjectIds)
+                        || in_array($subject->id, $enrolledSubjectIds)
                         || !is_null($markRecord);
 
                     if (!$isEnrolled) {
@@ -292,14 +329,13 @@ class ResultReport extends Component
                     ? round(($row['total_obtained'] / $row['max_total']) * 100, 1) 
                     : 0;
 
-                // Grade & Remarks
-                $p = $row['percentage'];
-                if ($p >= 90) { $row['grade'] = 'A+'; $row['remarks'] = 'Outstanding'; }
-                elseif ($p >= 80) { $row['grade'] = 'A'; $row['remarks'] = 'Excellent'; }
-                elseif ($p >= 70) { $row['grade'] = 'B'; $row['remarks'] = 'Very Good'; }
-                elseif ($p >= 60) { $row['grade'] = 'C'; $row['remarks'] = 'Good'; }
-                elseif ($p >= 50) { $row['grade'] = 'D'; $row['remarks'] = 'Satisfactory'; }
-                else { $row['grade'] = 'F'; $row['remarks'] = 'Needs Improvement'; }
+                // Grade & Remarks from single source of truth
+                $scale = app(\App\Services\GradeCalculationService::class)->getScaleForPercentage(
+                    (float) $row['percentage'],
+                    $this->selectedSessionId
+                );
+                $row['grade'] = $scale?->grade ?? 'F';
+                $row['remarks'] = $scale?->remarks ?? 'Needs Improvement';
 
                 // Summary
                 $row['summary'] = (count($row['failed_subjects']) === 0 && count($row['absent_subjects']) === 0) 

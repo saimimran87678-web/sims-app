@@ -12,6 +12,7 @@ use App\Models\SchoolClass; // Using SchoolClass to avoid conflict if aliased, b
 // I should probably use DB facade to be consistent and avoid model issues if 'Class' is reserved.
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use App\Models\Subject;
 use Livewire\WithPagination;
 
 class UserManager extends Component
@@ -48,7 +49,7 @@ class UserManager extends Component
     public function loadSubjectsForClass($index, $classId)
     {
         if(!$classId) return;
-        $this->teachingAssignments[$index]['subjects'] = DB::table('subjects')->where('class_id', $classId)->get()->toArray();
+        $this->teachingAssignments[$index]['subjects'] = Subject::forClass($classId)->get()->toArray();
     }
 
     public function mount()
@@ -151,7 +152,7 @@ class UserManager extends Component
         
         $classTeacherSubjects = [];
         if($this->class_id) {
-            $classTeacherSubjects = DB::table('subjects')->where('class_id', $this->class_id)->get();
+            $classTeacherSubjects = Subject::forClass($this->class_id)->get();
         }
 
         $userCounts = User::selectRaw("
@@ -255,7 +256,7 @@ class UserManager extends Component
             $this->teachingAssignments[] = [
                 'class_id' => $alloc->class_id,
                 'subject_id' => $alloc->subject_id,
-                'subjects' => DB::table('subjects')->where('class_id', $alloc->class_id)->get()->toArray()
+                'subjects' => Subject::forClass($alloc->class_id)->get()->toArray()
             ];
         }
 

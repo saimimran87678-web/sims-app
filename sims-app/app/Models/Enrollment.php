@@ -12,6 +12,7 @@ class Enrollment extends Model
     protected $fillable = [
         'student_id',
         'class_id',
+        'section_id',
         'academic_session_id',
         'program_id',
         'roll_number',
@@ -51,6 +52,11 @@ class Enrollment extends Model
         return $this->belongsTo(AcademicSession::class);
     }
 
+    public function section()
+    {
+        return $this->belongsTo(Section::class);
+    }
+
     public function program()
     {
         return $this->belongsTo(Program::class);
@@ -63,7 +69,7 @@ class Enrollment extends Model
 
     public function attendances()
     {
-        return $this->hasMany(Attendance::class, 'student_id', 'student_id'); // Temporary mapping until Step 3 adjusts column to enrollment_id
+        return $this->hasMany(Attendance::class, 'enrollment_id');
     }
 
     public function feeInvoices()

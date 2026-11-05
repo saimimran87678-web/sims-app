@@ -95,7 +95,7 @@ class GradeManager extends Component
         $this->reset(['selectedClassId', 'selectedSubjectId', 'students', 'grades', 'subjects']);
         
         $exam = Exam::find($this->selectedExamId);
-        $this->isGradingAllowed = !($exam && $exam->status === 'Upcoming');
+        $this->isGradingAllowed = $exam && $exam->status !== 'Upcoming' && ($exam->canEnterMarks() || auth()->user()->hasRole('Super Admin'));
     }
 
     public function loadAvailableClasses()
@@ -144,14 +144,31 @@ class GradeManager extends Component
         }
 
         // Get subjects configured for this exam+class
+        $configuredSubjectIds = DB::table('marks_configs')
+            ->where('exam_id', $this->selectedExamId)
+            ->where('class_id', $this->selectedClassId)
+            ->pluck('subject_id')
+            ->filter()
+            ->toArray();
+
         $configuredSubjects = DB::table('marks_configs')
             ->where('exam_id', $this->selectedExamId)
             ->where('class_id', $this->selectedClassId)
             ->pluck('subject')
             ->toArray();
 
-        $this->subjects = Subject::where('class_id', $this->selectedClassId)
-            ->whereIn('name', $configuredSubjects)
+        $this->subjects = Subject::where(function ($q) use ($configuredSubjectIds, $configuredSubjects) {
+                if (!empty($configuredSubjectIds)) {
+                    $q->whereIn('id', $configuredSubjectIds);
+                }
+                if (!empty($configuredSubjects)) {
+                    $q->orWhereIn('name', $configuredSubjects);
+                }
+            })
+            ->where(function ($q) {
+                $q->where('class_id', $this->selectedClassId)
+                  ->orWhereNull('class_id');
+            })
             ->get();
 
         if ($this->subjects->isNotEmpty()) {
@@ -185,31 +202,31 @@ class GradeManager extends Component
         $this->passingMarks = $marksConfig->passing_marks ?? 33;
         $this->passingScore = ($this->maxMarks * $this->passingMarks) / 100;
 
-        // Fetch Students (Filter by divided subject if applicable)
-        $dividedSubjectIds = DB::table('timetables')
-            ->where('class_id', $this->selectedClassId)
-            ->where('is_divided', true)
-            ->pluck('subject_id')
-            ->unique()
-            ->toArray();
+        // Fetch Students (Filter by program curriculum track containing this subject)
+        $selectedSubjectId = $this->selectedSubjectId;
+        $hasClassPrograms = DB::table('class_programs')->where('class_id', $this->selectedClassId)->exists();
 
         $studentQuery = \App\Models\Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
             ->where('enrollments.class_id', $this->selectedClassId)
             ->where('enrollments.academic_session_id', $this->selectedSessionId)
             ->where('enrollments.status', 'active');
 
-        if (in_array($this->selectedSubjectId, $dividedSubjectIds)) {
-            $studentQuery->where(function($q) use ($dividedSubjectIds) {
-                $q->whereExists(function($sub) {
+        if ($hasClassPrograms) {
+            $studentQuery->where(function ($q) use ($selectedSubjectId) {
+                $q->whereExists(function ($sub) use ($selectedSubjectId) {
                     $sub->select(DB::raw(1))
-                        ->from('student_subject')
-                        ->whereColumn('student_subject.student_id', 'students.id')
-                        ->where('student_subject.subject_id', $this->selectedSubjectId);
-                })->orWhereNotExists(function($sub) use ($dividedSubjectIds) {
-                    $sub->select(DB::raw(1))
-                        ->from('student_subject')
-                        ->whereColumn('student_subject.student_id', 'students.id')
-                        ->whereIn('student_subject.subject_id', $dividedSubjectIds);
+                        ->from('program_subjects')
+                        ->whereColumn('program_subjects.program_id', 'enrollments.program_id')
+                        ->where('program_subjects.subject_id', $selectedSubjectId);
+                })->orWhere(function ($fallbackQ) use ($selectedSubjectId) {
+                    $fallbackQ->whereNull('enrollments.program_id')
+                        ->whereExists(function ($sub) use ($selectedSubjectId) {
+                            $sub->select(DB::raw(1))
+                                ->from('class_programs')
+                                ->join('program_subjects', 'class_programs.program_id', '=', 'program_subjects.program_id')
+                                ->whereColumn('class_programs.class_id', 'enrollments.class_id')
+                                ->where('program_subjects.subject_id', $selectedSubjectId);
+                        });
                 });
             });
         }
@@ -234,7 +251,7 @@ class GradeManager extends Component
                 $this->absents[$mark->student_id] = true;
                 $this->grades[$mark->student_id] = '';
             } else {
-                $this->grades[$mark->student_id] = (float) $mark->marks_obtained;
+                $this->grades[$mark->student_id] = is_null($mark->marks_obtained) ? '' : (float) $mark->marks_obtained;
                 $this->absents[$mark->student_id] = false;
             }
         }
@@ -255,6 +272,11 @@ class GradeManager extends Component
              return;
         }
 
+        if ($exam && !$exam->canEnterMarks() && !auth()->user()->hasRole('Super Admin')) {
+             session()->flash('error', "Marks entry is locked for this exam (Current status: {$exam->lifecycle_label}).");
+             return;
+        }
+
         $this->validate([
             'selectedExamId' => 'required',
             'selectedClassId' => 'required',
@@ -267,24 +289,43 @@ class GradeManager extends Component
             foreach ($this->students as $student) {
                 $studentId = $student->id;
                 $marks = $this->grades[$studentId] ?? '';
-                $isAbsent = $this->absents[$studentId] ?? false;
+                $isAbsent = (bool) ($this->absents[$studentId] ?? false);
                 
-                if (($marks === '' || $marks === null) && !$isAbsent) continue;
+                $hasEntry = ($marks !== '' && $marks !== null) || $isAbsent;
 
-                DB::table('exam_marks')->updateOrInsert(
-                    [
-                        'exam_id' => $this->selectedExamId,
-                        'student_id' => $studentId,
-                        'subject_id' => $this->selectedSubjectId,
-                    ],
-                    [
-                        'marks_obtained' => $isAbsent ? 0 : $marks,
-                        'is_absent' => $isAbsent,
-                        'max_marks' => $this->maxMarks,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
+                $existing = DB::table('exam_marks')
+                    ->where('exam_id', $this->selectedExamId)
+                    ->where('student_id', $studentId)
+                    ->where('subject_id', $this->selectedSubjectId)
+                    ->first();
+
+                if ($hasEntry) {
+                    $obtained = $isAbsent ? null : (float) $marks;
+
+                    DB::table('exam_marks')->updateOrInsert(
+                        [
+                            'exam_id' => $this->selectedExamId,
+                            'student_id' => $studentId,
+                            'subject_id' => $this->selectedSubjectId,
+                        ],
+                        [
+                            'marks_obtained' => $obtained,
+                            'is_absent' => $isAbsent,
+                            'max_marks' => $this->maxMarks,
+                            'created_at' => $existing?->created_at ?? now(),
+                            'updated_at' => now(),
+                        ]
+                    );
+                } elseif ($existing) {
+                    // Revert to pending null mark
+                    DB::table('exam_marks')
+                        ->where('id', $existing->id)
+                        ->update([
+                            'marks_obtained' => null,
+                            'is_absent' => false,
+                            'updated_at' => now(),
+                        ]);
+                }
             }
             DB::commit();
             session()->flash('message', 'Grades saved successfully!');

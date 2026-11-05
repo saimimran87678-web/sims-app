@@ -174,6 +174,13 @@ class GradeManager extends Component
         $user = Auth::user();
         
         // Get subjects configured for this exam+class
+        $configuredSubjectIds = DB::table('marks_configs')
+            ->where('exam_id', $this->selectedExamId)
+            ->where('class_id', $this->selectedClassId)
+            ->pluck('subject_id')
+            ->filter()
+            ->toArray();
+
         $configuredSubjects = DB::table('marks_configs')
             ->where('exam_id', $this->selectedExamId)
             ->where('class_id', $this->selectedClassId)
@@ -202,8 +209,18 @@ class GradeManager extends Component
         $allowedSubjectIds = array_merge($allowedSubjectIds, $allocatedSubjects);
         
         // Build query: subjects that match by name OR by ID, and are configured for this exam
-        $query = Subject::where('class_id', $this->selectedClassId)
-            ->whereIn('name', $configuredSubjects);
+        $query = Subject::where(function ($q) {
+                $q->where('class_id', $this->selectedClassId)
+                  ->orWhereNull('class_id');
+            })
+            ->where(function ($q) use ($configuredSubjects, $configuredSubjectIds) {
+                if (!empty($configuredSubjectIds)) {
+                    $q->whereIn('id', $configuredSubjectIds);
+                }
+                if (!empty($configuredSubjects)) {
+                    $q->orWhereIn('name', $configuredSubjects);
+                }
+            });
         
         if (!empty($allowedSubjectNames) && !empty($allowedSubjectIds)) {
             // Class teacher with allocations: match by name OR id
@@ -275,7 +292,9 @@ class GradeManager extends Component
             ->where('subject_id', $this->selectedSubjectId)
             ->exists();
 
-        $this->isLocked = $isExamLocked || $isAdminLocked;
+        $examObj = Exam::find($this->selectedExamId);
+        $isExamLifecycleLocked = $examObj ? !$examObj->canEnterMarks() : false;
+        $this->isLocked = $isExamLocked || $isAdminLocked || $isExamLifecycleLocked;
 
         // Fetch Students
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
@@ -284,21 +303,39 @@ class GradeManager extends Component
             $shiftType = 'morning';
         }
 
-        $this->students = \App\Models\Student::whereHas('enrollments', function($q) use ($activeSessionId, $shiftType) {
-                $q->where('academic_session_id', $activeSessionId)
-                  ->where('shift_type', $shiftType)
-                  ->where('class_id', $this->selectedClassId)
-                  ->active();
-            })
-            ->where(function($query) {
-                $query->whereDoesntHave('subjects')
-                      ->orWhereHas('subjects', function($q) {
-                          $q->where('subjects.id', $this->selectedSubjectId);
-                      });
-            })
-            ->get()
-            ->sortBy(fn($s) => (int)$s->roll_no)
-            ->values();
+        $selectedSubjectId = $this->selectedSubjectId;
+        $hasClassPrograms = DB::table('class_programs')->where('class_id', $this->selectedClassId)->exists();
+
+        $studentQuery = \App\Models\Student::join('enrollments', 'students.id', '=', 'enrollments.student_id')
+            ->where('enrollments.class_id', $this->selectedClassId)
+            ->where('enrollments.academic_session_id', $activeSessionId)
+            ->where('enrollments.shift_type', $shiftType)
+            ->where('enrollments.status', 'active');
+
+        if ($hasClassPrograms) {
+            $studentQuery->where(function ($q) use ($selectedSubjectId) {
+                $q->whereExists(function ($sub) use ($selectedSubjectId) {
+                    $sub->select(DB::raw(1))
+                        ->from('program_subjects')
+                        ->whereColumn('program_subjects.program_id', 'enrollments.program_id')
+                        ->where('program_subjects.subject_id', $selectedSubjectId);
+                })->orWhere(function ($fallbackQ) use ($selectedSubjectId) {
+                    $fallbackQ->whereNull('enrollments.program_id')
+                        ->whereExists(function ($sub) use ($selectedSubjectId) {
+                            $sub->select(DB::raw(1))
+                                ->from('class_programs')
+                                ->join('program_subjects', 'class_programs.program_id', '=', 'program_subjects.program_id')
+                                ->whereColumn('class_programs.class_id', 'enrollments.class_id')
+                                ->where('program_subjects.subject_id', $selectedSubjectId);
+                        });
+                });
+            });
+        }
+
+        $this->students = $studentQuery
+            ->select('students.*', 'enrollments.roll_number as roll_no')
+            ->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ASC')
+            ->get();
 
         // Fetch Existing Marks
         $existingMarks = DB::table('exam_marks')
@@ -315,7 +352,7 @@ class GradeManager extends Component
                 $this->absents[$mark->student_id] = true;
                 $this->grades[$mark->student_id] = '';
             } else {
-                $this->grades[$mark->student_id] = (float) $mark->marks_obtained;
+                $this->grades[$mark->student_id] = is_null($mark->marks_obtained) ? '' : (float) $mark->marks_obtained;
                 $this->absents[$mark->student_id] = false;
             }
         }
@@ -337,6 +374,11 @@ class GradeManager extends Component
              return;
         }
 
+        if ($exam && !$exam->canEnterMarks()) {
+             session()->flash('error', "Marks entry is locked for this exam (Current status: {$exam->lifecycle_label}).");
+             return;
+        }
+
         if ($this->isLocked) {
             session()->flash('error', 'This gradebook has been locked and cannot be edited.');
             return;
@@ -354,25 +396,43 @@ class GradeManager extends Component
             foreach ($this->students as $student) {
                 $studentId = $student->id;
                 $marks = $this->grades[$studentId] ?? '';
-                $isAbsent = $this->absents[$studentId] ?? false;
+                $isAbsent = (bool) ($this->absents[$studentId] ?? false);
                 
-                // Skip if neither marks entered nor marked absent
-                if (($marks === '' || $marks === null) && !$isAbsent) continue;
+                $hasEntry = ($marks !== '' && $marks !== null) || $isAbsent;
 
-                DB::table('exam_marks')->updateOrInsert(
-                    [
-                        'exam_id' => $this->selectedExamId,
-                        'student_id' => $studentId,
-                        'subject_id' => $this->selectedSubjectId,
-                    ],
-                    [
-                        'marks_obtained' => $isAbsent ? 0 : $marks,
-                        'is_absent' => $isAbsent,
-                        'max_marks' => $this->maxMarks,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
+                $existing = DB::table('exam_marks')
+                    ->where('exam_id', $this->selectedExamId)
+                    ->where('student_id', $studentId)
+                    ->where('subject_id', $this->selectedSubjectId)
+                    ->first();
+
+                if ($hasEntry) {
+                    $obtained = $isAbsent ? null : (float) $marks;
+
+                    DB::table('exam_marks')->updateOrInsert(
+                        [
+                            'exam_id' => $this->selectedExamId,
+                            'student_id' => $studentId,
+                            'subject_id' => $this->selectedSubjectId,
+                        ],
+                        [
+                            'marks_obtained' => $obtained,
+                            'is_absent' => $isAbsent,
+                            'max_marks' => $this->maxMarks,
+                            'created_at' => $existing?->created_at ?? now(),
+                            'updated_at' => now(),
+                        ]
+                    );
+                } elseif ($existing) {
+                    // Revert to pending null mark
+                    DB::table('exam_marks')
+                        ->where('id', $existing->id)
+                        ->update([
+                            'marks_obtained' => null,
+                            'is_absent' => false,
+                            'updated_at' => now(),
+                        ]);
+                }
             }
             DB::commit();
             session()->flash('message', 'Grades saved successfully!');
@@ -442,6 +502,7 @@ class GradeManager extends Component
         
         return view('livewire.teacher.grade-manager', [
             'isClassTeacher' => $this->selectedClassId && $userClassId == $this->selectedClassId,
+            'selectedSessionId' => $activeSessionId,
         ])->layout('components.layouts.teacher', ['title' => 'Gradebook']);
     }
 }

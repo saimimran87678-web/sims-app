@@ -179,7 +179,6 @@ class TimetablePrintController extends Controller
             ->leftJoin('users as teachers', 'timetables.teacher_id', '=', 'teachers.id')
             ->where('classes.academic_session_id', $sessionId)
             ->where('timetables.day', 'Monday')
-            ->where('timetables.is_substitute', false)
             ->when($shiftType !== 'regular', function ($q) use ($shiftType) {
                 $q->where('classes.shift_type', $shiftType);
             })
@@ -288,7 +287,6 @@ class TimetablePrintController extends Controller
             ->leftJoin('subjects', 'timetables.subject_id', '=', 'subjects.id')
             ->where('classes.academic_session_id', $sessionId)
             ->where('timetables.day', 'Monday')
-            ->where('timetables.is_substitute', false)
             ->whereNotNull('timetables.teacher_id')
             ->select(
                 'timetables.*',
@@ -383,7 +381,6 @@ class TimetablePrintController extends Controller
             ->leftJoin('users as teachers', 'timetables.teacher_id', '=', 'teachers.id')
             ->where('timetables.class_id', $class->id)
             ->where('timetables.day', 'Monday')
-            ->where('timetables.is_substitute', false)
             ->select(
                 'timetables.*',
                 'subjects.name as subject_name',
@@ -548,7 +545,6 @@ class TimetablePrintController extends Controller
             ->leftJoin('subjects', 'timetables.subject_id', '=', 'subjects.id')
             ->where('timetables.teacher_id', $teacher->id)
             ->where('timetables.day', 'Monday')
-            ->where('timetables.is_substitute', false)
             ->where('classes.academic_session_id', $sessionId)
             ->select(
                 'timetables.*',

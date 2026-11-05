@@ -25,6 +25,7 @@ class AttendanceManager extends Component
     public $is_holiday = false;
     public $holiday_reason = '';
     public $summary = ['present' => 0, 'absent' => 0, 'leave' => 0, 'total' => 0];
+    public $rfidBadges = []; // [student_id => '08:14 AM']
     public $missedDates = [];
 
     public function mount()
@@ -110,7 +111,7 @@ class AttendanceManager extends Component
             ->where('enrollments.academic_session_id', $activeSessionId)
             ->where('enrollments.shift_type', $classShift)
             ->where('enrollments.status', 'active')
-            ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status')
+            ->select('students.*', 'enrollments.id as enrollment_id', 'enrollments.roll_number as roll_no', 'enrollments.status')
             ->get();
             
         $this->summary['total'] = collect($this->students)->count();
@@ -118,11 +119,20 @@ class AttendanceManager extends Component
 
     public function loadAttendance()
     {
+        $enrollmentIds = collect($this->students)->pluck('enrollment_id')->filter()->toArray();
+
         // Fetch existing records for this class and date
         $records = DB::table('attendances')
-            ->whereIn('student_id', collect($this->students)->pluck('id'))
+            ->whereIn('enrollment_id', $enrollmentIds)
             ->where('date', $this->date)
             ->get();
+
+        $this->rfidBadges = [];
+        foreach ($records as $record) {
+            if ($record->source === 'rfid' && !empty($record->check_in_at)) {
+                $this->rfidBadges[$record->student_id] = Carbon::parse($record->check_in_at)->format('h:i A');
+            }
+        }
 
         if ($records->isEmpty()) {
             $this->attendance_status = 'not_submitted';
@@ -138,7 +148,7 @@ class AttendanceManager extends Component
         $leave = [];
 
         foreach ($records as $record) {
-            $student = collect($this->students)->firstWhere('id', $record->student_id);
+            $student = collect($this->students)->firstWhere('enrollment_id', $record->enrollment_id);
             if (!$student) continue;
 
             if ($record->status === 'A') {
@@ -245,13 +255,15 @@ class AttendanceManager extends Component
                 $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
                 DB::table('attendances')->updateOrInsert(
                     [
-                        'student_id' => $student->id,
+                        'enrollment_id' => $student->enrollment_id,
                         'date' => $this->date,
                     ],
                     [
+                        'student_id' => $student->id,
                         'academic_session_id' => $activeSessionId,
                         'status' => $status,
-                        'created_at' => now(),
+                        'marked_by_user_id' => Auth::id(),
+                        'marked_at' => now(),
                         'updated_at' => now(),
                     ]
                 );

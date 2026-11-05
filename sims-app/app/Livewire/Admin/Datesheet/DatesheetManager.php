@@ -108,7 +108,7 @@ class DatesheetManager extends Component
         }
 
         // Fetch Subjects (only from assigned classes)
-        $this->availableSubjects = \App\Models\Subject::whereIn('class_id', $this->allClassIds)
+        $this->availableSubjects = \App\Models\Subject::forClasses($this->allClassIds)
             ->orderBy('name')
             ->pluck('name')
             ->unique()
@@ -119,7 +119,7 @@ class DatesheetManager extends Component
         $this->gradeSubjects = [];
         foreach ($this->groupedClasses as $grade => $classes) {
             $classIds = collect($classes)->pluck('id')->toArray();
-            $subjects = \App\Models\Subject::whereIn('class_id', $classIds)
+            $subjects = \App\Models\Subject::forClasses($classIds)
                 ->orderBy('name')
                 ->pluck('name')
                 ->unique()
@@ -223,17 +223,17 @@ class DatesheetManager extends Component
 
         if (!$name) return;
 
-        // 1. Ensure Subject exists in Global Subject Table
-        $subject = \App\Models\Subject::where('class_id', $classId)
-            ->where('name', $name)
-            ->first();
+        // 1. Ensure Subject exists in Canonical Subject Catalogue
+        $subject = \App\Models\Subject::where('name', $name)->first();
 
         if (!$subject) {
-            $subject = new \App\Models\Subject();
-            $subject->class_id = $classId;
-            $subject->name = $name;
-            $subject->code = strtoupper(substr($name, 0, 3));
-            $subject->save();
+            $subject = \App\Models\Subject::create([
+                'name' => $name,
+                'code' => \App\Models\Subject::formatAbbreviation($name),
+                'category' => 'General',
+                'class_id' => null,
+                'is_active' => true,
+            ]);
         }
 
         // 2. Add to Marks Configuration
@@ -241,7 +241,7 @@ class DatesheetManager extends Component
         
         MarksConfig::updateOrCreate(
             ['exam_id' => $this->examId, 'class_id' => $classId, 'subject' => $name],
-            ['total_marks' => 75, 'passing_marks' => 33]
+            ['subject_id' => $subject->id, 'total_marks' => 75, 'passing_marks' => 33]
         );
 
         // Clear input
@@ -266,19 +266,19 @@ class DatesheetManager extends Component
 
     public function autoFillSubjects($classId)
     {
-        // Fetch subjects defined for this class in Global Subject Database
-        $subjects = \App\Models\Subject::where('class_id', $classId)
-            ->pluck('name')
-            ->toArray();
+        // Fetch subjects defined for this class from programs/catalogue
+        $subjects = \App\Models\Subject::forClass($classId)
+            ->get();
             
         // Add them if missing
-        foreach ($subjects as $sub) {
+        foreach ($subjects as $subObj) {
+            $sub = $subObj->name;
             if (!isset($this->marksMatrix[$classId][$sub])) {
                 $this->marksMatrix[$classId][$sub] = ['total' => 75, 'passing' => 33];
                 
                 MarksConfig::updateOrCreate(
                     ['exam_id' => $this->examId, 'class_id' => $classId, 'subject' => $sub],
-                    ['total_marks' => 75, 'passing_marks' => 33]
+                    ['subject_id' => $subObj->id, 'total_marks' => 75, 'passing_marks' => 33]
                 );
             }
         }

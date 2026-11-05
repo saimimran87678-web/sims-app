@@ -23,6 +23,7 @@ class FeeRecord extends Model
         'paid_date',
         'is_custom',
         'access_token',
+        'access_token_expires_at',
     ];
 
     protected static function booted()
@@ -31,7 +32,25 @@ class FeeRecord extends Model
             if (empty($record->access_token)) {
                 $record->access_token = (string) \Illuminate\Support\Str::uuid();
             }
+            if (empty($record->access_token_expires_at)) {
+                $record->access_token_expires_at = now()->addDays(30);
+            }
         });
+    }
+
+    public function isAccessTokenExpired(): bool
+    {
+        return $this->access_token_expires_at && now()->greaterThan($this->access_token_expires_at);
+    }
+
+    public function regenerateAccessToken(int $daysValid = 30): string
+    {
+        $newToken = (string) \Illuminate\Support\Str::uuid();
+        $this->update([
+            'access_token' => $newToken,
+            'access_token_expires_at' => now()->addDays($daysValid),
+        ]);
+        return $newToken;
     }
 
     protected $casts = [
@@ -40,6 +59,7 @@ class FeeRecord extends Model
         'balance' => 'decimal:2',
         'due_date' => 'date',
         'paid_date' => 'date',
+        'access_token_expires_at' => 'datetime',
     ];
 
     public function student()
@@ -65,5 +85,48 @@ class FeeRecord extends Model
     public function payments()
     {
         return $this->hasMany(FeePayment::class);
+    }
+
+    /**
+     * Single Source of Truth (SSOT) balance recalculation.
+     * Computes paid_amount and balance strictly from non-voided payments
+     * and synchronizes line-item balances.
+     */
+    public function recalculateBalances(): void
+    {
+        $validPayments = $this->payments()->where('is_void', false)->get();
+        $totalPaid = (float) $validPayments->sum('amount_paid');
+
+        $this->paid_amount = $totalPaid;
+        $this->balance = max(0, (float) $this->total_amount - $totalPaid);
+        
+        if ($this->balance <= 0) {
+            $this->status = 'paid';
+            $this->paid_date = $this->paid_date ?? now();
+        } elseif ($this->paid_amount > 0) {
+            $this->status = 'partial';
+            $this->paid_date = null;
+        } else {
+            $this->status = 'unpaid';
+            $this->paid_date = null;
+        }
+
+        $this->save();
+
+        // Also synchronize line item allocations
+        $remainingPaidToAllocate = $totalPaid;
+        foreach ($this->items as $item) {
+            $itemAmount = (float) $item->amount;
+            if ($itemAmount <= 0) {
+                $item->paid_amount = 0;
+                $item->balance = 0;
+            } else {
+                $allocatedToItem = min($remainingPaidToAllocate, $itemAmount);
+                $item->paid_amount = $allocatedToItem;
+                $item->balance = max(0, $itemAmount - $allocatedToItem);
+                $remainingPaidToAllocate -= $allocatedToItem;
+            }
+            $item->save();
+        }
     }
 }

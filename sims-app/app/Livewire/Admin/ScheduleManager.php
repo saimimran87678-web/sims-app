@@ -200,7 +200,6 @@ class ScheduleManager extends Component
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->where('classes.academic_session_id', $this->selectedSessionId)
             ->where('timetables.day', $dayToLoad)
-            ->where('timetables.is_substitute', false)
             ->when($shiftType !== 'both', function ($q) use ($shiftType) {
                 $q->where('classes.shift_type', $shiftType);
             })
@@ -323,7 +322,6 @@ class ScheduleManager extends Component
                     $this->mergedClassIds = DB::table('timetables')
                         ->where('merge_group_id', $this->mergeGroupId)
                         ->where('class_id', '!=', $this->modalClassId)
-                        ->where('is_substitute', false)
                         ->pluck('class_id')
                         ->unique()
                         ->toArray();
@@ -401,7 +399,6 @@ class ScheduleManager extends Component
             ->where('class_id', $this->modalClassId)
             ->where('day', $dayToCheck)
             ->where('period_no', $this->modalPeriodNo)
-            ->where('is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
             ->when($this->selectedTeacherId, fn($q) => $q->where('teacher_id', '!=', $this->selectedTeacherId))
             ->first();
@@ -471,7 +468,6 @@ class ScheduleManager extends Component
             ->where('classes.academic_session_id', $this->selectedSessionId)
             ->where('timetables.day', $dayToCheck)
             ->where('timetables.period_no', $this->modalPeriodNo)
-            ->where('timetables.is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('timetables.id', '!=', $this->editingId))
             ->when($this->editingId2 ?? false, fn($q) => $q->where('timetables.id', '!=', $this->editingId2))
             ->when($this->mergeGroupId, fn($q) => $q->where(function($subQ) {
@@ -659,8 +655,7 @@ class ScheduleManager extends Component
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->where('classes.academic_session_id', $this->selectedSessionId)
             ->where('timetables.day', $dayToCheck)
-            ->where('timetables.period_no', $this->modalPeriodNo)
-            ->where('timetables.is_substitute', false);
+            ->where('timetables.period_no', $this->modalPeriodNo);
 
         if ($this->editingId) {
             $busyQuery->where('timetables.id', '!=', $this->editingId);
@@ -706,7 +701,7 @@ class ScheduleManager extends Component
         }
 
         // Get subjects for this class
-        $classSubjects = Subject::where('class_id', $this->modalClassId)->orderBy('name')->get();
+        $classSubjects = Subject::forClass($this->modalClassId)->orderBy('name')->get();
 
         // Get subjects already assigned to this class on this day (for informational period hints)
         $dayToCheck = ($this->scheduleType === 'single_schedule' || $this->selectedDay === 'Everyday')
@@ -715,7 +710,6 @@ class ScheduleManager extends Component
         $usedSubjectPeriods = DB::table('timetables')
             ->where('class_id', $this->modalClassId)
             ->where('day', $dayToCheck)
-            ->where('is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
             ->when($this->editingId2 ?? false, fn($q) => $q->where('id', '!=', $this->editingId2))
             ->select('subject_id', 'period_no')
@@ -776,7 +770,6 @@ class ScheduleManager extends Component
             ->where('class_id', $this->modalClassId)
             ->where('day', $dayToCheck)
             ->where('period_no', $this->modalPeriodNo)
-            ->where('is_substitute', false)
             ->when($this->editingId, fn($q) => $q->where('id', '!=', $this->editingId))
             ->when(!empty($editingDividedIds), fn($q) => $q->whereNotIn('id', $editingDividedIds))
             ->get();
@@ -813,7 +806,6 @@ class ScheduleManager extends Component
                 ->where('period_no', $this->modalPeriodNo)
                 ->whereIn('day', $daysToSave)
                 ->where('teacher_id', '!=', $this->selectedTeacherId)
-                ->where('is_substitute', false)
                 ->delete();
         }
 
@@ -855,8 +847,6 @@ class ScheduleManager extends Component
                         'is_divided'     => $this->isDivided,
                         'is_merged'      => $this->isMerged,
                         'merge_group_id' => $mergeGroupId,
-                        'is_substitute'  => false,
-                        'substitute_date'=> null,
                         'start_time'     => null,
                         'end_time'       => null,
                         'updated_at'     => now(),
@@ -868,7 +858,6 @@ class ScheduleManager extends Component
                         ->where('day', $day)
                         ->where('teacher_id', $teacherId)
                         ->where('subject_id', $subjectId)
-                        ->where('is_substitute', false)
                         ->first();
 
                     if ($existingForDay) {
@@ -888,7 +877,6 @@ class ScheduleManager extends Component
                     ->where('class_id', $this->modalClassId)
                     ->where('period_no', $this->modalPeriodNo)
                     ->where('day', $day)
-                    ->where('is_substitute', false)
                     ->whereNotIn('id', $daySavedIds);
 
                 if ($this->isDivided) {
@@ -906,7 +894,7 @@ class ScheduleManager extends Component
                     foreach ($this->selectedSubjectIds as $subId) {
                         $primarySubject = Subject::find($subId);
                         $partnerSubjectId = $subId;
-                        if ($primarySubject) {
+                        if ($primarySubject && $primarySubject->class_id) {
                             $matchingSub = Subject::where('class_id', $partnerClassId)
                                 ->where('name', $primarySubject->name)
                                 ->first();
@@ -925,8 +913,6 @@ class ScheduleManager extends Component
                             'is_divided'     => false,
                             'is_merged'      => true,
                             'merge_group_id' => $mergeGroupId,
-                            'is_substitute'  => false,
-                            'substitute_date'=> null,
                             'start_time'     => null,
                             'end_time'       => null,
                             'updated_at'     => now(),
@@ -938,7 +924,6 @@ class ScheduleManager extends Component
                             ->where('day', $day)
                             ->where('teacher_id', $this->selectedTeacherId)
                             ->where('subject_id', $partnerSubjectId)
-                            ->where('is_substitute', false)
                             ->first();
 
                         if ($existingPartner) {
@@ -964,7 +949,6 @@ class ScheduleManager extends Component
                             ->where('period_no', $this->modalPeriodNo)
                             ->where('day', $day)
                             ->where('teacher_id', $this->selectedTeacherId)
-                            ->where('is_substitute', false)
                             ->whereNotIn('id', $partnerSavedIds)
                             ->delete();
                     }
@@ -982,7 +966,6 @@ class ScheduleManager extends Component
                     ->where('class_id', $this->modalClassId)
                     ->where('period_no', $this->modalPeriodNo)
                     ->where('day', $day)
-                    ->where('is_substitute', false)
                     ->update(['is_merged' => false, 'merge_group_id' => null, 'updated_at' => now()]);
             }
         }
@@ -1104,13 +1087,11 @@ class ScheduleManager extends Component
                 ->where('period_no', $entry->period_no)
                 ->where('teacher_id', $entry->teacher_id)
                 ->whereIn('day', $this->days)
-                ->where('is_substitute', false)
                 ->delete();
 
             if ($entry->merge_group_id) {
                 DB::table('timetables')
                     ->where('merge_group_id', $entry->merge_group_id)
-                    ->where('is_substitute', false)
                     ->delete();
             }
         } else {
@@ -1119,7 +1100,6 @@ class ScheduleManager extends Component
                 ->where('period_no', $entry->period_no)
                 ->where('day', $entry->day)
                 ->where('teacher_id', $entry->teacher_id)
-                ->where('is_substitute', false)
                 ->delete();
 
             if ($entry->is_divided) {
@@ -1128,7 +1108,6 @@ class ScheduleManager extends Component
                     ->where('period_no', $entry->period_no)
                     ->where('day', $entry->day)
                     ->where('is_divided', true)
-                    ->where('is_substitute', false)
                     ->delete();
             }
 
@@ -1136,7 +1115,6 @@ class ScheduleManager extends Component
                 DB::table('timetables')
                     ->where('merge_group_id', $entry->merge_group_id)
                     ->where('day', $entry->day)
-                    ->where('is_substitute', false)
                     ->delete();
             }
         }
@@ -1174,7 +1152,6 @@ class ScheduleManager extends Component
         $currentDayEntries = DB::table('timetables')
             ->whereIn('class_id', $classIds)
             ->where('day', $this->selectedDay)
-            ->where('is_substitute', false)
             ->get();
 
         if ($currentDayEntries->isEmpty()) {
@@ -1188,7 +1165,6 @@ class ScheduleManager extends Component
             DB::table('timetables')
                 ->whereIn('class_id', $classIds)
                 ->where('day', $day)
-                ->where('is_substitute', false)
                 ->delete();
 
             foreach ($currentDayEntries as $entry) {
@@ -1200,8 +1176,6 @@ class ScheduleManager extends Component
                     'period_no' => $entry->period_no,
                     'room' => $entry->room,
                     'is_divided' => $entry->is_divided,
-                    'is_substitute' => false,
-                    'substitute_date' => null,
                     'start_time' => null,
                     'end_time' => null,
                     'created_at' => now(),
@@ -1248,35 +1222,57 @@ class ScheduleManager extends Component
             DB::table('timetables')
                 ->whereIn('class_id', $classIds)
                 ->whereIn('day', $this->days)
-                ->where('is_substitute', false)
                 ->delete();
-            $clearMessage = 'All universal schedule entries have been cleared.';
+
+            // Clear all allocations and class teacher assignments for these classes
+            DB::table('subject_allocations')
+                ->whereIn('class_id', $classIds)
+                ->delete();
+
+            DB::table('session_user')
+                ->where('academic_session_id', $this->selectedSessionId)
+                ->whereIn('class_id', $classIds)
+                ->update(['class_id' => null, 'class_subject' => null, 'updated_at' => now()]);
+
+            $this->classTeacherMap = [];
+            $this->teacherClassMap = [];
+
+            $clearMessage = 'All schedule entries, allocations, and class teacher assignments have been cleared.';
         } else {
             DB::table('timetables')
                 ->whereIn('class_id', $classIds)
                 ->where('day', $this->selectedDay)
-                ->where('is_substitute', false)
                 ->delete();
             $clearMessage = 'All schedule entries for ' . $this->selectedDay . ' have been cleared.';
+
+            $remainingTimetables = DB::table('timetables')
+                ->whereIn('class_id', $classIds)
+                ->select('class_id', 'subject_id', 'teacher_id')
+                ->distinct()
+                ->get();
+
+            $activeKeys = $remainingTimetables->map(fn($t) => $t->class_id . '_' . $t->subject_id)->toArray();
+
+            DB::table('subject_allocations')
+                ->whereIn('class_id', $classIds)
+                ->get()
+                ->each(function($alloc) use ($activeKeys) {
+                    if (!in_array($alloc->class_id . '_' . $alloc->subject_id, $activeKeys)) {
+                        DB::table('subject_allocations')->where('id', $alloc->id)->delete();
+                    }
+                });
+
+            // If no timetables remain for these classes across any day, also clear class teachers
+            if ($remainingTimetables->isEmpty()) {
+                DB::table('session_user')
+                    ->where('academic_session_id', $this->selectedSessionId)
+                    ->whereIn('class_id', $classIds)
+                    ->update(['class_id' => null, 'class_subject' => null, 'updated_at' => now()]);
+
+                $this->classTeacherMap = [];
+                $this->teacherClassMap = [];
+            }
         }
-
-        $remainingTimetables = DB::table('timetables')
-            ->whereIn('class_id', $classIds)
-            ->where('is_substitute', false)
-            ->select('class_id', 'subject_id', 'teacher_id')
-            ->distinct()
-            ->get();
-
-        $activeKeys = $remainingTimetables->map(fn($t) => $t->class_id . '_' . $t->subject_id)->toArray();
-
-        DB::table('subject_allocations')
-            ->whereIn('class_id', $classIds)
-            ->get()
-            ->each(function($alloc) use ($activeKeys) {
-                if (!in_array($alloc->class_id . '_' . $alloc->subject_id, $activeKeys)) {
-                    DB::table('subject_allocations')->where('id', $alloc->id)->delete();
-                }
-            });
 
         \App\Services\ActivityLogger::log(
             action: 'deleted',
@@ -1287,6 +1283,41 @@ class ScheduleManager extends Component
                 'schedule_type' => $this->scheduleType,
                 'cleared_day' => $this->scheduleType === 'single_schedule' ? 'Universal' : $this->selectedDay,
             ]
+        );
+
+        session()->flash('message', $clearMessage);
+        $this->loadData();
+    }
+
+    public function clearAllSchedule()
+    {
+        $classIds = $this->classes->pluck('id')->toArray();
+        if (empty($classIds)) return;
+
+        DB::table('timetables')
+            ->whereIn('class_id', $classIds)
+            ->delete();
+
+        DB::table('subject_allocations')
+            ->whereIn('class_id', $classIds)
+            ->delete();
+
+        DB::table('session_user')
+            ->where('academic_session_id', $this->selectedSessionId)
+            ->whereIn('class_id', $classIds)
+            ->update(['class_id' => null, 'class_subject' => null, 'updated_at' => now()]);
+
+        $this->classTeacherMap = [];
+        $this->teacherClassMap = [];
+
+        $clearMessage = 'All schedule entries, allocations, and class teacher assignments have been cleared.';
+
+        \App\Services\ActivityLogger::log(
+            action: 'deleted',
+            module: 'schedule',
+            description: $clearMessage,
+            subjectLabel: 'Schedule: Clear All',
+            oldValues: ['cleared_all' => true]
         );
 
         session()->flash('message', $clearMessage);
@@ -1337,7 +1368,6 @@ class ScheduleManager extends Component
             ->join('classes', 'timetables.class_id', '=', 'classes.id')
             ->whereIn('timetables.class_id', $classIds)
             ->where('classes.academic_session_id', $this->selectedSessionId)
-            ->where('timetables.is_substitute', false)
             ->whereNotNull('timetables.teacher_id')
             ->whereNotNull('timetables.subject_id')
             ->select('timetables.class_id', 'timetables.subject_id', 'timetables.teacher_id')

@@ -28,6 +28,8 @@ class RecordPayment extends Component
     public $filter_status = 'active';
     public $isPage = false;
     public $itemPayments = [];
+    public $lastReceipt = null;
+    public $showReceiptModal = false;
 
     public function mount()
     {
@@ -201,7 +203,7 @@ class RecordPayment extends Component
         $this->resetValidation();
     }
 
-    public function storePayment()
+    public function storePayment(\App\Services\FeePaymentService $feeService)
     {
         $this->validate([
             'amount' => 'required|numeric|min:1|max:' . $this->record->balance,
@@ -226,69 +228,35 @@ class RecordPayment extends Component
             }
         }
 
-        $studentId = $this->record->student_id;
-        $payment = null;
-
-        \DB::transaction(function () use (&$payment) {
-            $notes = $this->remarks;
-            if ($this->reference_number) {
-                $notes = trim(($notes ? $notes . ' ' : '') . '[Ref: ' . $this->reference_number . ']');
-            }
-
-            // Create payment
-            $payment = FeePayment::create([
-                'fee_record_id' => $this->recordId,
-                'student_id' => $this->record->student_id,
-                'amount_paid' => $this->amount,
-                'payment_method' => $this->payment_method,
-                'received_by' => auth()->user()->name ?? 'System',
-                'payment_date' => $this->payment_date,
-                'notes' => $notes,
-            ]);
-
-            // Update item balances
-            foreach ($this->record->items as $item) {
-                if ($item->amount <= 0) {
-                    continue;
-                }
-                $itemId = $item->id;
-                $payAmount = isset($this->itemPayments[$itemId]) ? (float)$this->itemPayments[$itemId] : 0.0;
-                
-                $item->paid_amount += $payAmount;
-                $item->balance = ($item->balance !== null ? $item->balance : $item->amount) - $payAmount;
-                $item->save();
-            }
-
-            // Update record balance
-            $this->record->paid_amount += $this->amount;
-            $this->record->balance -= $this->amount;
-            
-            if ($this->record->balance <= 0) {
-                $this->record->status = 'paid';
-            } else {
-                $this->record->status = 'partial';
-            }
-            
-            $this->record->save();
-        });
-
-        // Reset search/student selection for standalone page mode
-        $this->resetStudentSelection();
-
-        session()->flash('message', 'Payment recorded successfully.');
-        $this->close();
-        
-        // Refresh parent
-        $this->dispatch('refreshFeeRecords');
-
-        // Attempt to send WhatsApp Notification
         try {
-            if ($payment) {
-                $whatsapp = app(\App\Services\WhatsAppService::class);
-                $whatsapp->sendPaymentNotification($payment);
-            }
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to dispatch payment notification: ' . $e->getMessage());
+            $payment = $feeService->recordPayment(
+                record: $this->record,
+                amount: (float) $this->amount,
+                paymentMethod: $this->payment_method,
+                referenceNumber: $this->reference_number,
+                remarks: $this->remarks,
+                receivedByUserId: auth()->id(),
+                paymentDate: $this->payment_date,
+                itemPayments: $this->itemPayments
+            );
+
+            $this->lastReceipt = $payment;
+            $this->showReceiptModal = true;
+            $this->resetStudentSelection();
+
+            session()->flash('message', "Payment recorded successfully! Receipt #{$payment->receipt_number}");
+            $this->close();
+            
+            // Refresh parent
+            $this->dispatch('refreshFeeRecords');
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
         }
+    }
+
+    public function closeReceiptModal()
+    {
+        $this->showReceiptModal = false;
+        $this->lastReceipt = null;
     }
 }

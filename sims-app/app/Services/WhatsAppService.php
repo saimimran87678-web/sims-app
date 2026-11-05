@@ -291,6 +291,18 @@ class WhatsAppService
                 continue;
             }
 
+            // Verify Guardian WhatsApp notification opt-in consent
+            $optIn = \Illuminate\Support\Facades\DB::table('student_guardian')
+                ->join('guardians', 'student_guardian.guardian_id', '=', 'guardians.id')
+                ->where('student_guardian.student_id', $student['id'])
+                ->where('student_guardian.is_primary', true)
+                ->value('guardians.whatsapp_opt_in');
+
+            if ($optIn !== null && !(bool)$optIn) {
+                $skipped[] = ($student['name'] ?? 'Student') . ' (Parent opted out of WhatsApp)';
+                continue;
+            }
+
             // Check if already notified today
             $exists = \Illuminate\Support\Facades\DB::table('whatsapp_notifications')
                 ->where('student_id', $student['id'])
@@ -369,6 +381,12 @@ class WhatsAppService
             return;
         }
 
+        $guardian = $student->primaryGuardian;
+        if ($guardian && $guardian->whatsapp_opt_in === false) {
+            Log::info("WhatsApp payment notification skipped for student #{$student->id}: Parent opted out.");
+            return;
+        }
+
         $formattedPeriod = \Carbon\Carbon::parse($payment->record->period . '-01')->format('F Y');
         $link = url('/v/' . $payment->record->access_token);
         
@@ -405,6 +423,11 @@ class WhatsAppService
         foreach ($records as $record) {
             $student = $record->student;
             if (!$student || empty($student->phone) || $record->balance <= 0) {
+                continue;
+            }
+
+            $guardian = $student->primaryGuardian;
+            if ($guardian && $guardian->whatsapp_opt_in === false) {
                 continue;
             }
 

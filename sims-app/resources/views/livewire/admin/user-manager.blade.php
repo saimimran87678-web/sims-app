@@ -503,7 +503,7 @@
                                                                 <option value="">Select Subject</option>
                                                                 @if(!empty($assignment['subjects']))
                                                                     @foreach($assignment['subjects'] as $sub)
-                                                                        <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                                                        <option value="{{ data_get($sub, 'id') }}">{{ data_get($sub, 'name') }}</option>
                                                                     @endforeach
                                                                 @endif
                                                             </select>

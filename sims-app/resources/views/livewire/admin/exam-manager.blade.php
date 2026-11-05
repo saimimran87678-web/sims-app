@@ -66,7 +66,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam Name</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lifecycle</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -75,6 +76,7 @@
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-bold text-gray-900">{{ $exam->name }}</div>
+                            <div class="text-xs text-gray-500">{{ $exam->type }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                             {{ $exam->academicSession->name ?? '-' }}
@@ -96,8 +98,78 @@
                                 {{ $status }}
                             </span>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @php
+                                $lifecycle = $exam->lifecycle_status ?? 'draft';
+                                $lifecycleBadge = match($lifecycle) {
+                                    'entered' => 'bg-blue-100 text-blue-800 border border-blue-200',
+                                    'locked' => 'bg-amber-100 text-amber-800 border border-amber-200',
+                                    'published' => 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+                                    default => 'bg-slate-100 text-slate-700 border border-slate-200',
+                                };
+                                $lifecycleLabel = match($lifecycle) {
+                                    'entered' => 'Marks Open',
+                                    'locked' => 'Locked',
+                                    'published' => 'Published',
+                                    default => 'Draft',
+                                };
+                            @endphp
+                            <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full {{ $lifecycleBadge }}">
+                                {{ $lifecycleLabel }}
+                            </span>
+                            @if($exam->published_at)
+                                <div class="text-[10px] text-gray-500 mt-0.5">Pub: {{ $exam->published_at->format('d M, h:i A') }}</div>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end gap-2">
+                                {{-- Lifecycle Action Buttons --}}
+                                @can('exam.edit')
+                                    @if($exam->isDraft())
+                                    <button 
+                                        wire:click="openMarksEntry({{ $exam->id }})" 
+                                        class="text-blue-600 hover:text-blue-800 text-xs font-semibold px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                        title="Open marks entry for teachers"
+                                    >
+                                        Open Marks
+                                    </button>
+                                    @elseif($exam->isEntered())
+                                    <button 
+                                        wire:click="lockExam({{ $exam->id }})" 
+                                        wire:confirm="Lock marks entry for this exam? Teachers will no longer be able to modify marks."
+                                        class="text-amber-700 hover:text-amber-900 text-xs font-semibold px-2 py-1 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+                                        title="Lock marks entry for audit"
+                                    >
+                                        Lock
+                                    </button>
+                                    @elseif($exam->isLocked())
+                                    <button 
+                                        wire:click="publishExam({{ $exam->id }})" 
+                                        wire:confirm="Publish results? Results will immediately become visible to Students & Parents in their portals."
+                                        class="text-emerald-700 hover:text-emerald-900 text-xs font-semibold px-2 py-1 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                                        title="Publish results to Student/Parent Portals"
+                                    >
+                                        Publish
+                                    </button>
+                                    <button 
+                                        wire:click="openMarksEntry({{ $exam->id }})" 
+                                        class="text-gray-500 hover:text-gray-700 text-xs font-medium px-1.5 py-1 hover:bg-gray-100 rounded-lg transition-colors"
+                                        title="Re-open marks entry"
+                                    >
+                                        Reopen
+                                    </button>
+                                    @elseif($exam->isPublished())
+                                    <button 
+                                        wire:click="revertToDraft({{ $exam->id }})" 
+                                        wire:confirm="Reverting to draft will HIDE results from student and parent portals. Continue?"
+                                        class="text-rose-600 hover:text-rose-800 text-xs font-semibold px-2 py-1 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors"
+                                        title="Unpublish and revert to draft"
+                                    >
+                                        Unpublish
+                                    </button>
+                                    @endif
+                                @endcan
+
                                 @can('exam.datesheet')
                                 @php
                                     $datesheetRoute = request()->is('teacher/*') 
@@ -109,7 +181,7 @@
                                     class="text-purple-600 hover:text-purple-900 transition-colors p-2 rounded-lg hover:bg-purple-50" 
                                     title="Manage Datesheet"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                                 </a>
                                 @endcan
                                 @can('exam.edit')

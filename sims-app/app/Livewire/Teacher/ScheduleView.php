@@ -107,7 +107,6 @@ class ScheduleView extends Component
             ->where('classes.academic_session_id', $activeSessionId)
             ->where('timetables.teacher_id', $teacherId)
             ->where('timetables.day', $dayToLoad)
-            ->where('timetables.is_substitute', false)
             ->when($shiftType !== 'both', function ($q) use ($shiftType) {
                 $q->where('classes.shift_type', $shiftType);
             })

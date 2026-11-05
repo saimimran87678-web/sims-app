@@ -214,13 +214,14 @@ class StudentLifecycleService
             return null;
         }
 
+        $hash = Student::hashBlindIndex($clean);
         $student = Student::withTrashed()
-            ->where(function ($q) use ($clean, $digits) {
-                $q->where('b_form_number', $clean)
-                  ->orWhere('b_form_number', $digits)
-                  ->orWhereRaw("REPLACE(REPLACE(b_form_number, '-', ''), ' ', '') = ?", [$digits])
-                  ->orWhere('father_cnic', $clean)
-                  ->orWhere('father_cnic', $digits);
+            ->where(function ($q) use ($hash) {
+                if ($hash) {
+                    $q->where('b_form_hash', $hash)
+                      ->orWhere('father_cnic_hash', $hash)
+                      ->orWhere('guardian_cnic_hash', $hash);
+                }
             })
             ->with(['enrollments.academicSession', 'enrollments.currentClass', 'schoolLeavingCertificates'])
             ->first();
@@ -257,6 +258,58 @@ class StudentLifecycleService
     }
 
     /**
+     * Authoritatively creates a new student and their session enrollment atomically.
+     * Decouples student creation from HTTP request globals.
+     */
+    public function createStudentWithEnrollment(
+        array $studentData,
+        int $classId,
+        ?string $rollNo = null,
+        ?int $sectionId = null,
+        string $shiftType = 'regular',
+        ?int $sessionId = null,
+        ?int $programId = null
+    ): array {
+        return DB::transaction(function () use ($studentData, $classId, $rollNo, $sectionId, $shiftType, $sessionId, $programId) {
+            $targetSessionId = $sessionId ?? AcademicSession::getActiveSessionId();
+            $sessionObj = AcademicSession::find($targetSessionId);
+            $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+            $normalizedShift = $isRegular ? 'regular' : strtolower($shiftType);
+            if ($normalizedShift === 'both') {
+                $normalizedShift = 'morning';
+            }
+
+            // Ensure student is active by default unless specified
+            if (!isset($studentData['status'])) {
+                $studentData['status'] = 'active';
+            }
+
+            $student = Student::create($studentData);
+
+            $targetProgramId = $programId ?? DB::table('class_programs')
+                ->where('class_id', $classId)
+                ->orderByDesc('is_default')
+                ->value('program_id');
+
+            $enrollment = Enrollment::create([
+                'student_id' => $student->id,
+                'academic_session_id' => $targetSessionId,
+                'class_id' => $classId,
+                'section_id' => $sectionId,
+                'program_id' => $targetProgramId,
+                'roll_number' => $rollNo,
+                'shift_type' => $normalizedShift,
+                'status' => $student->status ?? 'active',
+            ]);
+
+            return [
+                'student' => $student,
+                'enrollment' => $enrollment,
+            ];
+        });
+    }
+
+    /**
      * Intelligently re-admits a returning student into the active session without duplicating profile.
      */
     public function readmitStudent(
@@ -265,7 +318,9 @@ class StudentLifecycleService
         int|Section|null $classIdOrSection = null,
         string $shiftType = 'regular',
         ?string $rollNo = null,
-        int|string|null $userIdOrAdmissionDate = 1
+        int|string|null $userIdOrAdmissionDate = 1,
+        ?int $programId = null,
+        int|Section|null $targetSection = null
     ): Enrollment {
         if ($targetSessionOrClass instanceof Classes) {
             $class = $targetSessionOrClass;
@@ -276,16 +331,19 @@ class StudentLifecycleService
         } else {
             $targetSessionId = (int) $targetSessionOrClass;
             $classId = ($classIdOrSection instanceof Classes) ? $classIdOrSection->id : (int) $classIdOrSection;
-            $sectionId = null;
+            $sectionId = ($targetSection instanceof Section) ? $targetSection->id : (is_numeric($targetSection) ? (int)$targetSection : null);
             $userId = is_numeric($userIdOrAdmissionDate) ? (int)$userIdOrAdmissionDate : 1;
         }
 
-        return DB::transaction(function () use ($student, $targetSessionId, $classId, $sectionId, $shiftType, $rollNo) {
+        $targetProgramId = $programId ?? DB::table('class_programs')
+            ->where('class_id', $classId)
+            ->orderByDesc('is_default')
+            ->value('program_id');
+
+        return DB::transaction(function () use ($student, $targetSessionId, $classId, $sectionId, $shiftType, $rollNo, $targetProgramId) {
             // Activate student master profile
             $student->update([
                 'status' => 'active',
-                'class_id' => $classId,
-                'section_id' => $sectionId,
                 'status_reason' => "Re-admitted to Session ID {$targetSessionId} (" . ucfirst($shiftType) . " Shift)",
             ]);
 
@@ -298,6 +356,8 @@ class StudentLifecycleService
                 ],
                 [
                     'class_id' => $classId,
+                    'section_id' => $sectionId,
+                    'program_id' => $targetProgramId,
                     'roll_number' => $rollNo,
                     'status' => 'active',
                 ]
@@ -402,7 +462,7 @@ class StudentLifecycleService
                 'session_id' => $sessionId,
                 'is_active_session' => ($sessionId == $activeSessionId),
                 'class_name' => $enrollment->currentClass?->name ?? 'N/A',
-                'section_name' => $student->section?->name ?? 'A',
+                'section_name' => $enrollment->section?->name ?? $student->section?->name ?? 'A',
                 'roll_no' => $enrollment->roll_number ?? $student->roll_no ?? '-',
                 'shift_type' => ucfirst($enrollment->shift_type),
                 'enrollment_status' => $enrollment->status,

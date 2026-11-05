@@ -346,10 +346,29 @@
                             <span class="text-gray-400">Emergency Phone</span>
                             <span class="font-mono font-semibold text-gray-700">{{ $student->emergency_contact ?? $student->phone ?? 'N/A' }}</span>
                         </div>
-                        <div class="flex items-center justify-between py-1">
+                        <div class="flex items-center justify-between py-1 border-b border-gray-50">
                             <span class="text-gray-400">Shift</span>
                             <span class="font-semibold text-gray-700 capitalize">{{ session('selected_shift_type', 'Morning') }}</span>
                         </div>
+                        <div class="flex items-center justify-between py-1.5 pt-2">
+                            <div>
+                                <span class="text-gray-600 font-semibold block text-[11px]">WhatsApp Alerts</span>
+                                <span class="text-[10px] text-gray-400">Fee & attendance notices</span>
+                            </div>
+                            <button 
+                                wire:click="toggleWhatsAppOptIn" 
+                                type="button"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer {{ $whatsappOptIn ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' : 'bg-gray-100 text-gray-500 border border-gray-300 hover:bg-gray-200' }}"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full {{ $whatsappOptIn ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400' }}"></span>
+                                <span>{{ $whatsappOptIn ? 'Opted In' : 'Muted' }}</span>
+                            </button>
+                        </div>
+                        @if(session()->has('whatsapp_message'))
+                            <div class="text-[11px] font-medium text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-200 mt-1">
+                                {{ session('whatsapp_message') }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -595,23 +614,29 @@
             @if($examMarks->isNotEmpty())
                 @foreach($examMarks as $examName => $marks)
                     @php
-                        $totalObtained = $marks->sum('marks_obtained');
-                        $totalMax = $marks->sum('max_marks');
-                        $percentage = $totalMax > 0 ? round(($totalObtained / $totalMax) * 100, 1) : 0;
-                        $grade = match(true) {
-                            $percentage >= 80 => 'A+',
-                            $percentage >= 70 => 'A',
-                            $percentage >= 60 => 'B',
-                            $percentage >= 50 => 'C',
-                            $percentage >= 40 => 'D',
-                            default => 'F',
-                        };
+                        $aggregate = app(\App\Services\GradeCalculationService::class)->calculateAggregate(
+                            $marks,
+                            $student->class?->academic_session_id
+                        );
+                        $totalObtained = $aggregate['total_obtained'];
+                        $totalMax = $aggregate['total_max'];
+                        $percentage = $aggregate['percentage'];
+                        $grade = $aggregate['grade'];
+                        $firstMark = $marks->first();
+                        $publishedAt = $firstMark?->published_at ? \Carbon\Carbon::parse($firstMark->published_at)->format('d M Y') : null;
                     @endphp
                     <div class="glass-card p-4 sm:p-6 rounded-2xl space-y-4">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-gray-100">
                             <div>
                                 <h3 class="text-base sm:text-lg font-bold text-gray-800">{{ $examName }}</h3>
-                                <p class="text-xs text-gray-500">Class: {{ $student->class->name ?? 'N/A' }}</p>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <p class="text-xs text-gray-500">Class: {{ $student->class->name ?? 'N/A' }}</p>
+                                    @if($publishedAt)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            ✓ Official Result (Published {{ $publishedAt }})
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                             <div class="flex items-center gap-2 sm:gap-3">
                                 <div class="px-2.5 sm:px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700">
@@ -636,21 +661,34 @@
                                 <tbody class="divide-y divide-gray-100">
                                     @foreach($marks as $row)
                                         @php
-                                            $subjPct = $row->max_marks > 0 ? round(($row->marks_obtained / $row->max_marks) * 100, 1) : 0;
+                                            $eval = app(\App\Services\GradeCalculationService::class)->calculateFromMark(
+                                                is_null($row->marks_obtained) ? null : (float)$row->marks_obtained,
+                                                (float)$row->max_marks,
+                                                (bool)$row->is_absent,
+                                                $student->class?->academic_session_id
+                                            );
                                         @endphp
                                         <tr class="hover:bg-indigo-50/20 transition-colors">
                                             <td class="px-4 py-3 font-semibold text-gray-800">{{ $row->subject_name }}</td>
                                             <td class="px-4 py-3 text-gray-500 font-mono text-xs">{{ $row->max_marks }}</td>
-                                            <td class="px-4 py-3 font-bold text-gray-800 font-mono text-xs">{{ $row->marks_obtained }}</td>
+                                            <td class="px-4 py-3 font-bold font-mono text-xs {{ $eval['status'] === 'absent' ? 'text-rose-600' : 'text-gray-800' }}">
+                                                {{ $eval['status'] === 'absent' ? 'ABS' : ($row->marks_obtained ?? '-') }}
+                                            </td>
                                             <td class="px-4 py-3">
+                                                @if($eval['status'] === 'scored')
                                                 <div class="flex items-center gap-2 sm:gap-3">
                                                     <div class="w-16 sm:w-24 bg-gray-100 rounded-full h-1.5 sm:h-2 overflow-hidden">
-                                                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full" style="width: {{ min(100, $subjPct) }}%"></div>
+                                                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full" style="width: {{ min(100, $eval['percentage']) }}%"></div>
                                                     </div>
-                                                    <span class="text-xs font-bold {{ $subjPct >= 40 ? 'text-emerald-600' : 'text-rose-600' }}">
-                                                        {{ $subjPct }}%
+                                                    <span class="text-xs font-bold {{ $eval['is_passing'] ? 'text-emerald-600' : 'text-rose-600' }}">
+                                                        {{ $eval['percentage'] }}% ({{ $eval['grade'] }})
                                                     </span>
                                                 </div>
+                                                @elseif($eval['status'] === 'absent')
+                                                    <span class="text-xs font-bold text-rose-600">Absent</span>
+                                                @else
+                                                    <span class="text-xs font-medium text-gray-400">Pending</span>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach

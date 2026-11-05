@@ -28,6 +28,14 @@ class Program extends Model
             ->withTimestamps();
     }
 
+    public function classes()
+    {
+        return $this->belongsToMany(Classes::class, 'class_programs', 'program_id', 'class_id')
+            ->using(ClassProgram::class)
+            ->withPivot('is_default')
+            ->withTimestamps();
+    }
+
     public function enrollments()
     {
         return $this->hasMany(Enrollment::class, 'program_id');

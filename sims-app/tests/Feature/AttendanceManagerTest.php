@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Classes;
 use App\Models\Student;
 use App\Models\AcademicSession;
+use App\Models\Enrollment;
 use App\Models\Holiday;
 use App\Models\Setting;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -122,7 +123,10 @@ class AttendanceManagerTest extends TestCase
             $markedDate = Carbon::today()->subDays(4);
         }
 
+        $enrollment = Enrollment::where('student_id', $student->id)->first();
+
         DB::table('attendances')->insert([
+            'enrollment_id' => $enrollment->id,
             'student_id' => $student->id,
             'academic_session_id' => $this->session->id,
             'date' => $markedDate->format('Y-m-d'),

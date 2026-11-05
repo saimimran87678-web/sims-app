@@ -81,6 +81,31 @@ class Classes extends Model
         return $this->hasMany(Subject::class, 'class_id');
     }
 
+    public function getOfferedSubjectsAttribute()
+    {
+        return Subject::forClass($this->id)->get();
+    }
+
+    public function getSubjectsCountAttribute()
+    {
+        if (array_key_exists('subjects_count', $this->attributes)) {
+            $count = (int) $this->attributes['subjects_count'];
+            if ($count > 0) {
+                return $count;
+            }
+        }
+
+        return Subject::forClass($this->id)->count();
+    }
+
+    public function programs()
+    {
+        return $this->belongsToMany(Program::class, 'class_programs', 'class_id', 'program_id')
+            ->using(ClassProgram::class)
+            ->withPivot('is_default')
+            ->withTimestamps();
+    }
+
     public function students()
     {
         return $this->hasManyThrough(

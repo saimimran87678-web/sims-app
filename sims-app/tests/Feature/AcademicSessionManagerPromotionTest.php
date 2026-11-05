@@ -462,14 +462,14 @@ class AcademicSessionManagerPromotionTest extends TestCase
         ]);
 
         // 2. Create subjects for class 9
-        $subjectMath = \App\Models\Subject::create([
-            'name' => 'Math',
-            'class_id' => $this->class9->id,
-        ]);
-        $subjectEng = \App\Models\Subject::create([
-            'name' => 'English',
-            'class_id' => $this->class9->id,
-        ]);
+        $subjectMath = \App\Models\Subject::firstOrCreate(
+            ['name' => 'Math'],
+            ['class_id' => $this->class9->id]
+        );
+        $subjectEng = \App\Models\Subject::firstOrCreate(
+            ['name' => 'English'],
+            ['class_id' => $this->class9->id]
+        );
 
         // 3. Create marks configs for both subjects
         DB::table('marks_configs')->insert([

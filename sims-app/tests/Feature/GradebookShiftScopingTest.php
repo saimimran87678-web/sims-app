@@ -69,14 +69,16 @@ class GradebookShiftScopingTest extends TestCase
             'academic_session_id' => $this->session->id,
         ]);
 
-        // Create subjects
-        $morningSubject = Subject::create([
+        // Create/fetch subjects
+        $morningSubject = Subject::firstOrCreate([
             'name' => 'English',
+        ], [
             'class_id' => $this->morningClass->id,
         ]);
 
-        $eveningSubject = Subject::create([
-            'name' => 'English',
+        $eveningSubject = Subject::firstOrCreate([
+            'name' => 'Urdu',
+        ], [
             'class_id' => $this->eveningClass->id,
         ]);
 
@@ -181,7 +183,7 @@ class GradebookShiftScopingTest extends TestCase
             'is_primary' => true,
         ]);
 
-        $eveningSubject = Subject::where('class_id', $this->eveningClass->id)->first();
+        $eveningSubject = Subject::where('name', 'Urdu')->first();
 
         DB::table('subject_allocations')->insert([
             'user_id' => $this->teacher->id,

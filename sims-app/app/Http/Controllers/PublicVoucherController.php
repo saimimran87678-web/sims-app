@@ -25,6 +25,13 @@ class PublicVoucherController extends Controller
             ->where('access_token', $token)
             ->firstOrFail();
 
+        // Check if access token has expired
+        if ($record->isAccessTokenExpired()) {
+            return response()->view('public.voucher-expired', [
+                'record' => $record,
+            ], 410);
+        }
+
         // Calculate previous outstanding arrears
         $previousArrears = FeeRecord::where('student_id', $record->student_id)
             ->where('status', '!=', 'paid')
@@ -80,6 +87,10 @@ class PublicVoucherController extends Controller
     public function downloadPdf(string $token, InvoiceService $invoiceService)
     {
         $record = FeeRecord::where('access_token', $token)->firstOrFail();
+
+        if ($record->isAccessTokenExpired()) {
+            abort(410, 'This fee voucher link has expired. Please log in to the student portal to download an active copy.');
+        }
 
         $pdfContent = $invoiceService->generateInvoice($record, false);
 

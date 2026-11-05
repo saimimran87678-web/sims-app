@@ -30,7 +30,9 @@ class ProcessWhatsAppQueue extends Command
      */
     public function handle(WhatsAppService $whatsapp)
     {
-        $lockPath = storage_path('framework/whatsapp_queue.lock');
+        $lockPath = app()->environment('testing') 
+            ? storage_path('framework/whatsapp_queue_test.lock') 
+            : storage_path('framework/whatsapp_queue.lock');
         $lockFile = @fopen($lockPath, 'c+');
         
         if (!$lockFile) {
@@ -163,16 +165,37 @@ class ProcessWhatsAppQueue extends Command
                 continue;
             }
 
-            if (!$whatsapp->isConnected()) {
-                $this->error('WhatsApp service is not connected. Sleeping...');
-                sleep(15);
-                continue;
-            }
-
             foreach ($messages as $msg) {
                 $currentStatus = DB::table('whatsapp_queue')->where('id', $msg->id)->value('status');
                 if ($currentStatus !== 'pending') {
                     continue;
+                }
+
+                // Check if student's guardian has opted out of WhatsApp notifications
+                if ($msg->student_id) {
+                    $optIn = DB::table('student_guardian')
+                        ->join('guardians', 'student_guardian.guardian_id', '=', 'guardians.id')
+                        ->where('student_guardian.student_id', $msg->student_id)
+                        ->where('student_guardian.is_primary', true)
+                        ->value('guardians.whatsapp_opt_in');
+
+                    if ($optIn !== null && !(bool)$optIn) {
+                        DB::table('whatsapp_queue')->where('id', $msg->id)->update([
+                            'status' => 'failed',
+                            'error_message' => 'Notification cancelled: Guardian opted out of automated WhatsApp communications.',
+                            'updated_at' => now(),
+                        ]);
+                        continue;
+                    }
+                }
+
+                if (!$whatsapp->isConnected()) {
+                    $this->error('WhatsApp service is not connected. Sleeping...');
+                    if ($runOnce) {
+                        break;
+                    }
+                    sleep(15);
+                    break;
                 }
 
                 $result = $whatsapp->sendMessage($msg->phone, $msg->message);

@@ -32,12 +32,13 @@ class PortalLogin extends Component
 
         $cnic = trim($this->father_cnic);
         $admNo = trim($this->admission_no);
+        $cnicHash = Student::hashBlindIndex($cnic);
 
         // Find matching active student
         $student = Student::where('admission_no', $admNo)
-            ->where(function ($q) use ($cnic) {
-                $q->where('father_cnic', $cnic)
-                  ->orWhere('guardian_cnic', $cnic);
+            ->where(function ($q) use ($cnicHash) {
+                $q->where('father_cnic_hash', $cnicHash)
+                  ->orWhere('guardian_cnic_hash', $cnicHash);
             })
             ->first();
 

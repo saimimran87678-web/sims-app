@@ -86,7 +86,7 @@ class AcademicSession extends Model
 
     public static function getActiveSessionId()
     {
-        $key = (auth()->id() ?? 0).'|'.session('selected_academic_session_id').'|'.session('current_session_id');
+        $key = (auth()->id() ?? 0).'|'.session('selected_academic_session_id').'|'.session('current_session_id').'|'.session('selected_session_id');
         $memo = self::$activeIdMemo;
         if ($memo !== null && $memo['key'] === $key && (microtime(true) - $memo['at']) < 2.0) {
             return $memo['id'];
@@ -116,6 +116,15 @@ class AcademicSession extends Model
                 return $id;
             }
             session()->forget('current_session_id');
+        }
+
+        // Session-switching fallback
+        if (session()->has('selected_session_id')) {
+            $id = session('selected_session_id');
+            if (static::active()->where('id', $id)->exists()) {
+                return $id;
+            }
+            session()->forget('selected_session_id');
         }
 
         // 2. Default: Find the currently active system session

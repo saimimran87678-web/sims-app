@@ -38,12 +38,12 @@ class StudentManager extends Component
     public $editingStudentId = null;
     public $viewingStudent = null; // Holds the student model for viewing
 
-    // Bulk Actions & Electives
+    // Bulk Actions & Curriculum Programs
     public $selectedStudentIds = [];
-    public $bulkSubjectId = '';
+    public $bulkProgramId = '';
     public $bulkStatus = '';
     public $bulkShift = '';
-    public $studentSubjects = [];
+    public $program_id = null;
     public $selectAll = false;
 
     // Bulk Edit Modal Properties
@@ -69,6 +69,7 @@ class StudentManager extends Component
         if ($this->auto_roll_no && !$this->isEditing) {
             $this->autoAssignRollNo($this->class_id);
         }
+        $this->resolveProgramForClass($this->class_id);
     }
 
     public function updatedStudentShiftOption()
@@ -82,6 +83,7 @@ class StudentManager extends Component
         if ($this->auto_roll_no && !$this->isEditing) {
             $this->autoAssignRollNo($this->class_id);
         }
+        $this->resolveProgramForClass($this->class_id);
     }
 
     public function updatedSelectAll($value)
@@ -101,12 +103,17 @@ class StudentManager extends Component
                 $query->where('enrollments.class_id', $this->selectedClassId);
             }
             if ($this->search) {
-                $query->where(function($q) {
+                $searchHash = \App\Models\Student::hashBlindIndex($this->search);
+                $query->where(function($q) use ($searchHash) {
                     $q->where('students.name', 'like', '%' . $this->search . '%')
                       ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
-                      ->orWhere('students.admission_no', 'like', '%' . $this->search . '%')
-                      ->orWhere('students.father_cnic', 'like', '%' . $this->search . '%')
-                      ->orWhere('students.guardian_cnic', 'like', '%' . $this->search . '%');
+                      ->orWhere('students.admission_no', 'like', '%' . $this->search . '%');
+                    if ($searchHash) {
+                        $q->orWhere('students.father_cnic_hash', $searchHash)
+                          ->orWhere('students.guardian_cnic_hash', $searchHash)
+                          ->orWhere('students.b_form_hash', $searchHash)
+                          ->orWhere('students.phone_hash', $searchHash);
+                    }
                 });
             }
             if ($this->filterSport) {
@@ -153,6 +160,7 @@ class StudentManager extends Component
     public $guardian_cnic = '';
     public $guardian_relation = '';
     public $is_guardian_primary = false;
+    public $guardian_whatsapp_opt_in = true;
     public $sibling_concession_status = 'none';
     public $custom_concession_amount = '';
     public $detectedSiblings = [];
@@ -221,12 +229,9 @@ class StudentManager extends Component
 
         $digits = preg_replace('/\D/', '', $clean);
         if (strlen($digits) === 13) {
+            $hash = Student::hashBlindIndex($clean);
             $existingStudent = Student::withTrashed()
-                ->where(function ($q) use ($clean, $digits) {
-                    $q->where('b_form_number', $clean)
-                      ->orWhere('b_form_number', $digits)
-                      ->orWhereRaw("REPLACE(REPLACE(b_form_number, '-', ''), ' ', '') = ?", [$digits]);
-                })
+                ->where('b_form_hash', $hash)
                 ->first();
 
             if ($existingStudent) {
@@ -251,10 +256,26 @@ class StudentManager extends Component
         $this->validateCnicSecurity();
 
         if (preg_match('/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/', $clean)) {
-            $this->detectedSiblings = Student::where('father_cnic', $clean)
-                ->when($this->isEditing, fn($q) => $q->where('id', '!=', $this->editingStudentId))
-                ->where('status', 'active')
-                ->get()
+            $hash = Student::hashBlindIndex($clean);
+            $guardian = \App\Models\Guardian::where('cnic_hash', $hash)->first();
+
+            $query = Student::where('status', 'active')
+                ->when($this->isEditing, fn($q) => $q->where('id', '!=', $this->editingStudentId));
+
+            if ($guardian) {
+                $query->where(function($q) use ($guardian, $hash) {
+                    $q->whereHas('guardians', fn($g) => $g->where('guardians.id', $guardian->id))
+                      ->orWhere('father_cnic_hash', $hash)
+                      ->orWhere('guardian_cnic_hash', $hash);
+                });
+            } else {
+                $query->where(function($q) use ($hash) {
+                    $q->where('father_cnic_hash', $hash)
+                      ->orWhere('guardian_cnic_hash', $hash);
+                });
+            }
+
+            $this->detectedSiblings = $query->get()
                 ->map(fn($s) => [
                     'id' => $s->id,
                     'name' => $s->name,
@@ -272,11 +293,19 @@ class StudentManager extends Component
     public function updatedGuardianCnic($value)
     {
         $this->validateCnicSecurity();
+        if (empty($this->father_cnic) && preg_match('/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/', trim($value))) {
+            $this->updatedFatherCnic($value);
+        }
     }
 
     public function updatedIsGuardianPrimary($value)
     {
         $this->validateCnicSecurity();
+        if ($value && !empty($this->guardian_cnic)) {
+            $this->updatedGuardianCnic($this->guardian_cnic);
+        } elseif (!$value && !empty($this->father_cnic)) {
+            $this->updatedFatherCnic($this->father_cnic);
+        }
     }
 
     public function validateCnicSecurity(): bool
@@ -324,6 +353,7 @@ class StudentManager extends Component
         $this->guardian_cnic = $student->guardian_cnic ?? '';
         $this->guardian_relation = $student->guardian_relation ?? '';
         $this->is_guardian_primary = (bool) ($student->is_guardian_primary ?? false);
+        $this->guardian_whatsapp_opt_in = (bool) ($student->primaryGuardian?->whatsapp_opt_in ?? true);
         $this->sibling_concession_status = $student->sibling_concession_status ?? 'none';
         $this->custom_concession_amount = $student->custom_concession_amount ?? '';
         $this->phone = $student->phone ?? '';
@@ -613,6 +643,7 @@ class StudentManager extends Component
         if ($this->auto_roll_no && !$this->isEditing) {
             $this->autoAssignRollNo($value);
         }
+        $this->resolveProgramForClass($value);
     }
 
     public function updatedAutoRollNo($value)
@@ -692,7 +723,8 @@ class StudentManager extends Component
         $this->isActiveStudentDuplicate = false;
         $this->activeStudentDetails = [];
         $this->existingStudentMessage = '';
-        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'isExistingStudentRecord', 'isActiveStudentDuplicate', 'activeStudentDetails', 'existingStudentMessage']);
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'editingStudentId', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'program_id', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'isExistingStudentRecord', 'isActiveStudentDuplicate', 'activeStudentDetails', 'existingStudentMessage']);
+        $this->guardian_whatsapp_opt_in = true;
         $this->resetErrorBag(['b_form_number', 'father_cnic', 'guardian_cnic']);
         $this->admission_date = now()->format('Y-m-d');
         
@@ -718,8 +750,10 @@ class StudentManager extends Component
                 $this->singleStudentClasses['regular'] = $this->class_id;
             }
             $this->autoAssignRollNo($this->class_id);
+            $this->resolveProgramForClass($this->class_id);
         } else {
             $this->roll_no = '';
+            $this->program_id = null;
         }
         $this->showModal = true;
     }
@@ -797,6 +831,7 @@ class StudentManager extends Component
         $this->guardian_cnic = $student->guardian_cnic ?? '';
         $this->guardian_relation = $student->guardian_relation ?? '';
         $this->is_guardian_primary = (bool) ($student->is_guardian_primary ?? false);
+        $this->guardian_whatsapp_opt_in = (bool) ($student->primaryGuardian?->whatsapp_opt_in ?? true);
         $this->sibling_concession_status = $student->sibling_concession_status ?? 'none';
         $this->custom_concession_amount = $student->custom_concession_amount ?? '';
         $this->updatedFatherCnic($this->father_cnic);
@@ -813,8 +848,12 @@ class StudentManager extends Component
         $this->admission_date = $student->admission_date ? $student->admission_date->format('Y-m-d') : ($student->created_at ? $student->created_at->format('Y-m-d') : now()->format('Y-m-d'));
         $this->address = $student->address;
 
-        // Load assigned subjects
-        $this->studentSubjects = $student->subjects()->pluck('subjects.id')->toArray();
+        // Load assigned curriculum program track
+        $activeEnrollment = $enrollments->first();
+        $this->program_id = $activeEnrollment ? $activeEnrollment->program_id : null;
+        if (!$this->program_id && $this->class_id) {
+            $this->resolveProgramForClass($this->class_id);
+        }
 
         $this->auto_roll_no = false;
         $this->isEditing = true;
@@ -861,6 +900,10 @@ class StudentManager extends Component
             }
         }
 
+        if (!$this->program_id && $this->class_id) {
+            $this->resolveProgramForClass($this->class_id);
+        }
+
         // 1-Click Re-Admission of returning student / Existing B-Form Student
         if ($this->isReadmission && $this->readmitStudentId) {
             $lifecycleService = app(\App\Services\StudentLifecycleService::class);
@@ -886,7 +929,9 @@ class StudentManager extends Component
                 $this->class_id,
                 $this->student_shift,
                 $this->roll_no,
-                auth()->id() ?? 1
+                auth()->id() ?? 1,
+                $this->program_id,
+                $this->section_id ?: null
             );
 
             // If dual shift session and both shifts selected:
@@ -902,6 +947,8 @@ class StudentManager extends Component
                     ],
                     [
                         'class_id' => $morningClassId,
+                        'section_id' => $this->section_id ?: null,
+                        'program_id' => $this->program_id,
                         'roll_number' => $this->roll_no,
                         'status' => 'active',
                     ]
@@ -915,14 +962,12 @@ class StudentManager extends Component
                     ],
                     [
                         'class_id' => $eveningClassId,
+                        'section_id' => $this->section_id ?: null,
+                        'program_id' => $this->program_id,
                         'roll_number' => $this->roll_no,
                         'status' => 'active',
                     ]
                 );
-            }
-
-            if (!empty($this->studentSubjects)) {
-                $student->subjects()->sync($this->studentSubjects);
             }
 
             $this->showModal = false;
@@ -977,7 +1022,8 @@ class StudentManager extends Component
                         $this->class_id,
                         $this->student_shift,
                         $this->roll_no,
-                        auth()->id() ?? 1
+                        auth()->id() ?? 1,
+                        $this->program_id
                     );
                     $this->showModal = false;
                     $this->isReadmission = false;
@@ -1006,7 +1052,6 @@ class StudentManager extends Component
             'custom_concession_amount' => $this->sibling_concession_status === 'custom_waiver' && is_numeric($this->custom_concession_amount) ? $this->custom_concession_amount : null,
             'phone' => $this->phone,
             'email' => $this->email,
-            'section_id' => $this->section_id ?: null,
             'gender' => strtolower($this->gender),
             'sports' => !empty($this->sports) ? implode(',', $this->sports) : null,
             'extra_curriculars' => !empty($this->extra_curriculars) ? implode(',', $this->extra_curriculars) : null,
@@ -1058,6 +1103,12 @@ class StudentManager extends Component
                 session()->flash('message', 'Student added successfully.');
             }
 
+            if ($student->primaryGuardian) {
+                $student->primaryGuardian->update([
+                    'whatsapp_opt_in' => (bool) $this->guardian_whatsapp_opt_in,
+                ]);
+            }
+
             // Determine status for enrollment records
             $defaultStatus = $this->isEditing ? ($student->status ?? 'active') : 'active';
 
@@ -1075,6 +1126,8 @@ class StudentManager extends Component
                     ],
                     [
                         'class_id' => $this->class_id,
+                        'section_id' => $this->section_id ?: null,
+                        'program_id' => $this->program_id,
                         'roll_number' => $this->roll_no,
                         'status' => $existingReg ? $existingReg->status : $defaultStatus,
                     ]
@@ -1101,6 +1154,8 @@ class StudentManager extends Component
                         ],
                         [
                             'class_id' => $this->singleStudentClasses['morning'],
+                            'section_id' => $this->section_id ?: null,
+                            'program_id' => $this->program_id,
                             'roll_number' => $this->roll_no,
                             'status' => $existingMorn ? $existingMorn->status : $defaultStatus,
                         ]
@@ -1126,6 +1181,8 @@ class StudentManager extends Component
                         ],
                         [
                             'class_id' => $this->singleStudentClasses['evening'],
+                            'section_id' => $this->section_id ?: null,
+                            'program_id' => $this->program_id,
                             'roll_number' => $this->roll_no,
                             'status' => $existingEve ? $existingEve->status : $defaultStatus,
                         ]
@@ -1166,6 +1223,8 @@ class StudentManager extends Component
                         ],
                         [
                             'class_id' => $morningClassId,
+                            'section_id' => $this->section_id ?: null,
+                            'program_id' => $this->program_id,
                             'roll_number' => $morningRoll,
                             'status' => $oldMorning ? $oldMorning->status : $defaultStatus,
                         ]
@@ -1179,14 +1238,14 @@ class StudentManager extends Component
                         ],
                         [
                             'class_id' => $eveningClassId,
+                            'section_id' => $this->section_id ?: null,
+                            'program_id' => $this->program_id,
                             'roll_number' => $eveningRoll,
                             'status' => $oldEvening ? $oldEvening->status : $defaultStatus,
                         ]
                     );
                 }
             }
-
-            $student->subjects()->sync($this->studentSubjects);
         });
 
         $this->showModal = false;
@@ -1194,7 +1253,8 @@ class StudentManager extends Component
         $this->isActiveStudentDuplicate = false;
         $this->activeStudentDetails = [];
         $this->existingStudentMessage = '';
-        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'studentSubjects', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'singleStudentClasses', 'isExistingStudentRecord', 'isActiveStudentDuplicate', 'activeStudentDetails', 'existingStudentMessage']);
+        $this->reset(['name', 'roll_no', 'auto_roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'sibling_concession_status', 'custom_concession_amount', 'detectedSiblings', 'detectedAlumni', 'isReadmission', 'readmitStudentId', 'phone', 'email', 'isEditing', 'sports', 'extra_curriculars', 'transport_mode', 'vehicle_number', 'dob', 'admission_date', 'photo', 'address', 'program_id', 'gender', 'newSportName', 'newActivityName', 'editingOptionId', 'editingOptionName', 'status', 'singleStudentClasses', 'isExistingStudentRecord', 'isActiveStudentDuplicate', 'activeStudentDetails', 'existingStudentMessage']);
+        $this->guardian_whatsapp_opt_in = true;
 
         if ($this->onlyModal) {
             return redirect(request()->header('Referer'));
@@ -1544,79 +1604,90 @@ class StudentManager extends Component
         $this->historyPortfolio = null;
     }
 
-    public function getBulkSubjectsProperty()
+    public function resolveProgramForClass($classId)
     {
-        if (!$this->selectedClassId) {
-            return collect();
-        }
-
-        $dividedSubjectIds = DB::table('timetables')
-            ->where('class_id', $this->selectedClassId)
-            ->where('is_divided', true)
-            ->pluck('subject_id')
-            ->unique()
-            ->toArray();
-
-        if (empty($dividedSubjectIds)) {
-            return collect();
-        }
-
-        // Join with subject_allocations to get the assigned teacher name
-        return DB::table('subjects')
-            ->leftJoin('subject_allocations', function ($join) {
-                $join->on('subjects.id', '=', 'subject_allocations.subject_id')
-                     ->where('subject_allocations.class_id', '=', $this->selectedClassId);
-            })
-            ->leftJoin('users', 'subject_allocations.user_id', '=', 'users.id')
-            ->whereIn('subjects.id', $dividedSubjectIds)
-            ->select('subjects.id', 'subjects.name', 'users.name as teacher_name')
-            ->get();
-    }
-
-    public function assignStudentSubject(int $studentId, ?int $subjectId)
-    {
-        if (!$subjectId) {
-            // Remove any existing divided-subject assignment for this student in this class
-            $dividedSubjectIds = DB::table('timetables')
-                ->where('class_id', $this->selectedClassId)
-                ->where('is_divided', true)
-                ->pluck('subject_id')
-                ->unique()
-                ->toArray();
-
-            DB::table('student_subject')
-                ->where('student_id', $studentId)
-                ->whereIn('subject_id', $dividedSubjectIds)
-                ->delete();
+        if (!$classId) {
+            $this->program_id = null;
             return;
         }
 
-        // Remove old divided-subject assignment for this student in this class
-        $dividedSubjectIds = DB::table('timetables')
-            ->where('class_id', $this->selectedClassId)
-            ->where('is_divided', true)
-            ->pluck('subject_id')
-            ->unique()
-            ->toArray();
+        $class = Classes::withoutGlobalScopes()->with('programs')->find($classId);
+        if (!$class) {
+            $this->program_id = null;
+            return;
+        }
 
-        DB::table('student_subject')
-            ->where('student_id', $studentId)
-            ->whereIn('subject_id', $dividedSubjectIds)
-            ->delete();
+        $programs = $class->programs;
 
-        // Insert the new assignment
-        DB::table('student_subject')->insert([
-            'student_id' => $studentId,
-            'subject_id' => $subjectId,
-        ]);
-
-        session()->flash('message', 'Elective subject assigned.');
+        if ($programs->count() === 1) {
+            $this->program_id = $programs->first()->id;
+        } elseif ($programs->isNotEmpty() && (empty($this->program_id) || !$programs->contains('id', $this->program_id))) {
+            $defaultProg = $programs->firstWhere('pivot.is_default', true) ?? $programs->first();
+            $this->program_id = $defaultProg->id;
+        } elseif ($programs->isEmpty()) {
+            $midGen = \App\Models\Program::where('code', 'MID-GEN')->first();
+            if ($midGen) {
+                $this->program_id = $midGen->id;
+            }
+        }
     }
 
-    public function bulkAssignSubject()
+    public function getSelectedClassProgramsProperty()
+    {
+        if (!$this->class_id) {
+            return collect();
+        }
+
+        $class = Classes::withoutGlobalScopes()->with('programs.subjects')->find($this->class_id);
+        if (!$class || $class->programs->isEmpty()) {
+            return \App\Models\Program::active()->with('subjects')->get();
+        }
+
+        return $class->programs;
+    }
+
+    public function getCurrentSelectedProgramProperty()
+    {
+        if (!$this->program_id) {
+            return null;
+        }
+
+        return \App\Models\Program::with('subjects')->find($this->program_id);
+    }
+
+    public function getAvailableProgramsProperty()
+    {
+        if ($this->selectedClassId) {
+            $class = Classes::withoutGlobalScopes()->with('programs')->find($this->selectedClassId);
+            if ($class && $class->programs->isNotEmpty()) {
+                return $class->programs;
+            }
+        }
+
+        return \App\Models\Program::active()->get();
+    }
+
+    public function assignStudentProgram(int $studentId, ?int $programId)
+    {
+        if (!$programId) {
+            return;
+        }
+
+        DB::table('enrollments')
+            ->where('student_id', $studentId)
+            ->where('academic_session_id', $this->selectedSessionId)
+            ->update([
+                'program_id' => $programId,
+                'updated_at' => now(),
+            ]);
+
+        session()->flash('message', 'Academic program updated.');
+    }
+
+    public function bulkAssignProgram()
     {
         $this->validate([
-            'bulkSubjectId' => 'required|exists:subjects,id',
+            'bulkProgramId' => 'required|exists:programs,id',
         ]);
 
         if (empty($this->selectedStudentIds)) {
@@ -1624,37 +1695,19 @@ class StudentManager extends Component
         }
 
         DB::transaction(function() {
-            foreach ($this->selectedStudentIds as $studentId) {
-                DB::table('student_subject')->updateOrInsert([
-                    'student_id' => $studentId,
-                    'subject_id' => $this->bulkSubjectId,
+            DB::table('enrollments')
+                ->whereIn('student_id', $this->selectedStudentIds)
+                ->where('academic_session_id', $this->selectedSessionId)
+                ->update([
+                    'program_id' => $this->bulkProgramId,
+                    'updated_at' => now(),
                 ]);
-            }
         });
 
         $this->selectedStudentIds = [];
-        $this->bulkSubjectId = '';
-        session()->flash('message', 'Elective subject assigned successfully.');
-    }
-
-    public function bulkUnassignSubject()
-    {
-        $this->validate([
-            'bulkSubjectId' => 'required|exists:subjects,id',
-        ]);
-
-        if (empty($this->selectedStudentIds)) {
-            return;
-        }
-
-        DB::table('student_subject')
-            ->whereIn('student_id', $this->selectedStudentIds)
-            ->where('subject_id', $this->bulkSubjectId)
-            ->delete();
-
-        $this->selectedStudentIds = [];
-        $this->bulkSubjectId = '';
-        session()->flash('message', 'Elective subject unassigned successfully.');
+        $this->selectAll = false;
+        $this->bulkProgramId = '';
+        session()->flash('message', 'Academic program assigned to selected students.');
     }
 
     public function bulkUpdateStatus()
@@ -2023,11 +2076,16 @@ class StudentManager extends Component
                     DB::raw('COALESCE(enrollments.shift_type, "morning") as shift_type')
                 )
                 ->when($this->search, function ($q) {
-                    $q->where(function ($subQuery) {
+                    $searchHash = \App\Models\Student::hashBlindIndex($this->search);
+                    $q->where(function ($subQuery) use ($searchHash) {
                         $subQuery->where('students.name', 'like', '%' . $this->search . '%')
-                          ->orWhere('students.admission_no', 'like', '%' . $this->search . '%')
-                          ->orWhere('students.father_cnic', 'like', '%' . $this->search . '%')
-                          ->orWhere('students.guardian_cnic', 'like', '%' . $this->search . '%');
+                          ->orWhere('students.admission_no', 'like', '%' . $this->search . '%');
+                        if ($searchHash) {
+                            $subQuery->orWhere('students.father_cnic_hash', $searchHash)
+                              ->orWhere('students.guardian_cnic_hash', $searchHash)
+                              ->orWhere('students.b_form_hash', $searchHash)
+                              ->orWhere('students.phone_hash', $searchHash);
+                        }
                     });
                 })
                 ->when($this->selectedClassId, function($q) {
@@ -2049,7 +2107,16 @@ class StudentManager extends Component
             $studentsQuery = Student::query()
                 ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
                 ->join('classes', 'enrollments.class_id', '=', 'classes.id')
-                ->select('students.*', 'classes.name as class_name', 'enrollments.roll_number as roll_no', 'enrollments.shift_type')
+                ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id')
+                ->select(
+                    'students.*',
+                    'classes.name as class_name',
+                    'enrollments.roll_number as roll_no',
+                    'enrollments.shift_type',
+                    'enrollments.program_id',
+                    'programs.name as program_name',
+                    'programs.code as program_code'
+                )
                 ->where('enrollments.academic_session_id', $this->selectedSessionId)
                 ->when($shiftType !== 'both', function($q) use ($shiftType) {
                     $q->where('enrollments.shift_type', $shiftType);
@@ -2058,12 +2125,17 @@ class StudentManager extends Component
                     $q->where('enrollments.class_id', $this->selectedClassId);
                 })
                 ->when($this->search, function ($q) {
-                    $q->where(function ($subQuery) {
+                    $searchHash = \App\Models\Student::hashBlindIndex($this->search);
+                    $q->where(function ($subQuery) use ($searchHash) {
                         $subQuery->where('students.name', 'like', '%' . $this->search . '%')
                           ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
-                          ->orWhere('students.admission_no', 'like', '%' . $this->search . '%')
-                          ->orWhere('students.father_cnic', 'like', '%' . $this->search . '%')
-                          ->orWhere('students.guardian_cnic', 'like', '%' . $this->search . '%');
+                          ->orWhere('students.admission_no', 'like', '%' . $this->search . '%');
+                        if ($searchHash) {
+                            $subQuery->orWhere('students.father_cnic_hash', $searchHash)
+                              ->orWhere('students.guardian_cnic_hash', $searchHash)
+                              ->orWhere('students.b_form_hash', $searchHash)
+                              ->orWhere('students.phone_hash', $searchHash);
+                        }
                     });
                 })
                 ->when($this->filterSport, function($q) {
@@ -2119,27 +2191,12 @@ class StudentManager extends Component
         $sportsOptions = \App\Models\DefinedOption::sports()->get();
         $activityOptions = \App\Models\DefinedOption::activities()->get();
 
-        // Build per-student elective subject map for inline dropdown (divided classes only)
-        $studentElectiveMap = [];
-        if ($this->selectedClassId && $this->bulkSubjects->isNotEmpty()) {
-            $dividedSubjectIds = $this->bulkSubjects->pluck('id')->toArray();
-            $studentIds = $students->pluck('id')->toArray();
-            $rows = DB::table('student_subject')
-                ->whereIn('student_id', $studentIds)
-                ->whereIn('subject_id', $dividedSubjectIds)
-                ->select('student_id', 'subject_id')
-                ->get();
-            foreach ($rows as $row) {
-                $studentElectiveMap[$row->student_id] = $row->subject_id;
-            }
-        }
-
         return view('livewire.admin.student-manager', [
             'students' => $students,
             'classes' => $viewClasses,
             'sportsOptions' => $sportsOptions,
             'activityOptions' => $activityOptions,
-            'studentElectiveMap' => $studentElectiveMap,
+            'availablePrograms' => $this->availablePrograms,
         ])->layout($layout, ['title' => 'Student Management']);
     }
 }

@@ -131,6 +131,21 @@
             opacity: 0.8;
             border-radius: 8px;
         }
+        .stamp-void {
+            position: absolute;
+            top: 280px;
+            left: 20%;
+            border: 6px solid #dc2626;
+            color: #dc2626;
+            font-size: 38px;
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 15px 35px;
+            transform: rotate(-22deg);
+            opacity: 0.7;
+            border-radius: 12px;
+            letter-spacing: 2px;
+        }
     </style>
 </head>
 <body>
@@ -153,7 +168,11 @@
         </tr>
     </table>
 
-    <div class="stamp">RECEIVED</div>
+    @if($payment->is_void)
+        <div class="stamp-void">VOID / CANCELLED</div>
+    @else
+        <div class="stamp">RECEIVED</div>
+    @endif
 
     <table class="info-grid">
         <tr>
@@ -167,13 +186,25 @@
                 </div>
             </td>
             <td>
-                <div class="box" style="background-color: #f8fafc; border-color: #e2e8f0;">
-                    <h2 class="receipt-title">RECEIPT</h2>
-                    <p style="margin: 4px 0 0 0; color: #64748b;">#REC-{{ str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}</p>
-                    <p style="margin: 4px 0 0 0; color: #64748b;">Payment Date: {{ $payment->payment_date->format('d M, Y') }}</p>
+                <div class="box" style="background-color: {{ $payment->is_void ? '#fef2f2' : '#f8fafc' }}; border-color: {{ $payment->is_void ? '#fca5a5' : '#e2e8f0' }};">
+                    <h2 class="receipt-title" style="color: {{ $payment->is_void ? '#dc2626' : '#059669' }};">
+                        {{ $payment->is_void ? 'VOIDED RECEIPT' : 'RECEIPT' }}
+                    </h2>
+                    <p style="margin: 4px 0 0 0; font-family: monospace; font-weight: bold; color: {{ $payment->is_void ? '#b91c1c' : '#2563eb' }}; font-size: 13px;">
+                        {{ $payment->receipt_number ?? '#REC-' . str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}
+                    </p>
+                    <p style="margin: 4px 0 0 0; color: #64748b;">Payment Date: {{ $payment->payment_date ? $payment->payment_date->format('d M, Y') : 'N/A' }}</p>
                     <p><strong>Payment Method:</strong> {{ strtoupper($payment->payment_method) }}</p>
                     @if($payment->notes)
                         <p><strong>Reference:</strong> {{ $payment->notes }}</p>
+                    @endif
+                    @if($payment->is_void)
+                        <div style="margin-top: 8px; padding: 6px 8px; background: #fee2e2; border: 1px solid #f87171; border-radius: 4px; font-size: 11px;">
+                            <strong style="color: #991b1b;">CANCELLED:</strong> {{ $payment->void_reason }}
+                            <div style="color: #7f1d1d; font-size: 10px; margin-top: 2px;">
+                                Authorized at {{ $payment->voided_at ? $payment->voided_at->format('d M, Y H:i') : '' }}
+                            </div>
+                        </div>
                     @endif
                 </div>
             </td>

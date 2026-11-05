@@ -126,7 +126,7 @@ class AttendanceReport extends Component
                 ->where('enrollments.class_id', $this->selectedClass)
                 ->where('enrollments.academic_session_id', $activeSessionId)
                 ->where('enrollments.shift_type', $shiftType)
-                ->select('students.*', 'enrollments.roll_number as roll_no', 'enrollments.status');
+                ->select('students.*', 'enrollments.id as enrollment_id', 'enrollments.roll_number as roll_no', 'enrollments.status');
 
             if ($this->filterStatus === 'active') {
                 $studentsQuery->whereNull('students.deleted_at')->where('enrollments.status', 'active');
@@ -153,11 +153,10 @@ class AttendanceReport extends Component
             }
 
             // 2. Fetch Attendance Records for the month
-
-            $studentIds = $students->pluck('id')->toArray();
+            $enrollmentIds = $students->pluck('enrollment_id')->toArray();
 
             $records = DB::table('attendances')
-                ->whereIn('student_id', $studentIds)
+                ->whereIn('enrollment_id', $enrollmentIds)
                 ->whereBetween('date', [$startOfMonth, $endOfMonth])
                 ->get();
 
@@ -198,7 +197,7 @@ class AttendanceReport extends Component
 
             $this->reportData = $students->map(function ($student) use ($records, $totalTeachingDays) {
                 // Filter records for this student
-                $studentRecords = $records->where('student_id', $student->id);
+                $studentRecords = $records->where('enrollment_id', $student->enrollment_id);
                 
                 $present = $studentRecords->where('status', 'P')->count();
                 $absent = $studentRecords->where('status', 'A')->count();

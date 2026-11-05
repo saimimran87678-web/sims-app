@@ -336,4 +336,82 @@
         </div>
     @endteleport
     @endif
+
+    {{-- Post-Payment Receipt Success Modal --}}
+    @if($showReceiptModal && $lastReceipt)
+    @teleport('body')
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm" x-data x-trap="true">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-150 dark:border-gray-700 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div class="p-6 text-center">
+                    {{-- Success Checkmark --}}
+                    <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center mb-4 shadow-inner">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+
+                    <h3 class="text-xl font-black text-gray-900 dark:text-white">Payment Confirmed!</h3>
+                    <p class="text-xs text-gray-500 mt-1">Institutional receipt issued & ledger synchronized</p>
+
+                    {{-- Receipt Summary Card --}}
+                    <div class="my-5 p-4 rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-150 dark:border-gray-700 text-left space-y-2 text-xs">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Receipt Number</span>
+                            <span class="font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">{{ $lastReceipt->receipt_number }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Amount Received</span>
+                            <span class="font-black text-emerald-600 dark:text-emerald-400 text-sm">Rs. {{ number_format($lastReceipt->amount_paid, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Student</span>
+                            <span class="font-bold text-gray-800 dark:text-gray-200">{{ $lastReceipt->student?->name }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Payment Method</span>
+                            <span class="font-bold text-gray-700 dark:text-gray-300 uppercase">{{ $lastReceipt->payment_method }}</span>
+                        </div>
+                    </div>
+
+                    {{-- Quick Action Buttons --}}
+                    <div class="space-y-2.5">
+                        <a 
+                            href="{{ route('admin.fee.receipt.download', $lastReceipt->id) }}" 
+                            target="_blank"
+                            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            <span>Print / Download Receipt PDF</span>
+                        </a>
+
+                        @if($lastReceipt->record?->access_token)
+                            <button 
+                                type="button"
+                                onclick="navigator.clipboard.writeText('{{ url('/public/fee-challan/' . $lastReceipt->record->access_token) }}'); alert('Cryptographic Parent Receipt Link copied to clipboard!');"
+                                class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 font-bold text-xs border border-indigo-200/60 dark:border-indigo-800 transition-colors"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                                <span>Copy Cryptographic Parent Link</span>
+                            </button>
+                        @endif
+
+                        <a 
+                            href="{{ route('admin.fee.ledger', $lastReceipt->student_id) }}" 
+                            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-colors"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span>Open Universal Fee Ledger</span>
+                        </a>
+
+                        <button 
+                            type="button" 
+                            wire:click="closeReceiptModal" 
+                            class="w-full px-4 py-2 rounded-xl text-gray-400 hover:text-gray-600 text-xs font-semibold transition-colors mt-2"
+                        >
+                            Done / Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endteleport
+    @endif
 </div>

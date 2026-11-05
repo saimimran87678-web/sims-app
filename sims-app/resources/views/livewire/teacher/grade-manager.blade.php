@@ -163,42 +163,26 @@
                             />
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            {{-- Calculate percentage --}}
                             @php
                                 $mark = $grades[$student->id] ?? null;
-                                $pct = null;
-                                if (!$isAbsent && $mark !== '' && $mark !== null && $maxMarks > 0) {
-                                    $pct = round(((float)$mark / $maxMarks) * 100, 1);
-                                }
+                                $rawScore = ($isAbsent || $mark === '' || $mark === null) ? null : (float)$mark;
+                                $eval = app(\App\Services\GradeCalculationService::class)->calculateFromMark(
+                                    $rawScore,
+                                    (float)$maxMarks,
+                                    (bool)$isAbsent,
+                                    $selectedSessionId ?? null
+                                );
                             @endphp
-                            @if($isAbsent)
-                                <span class="text-red-500 font-medium">A</span>
-                            @elseif($pct !== null)
-                                <span class="font-medium">{{ $pct }}%</span>
+                            @if($eval['status'] === 'absent')
+                                <span class="text-rose-600 font-semibold">ABS</span>
+                            @elseif($eval['status'] === 'scored')
+                                <span class="font-medium">{{ $eval['percentage'] }}%</span>
                             @else
                                 <span class="text-gray-400">-</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                            {{-- Auto-calculate grade using per-subject passing marks --}}
-                            @php
-                                $grade = '-';
-                                $color = 'text-gray-400';
-                                
-                                if ($isAbsent) {
-                                    $grade = 'A';
-                                    $color = 'text-red-500';
-                                } elseif ($pct !== null) {
-                                    // Grade based on percentage with passing threshold
-                                    if ($pct >= 90) { $grade = 'A+'; $color = 'text-green-600'; }
-                                    elseif ($pct >= 80) { $grade = 'A'; $color = 'text-green-500'; }
-                                    elseif ($pct >= 70) { $grade = 'B+'; $color = 'text-blue-600'; }
-                                    elseif ($pct >= 60) { $grade = 'B'; $color = 'text-blue-500'; }
-                                    elseif ((float)$mark >= $passingScore) { $grade = 'C'; $color = 'text-yellow-600'; }
-                                    else { $grade = 'F'; $color = 'text-red-500'; }
-                                }
-                            @endphp
-                            <span class="{{ $color }}">{{ $grade }}</span>
+                            <span class="{{ $eval['color'] }}">{{ $eval['grade'] }}</span>
                         </td>
                     </tr>
                     @endforeach

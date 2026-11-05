@@ -20,6 +20,17 @@ class ActivityLogger
         'secret',
         'api_key',
         'app_key',
+        'father_cnic',
+        'guardian_cnic',
+        'cnic',
+        'b_form_number',
+        'phone',
+        'address',
+        'father_cnic_hash',
+        'guardian_cnic_hash',
+        'cnic_hash',
+        'b_form_hash',
+        'phone_hash',
     ];
 
     /**

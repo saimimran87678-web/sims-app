@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Classes;
 use App\Models\Section;
+use App\Models\Guardian;
 
 use App\Traits\LogsActivity;
 
@@ -25,6 +26,7 @@ class Student extends Model
     
     public $tempClassId;
     public $tempRollNo;
+    public $tempSectionId;
 
     protected $fillable = [
         'name',
@@ -32,7 +34,6 @@ class Student extends Model
         'admission_no',
         'b_form_number',
         'class_id',
-        'section_id',
         'father_name',
         'phone',
         'email',
@@ -54,7 +55,24 @@ class Student extends Model
         'is_guardian_primary',
         'sibling_concession_status',
         'custom_concession_amount',
+        'rfid_tag',
+        'card_issued_at',
+        'card_status',
+        'father_cnic_hash',
+        'guardian_cnic_hash',
+        'b_form_hash',
+        'phone_hash',
     ];
+
+    public static function hashBlindIndex(?string $value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+        $digits = preg_replace('/\D/', '', (string) $value);
+        $normalized = !empty($digits) ? $digits : strtolower(trim((string) $value));
+        return hash_hmac('sha256', $normalized, config('app.key'));
+    }
 
     public function setClassIdAttribute($value)
     {
@@ -66,16 +84,110 @@ class Student extends Model
         $this->tempRollNo = $value;
     }
 
+    public function setSectionIdAttribute($value)
+    {
+        $this->tempSectionId = $value;
+    }
+
     protected $casts = [
         'dob' => 'date',
         'admission_date' => 'date',
         'original_admission_date' => 'date',
         'is_guardian_primary' => 'boolean',
         'custom_concession_amount' => 'decimal:2',
+        'card_issued_at' => 'datetime',
+        'father_cnic' => 'encrypted',
+        'guardian_cnic' => 'encrypted',
+        'b_form_number' => 'encrypted',
+        'phone' => 'encrypted',
+        'address' => 'encrypted',
     ];
 
     protected static function booted()
     {
+        static::saving(function ($student) {
+            if ($student->isDirty('father_cnic') || (empty($student->father_cnic_hash) && !empty($student->father_cnic))) {
+                $student->father_cnic_hash = self::hashBlindIndex($student->father_cnic);
+            }
+            if ($student->isDirty('guardian_cnic') || (empty($student->guardian_cnic_hash) && !empty($student->guardian_cnic))) {
+                $student->guardian_cnic_hash = self::hashBlindIndex($student->guardian_cnic);
+            }
+            if ($student->isDirty('b_form_number') || (empty($student->b_form_hash) && !empty($student->b_form_number))) {
+                $student->b_form_hash = self::hashBlindIndex($student->b_form_number);
+            }
+            if ($student->isDirty('phone') || (empty($student->phone_hash) && !empty($student->phone))) {
+                $student->phone_hash = self::hashBlindIndex($student->phone);
+            }
+        });
+
+        static::saved(function ($student) {
+            $hasFather = !empty($student->attributes['father_name'] ?? null) 
+                      || !empty($student->father_cnic) 
+                      || !empty($student->father_cnic_hash);
+            $hasGuardian = !empty($student->guardian_cnic) 
+                        || !empty($student->guardian_cnic_hash);
+            $hasPhone = !empty($student->phone);
+
+            if ($hasFather || $hasGuardian || $hasPhone) {
+                $cnic = $student->is_guardian_primary 
+                    ? ($student->guardian_cnic ?: $student->father_cnic)
+                    : ($student->father_cnic ?: $student->guardian_cnic);
+                $cnicHash = $student->is_guardian_primary 
+                    ? ($student->guardian_cnic_hash ?: $student->father_cnic_hash)
+                    : ($student->father_cnic_hash ?: $student->guardian_cnic_hash);
+                $name = ($student->attributes['father_name'] ?? null) ?: ($student->name ? 'Guardian of ' . $student->name : 'Guardian');
+                $relation = $student->guardian_relation ?: ($student->is_guardian_primary ? 'Guardian' : 'Father');
+
+                $guardian = null;
+                if (!empty($cnicHash)) {
+                    $guardian = Guardian::where('cnic_hash', $cnicHash)->first();
+                }
+
+                if (!$guardian) {
+                    $guardian = Guardian::create([
+                        'name' => $name,
+                        'cnic' => $cnic,
+                        'cnic_hash' => $cnicHash,
+                        'phone' => $student->phone,
+                        'phone_hash' => $student->phone_hash,
+                        'address' => $student->address,
+                        'whatsapp_opt_in' => true,
+                    ]);
+                } else {
+                    $dirty = false;
+                    if (!empty($student->phone) && empty($guardian->phone)) {
+                        $guardian->phone = $student->phone;
+                        $dirty = true;
+                    }
+                    if (!empty($student->address) && empty($guardian->address)) {
+                        $guardian->address = $student->address;
+                        $dirty = true;
+                    }
+                    if ($dirty) {
+                        $guardian->save();
+                    }
+                }
+
+                $exists = \Illuminate\Support\Facades\DB::table('student_guardian')
+                    ->where('student_id', $student->id)
+                    ->where('guardian_id', $guardian->id)
+                    ->exists();
+
+                if (!$exists) {
+                    \Illuminate\Support\Facades\DB::table('student_guardian')->insert([
+                        'student_id' => $student->id,
+                        'guardian_id' => $guardian->id,
+                        'relation' => $relation,
+                        'is_primary' => true,
+                        'is_emergency' => true,
+                        'can_pickup' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        });
+
         static::deleting(function ($student) {
             if ($student->isForceDeleting()) {
                 $hasFinancial = $student->feeRecords()->exists() 
@@ -93,9 +205,10 @@ class Student extends Model
         });
 
         static::created(function ($student) {
-            $classId = $student->tempClassId ?? request('class_id') ?? null;
-            $rollNo = $student->tempRollNo ?? request('roll_no') ?? null;
-            $status = request('status') ?? $student->attributes['status'] ?? 'active';
+            $classId = $student->tempClassId ?? null;
+            $rollNo = $student->tempRollNo ?? null;
+            $sectionId = $student->tempSectionId ?? null;
+            $status = $student->attributes['status'] ?? 'active';
 
             if ($classId) {
                 $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
@@ -115,6 +228,7 @@ class Student extends Model
                     ],
                     [
                         'class_id' => $classId,
+                        'section_id' => $sectionId,
                         'roll_number' => $rollNo,
                         'status' => $status,
                     ]
@@ -147,7 +261,32 @@ class Student extends Model
 
     public function section()
     {
-        return $this->belongsTo(Section::class);
+        return $this->hasOneThrough(
+            Section::class,
+            Enrollment::class,
+            'student_id', // Foreign key on enrollments table...
+            'id',         // Foreign key on sections table...
+            'id',         // Local key on students table...
+            'section_id'  // Local key on enrollments table...
+        )->where('enrollments.academic_session_id', \App\Models\AcademicSession::getActiveSessionId());
+    }
+
+    public function getSectionIdAttribute()
+    {
+        if (array_key_exists('section_id', $this->attributes)) {
+            return $this->attributes['section_id'];
+        }
+
+        $cachedSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        $sessionObj = \App\Models\AcademicSession::find($cachedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
+
+        return $this->enrollments()
+            ->where('academic_session_id', $cachedSessionId)
+            ->where('shift_type', $cachedShiftType)
+            ->value('section_id');
     }
 
     public function getRollNoAttribute()
@@ -186,6 +325,11 @@ class Student extends Model
             ->value('class_id');
     }
 
+    public function getPhotoUrlAttribute(): string
+    {
+        return route('student.photo', $this->id);
+    }
+
     public function subjects()
     {
         return $this->belongsToMany(Subject::class, 'student_subject', 'student_id', 'subject_id');
@@ -201,6 +345,49 @@ class Student extends Model
         return $this->hasMany(FeePayment::class);
     }
 
+    public function guardians()
+    {
+        return $this->belongsToMany(Guardian::class, 'student_guardian')
+            ->withPivot(['id', 'relation', 'is_primary', 'is_emergency', 'can_pickup', 'concession_percentage'])
+            ->withTimestamps();
+    }
+
+    public function primaryGuardians()
+    {
+        return $this->guardians()->wherePivot('is_primary', true);
+    }
+
+    public function getPrimaryGuardianAttribute(): ?Guardian
+    {
+        if ($this->relationLoaded('guardians')) {
+            return $this->guardians->firstWhere('pivot.is_primary', true) ?? $this->guardians->first();
+        }
+        return $this->guardians()->wherePivot('is_primary', true)->first() ?? $this->guardians()->first();
+    }
+
+    public function getFatherNameAttribute($value): ?string
+    {
+        return !empty($value) ? $value : $this->primaryGuardian?->name;
+    }
+
+    public function getFatherCnicAttribute($value): ?string
+    {
+        $decrypted = $value ? $this->castAttribute('father_cnic', $value) : null;
+        return $decrypted ?: $this->primaryGuardian?->cnic;
+    }
+
+    public function getGuardianCnicAttribute($value): ?string
+    {
+        $decrypted = $value ? $this->castAttribute('guardian_cnic', $value) : null;
+        return $decrypted ?: $this->primaryGuardian?->cnic;
+    }
+
+    public function getPhoneAttribute($value): ?string
+    {
+        $decrypted = $value ? $this->castAttribute('phone', $value) : null;
+        return $decrypted ?: $this->primaryGuardian?->phone;
+    }
+
     /**
      * Resolves the primary family CNIC based on guardianship precedence.
      */
@@ -211,16 +398,38 @@ class Student extends Model
             : ($this->father_cnic ?: $this->guardian_cnic);
     }
 
+    public function getPrimaryFamilyCnicHashAttribute(): ?string
+    {
+        return $this->is_guardian_primary
+            ? ($this->guardian_cnic_hash ?: $this->father_cnic_hash)
+            : ($this->father_cnic_hash ?: $this->guardian_cnic_hash);
+    }
+
     /**
-     * Dynamic relationship: all other active siblings sharing the family CNIC.
+     * Sibling relationships: students sharing common guardians via normalized pivot table.
      */
     public function siblings()
     {
-        $cnic = $this->primary_family_cnic;
+        $guardianIds = \Illuminate\Support\Facades\DB::table('student_guardian')
+            ->where('student_id', $this->id)
+            ->pluck('guardian_id');
 
-        return $this->hasMany(Student::class, 'father_cnic', 'father_cnic')
+        if ($guardianIds->isNotEmpty()) {
+            return Student::whereHas('guardians', function ($q) use ($guardianIds) {
+                    $q->whereIn('guardians.id', $guardianIds);
+                })
+                ->where('students.id', '!=', $this->id)
+                ->where('students.status', 'active');
+        }
+
+        return $this->hasMany(Student::class, 'father_cnic_hash', 'father_cnic_hash')
             ->where('id', '!=', $this->id)
             ->where('status', 'active');
+    }
+
+    public function getSiblingsAttribute()
+    {
+        return $this->siblings()->get();
     }
 
     /**
@@ -228,19 +437,39 @@ class Student extends Model
      */
     public function getFamilyUnitAttribute()
     {
-        $cnic = $this->primary_family_cnic;
-        if (empty($cnic)) {
+        $guardianIds = \Illuminate\Support\Facades\DB::table('student_guardian')
+            ->where('student_id', $this->id)
+            ->pluck('guardian_id');
+
+        if ($guardianIds->isNotEmpty()) {
+            $members = Student::whereHas('guardians', function ($q) use ($guardianIds) {
+                    $q->whereIn('guardians.id', $guardianIds);
+                })
+                ->where('students.status', 'active')
+                ->orderBy('admission_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            if ($members->isNotEmpty()) {
+                return $members;
+            }
+        }
+
+        $hash = $this->primary_family_cnic_hash;
+        if (empty($hash)) {
             return collect([$this]);
         }
 
-        return Student::where(function ($query) use ($cnic) {
-                $query->where('father_cnic', $cnic)
-                      ->orWhere('guardian_cnic', $cnic);
+        $results = Student::where(function ($query) use ($hash) {
+                $query->where('father_cnic_hash', $hash)
+                      ->orWhere('guardian_cnic_hash', $hash);
             })
             ->where('status', 'active')
             ->orderBy('admission_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
+
+        return $results->isNotEmpty() ? $results : collect([$this]);
     }
 
     /**
@@ -285,5 +514,27 @@ class Student extends Model
     public function isDualShift($sessionId): bool
     {
         return $this->enrollments()->forSession($sessionId)->active()->count() > 1;
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class, 'student_id');
+    }
+
+    public function todayAttendance()
+    {
+        return $this->hasOne(Attendance::class, 'student_id')->where('date', now()->format('Y-m-d'));
+    }
+
+    public function scopeHasRfid($query)
+    {
+        return $query->whereNotNull('rfid_tag')->where('rfid_tag', '!=', '');
+    }
+
+    public function scopeWithoutRfid($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('rfid_tag')->orWhere('rfid_tag', '');
+        });
     }
 }

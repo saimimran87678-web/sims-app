@@ -15,7 +15,83 @@ class Subject extends Model
         return "Subject: {$this->name}" . ($this->code ? " ({$this->code})" : '');
     }
 
-    protected $fillable = ['class_id', 'name', 'code'];
+    protected $fillable = ['class_id', 'name', 'code', 'category', 'is_active'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeForClass($query, $classId)
+    {
+        if (!$classId) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        $hasClassPrograms = \Illuminate\Support\Facades\DB::table('class_programs')
+            ->where('class_id', $classId)
+            ->exists();
+
+        if ($hasClassPrograms) {
+            return $query->where(function ($q) use ($classId) {
+                $q->whereExists(function ($sub) use ($classId) {
+                    $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                        ->from('class_programs')
+                        ->join('program_subjects', 'class_programs.program_id', '=', 'program_subjects.program_id')
+                        ->where('class_programs.class_id', $classId)
+                        ->whereColumn('program_subjects.subject_id', 'subjects.id');
+                })->orWhere('subjects.class_id', $classId);
+            });
+        }
+
+        $hasLegacySubjects = \Illuminate\Support\Facades\DB::table('subjects')
+            ->where('class_id', $classId)
+            ->exists();
+
+        if ($hasLegacySubjects) {
+            return $query->where('class_id', $classId);
+        }
+
+        return $query->where('is_active', true);
+    }
+
+    public function scopeForClasses($query, array $classIds)
+    {
+        $classIds = array_filter(array_unique($classIds));
+        if (empty($classIds)) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        $hasAnyClassPrograms = \Illuminate\Support\Facades\DB::table('class_programs')
+            ->whereIn('class_id', $classIds)
+            ->exists();
+
+        if ($hasAnyClassPrograms) {
+            return $query->where(function ($q) use ($classIds) {
+                $q->whereExists(function ($sub) use ($classIds) {
+                    $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                        ->from('class_programs')
+                        ->join('program_subjects', 'class_programs.program_id', '=', 'program_subjects.program_id')
+                        ->whereIn('class_programs.class_id', $classIds)
+                        ->whereColumn('program_subjects.subject_id', 'subjects.id');
+                })->orWhereIn('subjects.class_id', $classIds);
+            });
+        }
+
+        $hasLegacySubjects = \Illuminate\Support\Facades\DB::table('subjects')
+            ->whereIn('class_id', $classIds)
+            ->exists();
+
+        if ($hasLegacySubjects) {
+            return $query->whereIn('class_id', $classIds);
+        }
+
+        return $query->where('is_active', true);
+    }
 
     protected $appends = ['abbreviation'];
 
@@ -67,5 +143,56 @@ class Subject extends Model
     public function feeStructures()
     {
         return $this->hasMany(FeeStructure::class);
+    }
+
+    /**
+     * Inspect all system tables for foreign records linked with this subject.
+     */
+    public function getLinkedRecordsBreakdown(): array
+    {
+        $safeCount = function (string $table, string $column = 'subject_id'): int {
+            if (!\Illuminate\Support\Facades\Schema::hasTable($table)) {
+                return 0;
+            }
+            return \Illuminate\Support\Facades\DB::table($table)->where($column, $this->id)->count();
+        };
+
+        $programs        = $safeCount('program_subjects');
+        $allocations     = $safeCount('subject_allocations');
+        $examMarks       = $safeCount('exam_marks');
+        $marksConfigs    = $safeCount('marks_configs');
+        $examSchedules   = $safeCount('exam_schedules');
+        $timetables      = $safeCount('timetables');
+        $substitutions   = $safeCount('substitutions');
+        $studentSubjects = $safeCount('student_subject');
+        $gradeLocks      = $safeCount('grade_locks');
+        $feeStructures   = $safeCount('fee_structures');
+
+        $total = $programs + $allocations + $examMarks + $marksConfigs + $examSchedules
+               + $timetables + $substitutions + $studentSubjects + $gradeLocks + $feeStructures;
+
+        return [
+            'total'            => $total,
+            'programs'         => $programs,
+            'allocations'      => $allocations,
+            'exam_marks'       => $examMarks,
+            'marks_configs'    => $marksConfigs,
+            'exam_schedules'   => $examSchedules,
+            'timetables'       => $timetables,
+            'substitutions'    => $substitutions,
+            'student_subjects' => $studentSubjects,
+            'grade_locks'      => $gradeLocks,
+            'fee_structures'   => $feeStructures,
+        ];
+    }
+
+    public function getLinkedRecordsCount(): int
+    {
+        return $this->getLinkedRecordsBreakdown()['total'];
+    }
+
+    public function canBeDeleted(): bool
+    {
+        return $this->getLinkedRecordsCount() === 0;
     }
 }

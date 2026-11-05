@@ -492,14 +492,21 @@
                                             </td>
                                             <td class="px-4 sm:px-6 py-3.5 sm:py-4">
                                                 <div class="flex flex-col">
-                                                    <span class="text-sm font-semibold text-gray-900 dark:text-white">REC-{{ str_pad($receipt->id, 5, '0', STR_PAD_LEFT) }}</span>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $receipt->payment_date->format('d M, Y') }}</span>
+                                                    <span class="text-sm font-semibold text-gray-900 dark:text-white font-mono">{{ $receipt->receipt_number ?? ('REC-' . str_pad($receipt->id, 5, '0', STR_PAD_LEFT)) }}</span>
+                                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $receipt->payment_date ? $receipt->payment_date->format('d M, Y') : 'N/A' }}</span>
+                                                        @if($receipt->is_void)
+                                                            <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">VOIDED</span>
+                                                        @elseif($receipt->void_status === 'pending')
+                                                            <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-orange-100 text-orange-800 animate-pulse">PENDING VOID</span>
+                                                        @endif
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
                                                 <span class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs font-bold uppercase">{{ $receipt->payment_method }}</span>
                                             </td>
-                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-sm text-emerald-600 dark:text-emerald-400 font-extrabold">
+                                            <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-sm {{ $receipt->is_void ? 'text-gray-400 line-through' : 'text-emerald-600 dark:text-emerald-400' }} font-extrabold">
                                                 Rs. {{ number_format($receipt->amount_paid, 2) }}
                                             </td>
                                             <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-xs truncate">
@@ -507,6 +514,9 @@
                                             </td>
                                             <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-right font-medium">
                                                 <div class="flex justify-end items-center gap-2">
+                                                    <a href="{{ route('admin.fee.student-ledger', $receipt->student_id) }}" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 text-xs font-bold rounded-lg transition-colors" title="View in Universal Ledger">
+                                                        Ledger
+                                                    </a>
                                                     <a href="{{ route('admin.fee.receipt.download', $receipt->id) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/45 dark:text-blue-400 text-xs font-bold rounded-lg transition-colors">
                                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                                         Print/PDF

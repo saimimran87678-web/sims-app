@@ -75,7 +75,7 @@ class SubjectAllocationManager extends Component
     public function loadSubjects()
     {
         if ($this->selectedClassId) {
-            $this->subjects = Subject::where('class_id', $this->selectedClassId)->get();
+            $this->subjects = Subject::forClass($this->selectedClassId)->get();
         } else {
             $this->subjects = [];
         }
@@ -137,31 +137,47 @@ class SubjectAllocationManager extends Component
                 
                 // Only include if it matches active shift context
                 if ($class && ($shiftType === 'both' || $class->shift_type === $shiftType)) {
-                    // Try to find subject ID by name in that class
-                    $subject = Subject::where('class_id', $userClassId)
+                    // Try to find subject ID by name in that class (canonical or class scope)
+                    $subject = Subject::forClass($userClassId)
                         ->where('name', $userClassSubject)
-                        ->first();
+                        ->first() ?? Subject::where('name', $userClassSubject)->first();
 
                     if ($class && $subject) {
-                        // Create a synthetic object matching query structure
-                        $inherent = new \stdClass();
-                        $inherent->id = null; // No allocation ID
-                        $inherent->class_id = $class->id;
-                        $inherent->subject_id = $subject->id;
-                        $inherent->class_name = $class->name;
-                        $inherent->class_shift = $class->shift_type;
-                        $inherent->subject_name = $userClassSubject;
-                        $inherent->is_inherent = true; // Flag for UI
-                        
-                        $key = $class->id . '-' . $subject->id;
-                        $inherent->is_locked = in_array($key, $locks);
-                        
-                        // Prepend or push
-                        $this->allocations->prepend($inherent);
+                        // Check if this class and subject is already in allocations (e.g. from timetable or manual allocation)
+                        $existingAllocation = $this->allocations->first(function ($item) use ($class, $subject, $userClassSubject) {
+                            return (int)$item->class_id === (int)$class->id 
+                                && ((int)$item->subject_id === (int)$subject->id || $item->subject_name === $userClassSubject);
+                        });
+
+                        if ($existingAllocation) {
+                            // Deduplicate: badge the existing allocation as Class Teacher
+                            $existingAllocation->is_inherent = true;
+                        } else {
+                            // Create a synthetic object matching query structure
+                            $inherent = new \stdClass();
+                            $inherent->id = null; // No allocation ID
+                            $inherent->class_id = $class->id;
+                            $inherent->subject_id = $subject->id;
+                            $inherent->class_name = $class->name;
+                            $inherent->class_shift = $class->shift_type;
+                            $inherent->subject_name = $userClassSubject;
+                            $inherent->is_inherent = true; // Flag for UI
+                            
+                            $key = $class->id . '-' . $subject->id;
+                            $inherent->is_locked = in_array($key, $locks);
+                            
+                            // Prepend
+                            $this->allocations->prepend($inherent);
+                        }
                     }
                 }
             }
         }
+
+        // Sort so Class Teacher assignment appears at the top
+        $this->allocations = $this->allocations->sortByDesc(function ($alloc) {
+            return !empty($alloc->is_inherent) ? 1 : 0;
+        })->values();
     }
 
     public function allocate()
@@ -187,6 +203,21 @@ class SubjectAllocationManager extends Component
         if ($exists) {
             session()->flash('error', 'This subject is already allocated to the user.');
             return;
+        }
+
+        // Check if already assigned as inherent Class Teacher subject
+        $user = User::find($this->selectedUserId);
+        $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
+        if ($user) {
+            $userClassId = $user->getSessionClassId($activeSessionId);
+            $userClassSubject = $user->getSessionClassSubject($activeSessionId);
+            if ((int)$userClassId === (int)$this->selectedClassId && !empty($userClassSubject)) {
+                $subject = Subject::find($this->selectedSubjectId);
+                if ($subject && $subject->name === $userClassSubject) {
+                    session()->flash('error', 'This subject is already assigned to this user as Class Teacher.');
+                    return;
+                }
+            }
         }
 
         DB::table('subject_allocations')->insert([

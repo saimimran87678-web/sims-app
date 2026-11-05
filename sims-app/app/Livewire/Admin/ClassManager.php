@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\Classes;
 use App\Models\Subject;
+use App\Models\Program;
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 
@@ -31,11 +32,15 @@ class ClassManager extends Component
     public $deletingStudentCount = 0;
     public $deletingTimetableCount = 0;
 
-    // Subject modal
+    // Subject & Program modal
     public $manageClassId = null;
     public $manageClassName = '';
     public $classSubjects = [];
     public $newSubjectName = '';
+    public $availablePrograms = [];
+    public $classAssignedProgramIds = [];
+    public $classDefaultProgramId = null;
+    public $modalActiveTab = 'programs';
 
     // Rename subject
     public $renamingSubjectId = null;
@@ -282,7 +287,8 @@ class ClassManager extends Component
                 return;
             }
 
-            // Hard-delete subjects too
+            // Clean up class program allowances and legacy subjects
+            DB::table('class_programs')->where('class_id', $id)->delete();
             DB::table('subjects')->where('class_id', $id)->delete();
             $class->forceDelete();
         }
@@ -301,12 +307,124 @@ class ClassManager extends Component
         $this->selectedSubjectIds = [];
         $this->copyTargetClassIds = [];
         $this->showCopyPanel = false;
+        $this->modalActiveTab = 'programs';
+
+        $this->availablePrograms = Program::active()->with('subjects')->get();
+        $assigned = DB::table('class_programs')->where('class_id', $classId)->get();
+        $this->classAssignedProgramIds = $assigned->pluck('program_id')->map(fn($id) => (int) $id)->toArray();
+        $defaultRow = $assigned->firstWhere('is_default', 1);
+        $this->classDefaultProgramId = $defaultRow ? (int) $defaultRow->program_id : ($this->classAssignedProgramIds[0] ?? null);
+
         $this->loadSubjects($classId);
+    }
+
+    public function toggleClassTrack($programId)
+    {
+        if (!$this->manageClassId) return;
+
+        $programId = (int) $programId;
+        $exists = DB::table('class_programs')
+            ->where('class_id', $this->manageClassId)
+            ->where('program_id', $programId)
+            ->exists();
+
+        if ($exists) {
+            DB::table('class_programs')
+                ->where('class_id', $this->manageClassId)
+                ->where('program_id', $programId)
+                ->delete();
+
+            $this->classAssignedProgramIds = array_diff($this->classAssignedProgramIds, [$programId]);
+
+            if ($this->classDefaultProgramId == $programId) {
+                $this->classDefaultProgramId = reset($this->classAssignedProgramIds) ?: null;
+                if ($this->classDefaultProgramId) {
+                    DB::table('class_programs')
+                        ->where('class_id', $this->manageClassId)
+                        ->where('program_id', $this->classDefaultProgramId)
+                        ->update(['is_default' => true]);
+                }
+            }
+        } else {
+            $isDefault = empty($this->classAssignedProgramIds);
+            DB::table('class_programs')->insert([
+                'class_id' => $this->manageClassId,
+                'program_id' => $programId,
+                'is_default' => $isDefault,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->classAssignedProgramIds[] = $programId;
+            if ($isDefault) {
+                $this->classDefaultProgramId = $programId;
+            }
+        }
+
+        $this->loadSubjects($this->manageClassId);
+    }
+
+    public function updatedClassAssignedProgramIds($newIds)
+    {
+        if (!$this->manageClassId) return;
+
+        $newIds = array_map('intval', (array) $newIds);
+        $currentIds = DB::table('class_programs')
+            ->where('class_id', $this->manageClassId)
+            ->pluck('program_id')
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+
+        // Removed
+        $toRemove = array_diff($currentIds, $newIds);
+        if (!empty($toRemove)) {
+            DB::table('class_programs')
+                ->where('class_id', $this->manageClassId)
+                ->whereIn('program_id', $toRemove)
+                ->delete();
+        }
+
+        // Added
+        $toAdd = array_diff($newIds, $currentIds);
+        foreach ($toAdd as $addId) {
+            DB::table('class_programs')->insert([
+                'class_id' => $this->manageClassId,
+                'program_id' => $addId,
+                'is_default' => empty($currentIds),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Fix default program if previous default was removed
+        if ($this->classDefaultProgramId && !in_array($this->classDefaultProgramId, $newIds)) {
+            $this->classDefaultProgramId = reset($newIds) ?: null;
+            if ($this->classDefaultProgramId) {
+                DB::table('class_programs')
+                    ->where('class_id', $this->manageClassId)
+                    ->where('program_id', $this->classDefaultProgramId)
+                    ->update(['is_default' => true]);
+            }
+        }
+
+        $this->classAssignedProgramIds = $newIds;
+        $this->loadSubjects($this->manageClassId);
+    }
+
+    public function setClassDefaultTrack($programId)
+    {
+        if (!$this->manageClassId) return;
+
+        $programId = (int) $programId;
+        DB::table('class_programs')->where('class_id', $this->manageClassId)->update(['is_default' => false]);
+        DB::table('class_programs')->where('class_id', $this->manageClassId)->where('program_id', $programId)->update(['is_default' => true]);
+        $this->classDefaultProgramId = $programId;
+        $this->loadSubjects($this->manageClassId);
     }
 
     public function loadSubjects($classId)
     {
-        $this->classSubjects = Subject::where('class_id', $classId)->get();
+        $this->classSubjects = Subject::forClass($classId)->get();
     }
 
     public function addSubject()
@@ -315,18 +433,42 @@ class ClassManager extends Component
 
         $this->validate(['newSubjectName' => 'required|string|max:255']);
 
-        // Generate a smarter code from initials
-        $words = explode(' ', trim($this->newSubjectName));
-        $code = strtoupper(implode('', array_map(fn($w) => substr($w, 0, 1), $words)));
-        if (strlen($code) < 2) {
-            $code = strtoupper(substr($this->newSubjectName, 0, 3));
-        }
+        $name = trim($this->newSubjectName);
+        $subject = Subject::firstOrCreate(
+            ['name' => $name],
+            [
+                'code' => Subject::formatAbbreviation($name),
+                'category' => 'General',
+                'class_id' => null,
+                'is_active' => true,
+            ]
+        );
 
-        Subject::create([
-            'class_id' => $this->manageClassId,
-            'name'     => $this->newSubjectName,
-            'code'     => $code,
-        ]);
+        $class = Classes::find($this->manageClassId);
+        if ($class && $class->programs()->exists()) {
+            foreach ($class->programs as $prog) {
+                if (!$prog->subjects()->where('subjects.id', $subject->id)->exists()) {
+                    $prog->subjects()->attach($subject->id, [
+                        'subject_type' => 'compulsory',
+                        'sort_order' => $prog->subjects()->count() + 1,
+                    ]);
+                }
+            }
+        } elseif ($class) {
+            $defaultProg = Program::firstOrCreate(
+                ['code' => 'GEN-' . $class->id],
+                ['name' => $class->name . ' General Program', 'category' => 'General', 'is_active' => true]
+            );
+            if (!$class->programs()->where('programs.id', $defaultProg->id)->exists()) {
+                $class->programs()->attach($defaultProg->id, ['is_default' => true]);
+            }
+            if (!$defaultProg->subjects()->where('subjects.id', $subject->id)->exists()) {
+                $defaultProg->subjects()->attach($subject->id, [
+                    'subject_type' => 'compulsory',
+                    'sort_order' => $defaultProg->subjects()->count() + 1,
+                ]);
+            }
+        }
 
         $this->newSubjectName = '';
         $this->loadSubjects($this->manageClassId);
@@ -369,7 +511,15 @@ class ClassManager extends Component
 
     public function deleteSubject($subjectId)
     {
-        Subject::where('id', $subjectId)->delete();
+        $class = Classes::find($this->manageClassId);
+        if ($class) {
+            foreach ($class->programs as $prog) {
+                $prog->subjects()->detach($subjectId);
+            }
+        }
+        // Remove legacy row only if specifically tied to this class
+        Subject::where('id', $subjectId)->where('class_id', $this->manageClassId)->delete();
+
         // Remove from selection if it was selected
         $this->selectedSubjectIds = array_diff($this->selectedSubjectIds, [$subjectId]);
         $this->loadSubjects($this->manageClassId);
@@ -396,17 +546,23 @@ class ClassManager extends Component
         foreach ($this->copyTargetClassIds as $targetClassId) {
             if ($targetClassId == $this->manageClassId) continue; // skip source class
 
-            foreach ($subjectsToCopy as $subject) {
-                // Check if subject with same name already exists in target class
-                $exists = Subject::where('class_id', $targetClassId)
-                    ->where('name', $subject->name)
-                    ->exists();
+            $targetClass = Classes::find($targetClassId);
+            if (!$targetClass) continue;
 
-                if (!$exists) {
-                    Subject::create([
-                        'class_id' => $targetClassId,
-                        'name'     => $subject->name,
-                        'code'     => $subject->code,
+            $targetProg = $targetClass->programs()->first();
+            if (!$targetProg) {
+                $targetProg = Program::firstOrCreate(
+                    ['code' => 'GEN-' . $targetClassId],
+                    ['name' => $targetClass->name . ' General Program', 'category' => 'General', 'is_active' => true]
+                );
+                $targetClass->programs()->attach($targetProg->id, ['is_default' => true]);
+            }
+
+            foreach ($subjectsToCopy as $subject) {
+                if (!$targetProg->subjects()->where('subjects.id', $subject->id)->exists()) {
+                    $targetProg->subjects()->attach($subject->id, [
+                        'subject_type' => 'compulsory',
+                        'sort_order' => $targetProg->subjects()->count() + 1,
                     ]);
                     $copiedCount++;
                 } else {
@@ -546,13 +702,12 @@ class ClassManager extends Component
                 $copiedCount++;
 
                 if ($this->importSubjects) {
-                    $sourceSubjects = Subject::where('class_id', $sc->id)->get();
-                    foreach ($sourceSubjects as $subj) {
-                        Subject::create([
-                            'class_id' => $newClass->id,
-                            'name'     => $subj->name,
-                            'code'     => $subj->code,
-                        ]);
+                    $programs = DB::table('class_programs')->where('class_id', $sc->id)->get();
+                    foreach ($programs as $prog) {
+                        DB::table('class_programs')->updateOrInsert(
+                            ['class_id' => $newClass->id, 'program_id' => $prog->program_id],
+                            ['is_default' => $prog->is_default, 'created_at' => now(), 'updated_at' => now()]
+                        );
                     }
                 }
             } else {
@@ -560,18 +715,12 @@ class ClassManager extends Component
                 $skippedCount++;
 
                 if ($this->importSubjects) {
-                    $sourceSubjects = Subject::where('class_id', $sc->id)->get();
-                    foreach ($sourceSubjects as $subj) {
-                        $exists = Subject::where('class_id', $existingClass->id)
-                            ->where('name', $subj->name)
-                            ->exists();
-                        if (!$exists) {
-                             Subject::create([
-                                 'class_id' => $existingClass->id,
-                                 'name'     => $subj->name,
-                                 'code'     => $subj->code,
-                             ]);
-                        }
+                    $programs = DB::table('class_programs')->where('class_id', $sc->id)->get();
+                    foreach ($programs as $prog) {
+                        DB::table('class_programs')->updateOrInsert(
+                            ['class_id' => $existingClass->id, 'program_id' => $prog->program_id],
+                            ['is_default' => $prog->is_default, 'created_at' => now(), 'updated_at' => now()]
+                        );
                     }
                 }
             }

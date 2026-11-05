@@ -537,6 +537,7 @@ class StudentLifecycleTest extends TestCase
 
         // Attach an attendance record so this student has audit history and triggers safe archival
         \Illuminate\Support\Facades\DB::table('attendances')->insert([
+            'enrollment_id' => $enrollment->id,
             'student_id' => $student->id,
             'date' => '2026-05-01',
             'status' => 'P',

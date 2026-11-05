@@ -33,8 +33,6 @@ class User extends Authenticatable
         'role',
         'email_verified_at',
         'is_active',
-        'class_id',
-        'class_subject',
     ];
 
     /**
@@ -60,14 +58,96 @@ class User extends Authenticatable
         ];
     }
 
+    protected static function booted()
+    {
+        static::saved(function ($user) {
+            $user->syncSpatieRoleFromRoleColumn();
+        });
+    }
+
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Automatically sync Spatie roles based on users.role column
+     */
+    public function syncSpatieRoleFromRoleColumn(): void
+    {
+        $role = strtolower($this->role ?? '');
+        if (!$role) return;
+
+        // If the user already has Super Admin, preserve it on admin updates
+        if ($this->hasRole('Super Admin') && ($role === 'admin' || $role === 'superadmin' || $role === 'super_admin')) {
+            return;
+        }
+
+        $roleMap = [
+            'admin' => \Spatie\Permission\Models\Role::where('name', 'Admin')->where('guard_name', 'web')->exists() ? 'Admin' : 'Super Admin',
+            'superadmin' => 'Super Admin',
+            'super_admin' => 'Super Admin',
+            'teacher' => 'Teacher',
+            'student' => 'Student',
+            'data_entry' => 'Data Entry',
+        ];
+
+        if (isset($roleMap[$role])) {
+            $targetRole = $roleMap[$role];
+            if (\Spatie\Permission\Models\Role::where('name', $targetRole)->where('guard_name', 'web')->exists()) {
+                $this->syncRoles([$targetRole]);
+            }
+        }
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return strtolower($this->role ?? '') === 'superadmin' 
+            || strtolower($this->role ?? '') === 'super_admin' 
+            || $this->hasRole('Super Admin');
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->isSuperAdmin() 
+            || strtolower($this->role ?? '') === 'admin' 
+            || $this->hasRole('Admin');
+    }
+
+    public function isTeacher(): bool
+    {
+        return strtolower($this->role ?? '') === 'teacher' || $this->hasRole('Teacher');
+    }
+
+    public function isStudent(): bool
+    {
+        return strtolower($this->role ?? '') === 'student' || $this->hasRole('Student');
+    }
+
+    /**
+     * Teacher's assigned class for the active session.
      */
     public function class()
     {
-        return $this->belongsTo(Classes::class, 'class_id');
+        return $this->hasOneThrough(
+            Classes::class,
+            SessionUser::class,
+            'user_id',
+            'id',
+            'id',
+            'class_id'
+        )->where('session_user.academic_session_id', AcademicSession::getActiveSessionId());
+    }
+
+    public function getClassAttribute()
+    {
+        $classId = $this->getSessionClassId();
+        return $classId ? Classes::withoutGlobalScope('active_session')->find($classId) : null;
+    }
+
+    public function getClassIdAttribute()
+    {
+        return $this->getSessionClassId();
+    }
+
+    public function getClassSubjectAttribute()
+    {
+        return $this->getSessionClassSubject();
     }
 
     /**

@@ -357,7 +357,6 @@ class ScheduleShiftScopingTest extends TestCase
             'day' => 'Monday',
             'period_no' => 1,
             'is_divided' => false,
-            'is_substitute' => false,
         ]);
 
         // Morning Shift
