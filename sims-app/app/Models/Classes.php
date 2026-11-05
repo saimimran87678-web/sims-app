@@ -18,7 +18,7 @@ class Classes extends Model
 
     protected $table = 'classes';
     
-    protected $fillable = ['name', 'numeric_value', 'academic_session_id', 'next_class_id', 'shift_type', 'is_active'];
+    protected $fillable = ['name', 'numeric_value', 'academic_session_id', 'archived_academic_session_id', 'next_class_id', 'shift_type', 'is_active'];
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -28,6 +28,10 @@ class Classes extends Model
     protected static function booted()
     {
         static::creating(function ($class) {
+            if (empty($class->academic_session_id)) {
+                $class->academic_session_id = \App\Models\AcademicSession::getActiveSessionId();
+            }
+
             if (empty($class->shift_type)) {
                 $session = \App\Models\AcademicSession::find($class->academic_session_id);
                 if ($session) {
@@ -78,10 +82,10 @@ class Classes extends Model
 
     /**
      * Centrally scopes classrooms for a given academic session.
-     * - Current active session: returns all currently active building classrooms.
-     * - Historical/concluded session: returns classrooms that had actual enrollments,
-     *   timetables, or were bound to that session, preserving historical truth and
-     *   preventing future rooms from leaking into past years.
+     * - Current active session: returns all currently active classrooms created in or before this session.
+     * - Historical/concluded session: returns classrooms that existed and were active during that session,
+     *   ensuring newly created rooms in later sessions never leak into past sessions, and classrooms archived
+     *   in later sessions remain active in historical sessions where they were active.
      */
     public function scopeForSession($query, $sessionId, $shift = null)
     {
@@ -94,31 +98,105 @@ class Classes extends Model
         }
 
         $session = AcademicSession::find($sessionId);
-
-        // 1. Current Active Session or open upcoming session: all operational rooms in the school building
-        if ($session && ($session->is_active || !AcademicSession::isSessionLocked($sessionId))) {
+        if (!$session) {
             return $query->where('is_active', true);
         }
 
-        // 2. Historical Session: classes with actual activity or legacy binding in that session
-        return $query->where(function ($q) use ($sessionId) {
-            $q->whereExists(function ($sub) use ($sessionId) {
-                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('enrollments')
-                    ->whereColumn('enrollments.class_id', 'classes.id')
-                    ->where('enrollments.academic_session_id', $sessionId);
-            })->orWhereExists(function ($sub) use ($sessionId) {
-                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('fee_records')
-                    ->whereColumn('fee_records.class_id', 'classes.id')
-                    ->where('fee_records.academic_session_id', $sessionId);
-            })->orWhere('classes.academic_session_id', $sessionId);
+        $isHistorical = AcademicSession::isSessionLocked($sessionId);
+
+        if (!$isHistorical) {
+            // Current Active Session or open upcoming session:
+            // 1. Must be currently active
+            // 2. Inception session must not be in the future relative to this session
+            return $query->where('is_active', true)
+                ->where(function ($sub) use ($session) {
+                    $sub->whereNull('classes.academic_session_id')
+                        ->orWhere('classes.academic_session_id', $session->id)
+                        ->orWhereExists(function ($ex) use ($session) {
+                            $ex->select(\Illuminate\Support\Facades\DB::raw(1))
+                                ->from('academic_sessions as s_inc')
+                                ->whereColumn('s_inc.id', 'classes.academic_session_id')
+                                ->where(function ($dateCheck) use ($session) {
+                                    $dateCheck->where('s_inc.start_date', '<', $session->start_date)
+                                        ->orWhere(function ($eqCheck) use ($session) {
+                                            $eqCheck->where('s_inc.start_date', $session->start_date)
+                                                ->where('s_inc.id', '<=', $session->id);
+                                        });
+                                });
+                        });
+                });
+        }
+
+        // Concluded historical session:
+        // Returns classrooms that existed and were active in this session:
+        // 1. Inception: created in or before this session
+        // 2. Not archived in or before this session (archived in a later session or never archived)
+        return $query->where(function ($q) use ($session, $sessionId) {
+            $q->where(function ($inc) use ($session, $sessionId) {
+                // Either has historical student or fee activity in this session
+                $inc->whereExists(function ($sub) use ($sessionId) {
+                    $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                        ->from('enrollments')
+                        ->whereColumn('enrollments.class_id', 'classes.id')
+                        ->where('enrollments.academic_session_id', $sessionId);
+                })
+                ->orWhereExists(function ($sub) use ($sessionId) {
+                    $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                        ->from('fee_records')
+                        ->whereColumn('fee_records.class_id', 'classes.id')
+                        ->where('fee_records.academic_session_id', $sessionId);
+                })
+                // OR was explicitly created for or before this session
+                ->orWhere(function ($timeCheck) use ($session) {
+                    $timeCheck->where('classes.academic_session_id', $session->id)
+                        ->orWhereExists(function ($s1) use ($session) {
+                            $s1->select(\Illuminate\Support\Facades\DB::raw(1))
+                                ->from('academic_sessions as s_inc')
+                                ->whereColumn('s_inc.id', 'classes.academic_session_id')
+                                ->where(function ($d1) use ($session) {
+                                    $d1->where('s_inc.start_date', '<', $session->start_date)
+                                        ->orWhere(function ($eq1) use ($session) {
+                                            $eq1->where('s_inc.start_date', $session->start_date)
+                                                ->where('s_inc.id', '<=', $session->id);
+                                        });
+                                });
+                        })
+                        // Legacy classrooms (academic_session_id is null) must have been created before session end
+                        ->orWhere(function ($legacy) use ($session) {
+                            $legacy->whereNull('classes.academic_session_id')
+                                ->where(function ($cCheck) use ($session) {
+                                    $cCheck->whereNull('classes.created_at')
+                                        ->orWhere('classes.created_at', '<=', \Carbon\Carbon::parse($session->end_date)->endOfDay());
+                                });
+                        });
+                });
+            })
+            ->where(function ($notArchived) use ($session) {
+                $notArchived->whereNull('classes.archived_academic_session_id')
+                    ->orWhereExists(function ($s2) use ($session) {
+                        $s2->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('academic_sessions as s_arch')
+                            ->whereColumn('s_arch.id', 'classes.archived_academic_session_id')
+                            ->where(function ($d2) use ($session) {
+                                $d2->where('s_arch.start_date', '>', $session->start_date)
+                                    ->orWhere(function ($eq2) use ($session) {
+                                        $eq2->where('s_arch.start_date', $session->start_date)
+                                            ->where('s_arch.id', '>', $session->id);
+                                    });
+                            });
+                    });
+            });
         });
     }
 
     public function session()
     {
         return $this->belongsTo(AcademicSession::class, 'academic_session_id');
+    }
+
+    public function archivedSession()
+    {
+        return $this->belongsTo(AcademicSession::class, 'archived_academic_session_id');
     }
 
     public function subjects()

@@ -17,6 +17,22 @@
         </div>
     @endif
 
+    {{-- Historical Session Read-Only Banner --}}
+    @if($this->isHistoricalSession)
+        <div class="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-amber-900">Historical Academic Session (Sealed Archive)</h4>
+                    <p class="text-xs text-amber-700 mt-0.5">Classrooms, additions, renames, and archival states are sealed for this historical period to ensure strict institutional record immutability.</p>
+                </div>
+            </div>
+            <span class="px-3 py-1 bg-amber-200 text-amber-900 text-xs font-bold rounded-xl shrink-0">Read-Only</span>
+        </div>
+    @endif
+
     <div class="glass-card p-6 rounded-2xl">
         {{-- Header Row --}}
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -67,7 +83,7 @@
                 </button>
 
                 {{-- Add Class --}}
-                @if(!$showArchived)
+                @if(!$showArchived && !$this->isHistoricalSession)
                     @can('class.create')
                     <div class="flex flex-col gap-1">
                         <div class="flex items-center">
@@ -102,6 +118,11 @@
                         @error('name') <span class="text-red-500 text-xs px-1">{{ $message }}</span> @enderror
                     </div>
                     @endcan
+                @elseif($this->isHistoricalSession)
+                    <div class="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        <span>Sealed Session</span>
+                    </div>
                 @endif
             </div>
         </div>
@@ -178,33 +199,40 @@
 
                                 {{-- Action Buttons (Archive, Rename, Delete) --}}
                                 <div class="flex items-center gap-1 shrink-0">
-                                    @can('classes.manage')
-                                    {{-- Archive Button --}}
-                                    <button
-                                        wire:click="archiveClass({{ $class->id }})"
-                                        class="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
-                                        title="Archive Classroom (safe deactivation, preserving all student and financial history)"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M10 12h4"/></svg>
-                                    </button>
-                                    {{-- Rename --}}
-                                    <button
-                                        wire:click="startRenameClass({{ $class->id }}, '{{ $class->name }}')"
-                                        class="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                        title="Rename Classroom"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                    </button>
-                                    {{-- Delete (Direct permanent delete if 0 records) --}}
-                                    <button
-                                        wire:click="deleteClassDirectly({{ $class->id }})"
-                                        wire:confirm="Permanently delete '{{ $class->name }}'? Note: This is only permitted for mistaken classrooms with 0 student, exam, or fee records."
-                                        class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                        title="Delete Classroom (only allowed if 0 historical records exist)"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                    </button>
-                                    @endcan
+                                    @if(!$this->isHistoricalSession)
+                                        @can('classes.manage')
+                                        {{-- Archive Button --}}
+                                        <button
+                                            wire:click="archiveClass({{ $class->id }})"
+                                            class="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                                            title="Archive Classroom (safe deactivation, preserving all student and financial history)"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M10 12h4"/></svg>
+                                        </button>
+                                        {{-- Rename --}}
+                                        <button
+                                            wire:click="startRenameClass({{ $class->id }}, '{{ $class->name }}')"
+                                            class="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            title="Rename Classroom"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
+                                        {{-- Delete (Direct permanent delete if 0 records) --}}
+                                        <button
+                                            wire:click="deleteClassDirectly({{ $class->id }})"
+                                            wire:confirm="Permanently delete '{{ $class->name }}'? Note: This is only permitted for mistaken classrooms with 0 student, exam, or fee records."
+                                            class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Delete Classroom (only allowed if 0 historical records exist)"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        </button>
+                                        @endcan
+                                    @else
+                                        <span class="px-2 py-0.5 bg-gray-100 text-gray-400 text-[10px] font-semibold rounded-md flex items-center gap-1" title="Historical Session Sealed">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                            Locked
+                                        </span>
+                                    @endif
                                 </div>
                             </div>
 
@@ -217,7 +245,8 @@
                                 </label>
                                 <select
                                     wire:change="updateNextClass({{ $class->id }}, $event.target.value)"
-                                    class="w-full text-xs bg-white border border-blue-200 rounded-md py-1 px-1.5 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-gray-700"
+                                    @if($this->isHistoricalSession) disabled @endif
+                                    class="w-full text-xs bg-white border border-blue-200 rounded-md py-1 px-1.5 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-gray-700 {{ $this->isHistoricalSession ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : '' }}"
                                 >
                                     <option value="">Passed Out / Graduated</option>
                                     @foreach($allClasses as $optClass)
@@ -272,23 +301,30 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        {{-- Activate / Restore Room Button --}}
-                        <button
-                            wire:click="restoreClass({{ $class->id }})"
-                            class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm shadow-emerald-200"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                            Activate Room
-                        </button>
-                        {{-- Permanent Delete (Direct permanent delete if 0 records) --}}
-                        <button
-                            wire:click="deleteClassDirectly({{ $class->id }})"
-                            wire:confirm="Permanently delete '{{ $class->name }}'? Note: This is only permitted for mistaken classrooms with 0 student, exam, or fee records."
-                            class="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                            Delete Forever
-                        </button>
+                        @if(!$this->isHistoricalSession)
+                            {{-- Activate / Restore Room Button --}}
+                            <button
+                                wire:click="restoreClass({{ $class->id }})"
+                                class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm shadow-emerald-200"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                Activate Room
+                            </button>
+                            {{-- Permanent Delete (Direct permanent delete if 0 records) --}}
+                            <button
+                                wire:click="deleteClassDirectly({{ $class->id }})"
+                                wire:confirm="Permanently delete '{{ $class->name }}'? Note: This is only permitted for mistaken classrooms with 0 student, exam, or fee records."
+                                class="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                Delete Forever
+                            </button>
+                        @else
+                            <span class="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-gray-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                Sealed Archive
+                            </span>
+                        @endif
                     </div>
                 </div>
             @empty
@@ -348,6 +384,13 @@
 
                     @if($modalActiveTab === 'programs')
                     <div class="space-y-3">
+                        @if($this->isHistoricalSession)
+                        <div class="p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-medium flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            <span>Curriculum tracks are read-only for concluded academic sessions.</span>
+                        </div>
+                        @endif
+
                         <div class="flex items-center justify-between text-xs text-gray-500">
                             <span>Select academic programs offered to students in <strong>{{ $manageClassName }}</strong>:</span>
                             <a href="{{ route('admin.curriculum', ['tab' => 'programs']) }}" class="text-indigo-600 font-bold hover:underline flex items-center gap-1">
@@ -355,6 +398,7 @@
                             </a>
                         </div>
 
+                        @if(!$this->isHistoricalSession)
                         <div>
                             <x-searchable-multiselect
                                 wire:model.live="classAssignedProgramIds"
@@ -365,18 +409,19 @@
                                 subtextField="level"
                             />
                         </div>
+                        @endif
 
                         <div class="space-y-2 max-h-72 overflow-y-auto pr-1 custom-scrollbar pt-1">
                             @forelse($availablePrograms as $prog)
                                 @php $isAssigned = in_array($prog->id, $classAssignedProgramIds); @endphp
                                 <div class="p-3 rounded-2xl border transition-all flex items-center justify-between gap-3
                                     {{ $isAssigned ? 'bg-indigo-50/60 border-indigo-200 shadow-xs' : 'bg-gray-50/60 border-gray-200' }}">
-                                    <label class="flex items-center gap-3 cursor-pointer flex-1">
+                                    <label class="flex items-center gap-3 {{ $this->isHistoricalSession ? 'cursor-default' : 'cursor-pointer' }} flex-1">
                                         <input
                                             type="checkbox"
-                                            wire:click="toggleClassTrack({{ $prog->id }})"
+                                            @if(!$this->isHistoricalSession) wire:click="toggleClassTrack({{ $prog->id }})" @else disabled @endif
                                             @checked($isAssigned)
-                                            class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                            class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 {{ $this->isHistoricalSession ? 'opacity-60 cursor-not-allowed' : '' }}"
                                         />
                                         <div>
                                             <h4 class="text-sm font-bold text-gray-800">{{ $prog->name }}</h4>
@@ -387,9 +432,9 @@
                                     @if($isAssigned)
                                         <button
                                             type="button"
-                                            wire:click="setClassDefaultTrack({{ $prog->id }})"
+                                            @if(!$this->isHistoricalSession) wire:click="setClassDefaultTrack({{ $prog->id }})" @endif
                                             class="text-xs font-bold px-2 py-1 rounded-lg border transition-colors
-                                                {{ $classDefaultProgramId == $prog->id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100' }}"
+                                                {{ $classDefaultProgramId == $prog->id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100' }} {{ $this->isHistoricalSession ? 'cursor-default' : '' }}"
                                         >
                                             {{ $classDefaultProgramId == $prog->id ? '★ Default Program' : 'Set as Default' }}
                                         </button>

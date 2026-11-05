@@ -83,6 +83,7 @@ class HybridSessionImmutabilityTest extends TestCase
             'name' => 'Class 9-Robotics',
             'numeric_value' => 9,
             'shift_type' => 'regular',
+            'academic_session_id' => $this->session2028->id,
             'is_active' => true,
         ]);
 

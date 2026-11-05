@@ -317,4 +317,144 @@ class ClassManagerTest extends TestCase
         // Assert record is permanently purged
         $this->assertNull(Classes::withTrashed()->find($mistaken->id));
     }
+
+    public function test_class_created_in_new_session_is_hidden_in_old_completed_session()
+    {
+        $this->actingAs($this->admin);
+
+        // Session 1: completed / archived
+        $this->session1->update(['is_active' => false, 'is_archived' => true]);
+        // Session 2: active current session
+        $this->session2->update(['is_active' => true, 'is_archived' => false]);
+
+        // Create class in new active Session 2
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session2->id)
+            ->set('name', 'Class 10 - Future')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $newClass = Classes::where('name', 'Class 10 - Future')->first();
+        $this->assertNotNull($newClass);
+        $this->assertEquals($this->session2->id, $newClass->academic_session_id);
+
+        // When viewing Session 2 (active), class is visible
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session2->id)
+            ->assertViewHas('classes', function ($classes) use ($newClass) {
+                return $classes->contains('id', $newClass->id);
+            });
+
+        // When viewing Session 1 (old completed session), new class MUST NOT appear
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->assertViewHas('classes', function ($classes) use ($newClass) {
+                return !$classes->contains('id', $newClass->id);
+            });
+    }
+
+    public function test_class_archived_in_new_session_remains_active_in_old_completed_session()
+    {
+        $this->actingAs($this->admin);
+
+        // Create a classroom that was active in Session 1
+        $class = Classes::create([
+            'name' => 'Class 7 - Heritage',
+            'numeric_value' => 7,
+            'shift_type' => 'regular',
+            'academic_session_id' => $this->session1->id,
+            'is_active' => true,
+        ]);
+
+        // Session 1 is completed/archived, Session 2 is current
+        $this->session1->update(['is_active' => false, 'is_archived' => true]);
+        $this->session2->update(['is_active' => true, 'is_archived' => false]);
+
+        // In Session 2 (active), archive the classroom
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session2->id)
+            ->call('archiveClass', $class->id)
+            ->assertHasNoErrors();
+
+        $fresh = $class->fresh();
+        $this->assertFalse($fresh->is_active);
+        $this->assertEquals($this->session2->id, $fresh->archived_academic_session_id);
+
+        // In Session 2: class is NOT in active list
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session2->id)
+            ->set('showArchived', false)
+            ->assertViewHas('classes', function ($classes) use ($class) {
+                return !$classes->contains('id', $class->id);
+            });
+
+        // In Session 2: class IS in archived list
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session2->id)
+            ->set('showArchived', true)
+            ->assertViewHas('classes', function ($classes) use ($class) {
+                return $classes->contains('id', $class->id);
+            });
+
+        // In Session 1 (historical completed session):
+        // The classroom was historically active throughout Session 1!
+        // Active list MUST contain the class
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->set('showArchived', false)
+            ->assertViewHas('classes', function ($classes) use ($class) {
+                return $classes->contains('id', $class->id);
+            });
+
+        // Archived list in Session 1 MUST NOT contain the class
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->set('showArchived', true)
+            ->assertViewHas('classes', function ($classes) use ($class) {
+                return !$classes->contains('id', $class->id);
+            });
+    }
+
+    public function test_historical_session_blocks_mutative_operations()
+    {
+        $this->actingAs($this->admin);
+
+        // Lock Session 1
+        $this->session1->update(['is_active' => false, 'is_archived' => true]);
+        $this->session2->update(['is_active' => true, 'is_archived' => false]);
+        AcademicSession::flushActiveSessionMemo();
+
+        $class = Classes::create([
+            'name' => 'Class 8 - Sealed',
+            'numeric_value' => 8,
+            'shift_type' => 'regular',
+            'academic_session_id' => $this->session1->id,
+            'is_active' => true,
+        ]);
+
+        // Attempting to add a class in locked session
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->set('name', 'Illegal New Class')
+            ->call('save')
+            ->assertSee('New classrooms cannot be created in a concluded academic session');
+
+        $this->assertFalse(Classes::where('name', 'Illegal New Class')->exists());
+
+        // Attempting to archive in locked session
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->call('archiveClass', $class->id)
+            ->assertSee('Historical academic sessions are sealed. Classrooms cannot be archived in a concluded session.');
+
+        $this->assertTrue($class->fresh()->is_active);
+
+        // Attempting to delete in locked session
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->call('deleteClassDirectly', $class->id)
+            ->assertSee('Historical academic sessions are sealed. Classrooms cannot be deleted in a concluded session.');
+
+        $this->assertTrue(Classes::where('id', $class->id)->exists());
+    }
 }

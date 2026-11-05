@@ -69,29 +69,170 @@ class ClassManager extends Component
         }
     }
 
+    public function getIsHistoricalSessionProperty(): bool
+    {
+        return \App\Models\AcademicSession::isSessionLocked($this->selectedSessionId);
+    }
+
     public function getClassesList()
     {
-        // Institutional classrooms are permanent assets
-        $query = Classes::query()
-            ->where('shift_type', $this->getCurrentShift())
-            ->whereNull('deleted_at')
-            ->with(['nextClass'])
-            ->withCount('subjects');
+        $shiftType = $this->getCurrentShift();
+        $sessionId = $this->selectedSessionId;
+        $session = \App\Models\AcademicSession::find($sessionId);
 
-        if ($this->showArchived || $this->showTrash) {
-            $query->where('is_active', false);
-        } else {
-            $query->where('is_active', true);
+        if (!$this->isHistoricalSession) {
+            // Active current session:
+            $query = Classes::query()
+                ->where('shift_type', $shiftType)
+                ->whereNull('deleted_at')
+                ->where(function ($sub) use ($session) {
+                    $sub->whereNull('classes.academic_session_id')
+                        ->orWhere('classes.academic_session_id', $session?->id)
+                        ->orWhereExists(function ($ex) use ($session) {
+                            $ex->select(\Illuminate\Support\Facades\DB::raw(1))
+                                ->from('academic_sessions as s_inc')
+                                ->whereColumn('s_inc.id', 'classes.academic_session_id')
+                                ->where(function ($d) use ($session) {
+                                    $d->where('s_inc.start_date', '<', $session?->start_date ?? now())
+                                        ->orWhere(function ($eq) use ($session) {
+                                            $eq->where('s_inc.start_date', $session?->start_date ?? now())
+                                                ->where('s_inc.id', '<=', $session?->id ?? 0);
+                                        });
+                                });
+                        });
+                })
+                ->with(['nextClass'])
+                ->withCount('subjects');
+
+            if ($this->showArchived || $this->showTrash) {
+                $query->where('is_active', false);
+            } else {
+                $query->where('is_active', true);
+            }
+
+            return $query->orderBy('numeric_value')->orderBy('name')->get();
         }
 
-        return $query->orderBy('numeric_value')->orderBy('name')->get();
+        // Concluded historical session:
+        if (!$this->showArchived && !$this->showTrash) {
+            // Active Classrooms during this historical session
+            return Classes::forSession($sessionId, $shiftType)
+                ->whereNull('deleted_at')
+                ->with(['nextClass'])
+                ->withCount('subjects')
+                ->orderBy('numeric_value')
+                ->orderBy('name')
+                ->get();
+        }
+
+        // Archived Classrooms during this historical session:
+        // Rooms that existed in or before this session AND were archived in or before this session
+        return Classes::query()
+            ->where('shift_type', $shiftType)
+            ->whereNull('deleted_at')
+            ->where(function ($inc) use ($session) {
+                $inc->whereNull('classes.academic_session_id')
+                    ->orWhere('classes.academic_session_id', $session?->id)
+                    ->orWhereExists(function ($s1) use ($session) {
+                        $s1->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('academic_sessions as s_inc')
+                            ->whereColumn('s_inc.id', 'classes.academic_session_id')
+                            ->where(function ($d1) use ($session) {
+                                $d1->where('s_inc.start_date', '<', $session?->start_date)
+                                    ->orWhere(function ($eq1) use ($session) {
+                                        $eq1->where('s_inc.start_date', $session?->start_date)
+                                            ->where('s_inc.id', '<=', $session?->id);
+                                    });
+                            });
+                    });
+            })
+            ->where(function ($arch) use ($session) {
+                $arch->where('classes.archived_academic_session_id', $session?->id)
+                    ->orWhereExists(function ($s2) use ($session) {
+                        $s2->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('academic_sessions as s_arch')
+                            ->whereColumn('s_arch.id', 'classes.archived_academic_session_id')
+                            ->where(function ($d2) use ($session) {
+                                $d2->where('s_arch.start_date', '<', $session?->start_date)
+                                    ->orWhere(function ($eq2) use ($session) {
+                                        $eq2->where('s_arch.start_date', $session?->start_date)
+                                            ->where('s_arch.id', '<=', $session?->id);
+                                    });
+                            });
+                    });
+            })
+            ->with(['nextClass'])
+            ->withCount('subjects')
+            ->orderBy('numeric_value')
+            ->orderBy('name')
+            ->get();
     }
 
     public function getArchivedCountProperty(): int
     {
-        return Classes::where('shift_type', $this->getCurrentShift())
-            ->where('is_active', false)
+        $shiftType = $this->getCurrentShift();
+        $sessionId = $this->selectedSessionId;
+        $session = \App\Models\AcademicSession::find($sessionId);
+
+        if (!$this->isHistoricalSession) {
+            return Classes::where('shift_type', $shiftType)
+                ->where('is_active', false)
+                ->whereNull('deleted_at')
+                ->where(function ($sub) use ($session) {
+                    $sub->whereNull('classes.academic_session_id')
+                        ->orWhere('classes.academic_session_id', $session?->id)
+                        ->orWhereExists(function ($ex) use ($session) {
+                            $ex->select(\Illuminate\Support\Facades\DB::raw(1))
+                                ->from('academic_sessions as s_inc')
+                                ->whereColumn('s_inc.id', 'classes.academic_session_id')
+                                ->where(function ($d) use ($session) {
+                                    $d->where('s_inc.start_date', '<', $session?->start_date ?? now())
+                                        ->orWhere(function ($eq) use ($session) {
+                                            $eq->where('s_inc.start_date', $session?->start_date ?? now())
+                                                ->where('s_inc.id', '<=', $session?->id ?? 0);
+                                        });
+                                });
+                        });
+                })
+                ->count();
+        }
+
+        if (!$session) return 0;
+
+        return Classes::query()
+            ->where('shift_type', $shiftType)
             ->whereNull('deleted_at')
+            ->where(function ($inc) use ($session) {
+                $inc->whereNull('classes.academic_session_id')
+                    ->orWhere('classes.academic_session_id', $session->id)
+                    ->orWhereExists(function ($s1) use ($session) {
+                        $s1->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('academic_sessions as s_inc')
+                            ->whereColumn('s_inc.id', 'classes.academic_session_id')
+                            ->where(function ($d1) use ($session) {
+                                $d1->where('s_inc.start_date', '<', $session->start_date)
+                                    ->orWhere(function ($eq1) use ($session) {
+                                        $eq1->where('s_inc.start_date', $session->start_date)
+                                            ->where('s_inc.id', '<=', $session->id);
+                                    });
+                            });
+                    });
+            })
+            ->where(function ($arch) use ($session) {
+                $arch->where('classes.archived_academic_session_id', $session->id)
+                    ->orWhereExists(function ($s2) use ($session) {
+                        $s2->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('academic_sessions as s_arch')
+                            ->whereColumn('s_arch.id', 'classes.archived_academic_session_id')
+                            ->where(function ($d2) use ($session) {
+                                $d2->where('s_arch.start_date', '<', $session->start_date)
+                                    ->orWhere(function ($eq2) use ($session) {
+                                        $eq2->where('s_arch.start_date', $session->start_date)
+                                            ->where('s_arch.id', '<=', $session->id);
+                                    });
+                            });
+                    });
+            })
             ->count();
     }
 
@@ -115,8 +256,14 @@ class ClassManager extends Component
     public function archiveClass($id)
     {
         $this->authorize('classes.manage');
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Classrooms cannot be archived in a concluded session.');
+            return;
+        }
+
         $class = Classes::findOrFail($id);
         $class->is_active = false;
+        $class->archived_academic_session_id = $this->selectedSessionId ?: \App\Models\AcademicSession::getActiveSessionId();
         $class->save();
         session()->flash('message', "Classroom '{$class->name}' moved to Archived Classrooms.");
     }
@@ -124,8 +271,14 @@ class ClassManager extends Component
     public function restoreClass($id)
     {
         $this->authorize('classes.manage');
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Classrooms cannot be restored in a concluded session.');
+            return;
+        }
+
         $class = Classes::findOrFail($id);
         $class->is_active = true;
+        $class->archived_academic_session_id = null;
         $class->save();
         session()->flash('message', "Classroom '{$class->name}' activated and restored to the school building.");
     }
@@ -133,8 +286,14 @@ class ClassManager extends Component
     public function toggleActiveClass($id)
     {
         $this->authorize('classes.manage');
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Classrooms cannot be modified in a concluded session.');
+            return;
+        }
+
         $class = Classes::findOrFail($id);
         $class->is_active = !$class->is_active;
+        $class->archived_academic_session_id = $class->is_active ? null : ($this->selectedSessionId ?: \App\Models\AcademicSession::getActiveSessionId());
         $class->save();
         $status = $class->is_active ? 'reactivated' : 'archived';
         session()->flash('message', "Classroom '{$class->name}' {$status} successfully.");
@@ -145,6 +304,11 @@ class ClassManager extends Component
     // -----------------------------------------------------------------------
     public function save()
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'New classrooms cannot be created in a concluded academic session. Please switch to the active academic session.');
+            return;
+        }
+
         $this->validate(['name' => 'required|string|max:50']);
 
         $className = trim($this->name);
@@ -173,7 +337,7 @@ class ClassManager extends Component
         Classes::create([
             'name' => $className,
             'numeric_value' => $numericValue,
-            'academic_session_id' => null, // Permanent institutional asset
+            'academic_session_id' => $this->selectedSessionId ?: \App\Models\AcademicSession::getActiveSessionId(),
             'shift_type' => $shiftType,
             'is_active' => true,
         ]);
@@ -188,6 +352,11 @@ class ClassManager extends Component
     // -----------------------------------------------------------------------
     public function startRenameClass($classId, $className)
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Classrooms cannot be renamed in a concluded session.');
+            return;
+        }
+
         $this->renamingClassId = $classId;
         $this->renamingClassName = $className;
     }
@@ -200,6 +369,11 @@ class ClassManager extends Component
 
     public function saveClassName()
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Classrooms cannot be renamed in a concluded session.');
+            return;
+        }
+
         $this->validate(['renamingClassName' => 'required|string|max:50']);
 
         $newName = trim($this->renamingClassName);
@@ -242,6 +416,13 @@ class ClassManager extends Component
     public function deleteClassDirectly($id)
     {
         $this->authorize('classes.manage');
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Classrooms cannot be deleted in a concluded session.');
+            $this->showDeleteWarning = false;
+            $this->deletingClassId = null;
+            return;
+        }
+
         $class = Classes::find($id) ?? Classes::withTrashed()->find($id);
         if (!$class) return;
 
@@ -324,7 +505,7 @@ class ClassManager extends Component
 
     public function toggleClassTrack($programId)
     {
-        if (!$this->manageClassId) return;
+        if (!$this->manageClassId || $this->isHistoricalSession) return;
 
         $programId = (int) $programId;
         $exists = DB::table('class_programs')
@@ -370,7 +551,7 @@ class ClassManager extends Component
 
     public function updatedClassAssignedProgramIds($newIds)
     {
-        if (!$this->manageClassId) return;
+        if (!$this->manageClassId || $this->isHistoricalSession) return;
 
         $newIds = array_map('intval', (array) $newIds);
         $currentIds = DB::table('class_programs')
@@ -417,7 +598,7 @@ class ClassManager extends Component
 
     public function setClassDefaultTrack($programId)
     {
-        if (!$this->manageClassId) return;
+        if (!$this->manageClassId || $this->isHistoricalSession) return;
 
         $programId = (int) $programId;
         DB::table('class_programs')->where('class_id', $this->manageClassId)->update(['is_default' => false]);
@@ -433,7 +614,7 @@ class ClassManager extends Component
 
     public function addSubject()
     {
-        if (!$this->manageClassId) return;
+        if (!$this->manageClassId || $this->isHistoricalSession) return;
 
         $this->validate(['newSubjectName' => 'required|string|max:255']);
 
@@ -495,6 +676,7 @@ class ClassManager extends Component
 
     public function saveSubjectName()
     {
+        if ($this->isHistoricalSession) return;
         $this->validate(['renamingSubjectName' => 'required|string|max:255']);
 
         $words = explode(' ', trim($this->renamingSubjectName));
@@ -515,6 +697,7 @@ class ClassManager extends Component
 
     public function deleteSubject($subjectId)
     {
+        if ($this->isHistoricalSession) return;
         $class = Classes::find($this->manageClassId);
         if ($class) {
             foreach ($class->programs as $prog) {
@@ -539,7 +722,7 @@ class ClassManager extends Component
 
     public function copySubjectsToClasses()
     {
-        if (empty($this->selectedSubjectIds) || empty($this->copyTargetClassIds)) {
+        if ($this->isHistoricalSession || empty($this->selectedSubjectIds) || empty($this->copyTargetClassIds)) {
             return;
         }
 
@@ -601,6 +784,11 @@ class ClassManager extends Component
     public function updateNextClass($classId, $nextClassId)
     {
         $this->authorize('classes.manage');
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Progression ladder cannot be altered in a concluded session.');
+            return;
+        }
+
         Classes::where('id', $classId)
             ->update([
                 'next_class_id' => $nextClassId ?: null,
@@ -616,8 +804,7 @@ class ClassManager extends Component
             : 'components.layouts.admin';
 
         // All active classes in the current shift for "Promotes To" progression ladder
-        $allClasses = Classes::where('shift_type', $this->getCurrentShift())
-            ->where('is_active', true)
+        $allClasses = Classes::forSession($this->selectedSessionId, $this->getCurrentShift())
             ->whereNull('deleted_at')
             ->orderBy('numeric_value')
             ->orderBy('name')
