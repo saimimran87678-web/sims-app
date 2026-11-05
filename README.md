@@ -155,6 +155,13 @@ flowchart TB
 - **HMAC-SHA256 Anti-Tampering:** Local database integrity digests detect unauthorized manual edits to SQLite tables, immediately quarantining tampered installations.
 - **Disposable Token Activation:** Quick 1-step activation using `SIMS-TOK-XXXX-XXXX` tokens.
 
+### 🏛️ 8. Permanent Institutional Classroom Architecture ("School Building Architecture") (v2.7.0)
+- **Permanent School Asset Model:** Classrooms are modeled as physical, permanent institutional assets ("brick and concrete"). Classrooms persist continuously across years rather than being fragile, cloned records duplicated for every calendar year.
+- **Elimination of Fragile Class Cloning & Imports:** Completely eliminates the fragile "Import Class" button and session duplication workflows. When a new academic session opens, physical classrooms are already available.
+- **Zero-Cascade Data Loss Protection:** Enforces strict `ON DELETE RESTRICT` constraints across `fee_records`, `enrollments`, `marks_configs`, and `timetables`. A classroom with historical academic or financial records can never be hard-deleted, preventing accidental destruction of transcripts, marks, or fee receipts.
+- **Safe Room Lifecycle & Archiving:** Classrooms can be safely deactivated or archived (`is_active = false`) when discontinued, hiding them from active enrollment pickers while preserving all past historical transcripts and financial audit trails.
+- **Permanent Progression Ladder ("Promotes To"):** Academic progression paths (e.g. Class 6A → Class 7A → Class 8A) are configured as permanent institutional hierarchies, freeing student promotion from artificial "next session" dependencies.
+
 ---
 
 ## 🔄 Student Lifecycle, SLC Issuance & Alumni Re-Admission

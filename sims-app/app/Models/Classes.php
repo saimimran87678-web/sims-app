@@ -18,9 +18,12 @@ class Classes extends Model
 
     protected $table = 'classes';
     
-    protected $fillable = ['name', 'numeric_value', 'academic_session_id', 'next_class_id', 'shift_type'];
+    protected $fillable = ['name', 'numeric_value', 'academic_session_id', 'next_class_id', 'shift_type', 'is_active'];
 
-
+    protected $casts = [
+        'is_active' => 'boolean',
+        'numeric_value' => 'integer',
+    ];
 
     protected static function booted()
     {
@@ -30,45 +33,47 @@ class Classes extends Model
                 if ($session) {
                     $class->shift_type = ($session->shift_type === 'Regular') ? 'regular' : 'morning';
                 } else {
-                    $class->shift_type = 'morning';
+                    $class->shift_type = 'regular';
+                }
+            }
+
+            if (!isset($class->is_active)) {
+                $class->is_active = true;
+            }
+        });
+
+        static::deleting(function ($class) {
+            if ($class->isForceDeleting()) {
+                $hasEnrollments = \Illuminate\Support\Facades\DB::table('enrollments')->where('class_id', $class->id)->exists();
+                $hasFees = \Illuminate\Support\Facades\DB::table('fee_records')->where('class_id', $class->id)->exists();
+                $hasMarks = \Illuminate\Support\Facades\DB::table('marks_configs')->where('class_id', $class->id)->exists();
+                if ($hasEnrollments || $hasFees || $hasMarks) {
+                    throw new \DomainException("Class '{$class->name}' cannot be permanently deleted because historical student, fee, or exam records exist. Archive the class instead to preserve historical records.");
                 }
             }
         });
 
-        static::addGlobalScope('active_session', function ($builder) {
-            // Skip restriction if User is Super Admin OR has ANY session view permission
-            $user = auth()->user();
-            if ($user && (
-                $user->hasRole('Super Admin') || 
-                $user->can('sessions.view-all') ||
-                $user->can('classes.view-sessions') ||
-                $user->can('students.view-sessions') ||
-                $user->can('exams.view-sessions') ||
-                $user->can('schedule.view-sessions') ||
-                $user->can('reports.view-sessions') ||
-                $user->can('fees.view-sessions') ||
-                $user->can('substitutions.view-sessions')
-            )) {
-                return;
-            }
-
-            // Filter by Active Session by default
-            $activeId = \App\Models\AcademicSession::getActiveSessionId();
-                
-            if ($activeId) {
-                $builder->where('classes.academic_session_id', $activeId);
-                
-                // Filter by active shift type
-                $sessionObj = \App\Models\AcademicSession::find($activeId);
-                $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
-                $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
-                if ($shiftType === 'both') {
-                    $shiftType = 'morning';
+        static::updating(function ($class) {
+            if ($class->isDirty('numeric_value')) {
+                $hasEnrollments = \Illuminate\Support\Facades\DB::table('enrollments')->where('class_id', $class->id)->exists();
+                if ($hasEnrollments) {
+                    \Illuminate\Support\Facades\Log::warning("Grade level numeric_value modified for class '{$class->name}' (ID: {$class->id}) with existing student enrollments.");
                 }
-                
-                $builder->where('classes.shift_type', $shiftType);
             }
         });
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeForShift($query, $shift)
+    {
+        if ($shift && $shift !== 'both') {
+            return $query->where('shift_type', $shift);
+        }
+        return $query;
     }
 
     public function session()

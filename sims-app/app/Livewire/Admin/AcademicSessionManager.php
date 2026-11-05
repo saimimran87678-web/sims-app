@@ -45,15 +45,14 @@ class AcademicSessionManager extends Component
         $sessions = AcademicSession::orderBy('start_date', 'desc')->get();
         $activeSessionId = AcademicSession::getActiveSessionId();
         
-        $activeClassesCount = Classes::withoutGlobalScope('active_session')
-            ->where('academic_session_id', $activeSessionId)
-            ->count();
+        $activeClassesCount = Classes::where('is_active', true)->count();
 
         $targetClasses = collect();
         if ($this->toSessionId) {
-            $targetClasses = Classes::withoutGlobalScope('active_session')
-                ->where('academic_session_id', $this->toSessionId)
+            $targetClasses = Classes::where('is_active', true)
+                ->when($this->toSessionIsRegular, fn($q) => $q->where('shift_type', 'regular'))
                 ->orderBy('numeric_value')
+                ->orderBy('name')
                 ->get();
         }
 
@@ -176,9 +175,8 @@ class AcademicSessionManager extends Component
             return;
         }
 
-        // Also clean up related records before deleting
+        // Clean up session-specific assignments before deleting
         DB::table('session_user')->where('academic_session_id', $id)->delete();
-        Classes::withoutGlobalScope('active_session')->where('academic_session_id', $id)->delete();
 
         AcademicSession::find($id)->delete();
         session()->flash('message', 'Session deleted successfully.');
@@ -215,74 +213,6 @@ class AcademicSessionManager extends Component
 
         $targetSession = AcademicSession::find($this->toSessionId);
         $this->toSessionIsRegular = ($targetSession && $targetSession->shift_type === 'Regular');
-
-        // Auto-copy classes and subjects from source session if target session has zero classes
-        $targetClassCount = Classes::withoutGlobalScope('active_session')
-            ->where('academic_session_id', $this->toSessionId)
-            ->count();
-        
-        if ($targetClassCount === 0) {
-            $sourceClasses = Classes::withoutGlobalScope('active_session')
-                ->where('academic_session_id', $this->fromSessionId)
-                ->get();
-            $classMap = [];
-            foreach ($sourceClasses as $sc) {
-                $targetShifts = [];
-                if ($this->toSessionIsRegular) {
-                    if ($sc->shift_type === 'morning' || $sc->shift_type === 'regular') {
-                        $targetShifts[] = 'regular';
-                    }
-                } else {
-                    if ($sc->shift_type === 'regular') {
-                        $targetShifts = ['morning', 'evening'];
-                    } else {
-                        $targetShifts = [$sc->shift_type];
-                    }
-                }
-
-                foreach ($targetShifts as $tShift) {
-                    $newClass = Classes::create([
-                        'academic_session_id' => $this->toSessionId,
-                        'name' => $sc->name,
-                        'numeric_value' => $sc->numeric_value,
-                        'shift_type' => $tShift,
-                    ]);
-                    $classMap[$sc->id][$tShift] = $newClass->id;
-
-                    // Clone program curriculum bundles for the new class (zero duplicate subjects)
-                    $programs = DB::table('class_programs')->where('class_id', $sc->id)->get();
-                    foreach ($programs as $prog) {
-                        DB::table('class_programs')->insert([
-                            'class_id' => $newClass->id,
-                            'program_id' => $prog->program_id,
-                            'is_default' => $prog->is_default,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
-            }
-
-            // Map next_class_ids of newly created classes
-            foreach ($sourceClasses as $sc) {
-                if ($sc->next_class_id) {
-                    $targetShifts = $this->toSessionIsRegular ? ['regular'] : ['morning', 'evening'];
-                    foreach ($targetShifts as $tShift) {
-                        $oldClassId = $sc->id;
-                        $oldNextClassId = $sc->next_class_id;
-
-                        if (isset($classMap[$oldClassId][$tShift]) && isset($classMap[$oldNextClassId][$tShift])) {
-                            $newClassId = $classMap[$oldClassId][$tShift];
-                            $newNextClassId = $classMap[$oldNextClassId][$tShift];
-
-                            Classes::withoutGlobalScope('active_session')->where('id', $newClassId)->update([
-                                'next_class_id' => $newNextClassId
-                            ]);
-                        }
-                    }
-                }
-            }
-        }
 
         // Get active enrollments from the source session
         $enrollments = DB::table('enrollments')
@@ -374,32 +304,7 @@ class AcademicSessionManager extends Component
                 : (in_array($e->shift_type, ['morning', 'evening']) ? $e->shift_type : 'morning');
 
             if ($e->next_class_id) {
-                $nextClassSource = Classes::withoutGlobalScope('active_session')->find($e->next_class_id);
-                if ($nextClassSource) {
-                    if ($nextClassSource->academic_session_id == $this->toSessionId) {
-                        if ($nextClassSource->shift_type === $targetShift) {
-                            $defaultTargetClassId = (string) $nextClassSource->id;
-                        } else {
-                            $targetNextClass = Classes::withoutGlobalScope('active_session')
-                                ->where('academic_session_id', $this->toSessionId)
-                                ->where('name', $nextClassSource->name)
-                                ->where('shift_type', $targetShift)
-                                ->first();
-                            if ($targetNextClass) {
-                                $defaultTargetClassId = (string) $targetNextClass->id;
-                            }
-                        }
-                    } else {
-                        $targetNextClass = Classes::withoutGlobalScope('active_session')
-                            ->where('academic_session_id', $this->toSessionId)
-                            ->where('name', $nextClassSource->name)
-                            ->where('shift_type', $targetShift)
-                            ->first();
-                        if ($targetNextClass) {
-                            $defaultTargetClassId = (string) $targetNextClass->id;
-                        }
-                    }
-                }
+                $defaultTargetClassId = $this->resolveTargetClassId($e->class_id, 'promote', $targetShift);
             } else {
                 $status = 'passed_out';
             }
@@ -526,16 +431,8 @@ class AcademicSessionManager extends Component
                     $targetClassId = $item['target_class_id'];
                     if (!$targetClassId && $item['status'] === 'repeater') {
                         $oldEnroll = DB::table('enrollments')->where('id', $item['enrollment_id'])->first();
-                        $oldClass = Classes::withoutGlobalScope('active_session')->find($oldEnroll->class_id);
-                        if ($oldClass) {
-                            $targetClass = Classes::withoutGlobalScope('active_session')
-                                ->where('academic_session_id', $this->toSessionId)
-                                ->where('name', $oldClass->name)
-                                ->where('shift_type', $item['target_shift'])
-                                ->first();
-                            if ($targetClass) {
-                                $targetClassId = $targetClass->id;
-                            }
+                        if ($oldEnroll) {
+                            $targetClassId = $this->resolveTargetClassId($oldEnroll->class_id, 'repeater', $item['target_shift']);
                         }
                     }
 
@@ -575,66 +472,11 @@ class AcademicSessionManager extends Component
     {
         foreach ($this->promotionPreview as &$item) {
             $item['status'] = $this->massStatus;
-            
-            if ($this->massStatus === 'promote') {
-                $enroll = DB::table('enrollments')->where('id', $item['enrollment_id'])->first();
-                if ($enroll) {
-                    $class = Classes::withoutGlobalScope('active_session')->find($enroll->class_id);
-                    if ($class && $class->next_class_id) {
-                        $nextClassSource = Classes::withoutGlobalScope('active_session')->find($class->next_class_id);
-                        if ($nextClassSource) {
-                            if ($nextClassSource->academic_session_id == $this->toSessionId) {
-                                if ($nextClassSource->shift_type === $item['target_shift']) {
-                                    $item['target_class_id'] = (string) $nextClassSource->id;
-                                } else {
-                                    $targetNextClass = Classes::withoutGlobalScope('active_session')
-                                        ->where('academic_session_id', $this->toSessionId)
-                                        ->where('name', $nextClassSource->name)
-                                        ->where('shift_type', $item['target_shift'])
-                                        ->first();
-                                    if ($targetNextClass) {
-                                        $item['target_class_id'] = (string) $targetNextClass->id;
-                                    }
-                                }
-                            } else {
-                                $targetNextClass = Classes::withoutGlobalScope('active_session')
-                                    ->where('academic_session_id', $this->toSessionId)
-                                    ->where('name', $nextClassSource->name)
-                                    ->where('shift_type', $item['target_shift'])
-                                    ->first();
-                                if ($targetNextClass) {
-                                    $item['target_class_id'] = (string) $targetNextClass->id;
-                                }
-                            }
-                        }
-                    }
-                }
-            } elseif ($this->massStatus === 'repeater') {
-                $oldClass = Classes::withoutGlobalScope('active_session')->find($item['current_class_id']);
-                if ($oldClass) {
-                    $targetClass = Classes::withoutGlobalScope('active_session')
-                        ->where('academic_session_id', $this->toSessionId)
-                        ->where('name', $oldClass->name)
-                        ->where('shift_type', $item['target_shift'])
-                        ->first();
-                    if ($targetClass) {
-                        $item['target_class_id'] = (string) $targetClass->id;
-                    } else {
-                        $firstSameGradeClass = Classes::withoutGlobalScope('active_session')
-                            ->where('academic_session_id', $this->toSessionId)
-                            ->where('numeric_value', $item['current_class_numeric_value'])
-                            ->where('shift_type', $item['target_shift'])
-                            ->first();
-                        if ($firstSameGradeClass) {
-                            $item['target_class_id'] = (string) $firstSameGradeClass->id;
-                        } else {
-                            $item['target_class_id'] = '';
-                        }
-                    }
-                }
-            } else {
-                $item['target_class_id'] = '';
-            }
+            $item['target_class_id'] = $this->resolveTargetClassId(
+                $item['current_class_id'],
+                $this->massStatus,
+                $item['target_shift']
+            );
         }
     }
 
@@ -656,69 +498,67 @@ class AcademicSessionManager extends Component
                     return;
                 }
                 $item = $this->promotionPreview[$index];
-                if ($value === 'repeater') {
-                    // Auto-resolve same-name class in target session as default target_class_id
-                    $oldClass = Classes::withoutGlobalScope('active_session')->find($item['current_class_id']);
-                    if ($oldClass) {
-                        $targetClass = Classes::withoutGlobalScope('active_session')
-                            ->where('academic_session_id', $this->toSessionId)
-                            ->where('name', $oldClass->name)
-                            ->where('shift_type', $item['target_shift'])
-                            ->first();
-                        if ($targetClass) {
-                            $this->promotionPreview[$index]['target_class_id'] = (string) $targetClass->id;
-                        } else {
-                            // Fallback to first target class with same numeric value
-                            $firstSameGradeClass = Classes::withoutGlobalScope('active_session')
-                                ->where('academic_session_id', $this->toSessionId)
-                                ->where('numeric_value', $item['current_class_numeric_value'])
-                                ->where('shift_type', $item['target_shift'])
-                                ->first();
-                            if ($firstSameGradeClass) {
-                                $this->promotionPreview[$index]['target_class_id'] = (string) $firstSameGradeClass->id;
-                            } else {
-                                $this->promotionPreview[$index]['target_class_id'] = '';
-                            }
-                        }
-                    }
-                } elseif ($value === 'promote') {
-                    // Auto-resolve promoted next class
-                    $oldClass = Classes::withoutGlobalScope('active_session')->find($item['current_class_id']);
-                    if ($oldClass && $oldClass->next_class_id) {
-                        $nextClassSource = Classes::withoutGlobalScope('active_session')->find($oldClass->next_class_id);
-                        if ($nextClassSource) {
-                            if ($nextClassSource->academic_session_id == $this->toSessionId) {
-                                if ($nextClassSource->shift_type === $item['target_shift']) {
-                                    $this->promotionPreview[$index]['target_class_id'] = (string) $nextClassSource->id;
-                                } else {
-                                    $targetNextClass = Classes::withoutGlobalScope('active_session')
-                                        ->where('academic_session_id', $this->toSessionId)
-                                        ->where('name', $nextClassSource->name)
-                                        ->where('shift_type', $item['target_shift'])
-                                        ->first();
-                                    if ($targetNextClass) {
-                                        $this->promotionPreview[$index]['target_class_id'] = (string) $targetNextClass->id;
-                                    }
-                                }
-                            } else {
-                                $targetNextClass = Classes::withoutGlobalScope('active_session')
-                                    ->where('academic_session_id', $this->toSessionId)
-                                    ->where('name', $nextClassSource->name)
-                                    ->where('shift_type', $item['target_shift'])
-                                    ->first();
-                                if ($targetNextClass) {
-                                    $this->promotionPreview[$index]['target_class_id'] = (string) $targetNextClass->id;
-                                }
-                            }
-                        }
-                    } else {
-                        $this->promotionPreview[$index]['target_class_id'] = '';
-                    }
-                } else {
-                    $this->promotionPreview[$index]['target_class_id'] = '';
-                }
+                $this->promotionPreview[$index]['target_class_id'] = $this->resolveTargetClassId(
+                    $item['current_class_id'],
+                    $value,
+                    $item['target_shift']
+                );
             }
         }
+    }
+
+    private function resolveTargetClassId($classId, $status, $targetShift): string
+    {
+        $class = Classes::find($classId);
+        if (!$class) {
+            return '';
+        }
+
+        if ($status === 'promote') {
+            if (!$class->next_class_id) {
+                return '';
+            }
+            $targetSource = Classes::find($class->next_class_id);
+            if (!$targetSource) {
+                return '';
+            }
+        } elseif ($status === 'repeater') {
+            $targetSource = $class;
+        } else {
+            return '';
+        }
+
+        // 1. If target session has a specific class (for test/legacy compatibility)
+        if ($this->toSessionId) {
+            $targetSessionClass = Classes::where('name', $targetSource->name)
+                ->where('academic_session_id', $this->toSessionId)
+                ->where('shift_type', $targetShift)
+                ->first();
+
+            if ($targetSessionClass) {
+                return (string) $targetSessionClass->id;
+            }
+        }
+
+        // 2. Direct match on shift
+        if ($targetSource->shift_type === $targetShift) {
+            return (string) $targetSource->id;
+        }
+
+        // 3. Match by name and target shift
+        $targetClass = Classes::where('name', $targetSource->name)
+            ->where('shift_type', $targetShift)
+            ->first();
+        if ($targetClass) {
+            return (string) $targetClass->id;
+        }
+
+        // 4. Fallback to same grade level in target shift
+        $sameGrade = Classes::where('numeric_value', $targetSource->numeric_value)
+            ->where('shift_type', $targetShift)
+            ->first();
+
+        return (string) ($sameGrade?->id ?? '');
     }
 
     public function runAutoUpdate()
