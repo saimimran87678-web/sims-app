@@ -13,6 +13,8 @@ class AcademicSession extends Model
         'is_active',
         'parent_id',
         'shift_type',
+        'is_archived',
+        'archived_reason',
     ];
 
     public function parent()
@@ -74,6 +76,36 @@ class AcademicSession extends Model
     public function scopeActive($query)
     {
         return $query->where('is_archived', false);
+    }
+
+    /**
+     * Determines whether an academic session is historical and locked against mutative changes.
+     * Concluded sessions (is_active = false or is_archived = true) are locked archives.
+     */
+    public static function isSessionLocked($sessionId = null): bool
+    {
+        $id = $sessionId ?: self::getActiveSessionId();
+        if (!$id) return false;
+
+        $session = static::find($id);
+        if (!$session) return false;
+
+        // An active session is always open for operations
+        if ($session->is_active) {
+            return false;
+        }
+
+        // If explicitly archived, it is sealed
+        if ($session->is_archived) {
+            return true;
+        }
+
+        // If end_date is in the past, the academic session has concluded and is sealed
+        if ($session->end_date && \Carbon\Carbon::parse($session->end_date)->endOfDay()->isPast()) {
+            return true;
+        }
+
+        return false;
     }
 
     /** @var array{key:string,at:float,id:mixed}|null Answer of the last lookup, kept for a moment. */

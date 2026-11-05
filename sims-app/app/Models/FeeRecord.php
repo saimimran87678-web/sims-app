@@ -28,6 +28,16 @@ class FeeRecord extends Model
 
     protected static function booted()
     {
+        static::saving(function ($record) {
+            if ($record->academic_session_id && (!app()->runningInConsole() || app()->environment('testing'))) {
+                if (AcademicSession::isSessionLocked($record->academic_session_id)) {
+                    if (auth()->check() && !auth()->user()->hasRole('Super Admin')) {
+                        throw new \DomainException("Academic Session is concluded and locked. Historical fee records cannot be modified.");
+                    }
+                }
+            }
+        });
+
         static::creating(function ($record) {
             if (empty($record->access_token)) {
                 $record->access_token = (string) \Illuminate\Support\Str::uuid();

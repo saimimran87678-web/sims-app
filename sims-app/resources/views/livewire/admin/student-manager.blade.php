@@ -13,6 +13,28 @@
         </div>
     @endif
 
+    @if(session()->has('error'))
+        <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between text-sm font-semibold shadow-sm">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <span>{{ session('error') }}</span>
+            </div>
+        </div>
+    @endif
+
+    @if($this->isHistoricalSession)
+        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-between text-sm shadow-sm">
+            <div class="flex items-center gap-2.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <div>
+                    <span class="font-bold">🔒 Historical Academic Session (Read-Only Archive)</span>
+                    <p class="text-xs text-amber-700 mt-0.5">Historical enrollments, roll numbers, and academic records are locked against changes. Data export and student biographical corrections remain fully available.</p>
+                </div>
+            </div>
+            <span class="px-2.5 py-1 bg-amber-200 text-amber-900 font-bold text-xs rounded-lg whitespace-nowrap">Archive Mode</span>
+        </div>
+    @endif
+
     <div class="glass-card p-6 rounded-2xl">
         {{-- Advanced Filter Section --}}
         <div x-data="{ showFilters: false }" class="mb-6">
@@ -116,8 +138,18 @@
                     </button>
                 </div>
 
-                @can('student.create')
                 <div class="flex items-center gap-2">
+                    <button
+                        wire:click="exportCsv"
+                        class="px-3.5 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-xl transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap active:scale-95 duration-150 shadow-sm"
+                        title="Export Student Directory to CSV"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Export CSV
+                    </button>
+
+                    @can('student.create')
+                    @if(!$this->isHistoricalSession)
                     <a
                         href="{{ request()->is('teacher/*') ? route('teacher.shared.students.import') : route('admin.students.import') }}"
                         class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap active:scale-95 duration-150 shadow-sm"
@@ -132,14 +164,30 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                         Add Student
                     </button>
+                    @else
+                    <span class="px-3.5 py-2 bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center gap-1.5 border border-amber-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Admissions Closed (Historical Archive)
+                    </span>
+                    @endif
+                    @endcan
                 </div>
-                @endcan
             </div>
         </div>
 
         {{-- Bulk Actions Bar --}}
-        {{-- Bulk Actions Bar --}}
         @if(count($selectedStudentIds) > 0)
+        @if($this->isHistoricalSession)
+        <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-amber-800 text-sm shadow-sm">
+            <div class="flex items-center gap-2.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span><strong>{{ count($selectedStudentIds) }} students selected.</strong> Bulk modifications, status changes, and class reassignments are sealed in historical archive mode.</span>
+            </div>
+            <button wire:click="$set('selectedStudentIds', [])" class="text-xs text-amber-700 hover:text-amber-900 underline font-semibold">
+                Deselect All
+            </button>
+        </div>
+        @else
         <div class="mb-6 p-5 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col gap-4 transition-all duration-300">
             <div class="flex justify-between items-center pb-3 border-b border-blue-100/50">
                 <div class="flex items-center gap-2">
@@ -189,6 +237,7 @@
                 @endif
             </div>
         </div>
+        @endif
         @endif
 
         {{-- Content --}}
@@ -395,6 +444,7 @@
                                         </div>
                                     @else
                                         @can('student.delete')
+                                        @if(!$this->isHistoricalSession)
                                         <button
                                             wire:click="delete({{ $student->id }})"
                                             wire:confirm="Delete {{ $student->name }}? If this is a fresh student with no records, they will be deleted completely. If they have attendance or fee history, they will be safely archived."
@@ -403,6 +453,11 @@
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                         </button>
+                                        @else
+                                        <span class="text-gray-300 p-1.5 cursor-not-allowed" title="Enrollment locked (Historical Archive)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                        </span>
+                                        @endif
                                         @endcan
                                     @endif
                                 </div>
@@ -533,9 +588,15 @@
                              </div>
                              @else
                              @can('student.delete')
+                             @if(!$this->isHistoricalSession)
                              <button wire:click="delete({{ $student->id }})" wire:confirm="Delete {{ $student->name }}? If this is a fresh student with no records, they will be deleted completely. If they have attendance or fee history, they will be safely archived." class="text-gray-400 hover:text-rose-600 p-1 rounded-lg transition-colors" title="Delete Student">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                              </button>
+                             @else
+                             <span class="text-gray-300 p-1 cursor-not-allowed" title="Enrollment locked (Historical Archive)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                             </span>
+                             @endif
                              @endcan
                              @endif
                          </div>

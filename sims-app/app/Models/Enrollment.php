@@ -27,6 +27,29 @@ class Enrollment extends Model
         'promoted_at' => 'datetime',
     ];
 
+    protected static function booted()
+    {
+        static::saving(function ($enrollment) {
+            if ($enrollment->academic_session_id && (!app()->runningInConsole() || app()->environment('testing'))) {
+                if (AcademicSession::isSessionLocked($enrollment->academic_session_id)) {
+                    if (auth()->check() && !auth()->user()->hasRole('Super Admin')) {
+                        throw new \DomainException("Academic Session is concluded and locked. Historical enrollments cannot be modified.");
+                    }
+                }
+            }
+        });
+
+        static::deleting(function ($enrollment) {
+            if ($enrollment->academic_session_id && (!app()->runningInConsole() || app()->environment('testing'))) {
+                if (AcademicSession::isSessionLocked($enrollment->academic_session_id)) {
+                    if (auth()->check() && !auth()->user()->hasRole('Super Admin')) {
+                        throw new \DomainException("Academic Session is concluded and locked. Historical enrollments cannot be deleted.");
+                    }
+                }
+            }
+        });
+    }
+
     public function student()
     {
         return $this->belongsTo(Student::class)->withTrashed();

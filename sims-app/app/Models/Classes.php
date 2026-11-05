@@ -76,6 +76,46 @@ class Classes extends Model
         return $query;
     }
 
+    /**
+     * Centrally scopes classrooms for a given academic session.
+     * - Current active session: returns all currently active building classrooms.
+     * - Historical/concluded session: returns classrooms that had actual enrollments,
+     *   timetables, or were bound to that session, preserving historical truth and
+     *   preventing future rooms from leaking into past years.
+     */
+    public function scopeForSession($query, $sessionId, $shift = null)
+    {
+        if ($shift && $shift !== 'both') {
+            $query->where('shift_type', $shift);
+        }
+
+        if (!$sessionId) {
+            return $query->where('is_active', true);
+        }
+
+        $session = AcademicSession::find($sessionId);
+
+        // 1. Current Active Session or open upcoming session: all operational rooms in the school building
+        if ($session && ($session->is_active || !AcademicSession::isSessionLocked($sessionId))) {
+            return $query->where('is_active', true);
+        }
+
+        // 2. Historical Session: classes with actual activity or legacy binding in that session
+        return $query->where(function ($q) use ($sessionId) {
+            $q->whereExists(function ($sub) use ($sessionId) {
+                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('enrollments')
+                    ->whereColumn('enrollments.class_id', 'classes.id')
+                    ->where('enrollments.academic_session_id', $sessionId);
+            })->orWhereExists(function ($sub) use ($sessionId) {
+                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('fee_records')
+                    ->whereColumn('fee_records.class_id', 'classes.id')
+                    ->where('fee_records.academic_session_id', $sessionId);
+            })->orWhere('classes.academic_session_id', $sessionId);
+        });
+    }
+
     public function session()
     {
         return $this->belongsTo(AcademicSession::class, 'academic_session_id');

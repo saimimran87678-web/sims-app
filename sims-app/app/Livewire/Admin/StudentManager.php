@@ -616,11 +616,7 @@ class StudentManager extends Component
             $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
             $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
-            $this->classes = Classes::withoutGlobalScope('active_session')
-                ->where('academic_session_id', $this->selectedSessionId)
-                ->when($shiftType !== 'both', function ($q) use ($shiftType) {
-                    $q->where('shift_type', $shiftType);
-                })
+            $this->classes = Classes::forSession($this->selectedSessionId, $shiftType)
                 ->orderBy('numeric_value')
                 ->get();
         } else {
@@ -868,6 +864,12 @@ class StudentManager extends Component
 
     public function save()
     {
+        // 1. Guard against new admissions in historical/concluded sessions
+        if ($this->isHistoricalSession && !$this->isEditing) {
+            session()->flash('error', 'New admissions cannot be added to a concluded academic session. Please switch to the active academic session.');
+            return;
+        }
+
         $this->roll_no = trim($this->roll_no);
         $this->admission_no = trim($this->admission_no);
 
@@ -1071,6 +1073,22 @@ class StudentManager extends Component
         if ($this->photo) {
             $path = $this->photo->store('profile-photos', 'public');
             $data['profile_photo_path'] = $path;
+        }
+
+        // Concluded Session Check: Protect historical session records while allowing governed biographical fixes
+        if ($this->isHistoricalSession) {
+            if (!$this->isEditing) {
+                session()->flash('error', 'New admissions cannot be added to a concluded academic session. Please switch to the active academic session.');
+                return;
+            }
+
+            // Governed Clerical Correction to student master biographical info
+            $student = Student::findOrFail($this->editingStudentId);
+            $student->update($data);
+            $this->showModal = false;
+            $this->reset(['name', 'roll_no', 'admission_no', 'b_form_number', 'father_name', 'father_cnic', 'guardian_cnic', 'guardian_relation', 'is_guardian_primary', 'phone', 'email', 'isEditing', 'dob', 'address', 'photo']);
+            session()->flash('message', 'Student biographical information updated successfully (historical session records preserved).');
+            return;
         }
 
         $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
@@ -1323,6 +1341,11 @@ class StudentManager extends Component
 
     public function delete($id)
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Student enrollments cannot be deleted or archived from a concluded session.');
+            return;
+        }
+
         $student = Student::withTrashed()->findOrFail($id);
 
         // Check if student has ANY financial, academic, or attendance records
@@ -1335,7 +1358,8 @@ class StudentManager extends Component
                     || \App\Models\SchoolLeavingCertificate::where('student_id', $id)->exists();
 
         // Also check if they have historical enrollments in OTHER academic sessions
-        $hasHistoricalEnrollments = \App\Models\Enrollment::where('student_id', $id)
+        $hasHistoricalEnrollments = \App\Models\Enrollment::withTrashed()
+            ->where('student_id', $id)
             ->where('academic_session_id', '!=', $this->selectedSessionId)
             ->exists();
 
@@ -1366,6 +1390,11 @@ class StudentManager extends Component
 
     public function forceDeleteStudent($id)
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Deleting records from a concluded session is prohibited.');
+            return;
+        }
+
         $student = Student::withTrashed()->findOrFail($id);
 
         $hasFinancial = $student->feeRecords()->exists() 
@@ -1391,6 +1420,11 @@ class StudentManager extends Component
 
     public function restoreStudent($id)
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Student enrollments cannot be restored in a concluded session.');
+            return;
+        }
+
         $student = Student::withTrashed()->findOrFail($id);
 
         DB::transaction(function() use ($student, $id) {
@@ -1669,6 +1703,11 @@ class StudentManager extends Component
 
     public function assignStudentProgram(int $studentId, ?int $programId)
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Academic programs cannot be modified in a concluded session.');
+            return;
+        }
+
         if (!$programId) {
             return;
         }
@@ -1686,6 +1725,11 @@ class StudentManager extends Component
 
     public function bulkAssignProgram()
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Academic programs cannot be modified in a concluded session.');
+            return;
+        }
+
         $this->validate([
             'bulkProgramId' => 'required|exists:programs,id',
         ]);
@@ -1712,6 +1756,11 @@ class StudentManager extends Component
 
     public function bulkUpdateStatus()
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Status cannot be modified in a concluded session.');
+            return;
+        }
+
         $this->validate([
             'bulkStatus' => 'required|in:active,inactive',
         ]);
@@ -1744,6 +1793,11 @@ class StudentManager extends Component
 
     public function bulkUpdateShift()
     {
+        if ($this->isHistoricalSession) {
+            session()->flash('error', 'Historical academic sessions are sealed. Shift assignments cannot be modified in a concluded session.');
+            return;
+        }
+
         $this->validate([
             'bulkShift' => 'required|in:morning,evening,regular',
         ]);
@@ -1793,20 +1847,21 @@ class StudentManager extends Component
         session()->flash('message', 'Selected students shift updated successfully.');
     }
 
+    public function getIsHistoricalSessionProperty(): bool
+    {
+        return \App\Models\AcademicSession::isSessionLocked($this->selectedSessionId);
+    }
+
     public function getMorningClassesProperty()
     {
-        return Classes::withoutGlobalScope('active_session')
-            ->where('academic_session_id', $this->selectedSessionId)
-            ->where('shift_type', 'morning')
+        return Classes::forSession($this->selectedSessionId, 'morning')
             ->orderBy('numeric_value')
             ->get();
     }
 
     public function getEveningClassesProperty()
     {
-        return Classes::withoutGlobalScope('active_session')
-            ->where('academic_session_id', $this->selectedSessionId)
-            ->where('shift_type', 'evening')
+        return Classes::forSession($this->selectedSessionId, 'evening')
             ->orderBy('numeric_value')
             ->get();
     }
@@ -2060,7 +2115,30 @@ class StudentManager extends Component
              $this->selectedClassId = !empty($allowedClassIds) ? $allowedClassIds[0] : null;
         }
 
-        $shiftType = $this->currentSessionIsRegular ? 'regular' : session('selected_shift_type', 'morning');
+        $studentsQuery = $this->buildStudentsQuery($allowedClassIds, $isTeacher);
+        $students = $studentsQuery->paginate(10);
+
+        $layout = request()->is('teacher/*') 
+            ? 'components.layouts.teacher' 
+            : 'components.layouts.admin';
+
+        $sportsOptions = \App\Models\DefinedOption::sports()->get();
+        $activityOptions = \App\Models\DefinedOption::activities()->get();
+
+        return view('livewire.admin.student-manager', [
+            'students' => $students,
+            'classes' => $viewClasses,
+            'sportsOptions' => $sportsOptions,
+            'activityOptions' => $activityOptions,
+            'availablePrograms' => $this->availablePrograms,
+        ])->layout($layout, ['title' => 'Student Management']);
+    }
+
+    public function buildStudentsQuery(array $allowedClassIds = [], bool $isTeacher = false)
+    {
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $isRegular = ($sessionObj && $sessionObj->shift_type === 'Regular');
+        $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
         if ($this->filterStatus === 'archived') {
             $studentsQuery = Student::onlyTrashed()
@@ -2103,100 +2181,151 @@ class StudentManager extends Component
             } else {
                 $studentsQuery->orderBy('students.id', $this->sortDir === 'desc' ? 'desc' : 'asc');
             }
-        } else {
-            $studentsQuery = Student::query()
-                ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
-                ->join('classes', 'enrollments.class_id', '=', 'classes.id')
-                ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id')
-                ->select(
-                    'students.*',
-                    'classes.name as class_name',
-                    'enrollments.roll_number as roll_no',
-                    'enrollments.shift_type',
-                    'enrollments.program_id',
-                    'programs.name as program_name',
-                    'programs.code as program_code'
-                )
-                ->where('enrollments.academic_session_id', $this->selectedSessionId)
-                ->when($shiftType !== 'both', function($q) use ($shiftType) {
-                    $q->where('enrollments.shift_type', $shiftType);
-                })
-                ->when($this->selectedClassId, function($q) {
-                    $q->where('enrollments.class_id', $this->selectedClassId);
-                })
-                ->when($this->search, function ($q) {
-                    $searchHash = \App\Models\Student::hashBlindIndex($this->search);
-                    $q->where(function ($subQuery) use ($searchHash) {
-                        $subQuery->where('students.name', 'like', '%' . $this->search . '%')
-                          ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
-                          ->orWhere('students.admission_no', 'like', '%' . $this->search . '%');
-                        if ($searchHash) {
-                            $subQuery->orWhere('students.father_cnic_hash', $searchHash)
-                              ->orWhere('students.guardian_cnic_hash', $searchHash)
-                              ->orWhere('students.b_form_hash', $searchHash)
-                              ->orWhere('students.phone_hash', $searchHash);
-                        }
-                    });
-                })
-                ->when($this->filterSport, function($q) {
-                    $q->where('students.sports', 'like', '%' . $this->filterSport . '%');
-                })
-                ->when($this->filterActivity, function($q) {
-                    $q->where('students.extra_curriculars', 'like', '%' . $this->filterActivity . '%');
-                })
-                ->when($this->filterTransport, function($q) {
-                    $q->where('students.transport_mode', $this->filterTransport);
-                })
-                ->when($this->filterTransport === 'school_bus' && $this->filterBus, function($q) {
-                    $q->where('students.vehicle_number', $this->filterBus);
-                })
-                ->when($this->filterStatus, function($q) {
-                    if ($this->filterStatus === 'withdrawn') {
-                        $q->whereIn('enrollments.status', ['withdrawn', 'slc_issued']);
-                    } else {
-                        $q->where('enrollments.status', $this->filterStatus);
-                    }
-                });
 
-            // 1. Mandatory Teacher Restriction (Always apply)
-            if ($isTeacher) {
-                $studentsQuery->whereIn('enrollments.class_id', $allowedClassIds);
-            }
-
-            // 2. Selection Filter
-            if ($this->selectedClassId) {
-                $studentsQuery->where('enrollments.class_id', $this->selectedClassId);
-            }
-
-            // Always sort class-wise first to avoid mixing students from different classes
-            $studentsQuery->orderBy('classes.name', 'asc');
-
-            if ($this->sortBy === 'roll_no') {
-                $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ' . ($this->sortDir === 'desc' ? 'DESC' : 'ASC'));
-            } elseif ($this->sortBy === 'name') {
-                $studentsQuery->orderBy('students.name', $this->sortDir === 'desc' ? 'desc' : 'asc');
-            } elseif ($this->sortBy === 'admission_no') {
-                $studentsQuery->orderBy('students.admission_no', $this->sortDir === 'desc' ? 'desc' : 'asc');
-            } else {
-                $studentsQuery->orderBy('students.id', $this->sortDir === 'desc' ? 'desc' : 'asc');
-            }
+            return $studentsQuery;
         }
 
-        $students = $studentsQuery->paginate(10);
+        $studentsQuery = Student::query()
+            ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
+            ->join('classes', 'enrollments.class_id', '=', 'classes.id')
+            ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->select(
+                'students.*',
+                'classes.name as class_name',
+                'enrollments.roll_number as roll_no',
+                'enrollments.shift_type',
+                'enrollments.program_id',
+                'programs.name as program_name',
+                'programs.code as program_code'
+            )
+            ->where('enrollments.academic_session_id', $this->selectedSessionId)
+            ->when($shiftType !== 'both', function($q) use ($shiftType) {
+                $q->where('enrollments.shift_type', $shiftType);
+            })
+            ->when($this->selectedClassId, function($q) {
+                $q->where('enrollments.class_id', $this->selectedClassId);
+            })
+            ->when($this->search, function ($q) {
+                $searchHash = \App\Models\Student::hashBlindIndex($this->search);
+                $q->where(function ($subQuery) use ($searchHash) {
+                    $subQuery->where('students.name', 'like', '%' . $this->search . '%')
+                      ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
+                      ->orWhere('students.admission_no', 'like', '%' . $this->search . '%');
+                    if ($searchHash) {
+                        $subQuery->orWhere('students.father_cnic_hash', $searchHash)
+                          ->orWhere('students.guardian_cnic_hash', $searchHash)
+                          ->orWhere('students.b_form_hash', $searchHash)
+                          ->orWhere('students.phone_hash', $searchHash);
+                    }
+                });
+            })
+            ->when($this->filterSport, function($q) {
+                $q->where('students.sports', 'like', '%' . $this->filterSport . '%');
+            })
+            ->when($this->filterActivity, function($q) {
+                $q->where('students.extra_curriculars', 'like', '%' . $this->filterActivity . '%');
+            })
+            ->when($this->filterTransport, function($q) {
+                $q->where('students.transport_mode', $this->filterTransport);
+            })
+            ->when($this->filterTransport === 'school_bus' && $this->filterBus, function($q) {
+                $q->where('students.vehicle_number', $this->filterBus);
+            })
+            ->when($this->filterStatus, function($q) {
+                if ($this->filterStatus === 'withdrawn') {
+                    $q->whereIn('enrollments.status', ['withdrawn', 'slc_issued']);
+                } else {
+                    $q->where('enrollments.status', $this->filterStatus);
+                }
+            });
 
-        $layout = request()->is('teacher/*') 
-            ? 'components.layouts.teacher' 
-            : 'components.layouts.admin';
+        // 1. Mandatory Teacher Restriction (Always apply)
+        if ($isTeacher) {
+            $studentsQuery->whereIn('enrollments.class_id', $allowedClassIds);
+        }
 
-        $sportsOptions = \App\Models\DefinedOption::sports()->get();
-        $activityOptions = \App\Models\DefinedOption::activities()->get();
+        // 2. Selection Filter
+        if ($this->selectedClassId) {
+            $studentsQuery->where('enrollments.class_id', $this->selectedClassId);
+        }
 
-        return view('livewire.admin.student-manager', [
-            'students' => $students,
-            'classes' => $viewClasses,
-            'sportsOptions' => $sportsOptions,
-            'activityOptions' => $activityOptions,
-            'availablePrograms' => $this->availablePrograms,
-        ])->layout($layout, ['title' => 'Student Management']);
+        // Always sort class-wise first to avoid mixing students from different classes
+        $studentsQuery->orderBy('classes.name', 'asc');
+
+        if ($this->sortBy === 'roll_no') {
+            $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ' . ($this->sortDir === 'desc' ? 'DESC' : 'ASC'));
+        } elseif ($this->sortBy === 'name') {
+            $studentsQuery->orderBy('students.name', $this->sortDir === 'desc' ? 'desc' : 'asc');
+        } elseif ($this->sortBy === 'admission_no') {
+            $studentsQuery->orderBy('students.admission_no', $this->sortDir === 'desc' ? 'desc' : 'asc');
+        } else {
+            $studentsQuery->orderBy('students.id', $this->sortDir === 'desc' ? 'desc' : 'asc');
+        }
+
+        return $studentsQuery;
+    }
+
+    public function exportCsv()
+    {
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $sessionName = $sessionObj ? str_replace([' ', '/', '\\'], '_', $sessionObj->name) : 'session';
+        $filename = 'students_export_' . $sessionName . '_' . now()->format('Y-m-d_His') . '.csv';
+
+        $isTeacher = auth()->check() && auth()->user()->hasRole('Teacher');
+        $allowedClassIds = [];
+        if ($isTeacher) {
+            $allowedClassIds = DB::table('user_class_access')
+                ->where('user_id', auth()->id())
+                ->pluck('class_id')
+                ->toArray();
+        }
+
+        $students = $this->buildStudentsQuery($allowedClassIds, $isTeacher)->get();
+
+        return response()->streamDownload(function () use ($students) {
+            $handle = fopen('php://output', 'w');
+            // Add UTF-8 BOM for Excel compatibility
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($handle, [
+                'Admission No',
+                'Roll No',
+                'Student Name',
+                'Father Name',
+                'Class',
+                'Shift',
+                'Status',
+                'Gender',
+                'B-Form / CNIC',
+                'Father CNIC',
+                'Phone',
+                'DOB',
+                'Admission Date',
+                'Address',
+            ]);
+
+            foreach ($students as $student) {
+                fputcsv($handle, [
+                    $student->admission_no,
+                    $student->roll_no ?? '—',
+                    $student->name,
+                    $student->father_name ?? '—',
+                    $student->class_name ?? '—',
+                    ucfirst($student->shift_type ?? 'regular'),
+                    ucfirst($student->status ?? 'active'),
+                    ucfirst($student->gender ?? '—'),
+                    $student->b_form_number ?? '—',
+                    $student->father_cnic ?? '—',
+                    $student->phone ?? '—',
+                    $student->dob ?? '—',
+                    $student->admission_date ?? '—',
+                    $student->address ?? '—',
+                ]);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 }

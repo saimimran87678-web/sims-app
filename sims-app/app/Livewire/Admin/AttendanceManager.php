@@ -56,12 +56,9 @@ class AttendanceManager extends Component
         $isRegular = ($activeSession && $activeSession->shift_type === 'Regular');
         $shiftType = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
 
-        $query = \App\Models\Classes::where('academic_session_id', $activeSessionId);
-        if ($shiftType !== 'both') {
-            $query->where('shift_type', $shiftType);
-        }
-
-        $this->classes = $query->orderBy('numeric_value')->get();
+        $this->classes = \App\Models\Classes::forSession($activeSessionId, $shiftType)
+            ->orderBy('numeric_value')
+            ->get();
         if ($this->classes->isNotEmpty()) {
             $this->selectedClassId = $this->classes->first()->id;
             $this->loadStudentsAndAttendance();

@@ -32,6 +32,16 @@ class Attendance extends Model
 
     protected static function booted()
     {
+        static::saving(function ($attendance) {
+            if ($attendance->academic_session_id && (!app()->runningInConsole() || app()->environment('testing'))) {
+                if (AcademicSession::isSessionLocked($attendance->academic_session_id)) {
+                    if (auth()->check() && !auth()->user()->hasRole('Super Admin')) {
+                        throw new \DomainException("Academic Session is concluded and locked. Historical attendance registers cannot be modified.");
+                    }
+                }
+            }
+        });
+
         static::creating(function ($attendance) {
             if (empty($attendance->enrollment_id) && !empty($attendance->student_id)) {
                 $enrollment = Enrollment::where('student_id', $attendance->student_id)
