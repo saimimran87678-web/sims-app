@@ -212,4 +212,109 @@ class ClassManagerTest extends TestCase
         $this->assertEquals('Class 8-Rose', $fresh->name);
         $this->assertEquals(8, $fresh->numeric_value); // Grade level preserved
     }
+
+    public function test_early_childhood_education_classes_and_hyphenated_sections_support()
+    {
+        $this->actingAs($this->admin);
+
+        // 1. Create Early Education classes without forced "Class" prefix
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('name', 'Nursery - Rose')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('name', 'Playgroup - Blue')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        // 2. Create custom named section class
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->set('name', 'Class 7 - Iqbal')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $nursery = Classes::where('name', 'Nursery - Rose')->first();
+        $playgroup = Classes::where('name', 'Playgroup - Blue')->first();
+        $class7 = Classes::where('name', 'Class 7 - Iqbal')->first();
+
+        $this->assertNotNull($nursery);
+        $this->assertNotNull($playgroup);
+        $this->assertNotNull($class7);
+
+        // Numeric value detection
+        $this->assertEquals(-2, $nursery->numeric_value);
+        $this->assertEquals(-3, $playgroup->numeric_value);
+        $this->assertEquals(7, $class7->numeric_value);
+
+        // Model accessors
+        $this->assertEquals('Nursery', $nursery->grade_name);
+        $this->assertEquals('Rose', $nursery->section_name);
+        $this->assertEquals('Nursery — Rose', $nursery->display_name);
+        $this->assertTrue($nursery->is_early_education);
+
+        $this->assertEquals('Playgroup', $playgroup->grade_name);
+        $this->assertEquals('Blue', $playgroup->section_name);
+        $this->assertTrue($playgroup->is_early_education);
+
+        $this->assertEquals('Class 7', $class7->grade_name);
+        $this->assertEquals('Iqbal', $class7->section_name);
+        $this->assertEquals('Class 7 — Iqbal', $class7->display_name);
+        $this->assertFalse($class7->is_early_education);
+    }
+
+    public function test_archived_classes_are_separated_from_active_classes()
+    {
+        $this->actingAs($this->admin);
+
+        $activeRoom = Classes::create([
+            'name' => 'Class 6 - Active',
+            'numeric_value' => 6,
+            'shift_type' => 'regular',
+            'is_active' => true,
+        ]);
+
+        $archivedRoom = Classes::create([
+            'name' => 'Class 6 - Inactive',
+            'numeric_value' => 6,
+            'shift_type' => 'regular',
+            'is_active' => false,
+        ]);
+
+        // Default: Active view only shows active room
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->assertSet('showArchived', false)
+            ->assertViewHas('classes', function ($classes) use ($activeRoom, $archivedRoom) {
+                return $classes->contains('id', $activeRoom->id) &&
+                      !$classes->contains('id', $archivedRoom->id);
+            });
+
+        // Toggle to Archived view: only shows archived room
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->call('toggleArchived')
+            ->assertSet('showArchived', true)
+            ->assertViewHas('classes', function ($classes) use ($activeRoom, $archivedRoom) {
+                return !$classes->contains('id', $activeRoom->id) &&
+                        $classes->contains('id', $archivedRoom->id);
+            });
+    }
+
+    public function test_mistaken_classroom_with_zero_records_can_be_directly_deleted_permanently()
+    {
+        $this->actingAs($this->admin);
+
+        $mistaken = Classes::create([
+            'name' => 'Class 99 - Mistake',
+            'numeric_value' => 99,
+            'shift_type' => 'regular',
+            'is_active' => true,
+        ]);
+
+        Livewire::test(\App\Livewire\Admin\ClassManager::class)
+            ->call('deleteClassDirectly', $mistaken->id)
+            ->assertHasNoErrors();
+
+        // Assert record is permanently purged
+        $this->assertNull(Classes::withTrashed()->find($mistaken->id));
+    }
 }

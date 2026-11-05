@@ -180,15 +180,9 @@ class PermanentClassroomArchitectureTest extends TestCase
             'shift_type' => 'regular',
         ]);
 
+        // Mistaken room with 0 records is directly and permanently deleted
         Livewire::test(\App\Livewire\Admin\ClassManager::class)
             ->call('confirmDelete', $room->id);
-
-        // Soft deleted
-        $this->assertSoftDeleted('classes', ['id' => $room->id]);
-
-        // Permanently deleted
-        Livewire::test(\App\Livewire\Admin\ClassManager::class)
-            ->call('permanentDelete', $room->id);
 
         $this->assertDatabaseMissing('classes', ['id' => $room->id]);
     }

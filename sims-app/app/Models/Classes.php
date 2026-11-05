@@ -142,4 +142,134 @@ class Classes extends Model
     {
         return $this->belongsTo(self::class, 'next_class_id');
     }
+
+    /**
+     * Smartly detects the grade level numeric_value from a classroom name.
+     * ECE stages:
+     *   Playgroup / Daycare / Toddler -> -3
+     *   Nursery / Montessori Junior  -> -2
+     *   KG-1 / Junior KG / Mont Senior -> -1
+     *   KG-2 / Prep / Kindergarten / Senior KG -> 0
+     * Standard grades:
+     *   Class 1..12, Grade 1..12, 1..12 -> 1..12
+     * Cambridge:
+     *   O-1 -> 9, O-2 -> 10, O-3 -> 11, A-1 / AS -> 11, A-2 -> 12
+     */
+    public static function detectNumericValue(string $name): int
+    {
+        $clean = trim($name);
+        $lower = strtolower($clean);
+
+        // 1. Check Early Childhood Education / Montessori keywords
+        if (preg_match('/\b(playgroup|toddler|daycare|infant)\b/i', $lower)) {
+            return -3;
+        }
+
+        if (preg_match('/\b(nursery|montessori\s*junior|montessori\s*1)\b/i', $lower)) {
+            return -2;
+        }
+
+        if (preg_match('/\b(kg[\s\-]*1|junior\s*kg|montessori\s*senior|montessori\s*2)\b/i', $lower)) {
+            return -1;
+        }
+
+        if (preg_match('/\b(prep|kindergarten|kg[\s\-]*2|senior\s*kg|\bkg\b)\b/i', $lower)) {
+            return 0;
+        }
+
+        // 2. Cambridge / College streams
+        if (preg_match('/\bo[\s\-]*level[\s\-]*1|\bo[\s\-]*1\b/i', $lower)) {
+            return 9;
+        }
+        if (preg_match('/\bo[\s\-]*level[\s\-]*2|\bo[\s\-]*2\b/i', $lower)) {
+            return 10;
+        }
+        if (preg_match('/\bo[\s\-]*level[\s\-]*3|\bo[\s\-]*3\b/i', $lower)) {
+            return 11;
+        }
+        if (preg_match('/\ba[\s\-]*level[\s\-]*1|\bas[\s\-]*level|\ba[\s\-]*1\b/i', $lower)) {
+            return 11;
+        }
+        if (preg_match('/\ba[\s\-]*level[\s\-]*2|\ba2[\s\-]*level|\ba[\s\-]*2\b/i', $lower)) {
+            return 12;
+        }
+
+        // 3. If hyphen exists, look at first part before hyphen (e.g. "Class 7 - 14 August" or "Class 7 - Iqbal")
+        $firstPart = str_contains($clean, '-') ? trim(explode('-', $clean, 2)[0]) : $clean;
+
+        // Check for explicit "Class X" or "Grade X" or standalone digit in first part
+        if (preg_match('/\b(?:class|grade)?\s*(\d+)/i', $firstPart, $matches)) {
+            return (int) $matches[1];
+        }
+
+        // 4. Fallback: extract first integer found in the string
+        if (preg_match('/(\d+)/', $clean, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 0;
+    }
+
+    public function getGradeNameAttribute(): string
+    {
+        $val = $this->numeric_value;
+        if ($val === -3) return 'Playgroup';
+        if ($val === -2) return 'Nursery';
+        if ($val === -1) return 'KG-1';
+        if ($val === 0) {
+            if (preg_match('/\b(prep|kindergarten|kg|nursery|playgroup)\b/i', $this->name, $matches)) {
+                return ucfirst(strtolower($matches[1]));
+            }
+            return 'Prep';
+        }
+
+        if ($val >= 1 && $val <= 12) {
+            return 'Class ' . $val;
+        }
+
+        return $this->name;
+    }
+
+    public function getSectionNameAttribute(): string
+    {
+        $name = trim($this->name);
+
+        if (str_contains($name, ' - ')) {
+            return trim(explode(' - ', $name, 2)[1]);
+        }
+
+        if (str_contains($name, '-')) {
+            $parts = explode('-', $name);
+            if (count($parts) > 2 && preg_match('/^(?:KG|O|A)$/i', trim($parts[0]))) {
+                return trim($parts[2]);
+            }
+            if (count($parts) > 1 && !preg_match('/^(?:KG|O|A)$/i', trim($parts[0]))) {
+                return trim($parts[1]);
+            }
+        }
+
+        if (preg_match('/^(?:Class\s*)?\d+([A-Za-z]+)$/i', $name, $matches)) {
+            return strtoupper($matches[1]);
+        }
+
+        $stripped = preg_replace('/^(?:Class\s*\d+|Grade\s*\d+|Playgroup|Nursery|KG[\s\-]*[12]?|Prep|Kindergarten)\s+/i', '', $name);
+        return ($stripped !== $name && !empty(trim($stripped))) ? trim($stripped) : '';
+    }
+
+    public function getDisplayNameAttribute(): string
+    {
+        $section = $this->section_name;
+        $grade = $this->grade_name;
+
+        if ($section !== '') {
+            return "{$grade} — {$section}";
+        }
+
+        return $this->name;
+    }
+
+    public function getIsEarlyEducationAttribute(): bool
+    {
+        return $this->numeric_value <= 0;
+    }
 }

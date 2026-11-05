@@ -70,15 +70,13 @@ class TeacherScheduleArrangementTest extends TestCase
         ]);
 
         // 4. Create Subjects
-        $this->subjectMath = Subject::create([
+        $this->subjectMath = Subject::firstOrCreate(['name' => 'Mathematics'], [
             'class_id' => $this->classA->id,
-            'name' => 'Mathematics',
             'code' => 'MATH9',
         ]);
 
-        $this->subjectPhysics = Subject::create([
+        $this->subjectPhysics = Subject::firstOrCreate(['name' => 'Physics'], [
             'class_id' => $this->classB->id,
-            'name' => 'Physics',
             'code' => 'PHY10',
         ]);
 
@@ -124,7 +122,6 @@ class TeacherScheduleArrangementTest extends TestCase
             'period_no' => 1,
             'room' => 'Room 101',
             'is_divided' => false,
-            'is_substitute' => false,
         ]);
 
         // When teacher views Tuesday in single_schedule mode, Period 1 should be loaded from Monday's universal schedule
@@ -151,7 +148,6 @@ class TeacherScheduleArrangementTest extends TestCase
             'period_no' => 1,
             'room' => 'Room 101',
             'is_divided' => false,
-            'is_substitute' => false,
         ]);
 
         // Compute Monday's date of the current week
@@ -223,7 +219,6 @@ class TeacherScheduleArrangementTest extends TestCase
             'period_no' => 1,
             'room' => 'Room 101',
             'is_divided' => false,
-            'is_substitute' => false,
         ]);
 
         $mondayDate = now()->startOfWeek(Carbon::MONDAY)->format('Y-m-d');
@@ -264,7 +259,6 @@ class TeacherScheduleArrangementTest extends TestCase
             'period_no' => 1,
             'room' => 'Room 101',
             'is_divided' => false,
-            'is_substitute' => false,
         ]);
 
         // Admin assigns teacher as substitute for Period 1 today (Override)
@@ -303,7 +297,6 @@ class TeacherScheduleArrangementTest extends TestCase
             'period_no' => 1,
             'room' => 'Room 101',
             'is_divided' => false,
-            'is_substitute' => false,
         ]);
 
         // Dashboard on any weekday should load Monday's universal schedule
@@ -326,7 +319,6 @@ class TeacherScheduleArrangementTest extends TestCase
             'period_no' => 1,
             'room' => 'Room 101',
             'is_divided' => false,
-            'is_substitute' => false,
         ]);
 
         $test = Livewire::test(\App\Livewire\Teacher\ScheduleView::class)

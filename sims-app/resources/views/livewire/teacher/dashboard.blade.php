@@ -74,7 +74,7 @@
                                     $cardBorderBg = $isNow ? 'bg-amber-50 border-amber-300' : 'bg-amber-50/50 border-amber-200';
                                 } elseif (!empty($classSchedule->is_relieved)) {
                                     $cardBorderBg = 'bg-purple-50/40 border-purple-200';
-                                } elseif ($classSchedule->is_substitute) {
+                                } elseif (!empty($classSchedule->is_substitute)) {
                                     $cardBorderBg = $isNow ? 'bg-blue-50 border-blue-200' : 'bg-blue-50/40 border-blue-200';
                                 }
                             @endphp
@@ -103,7 +103,7 @@
                                     @else
                                         <h4 class="font-bold {{ $isNow ? 'text-blue-900' : 'text-gray-800' }} flex items-center gap-2">
                                             {{ $classSchedule->subject_name }}
-                                            @if($classSchedule->is_substitute)
+                                            @if(!empty($classSchedule->is_substitute))
                                                 <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] uppercase tracking-wider font-bold rounded-full">Arrangement</span>
                                             @endif
                                         </h4>

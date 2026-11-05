@@ -21,11 +21,19 @@
         {{-- Header Row --}}
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div class="flex items-center gap-3">
-                <h3 class="text-lg font-bold text-gray-800">
-                    {{ $showTrash ? '🗑️ Trash' : 'Manage Classrooms' }}
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    @if($showArchived)
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M10 12h4"/></svg>
+                        Archived Classrooms
+                    @else
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 5v17"/><path d="M6 5v17"/></svg>
+                        Active Classrooms
+                    @endif
                 </h3>
-                @if($showTrash)
-                    <span class="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-semibold rounded-full">Deleted Classrooms</span>
+                @if($showArchived)
+                    <span class="px-2.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">Inactive Rooms</span>
+                @else
+                    <span class="px-2.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">{{ count($classes) }} Rooms</span>
                 @endif
             </div>
 
@@ -41,35 +49,54 @@
                     </select>
                 @endif
 
-                {{-- Trash Toggle --}}
+                {{-- Archived Rooms Toggle Button --}}
                 <button
-                    wire:click="toggleTrash"
+                    wire:click="toggleArchived"
                     class="px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2
-                        {{ $showTrash ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
+                        {{ $showArchived ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    {{ $showTrash ? 'Back to Active' : 'View Trash' }}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M10 12h4"/></svg>
+                    @if($showArchived)
+                        Back to Active
+                    @else
+                        Archived Classrooms
+                        @if($this->archived_count > 0)
+                            <span class="px-1.5 py-0.2 bg-amber-200 text-amber-800 text-[10px] font-bold rounded-full">{{ $this->archived_count }}</span>
+                        @endif
+                    @endif
                 </button>
 
                 {{-- Add Class --}}
-                @if(!$showTrash)
+                @if(!$showArchived)
                     @can('class.create')
                     <div class="flex flex-col gap-1">
-                        <div class="flex items-center gap-2">
-                            <div class="flex items-center">
-                                <span class="px-3 py-2 bg-gray-100 text-gray-600 rounded-l-xl border border-r-0 border-gray-200 text-sm font-medium">Class</span>
-                                <input
-                                    id="class-name-input"
-                                    wire:model="name"
-                                    wire:keydown.enter="save"
-                                    type="text"
-                                    placeholder="e.g. 11B"
-                                    class="px-4 py-2 rounded-r-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm w-24"
-                                />
-                            </div>
-                            <button wire:click="save" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2 shadow-lg shadow-blue-200">
+                        <div class="flex items-center">
+                            {{-- Optional Stage Selector --}}
+                            <select wire:model="stage" class="px-2 py-2 bg-gray-100 text-gray-700 rounded-l-xl border border-r-0 border-gray-200 text-xs font-semibold outline-none hover:bg-gray-200 transition-colors">
+                                <option value="auto">⚡ Auto Stage</option>
+                                <optgroup label="Early Years / Montessori">
+                                    <option value="-3">Playgroup</option>
+                                    <option value="-2">Nursery</option>
+                                    <option value="-1">KG-1 (Junior KG)</option>
+                                    <option value="0">KG-2 / Prep</option>
+                                </optgroup>
+                                <optgroup label="Standard Grades">
+                                    @for($i=1; $i<=12; $i++)
+                                        <option value="{{ $i }}">Class {{ $i }}</option>
+                                    @endfor
+                                </optgroup>
+                            </select>
+                            <input
+                                id="class-name-input"
+                                wire:model="name"
+                                wire:keydown.enter="save"
+                                type="text"
+                                placeholder="e.g. Class 7 - Iqbal, Nursery - Rose, 10A"
+                                class="px-3 py-2 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm w-44 sm:w-60"
+                            />
+                            <button wire:click="save" class="px-4 py-2 bg-blue-600 text-white rounded-r-xl hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-1.5 shadow-md shadow-blue-200">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                                Add
+                                Add Room
                             </button>
                         </div>
                         @error('name') <span class="text-red-500 text-xs px-1">{{ $message }}</span> @enderror
@@ -79,8 +106,8 @@
             </div>
         </div>
 
-        {{-- CLASS GRID --}}
-        @if(!$showTrash)
+        {{-- ACTIVE CLASSROOMS GRID --}}
+        @if(!$showArchived)
         
         @if($hasFinalExam)
         <div class="mb-6 p-4 bg-gradient-to-r {{ $hasNextSession ? 'from-blue-50 to-indigo-50 border-blue-200/60' : 'from-yellow-50 to-orange-50 border-yellow-200/60' }} border rounded-2xl flex gap-3 shadow-sm">
@@ -99,7 +126,7 @@
                 </h4>
                 <p class="text-xs text-gray-600 mt-1 leading-relaxed">
                     @if($hasNextSession)
-                        A <strong>Final-Term</strong> exam has been created for this session. You can now define which target class students in each class will advance to when promoted. Setting these pathways ensures the end-of-session promotion wizard executes correctly.
+                        A <strong>Final-Term</strong> exam is configured for this session. The "Promotes To" progression pathway is now visible below to configure which class passing students advance to in the new session.
                     @else
                         A <strong>Final-Term</strong> exam is configured, but <strong>no next academic session is created yet</strong>. Please create a new academic session first in Settings > Academic Sessions before configuring class promotion pathways.
                     @endif
@@ -110,7 +137,7 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             @forelse($classes as $class)
-                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3">
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between gap-3">
                     {{-- Class Name / Rename --}}
                     @if($renamingClassId === $class->id)
                         <div class="flex flex-col gap-2 w-full">
@@ -129,72 +156,80 @@
                             </div>
                         </div>
                     @else
-                        <div class="flex justify-between items-start">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg {{ $class->is_active ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400' }} flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 5v17"/><path d="M6 5v17"/><circle cx="12" cy="9" r="2"/></svg>
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 5v17"/><path d="M6 5v17"/><circle cx="12" cy="9" r="2"/></svg>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="font-bold text-gray-800 text-sm">{{ $class->grade_name }}</span>
+                                            @if($class->section_name)
+                                                <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-100">{{ $class->section_name }}</span>
+                                            @endif
+                                            @if($class->is_early_education)
+                                                <span class="px-1.5 py-0.2 bg-purple-50 text-purple-700 text-[10px] font-semibold rounded">ECE</span>
+                                            @endif
+                                        </div>
+                                        <span class="text-xs text-gray-500 block mt-0.5">{{ $class->subjects_count }} Subjects</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-medium {{ $class->is_active ? 'text-gray-700' : 'text-gray-400 italic' }} block">{{ $class->name }}</span>
-                                        @if(!$class->is_active)
-                                            <span class="px-1.5 py-0.2 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded">Archived</span>
-                                        @endif
-                                    </div>
-                                    <span class="text-xs text-gray-500">{{ $class->subjects_count }} Subjects</span>
-                                    
-                                    <div class="mt-2 flex flex-col gap-0.5">
-                                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Promotes To</label>
-                                        <select
-                                            wire:change="updateNextClass({{ $class->id }}, $event.target.value)"
-                                            class="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg py-1 px-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none font-semibold text-gray-700"
-                                        >
-                                            <option value="">Passed Out / Graduated</option>
-                                            @foreach($allClasses as $optClass)
-                                                @if($optClass->id !== $class->id)
-                                                    <option value="{{ $optClass->id }}" @selected($class->next_class_id === $optClass->id)>
-                                                        {{ $optClass->name }}
-                                                    </option>
-                                                @endif
-                                            @endforeach
-                                        </select>
-                                    </div>
+
+                                {{-- Action Buttons (Archive, Rename, Delete) --}}
+                                <div class="flex items-center gap-1 shrink-0">
+                                    @can('classes.manage')
+                                    {{-- Archive Button --}}
+                                    <button
+                                        wire:click="archiveClass({{ $class->id }})"
+                                        class="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                                        title="Archive Classroom (safe deactivation, preserving all student and financial history)"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M10 12h4"/></svg>
+                                    </button>
+                                    {{-- Rename --}}
+                                    <button
+                                        wire:click="startRenameClass({{ $class->id }}, '{{ $class->name }}')"
+                                        class="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                        title="Rename Classroom"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                    {{-- Delete (Direct permanent delete if 0 records) --}}
+                                    <button
+                                        wire:click="deleteClassDirectly({{ $class->id }})"
+                                        wire:confirm="Permanently delete '{{ $class->name }}'? Note: This is only permitted for mistaken classrooms with 0 student, exam, or fee records."
+                                        class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Delete Classroom (only allowed if 0 historical records exist)"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                    </button>
+                                    @endcan
                                 </div>
                             </div>
 
-                            {{-- Action Buttons (always visible) --}}
-                            <div class="flex items-center gap-1 shrink-0">
-                                @can('classes.manage')
-                                {{-- Archive / Reactivate Toggle --}}
-                                <button
-                                    wire:click="toggleActiveClass({{ $class->id }})"
-                                    class="p-1.5 {{ $class->is_active ? 'text-amber-500 hover:text-amber-700 hover:bg-amber-50' : 'text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50' }} rounded-lg transition-colors"
-                                    title="{{ $class->is_active ? 'Archive Classroom (keep inactive without losing history)' : 'Reactivate Classroom' }}"
+                            {{-- "Promotes To" Progression Ladder: SHOWN ONLY WHEN FINAL EXAM IS CONFIGURED --}}
+                            @if($hasFinalExam)
+                            <div class="mt-3 p-2 bg-blue-50/60 border border-blue-100 rounded-lg flex flex-col gap-1">
+                                <label class="text-[10px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1">
+                                    <span>Promotes To</span>
+                                    <span class="text-[9px] font-normal text-blue-500">(Final Exam Active)</span>
+                                </label>
+                                <select
+                                    wire:change="updateNextClass({{ $class->id }}, $event.target.value)"
+                                    class="w-full text-xs bg-white border border-blue-200 rounded-md py-1 px-1.5 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-gray-700"
                                 >
-                                    @if($class->is_active)
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M10 12h4"/></svg>
-                                    @else
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                                    @endif
-                                </button>
-                                {{-- Rename --}}
-                                <button
-                                    wire:click="startRenameClass({{ $class->id }}, '{{ $class->name }}')"
-                                    class="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                    title="Rename Classroom"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                </button>
-                                {{-- Delete --}}
-                                <button
-                                    wire:click="confirmDelete({{ $class->id }})"
-                                    class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Move to Trash"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                </button>
-                                @endcan
+                                    <option value="">Passed Out / Graduated</option>
+                                    @foreach($allClasses as $optClass)
+                                        @if($optClass->id !== $class->id)
+                                            <option value="{{ $optClass->id }}" @selected($class->next_class_id === $optClass->id)>
+                                                {{ $optClass->display_name }}
+                                            </option>
+                                        @endif
+                                    @endforeach
+                                </select>
                             </div>
+                            @endif
                         </div>
                     @endif
 
@@ -211,37 +246,45 @@
             @empty
                 <div class="col-span-full text-center py-12 text-gray-500">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/></svg>
-                    <p>No classes found. Add your first class above.</p>
+                    <p>No active classrooms found. Add your first room above.</p>
                 </div>
             @endforelse
         </div>
 
-        {{-- TRASH LIST --}}
+        {{-- ARCHIVED CLASSROOMS LIST --}}
         @else
         <div class="space-y-3">
             @forelse($classes as $class)
-                <div class="flex items-center justify-between p-4 bg-red-50 border border-red-100 rounded-xl">
+                <div class="flex items-center justify-between p-4 bg-amber-50/60 border border-amber-200/70 rounded-xl hover:bg-amber-50 transition-colors">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-lg bg-red-100 text-red-500 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/></svg>
+                        <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M10 12h4"/></svg>
                         </div>
                         <div>
-                            <span class="font-medium text-gray-700">{{ $class->name }}</span>
-                            <div class="text-xs text-gray-500">{{ $class->subjects_count }} subjects • Deleted {{ $class->deleted_at->diffForHumans() }}</div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-gray-800">{{ $class->grade_name }}</span>
+                                @if($class->section_name)
+                                    <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded-md">{{ $class->section_name }}</span>
+                                @endif
+                                <span class="text-xs text-amber-700 italic">Archived (Inactive)</span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-0.5">{{ $class->subjects_count }} subjects • Institutional asset preserved</div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
+                        {{-- Activate / Restore Room Button --}}
                         <button
-                            wire:click="restore({{ $class->id }})"
-                            class="px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                            wire:click="restoreClass({{ $class->id }})"
+                            class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm shadow-emerald-200"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                            Restore
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            Activate Room
                         </button>
+                        {{-- Permanent Delete (Direct permanent delete if 0 records) --}}
                         <button
-                            wire:click="permanentDelete({{ $class->id }})"
-                            wire:confirm="This will PERMANENTLY delete '{{ $class->name }}' and all its subjects. This cannot be undone. Are you sure?"
-                            class="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                            wire:click="deleteClassDirectly({{ $class->id }})"
+                            wire:confirm="Permanently delete '{{ $class->name }}'? Note: This is only permitted for mistaken classrooms with 0 student, exam, or fee records."
+                            class="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                             Delete Forever
@@ -250,61 +293,14 @@
                 </div>
             @empty
                 <div class="text-center py-12 text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    <p>Trash is empty.</p>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto text-amber-200 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M10 12h4"/></svg>
+                    <p class="font-medium text-gray-600">No archived classrooms.</p>
+                    <p class="text-xs text-gray-400 mt-1">All institutional classrooms are currently active.</p>
                 </div>
             @endforelse
         </div>
         @endif
     </div>
-
-    {{-- DELETE WARNING MODAL --}}
-    @if($showDeleteWarning)
-    @teleport('body')
-        <div class="fixed inset-0 z-[999] overflow-y-auto">
-            <div class="flex items-center justify-center min-h-screen px-4">
-                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" wire:click="cancelDelete"></div>
-                <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 z-10">
-                    <div class="flex items-center gap-4 mb-5">
-                        <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-800">Move to Trash?</h3>
-                            <p class="text-sm text-gray-500">{{ $deletingClassName }}</p>
-                        </div>
-                    </div>
-
-                    <div class="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-5 space-y-1.5">
-                        <p class="text-sm font-semibold text-orange-800 mb-2">This class has linked data:</p>
-                        @if($deletingStudentCount > 0)
-                            <div class="flex items-center gap-2 text-sm text-orange-700">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                                <strong>{{ $deletingStudentCount }}</strong> student(s) enrolled
-                            </div>
-                        @endif
-                        @if($deletingTimetableCount > 0)
-                            <div class="flex items-center gap-2 text-sm text-orange-700">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                                <strong>{{ $deletingTimetableCount }}</strong> timetable entry(ies)
-                            </div>
-                        @endif
-                        <p class="text-xs text-orange-600 mt-2 pt-2 border-t border-orange-200">Moving to Trash hides this data. You can restore it anytime from the Trash view.</p>
-                    </div>
-
-                    <div class="flex gap-3">
-                        <button wire:click="cancelDelete" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl text-sm font-medium transition-colors">
-                            Cancel
-                        </button>
-                        <button wire:click="delete" class="flex-1 px-4 py-2 bg-orange-500 text-white hover:bg-orange-600 rounded-xl text-sm font-medium transition-colors">
-                            Move to Trash
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endteleport
-    @endif
 
     {{-- SUBJECT MANAGEMENT MODAL --}}
     @if($manageClassId)

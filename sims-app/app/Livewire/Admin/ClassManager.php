@@ -16,10 +16,12 @@ class ClassManager extends Component
     public $canViewSessions = false;
 
     // Class list settings (not storing collection in public property)
-    public $showTrash = false;
+    public $showArchived = false;
+    public $showTrash = false; // Kept as alias to showArchived for compatibility
 
     // Add new class
     public $name = '';
+    public $stage = 'auto'; // 'auto', or numeric string e.g. '-3', '-2', '-1', '0', '1', '7', etc.
 
     // Rename class
     public $renamingClassId = null;
@@ -72,14 +74,25 @@ class ClassManager extends Component
         // Institutional classrooms are permanent assets
         $query = Classes::query()
             ->where('shift_type', $this->getCurrentShift())
+            ->whereNull('deleted_at')
             ->with(['nextClass'])
             ->withCount('subjects');
 
-        if ($this->showTrash) {
-            $query->onlyTrashed();
+        if ($this->showArchived || $this->showTrash) {
+            $query->where('is_active', false);
+        } else {
+            $query->where('is_active', true);
         }
 
         return $query->orderBy('numeric_value')->orderBy('name')->get();
+    }
+
+    public function getArchivedCountProperty(): int
+    {
+        return Classes::where('shift_type', $this->getCurrentShift())
+            ->where('is_active', false)
+            ->whereNull('deleted_at')
+            ->count();
     }
 
     public function getCurrentShift()
@@ -87,10 +100,34 @@ class ClassManager extends Component
         return \App\Support\ActiveShift::single($this->selectedSessionId);
     }
 
+    public function toggleArchived()
+    {
+        $this->showArchived = !$this->showArchived;
+        $this->showTrash = $this->showArchived;
+        $this->renamingClassId = null;
+    }
+
     public function toggleTrash()
     {
-        $this->showTrash = !$this->showTrash;
-        $this->renamingClassId = null;
+        $this->toggleArchived();
+    }
+
+    public function archiveClass($id)
+    {
+        $this->authorize('classes.manage');
+        $class = Classes::findOrFail($id);
+        $class->is_active = false;
+        $class->save();
+        session()->flash('message', "Classroom '{$class->name}' moved to Archived Classrooms.");
+    }
+
+    public function restoreClass($id)
+    {
+        $this->authorize('classes.manage');
+        $class = Classes::findOrFail($id);
+        $class->is_active = true;
+        $class->save();
+        session()->flash('message', "Classroom '{$class->name}' activated and restored to the school building.");
     }
 
     public function toggleActiveClass($id)
@@ -111,7 +148,8 @@ class ClassManager extends Component
         $this->validate(['name' => 'required|string|max:50']);
 
         $className = trim($this->name);
-        if (!str_starts_with(strtolower($className), 'class ')) {
+        // If pure number (e.g. "7" or "10"), format as "Class 7"
+        if (is_numeric($className)) {
             $className = 'Class ' . $className;
         }
 
@@ -125,16 +163,23 @@ class ClassManager extends Component
             return;
         }
 
-        $numericValue = (int) filter_var($className, FILTER_SANITIZE_NUMBER_INT);
+        // Determine numeric_value: use manual stage selection if chosen, otherwise auto-detect
+        if ($this->stage !== 'auto' && is_numeric($this->stage)) {
+            $numericValue = (int) $this->stage;
+        } else {
+            $numericValue = Classes::detectNumericValue($className);
+        }
+
         Classes::create([
             'name' => $className,
-            'numeric_value' => $numericValue ?: 0,
-            'academic_session_id' => $this->selectedSessionId,
+            'numeric_value' => $numericValue,
+            'academic_session_id' => null, // Permanent institutional asset
             'shift_type' => $shiftType,
             'is_active' => true,
         ]);
 
         $this->name = '';
+        $this->stage = 'auto';
         session()->flash('message', 'Classroom "' . $className . '" added to the school building successfully.');
     }
 
@@ -158,7 +203,7 @@ class ClassManager extends Component
         $this->validate(['renamingClassName' => 'required|string|max:50']);
 
         $newName = trim($this->renamingClassName);
-        if (!str_starts_with(strtolower($newName), 'class ')) {
+        if (is_numeric($newName)) {
             $newName = 'Class ' . $newName;
         }
 
@@ -176,12 +221,12 @@ class ClassManager extends Component
         }
 
         $hasEnrollments = DB::table('enrollments')->where('class_id', $class->id)->exists();
-        $numericValue = (int) filter_var($newName, FILTER_SANITIZE_NUMBER_INT);
+        $numericValue = Classes::detectNumericValue($newName);
 
         $updateData = ['name' => $newName];
         // Protect educational grade level if student records already exist
         if (!$hasEnrollments) {
-            $updateData['numeric_value'] = $numericValue ?: 0;
+            $updateData['numeric_value'] = $numericValue;
         }
 
         $class->update($updateData);
@@ -192,52 +237,30 @@ class ClassManager extends Component
     }
 
     // -----------------------------------------------------------------------
-    // SAFE DELETE & ARCHIVE (protects institutional records)
+    // DIRECT DELETE & ARCHIVE (Eliminates legacy two-step trash dance)
     // -----------------------------------------------------------------------
-    public function confirmDelete($id)
+    public function deleteClassDirectly($id)
     {
-        $class = Classes::withCount(['students', 'timetables'])->findOrFail($id);
+        $this->authorize('classes.manage');
+        $class = Classes::find($id) ?? Classes::withTrashed()->find($id);
+        if (!$class) return;
 
-        $hasEnrollments = DB::table('enrollments')->where('class_id', $id)->exists();
-        $hasFees = DB::table('fee_records')->where('class_id', $id)->exists();
-        $hasMarks = DB::table('marks_configs')->where('class_id', $id)->exists();
+        $hasEnrollments = DB::table('enrollments')->where('class_id', $class->id)->exists();
+        $hasFees = DB::table('fee_records')->where('class_id', $class->id)->exists();
+        $hasMarks = DB::table('marks_configs')->where('class_id', $class->id)->exists();
 
         if ($hasEnrollments || $hasFees || $hasMarks) {
             session()->flash('error', "Classroom '{$class->name}' cannot be deleted because historical student, exam, or fee records exist. Please archive it instead to keep it inactive.");
+            $this->showDeleteWarning = false;
+            $this->deletingClassId = null;
             return;
         }
 
-        $this->deletingClassId = $id;
-        $this->deletingClassName = $class->name;
-        $this->deletingStudentCount = $class->students_count;
-        $this->deletingTimetableCount = $class->timetables_count;
-
-        if ($class->students_count === 0 && $class->timetables_count === 0) {
-            // No linked data — move to trash directly
-            $this->delete();
-        } else {
-            // Show warning modal
-            $this->showDeleteWarning = true;
-        }
-    }
-
-    public function delete()
-    {
-        $class = Classes::find($this->deletingClassId);
-        if ($class) {
-            $hasEnrollments = DB::table('enrollments')->where('class_id', $class->id)->exists();
-            $hasFees = DB::table('fee_records')->where('class_id', $class->id)->exists();
-            $hasMarks = DB::table('marks_configs')->where('class_id', $class->id)->exists();
-
-            if ($hasEnrollments || $hasFees || $hasMarks) {
-                session()->flash('error', "Classroom '{$class->name}' cannot be deleted because historical student, exam, or fee records exist. Please archive it instead.");
-                $this->showDeleteWarning = false;
-                $this->deletingClassId = null;
-                return;
-            }
-
-            $class->delete(); // soft delete
-        }
+        // Clean up class program allowances and legacy subjects
+        DB::table('class_programs')->where('class_id', $class->id)->delete();
+        DB::table('subjects')->where('class_id', $class->id)->delete();
+        DB::table('timetables')->where('class_id', $class->id)->delete();
+        $class->forceDelete();
 
         $this->showDeleteWarning = false;
         $this->deletingClassId = null;
@@ -245,7 +268,19 @@ class ClassManager extends Component
         $this->deletingStudentCount = 0;
         $this->deletingTimetableCount = 0;
         $this->manageClassId = null;
-        session()->flash('message', 'Classroom moved to Trash.');
+        session()->flash('message', "Mistaken classroom '{$class->name}' permanently deleted.");
+    }
+
+    public function confirmDelete($id)
+    {
+        $this->deleteClassDirectly($id);
+    }
+
+    public function delete()
+    {
+        if ($this->deletingClassId) {
+            $this->deleteClassDirectly($this->deletingClassId);
+        }
     }
 
     public function cancelDelete()
@@ -254,35 +289,14 @@ class ClassManager extends Component
         $this->deletingClassId = null;
     }
 
-    // -----------------------------------------------------------------------
-    // TRASH — RESTORE & PERMANENT DELETE
-    // -----------------------------------------------------------------------
     public function restore($id)
     {
-        Classes::onlyTrashed()->where('id', $id)->restore();
-        session()->flash('message', 'Classroom restored successfully.');
+        $this->restoreClass($id);
     }
 
     public function permanentDelete($id)
     {
-        $class = Classes::onlyTrashed()->where('id', $id)->first();
-        if ($class) {
-            // Check if there are any enrollments, fees, or marks linked to this class
-            $hasEnrollments = DB::table('enrollments')->where('class_id', $id)->exists();
-            $hasFees = DB::table('fee_records')->where('class_id', $id)->exists();
-            $hasMarks = DB::table('marks_configs')->where('class_id', $id)->exists();
-
-            if ($hasEnrollments || $hasFees || $hasMarks) {
-                session()->flash('error', 'Cannot permanently delete class because historical academic or financial records exist.');
-                return;
-            }
-
-            // Clean up class program allowances and legacy subjects
-            DB::table('class_programs')->where('class_id', $id)->delete();
-            DB::table('subjects')->where('class_id', $id)->delete();
-            $class->forceDelete();
-        }
-        session()->flash('message', 'Classroom permanently deleted.');
+        $this->deleteClassDirectly($id);
     }
 
     // -----------------------------------------------------------------------

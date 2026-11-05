@@ -805,8 +805,8 @@ class CurriculumProgramTest extends TestCase
         // Assert zero new subjects were created in canonical subjects catalogue
         $this->assertEquals($initialSubjectCount, Subject::count());
 
-        // Assert target class in session2 has the program attached
-        $newClass = Classes::where('academic_session_id', $session2->id)->where('name', 'Class 9th')->first();
+        // In permanent classroom architecture, the institutional room retains its programs
+        $newClass = Classes::where('name', 'Class 9th')->first();
         $this->assertNotNull($newClass);
         $this->assertTrue($newClass->programs->pluck('code')->contains('SSC-CS'));
     }

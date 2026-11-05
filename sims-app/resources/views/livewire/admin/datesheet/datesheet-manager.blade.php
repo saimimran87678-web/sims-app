@@ -145,6 +145,8 @@
                     $selectedCount = count(array_intersect($gradeClassIds, $visibleClassIds));
                     $allSelected = $selectedCount === count($gradeClassIds);
                     $someSelected = $selectedCount > 0 && !$allSelected;
+                    $firstClass = is_array($classes[0] ?? null) ? new \App\Models\Classes($classes[0]) : ($classes[0] ?? null);
+                    $gradeTitle = $firstClass ? $firstClass->grade_name : ($grade > 0 ? "Class {$grade}" : 'Grade');
                 @endphp
                 
                 <div class="flex flex-col gap-2 p-2 bg-indigo-50 rounded-lg transition-all" :class="{'bg-white shadow-md z-10': expanded}">
@@ -156,7 +158,7 @@
                             {{ $allSelected ? 'checked' : '' }}
                             class="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 {{ $someSelected ? 'text-indigo-400 opacity-75' : '' }}"
                         >
-                        <span class="text-sm font-bold text-indigo-700 w-24">{{ $grade }}th Grade</span>
+                        <span class="text-sm font-bold text-indigo-700 min-w-[5rem]">{{ $gradeTitle }}</span>
                     </label>
 
                     {{-- Child Checkboxes --}}
@@ -196,12 +198,14 @@
                                 $visibleInGrade = array_intersect($gradeClassIds, $visibleClassIds);
                                 // Merge logic: If ALL classes in this grade are selected, show 1 column
                                 $isMerged = (count($visibleInGrade) === count($gradeClassIds));
+                                $firstClass = is_array($classes[0] ?? null) ? new \App\Models\Classes($classes[0]) : ($classes[0] ?? null);
+                                $gradeTitle = $firstClass ? $firstClass->grade_name : ($grade > 0 ? "Class {$grade}" : 'Grade');
                             @endphp
 
                             @if($isMerged)
                                 {{-- Merged Header --}}
                                 <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-l border-gray-200 border-b border-gray-200 min-w-[150px]">
-                                    {{ $grade }}th
+                                    {{ $gradeTitle }}
                                 </th>
                             @else
                                 {{-- Individual Headers --}}
@@ -455,7 +459,9 @@
                 });
                 
                 // Get grade name for display
-                $gradeDisplay = $inlineEditGrade . 'th';
+                $sampleFirst = collect($groupedClasses[$inlineEditGrade] ?? [])->first();
+                $sampleObj = is_array($sampleFirst) ? new \App\Models\Classes($sampleFirst) : $sampleFirst;
+                $gradeDisplay = $sampleObj ? $sampleObj->grade_name : ($inlineEditGrade > 0 ? "Class {$inlineEditGrade}" : 'Grade');
                 $dateDisplay = \Carbon\Carbon::parse($inlineEditDate)->format('D, d M Y');
             @endphp
             <div 
@@ -477,7 +483,7 @@
                             <div>
                                 <h3 class="text-lg font-bold">Assign Subject</h3>
                                 <p class="text-sm text-indigo-100 mt-0.5">
-                                    Class {{ $gradeDisplay }} &bull; {{ $dateDisplay }}
+                                    {{ $gradeDisplay }} &bull; {{ $dateDisplay }}
                                 </p>
                             </div>
                             <button 
@@ -754,8 +760,11 @@
                                 <div class="border border-gray-200 rounded-md max-h-48 overflow-y-auto p-2 bg-gray-50 space-y-3">
                                     @foreach($groupedClasses as $classes)
                                         <div>
-                                            @php $grade = preg_replace('/[^0-9]/', '', $classes[0]['name'] ?? '0'); @endphp
-                                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Class {{ $grade }}</div>
+                                            @php 
+                                                $firstClass = is_array($classes[0] ?? null) ? new \App\Models\Classes($classes[0]) : ($classes[0] ?? null);
+                                                $gradeLabel = $firstClass ? $firstClass->grade_name : 'Class';
+                                            @endphp
+                                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{{ $gradeLabel }}</div>
                                             <div class="grid grid-cols-2 gap-2">
                                                 @foreach($classes as $class)
                                                     @php 
