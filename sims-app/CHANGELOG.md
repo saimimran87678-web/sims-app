@@ -6,6 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [v2.7.3] - 2026-11-08
+
+### 1. Module: Unified Student Profile & Academic Lifecycle (360° View)
+* **Single Master Student Profile View**:
+  * **Component Consolidation**: Eliminated UI fragmentation by merging the separate biographical data modal and the 360° lifetime portfolio into a unified master profile component (`StudentManager.php` and `resources/views/livewire/admin/student-manager.blade.php`).
+  * **Single Source of Truth**: Reduced redundant UI buttons, unified state management, and streamlined database query flows into a centralized profile housing biographical data, natural family unit hierarchy, lifetime academic metrics, timeline history, and dual print templates.
+* **Exam Term vs. Subject Aggregation Precision**:
+  * **Bug Remediation**: Resolved an aggregation defect in `StudentLifecycleService.php` where raw row counts on exam mark records erroneously inflated subject counts into exam term counts (e.g. reporting 3 subjects from 1 exam term as "3 out of 3 exams passed").
+  * **Accurate Metric Grouping**: Rewrote aggregation to group marks by distinct `exam_id`. The profile now accurately computes true exam term pass/fail rates alongside an explicit breakdown of individual subject papers, marks, and grade statuses.
+* **Terminal Class & Section Resolution for Graduated Alumni**:
+  * **Alumni Class Resolution**: For graduated and departed alumni where active session class lookups return null, added `getTerminalSectionAttribute()` and `getTerminalSectionNameAttribute()` to `Student.php` and updated `StudentLifecycleService.php`. The system now reliably resolves and displays the last completed class and section (e.g., `12C`) from their latest historical enrollment record.
+  * **Contextual UI Cleanliness**: Replaced misleading `CURRENT CLASS & SECTION` with `Graduated Class & Section` for alumni, removed `Current` prefixes from `Roll Number`, and updated all print sheet representations.
+* **Natural Sibling Hierarchy by Chronological Birth Order**:
+  * **Birth Date Ordering**: Updated family unit sibling ranking to sort strictly chronologically by Date of Birth (`date_of_birth ASC`) rather than admission date, guaranteeing that the eldest biological child is always ranked `Child #1` regardless of enrollment timing.
+  * **UI Refinement**: Removed redundant `(By Birth Date)` helper text from the sibling order field for a cleaner presentation.
+
+---
+
+### 2. Module: Security, Server-Side Session Locking & Anti-Bypass Architecture
+* **Server-Side Session Lock State Enforcement**:
+  * **Vulnerability Remediation**: Resolved a critical security bypass where the "Session Expired" lock screen was purely a client-side JavaScript overlay that could be completely bypassed by refreshing the browser (F5) due to the server session remaining active.
+  * **Tamper-Proof Middleware (`EnsureSessionNotLocked`)**: Implemented robust server-side middleware that intercepts all incoming web, AJAX, and Livewire requests when `session('is_locked')` is set. GET requests are redirected to a dedicated `/lock-screen`, and asynchronous AJAX/Livewire requests are returned HTTP `423 Locked`.
+  * **Dedicated Glassmorphism Lock Screen**: Created `SessionLockScreenController.php` and `resources/views/auth/lock-screen.blade.php` featuring high-security password verification, animated institute branding, and CSRF protection.
+  * **Seamless Session Unlock**: Upgraded `SessionUnlockController.php` to support both JSON and form submissions, authenticating user credentials, clearing lock flags, refreshing last-activity timestamps, and restoring users to their intended destination without session loss.
+* **Hybrid Security Configuration (Admin UI + Database + Environment)**:
+  * **Configurability**: Added a dedicated `Session Inactivity Timeout` selector in the Admin **System Settings** UI (5 minutes, 15 minutes, 30 minutes, 60 minutes, or Disabled) backed by the `Setting` model with automatic cache clearing.
+  * **Operational Resilience**: Preserved fallback to `.env` (`SESSION_IDLE_TIMEOUT=15`) and `config/session.php` (`idle_timeout`) so deployments can define baseline operational policies without manual database seeds.
+  * **Client-Server Inactivity Synchronization**: Updated `resources/views/components/security-scripts.blade.php` to dynamically fetch the server's configured timeout, dispatch an asynchronous beacon to `/session/lock` upon idle expiration, and handle HTTP 423 responses seamlessly.
+
+---
+
+### 3. Module: Authentication, High-Speed Password Reset & OTP Engine
+* **Sub-Second Reset Dispatch via Deferred Mail Execution**:
+  * **Performance Optimization**: Solved 2–4 second UI latency caused by synchronous TLS/SSL SMTP connections to Google Mail by wrapping email dispatch in Laravel 12's `defer()` closure. The HTTP response flushes to the browser in `<20ms` while SMTP delivery executes asynchronously during process termination.
+* **Return Type Safety & Fatal Error Elimination**:
+  * **TypeError Remediation**: Resolved a fatal `TypeError` in `PasswordResetLinkController::store` by declaring `RedirectResponse|JsonResponse` union return type, eliminating internal 500 error pages and preventing client-side `SyntaxError: Unexpected token '<', "<!DOCTYPE ..."` JSON parsing crashes.
+  * **Content-Type Aware Fetch Handling**: Upgraded `forgot-password.blade.php` to verify JSON content-types before calling `.json()`, ensuring graceful fallbacks for unexpected network conditions or server exceptions.
+* **Accidental Double-Click & Cooldown Grace Period**:
+  * **Instant UI Button Protection**: Submit button immediately disables with a spinning SVG loader upon first click to block repeated clicks during flight.
+  * **5-Second Grace Window**: If a user submits twice within seconds, the backend recognizes the recent token and smoothly routes them to `/verify-otp` instead of throwing a cooldown penalty.
+  * **Live Ticking Countdown Timer**: Deliberate re-requests display a live, real-time seconds countdown timer that automatically re-enables the submit button the instant the cooldown expires.
+
+---
+
 ## [v2.7.2] - 2026-11-08
 
 ### 1. Module: Student Management & Directory
@@ -137,6 +181,9 @@ All modules are guarded by automated feature and integration tests:
 
 | Test Suite | Tests | Assertions | Status |
 |---|---|---|---|
+| `Tests\Feature\UnifiedStudentProfileTest` | 3 | 33 | 🟢 PASS |
+| `Tests\Feature\SessionLockSecurityTest` | 5 | 21 | 🟢 PASS |
+| `Tests\Feature\Auth\PasswordResetTest` | 7 | 25 | 🟢 PASS |
 | `Tests\Feature\GraduatedAndAlumniStudentPortalTest` | 9 | 55 | 🟢 PASS |
 | `Tests\Feature\ClassManagerTest` | 12 | 58 | 🟢 PASS |
 | `Tests\Feature\HybridSessionImmutabilityTest` | 7 | 25 | 🟢 PASS |
@@ -144,4 +191,4 @@ All modules are guarded by automated feature and integration tests:
 | `Tests\Feature\StudentBFormSecurityTest` | 8 | 54 | 🟢 PASS |
 | `Tests\Feature\StudentShiftAssignmentTest` | 5 | 29 | 🟢 PASS |
 | `Tests\Feature\PermanentClassroomArchitectureTest` | 6 | 15 | 🟢 PASS |
-| **Total Automated Coverage** | **58** | **319** | 🟢 **100% Pass** |
+| **Total Automated Coverage** | **73** | **398** | 🟢 **100% Pass** |
