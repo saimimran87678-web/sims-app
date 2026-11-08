@@ -637,4 +637,14 @@ class Student extends Model
             $q->whereNull('rfid_tag')->orWhere('rfid_tag', '');
         });
     }
+
+    /**
+     * Determines whether the student has formally departed the institution
+     * (e.g. Graduated, Passed Out, SLC Issued, Withdrawn, Struck Off).
+     * Departed students represent permanent institutional records.
+     */
+    public function isDeparted(): bool
+    {
+        return in_array($this->status, ['graduated', 'passed_out', 'withdrawn', 'slc_issued', 'struck_off']);
+    }
 }

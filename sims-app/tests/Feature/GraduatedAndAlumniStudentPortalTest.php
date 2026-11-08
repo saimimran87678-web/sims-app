@@ -347,4 +347,69 @@ class GraduatedAndAlumniStudentPortalTest extends TestCase
             ->assertSet('selectedSessionId', $this->session1->id)
             ->assertSet('selectedClassId', '');
     }
+
+    public function test_delete_button_and_action_blocked_for_graduated_and_slc_students(): void
+    {
+        $this->actingAs($this->admin);
+
+        $gradStudent = Student::create([
+            'name' => 'Graduated Delete Check',
+            'admission_no' => 'ADM-GRAD-DEL',
+            'father_cnic' => '37405-1111111-2',
+            'status' => 'graduated',
+        ]);
+
+        Enrollment::create([
+            'student_id' => $gradStudent->id,
+            'class_id' => $this->class10->id,
+            'academic_session_id' => $this->session1->id,
+            'shift_type' => 'regular',
+            'roll_number' => '99',
+            'status' => 'graduated',
+        ]);
+
+        $slcStudent = Student::create([
+            'name' => 'SLC Delete Check',
+            'admission_no' => 'ADM-SLC-DEL',
+            'father_cnic' => '37405-2222222-2',
+            'status' => 'withdrawn',
+            'status_reason' => 'SLC Issued',
+        ]);
+
+        Enrollment::create([
+            'student_id' => $slcStudent->id,
+            'class_id' => $this->class10->id,
+            'academic_session_id' => $this->session1->id,
+            'shift_type' => 'regular',
+            'roll_number' => '98',
+            'status' => 'withdrawn',
+        ]);
+
+        // 1. Verify delete button is NOT rendered in the view for either student
+        Livewire::test(StudentManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->set('filterStatus', 'graduated')
+            ->assertDontSee("wire:click=\"delete({$gradStudent->id})\"", false)
+            ->assertDontSee("title=\"Delete Student\"", false);
+
+        Livewire::test(StudentManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->set('filterStatus', 'withdrawn')
+            ->assertDontSee("wire:click=\"delete({$slcStudent->id})\"", false);
+
+        // 2. Verify backend delete() call is rejected with flash error and student remains in DB
+        Livewire::test(StudentManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->call('delete', $gradStudent->id)
+            ->assertSee('Graduated and departed students');
+
+        $this->assertDatabaseHas('students', ['id' => $gradStudent->id, 'deleted_at' => null]);
+
+        Livewire::test(StudentManager::class)
+            ->set('selectedSessionId', $this->session1->id)
+            ->call('delete', $slcStudent->id)
+            ->assertSee('Graduated and departed students');
+
+        $this->assertDatabaseHas('students', ['id' => $slcStudent->id, 'deleted_at' => null]);
+    }
 }

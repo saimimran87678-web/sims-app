@@ -655,28 +655,30 @@
                                             </button>
                                             @endcan
                                             @can('student.delete')
+                                            @if(!$student->isDeparted())
                                             <button
                                                 wire:click="forceDeleteStudent({{ $student->id }})"
                                                 wire:confirm="Permanently purge {{ $student->name }}? If they have zero financial/academic records, this completely erases them from the database."
-                                                class="p-1.5 text-gray-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+                                                class="p-1.5 text-gray-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                                                 title="Permanently Purge Record"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                             </button>
+                                            @endif
                                             @endcan
                                         </div>
                                     @else
                                         @can('student.delete')
-                                        @if(!$this->isHistoricalSession)
+                                        @if(!$this->isHistoricalSession && !$student->isDeparted())
                                         <button
                                             wire:click="delete({{ $student->id }})"
                                             wire:confirm="Delete {{ $student->name }}? If this is a fresh student with no records, they will be deleted completely. If they have attendance or fee history, they will be safely archived."
-                                            class="text-rose-600 hover:text-rose-900 p-1.5 hover:bg-rose-50 rounded-lg transition-colors"
+                                            class="text-rose-600 hover:text-rose-900 p-1.5 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                                             title="Delete Student"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                         </button>
-                                        @else
+                                        @elseif($this->isHistoricalSession && !$student->isDeparted())
                                         <span class="text-gray-300 p-1.5 cursor-not-allowed" title="Enrollment locked (Historical Archive)">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                                         </span>
@@ -819,18 +821,20 @@
                                  </button>
                                  @endcan
                                  @can('student.delete')
-                                 <button wire:click="forceDeleteStudent({{ $student->id }})" wire:confirm="Permanently purge {{ $student->name }}? If they have zero financial/academic records, this completely erases them from the database." class="text-gray-400 hover:text-rose-700 p-1 rounded-lg transition-colors" title="Permanently Purge Record">
+                                 @if(!$student->isDeparted())
+                                 <button wire:click="forceDeleteStudent({{ $student->id }})" wire:confirm="Permanently purge {{ $student->name }}? If they have zero financial/academic records, this completely erases them from the database." class="text-gray-400 hover:text-rose-700 p-1 rounded-lg transition-colors cursor-pointer" title="Permanently Purge Record">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                  </button>
+                                 @endif
                                  @endcan
                              </div>
                              @else
                              @can('student.delete')
-                             @if(!$this->isHistoricalSession)
-                             <button wire:click="delete({{ $student->id }})" wire:confirm="Delete {{ $student->name }}? If this is a fresh student with no records, they will be deleted completely. If they have attendance or fee history, they will be safely archived." class="text-gray-400 hover:text-rose-600 p-1 rounded-lg transition-colors" title="Delete Student">
+                             @if(!$this->isHistoricalSession && !$student->isDeparted())
+                             <button wire:click="delete({{ $student->id }})" wire:confirm="Delete {{ $student->name }}? If this is a fresh student with no records, they will be deleted completely. If they have attendance or fee history, they will be safely archived." class="text-gray-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer" title="Delete Student">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                              </button>
-                             @else
+                             @elseif($this->isHistoricalSession && !$student->isDeparted())
                              <span class="text-gray-300 p-1 cursor-not-allowed" title="Enrollment locked (Historical Archive)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                              </span>

@@ -1350,12 +1350,17 @@ class StudentManager extends Component
 
     public function delete($id)
     {
+        $student = Student::withTrashed()->findOrFail($id);
+
+        if ($student->isDeparted()) {
+            session()->flash('error', 'Graduated and departed students (SLC / Withdrawn) cannot be deleted as they form permanent institutional records.');
+            return;
+        }
+
         if ($this->isHistoricalSession) {
             session()->flash('error', 'Historical academic sessions are sealed. Student enrollments cannot be deleted or archived from a concluded session.');
             return;
         }
-
-        $student = Student::withTrashed()->findOrFail($id);
 
         // Check if student has ANY financial, academic, or attendance records
         $hasFinancial = $student->feeRecords()->exists() 
@@ -1399,12 +1404,17 @@ class StudentManager extends Component
 
     public function forceDeleteStudent($id)
     {
+        $student = Student::withTrashed()->findOrFail($id);
+
+        if ($student->isDeparted()) {
+            session()->flash('error', 'Graduated and departed students (SLC / Withdrawn) cannot be permanently purged as they form permanent institutional records.');
+            return;
+        }
+
         if ($this->isHistoricalSession) {
             session()->flash('error', 'Historical academic sessions are sealed. Deleting records from a concluded session is prohibited.');
             return;
         }
-
-        $student = Student::withTrashed()->findOrFail($id);
 
         $hasFinancial = $student->feeRecords()->exists() 
                      || $student->feePayments()->exists()
