@@ -30,6 +30,7 @@ class StudentManager extends Component
     public $viewMode = 'grid'; // 'grid' or 'list'
     public $sortBy = 'roll_no';
     public $sortDir = 'asc';
+    public $showFilters = false;
     
     // Modal State
     public $showModal = false;
@@ -586,10 +587,15 @@ class StudentManager extends Component
         return $rules;
     }
 
+    public function toggleFilters()
+    {
+        $this->showFilters = !$this->showFilters;
+    }
+
     public function mount()
     {
         $this->authorize('students.manage');
-        $this->academicSessions = \App\Models\AcademicSession::active()->orderBy('start_date', 'desc')->get();
+        $this->academicSessions = \App\Models\AcademicSession::orderBy('start_date', 'desc')->get();
         
         $activeSessionId = \App\Models\AcademicSession::getActiveSessionId();
 
@@ -598,7 +604,7 @@ class StudentManager extends Component
             $this->selectedSessionId = $activeSessionId;
             $this->academicSessions = $this->academicSessions->where('id', $activeSessionId);
         } else {
-            $this->selectedSessionId = $activeSessionId;
+            $this->selectedSessionId = $this->selectedSessionId ?: $activeSessionId;
         }
         
         $this->loadClasses();
@@ -631,7 +637,10 @@ class StudentManager extends Component
 
     public function updatedSelectedSessionId()
     {
+        $this->selectedClassId = '';
         $this->loadClasses();
+        $this->resetPage();
+        $this->selectedStudentIds = [];
     }
 
     public function updatedClassId($value)
@@ -2157,7 +2166,8 @@ class StudentManager extends Component
                 'students' => collect(),
                 'classes' => $viewClasses,
                 'sportsOptions' => $sportsOptions,
-                'activityOptions' => $activityOptions
+                'activityOptions' => $activityOptions,
+                'academicSessions' => $this->academicSessions,
             ]);
         }
 
@@ -2200,6 +2210,7 @@ class StudentManager extends Component
             'sportsOptions' => $sportsOptions,
             'activityOptions' => $activityOptions,
             'availablePrograms' => $this->availablePrograms,
+            'academicSessions' => $this->academicSessions,
         ])->layout($layout, ['title' => 'Student Management']);
     }
 

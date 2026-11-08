@@ -36,7 +36,7 @@
     @endif
 
     {{-- Main Responsive & Adaptive Container Card --}}
-    <div class="glass-card rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden" x-data="{ showFilters: false }">
+    <div class="glass-card rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
         
         {{-- Header & Primary Actions Toolbar --}}
         <div class="p-4 sm:p-5 border-b border-gray-100 bg-white/80 backdrop-blur-md">
@@ -226,11 +226,11 @@
 
         {{-- Filter & Search Command Ribbon --}}
         <div class="p-4 sm:p-5 bg-gray-50/60 border-b border-gray-100">
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
                 {{-- Search & Direct Selectors Group --}}
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 min-w-0">
                     {{-- Search Input --}}
-                    <div class="relative flex-1 min-w-[200px] max-w-md">
+                    <div class="relative flex-1 min-w-[180px]">
                         <input 
                             wire:model.live.debounce.400ms="search" 
                             type="text" 
@@ -253,24 +253,32 @@
                     </div>
 
                     {{-- Session Selector Dropdown --}}
-                    <div class="w-full sm:w-44 shrink-0">
+                    <div class="relative w-full sm:w-56 shrink-0">
+                        <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-blue-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
                         <select 
                             wire:model.live="selectedSessionId" 
-                            class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none shadow-2xs transition-all cursor-pointer"
+                            class="w-full pl-8 pr-7 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-2xs transition-all cursor-pointer truncate"
+                            title="Switch Academic Session"
                         >
                             @foreach($academicSessions as $session)
                                 <option value="{{ $session->id }}">
-                                    {{ $session->name }} @if($session->is_active) (Current) @endif
+                                    {{ $session->name }} @if($session->is_active) (Current) @elseif($session->is_archived) (Archived) @endif
                                 </option>
                             @endforeach
                         </select>
                     </div>
 
                     {{-- Class Selector Dropdown --}}
-                    <div class="w-full sm:w-40 shrink-0">
+                    <div class="relative w-full sm:w-48 shrink-0">
+                        <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-indigo-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                        </div>
                         <select 
                             wire:model.live="selectedClassId" 
-                            class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none shadow-2xs transition-all cursor-pointer"
+                            class="w-full pl-8 pr-7 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-2xs transition-all cursor-pointer truncate"
+                            title="Filter by Class"
                         >
                             @can('students.view-all-classes') 
                                 <option value="">All Classes</option> 
@@ -285,27 +293,29 @@
                 </div>
 
                 {{-- Filter Drawer Toggle & Reset Button --}}
-                <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <div class="flex items-center gap-2 self-end lg:self-auto shrink-0">
                     <button 
                         type="button"
-                        @click="showFilters = !showFilters" 
-                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer
-                            {{ $this->activeFiltersCount > 0 ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-2xs' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50' }}"
+                        wire:click="toggleFilters" 
+                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none active:scale-95 duration-150
+                            {{ $showFilters || $this->activeFiltersCount > 0 ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-2xs ring-1 ring-blue-200' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                        title="Toggle Additional Filter Criteria"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                        <span>More Filters</span>
+                        <span>{{ $showFilters ? 'Hide Filters' : 'More Filters' }}</span>
                         @if($this->activeFiltersCount > 0)
                             <span class="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
                                 {{ $this->activeFiltersCount }}
                             </span>
                         @endif
+                        <svg class="w-3.5 h-3.5 transition-transform duration-200 {{ $showFilters ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                     </button>
 
                     @if($search || $selectedClassId || $this->activeFiltersCount > 0 || $filterStatus !== 'active')
                     <button 
                         type="button"
                         wire:click="resetFilters" 
-                        class="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 transition-colors cursor-pointer"
+                        class="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 transition-colors cursor-pointer active:scale-95 duration-150"
                         title="Reset all filters and search"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -316,7 +326,8 @@
             </div>
 
             {{-- Collapsible Secondary Filter Card --}}
-            <div x-show="showFilters" x-collapse class="mt-4 pt-4 border-t border-gray-200/60">
+            @if($showFilters)
+            <div class="mt-4 pt-4 border-t border-gray-200/60 animate-fade-in">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-gray-200/70 shadow-2xs">
                     {{-- 1. Sports Filter --}}
                     <div>
@@ -350,14 +361,14 @@
                                     <option value="{{ $k }}">{{ $l }}</option>
                                 @endforeach
                             </select>
-                            <template x-if="$wire.filterTransport === 'school_bus'">
+                            @if($filterTransport === 'school_bus')
                                 <select wire:model.live="filterBus" class="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none animate-fade-in">
                                     <option value="">Bus No</option>
                                     @foreach(App\Livewire\Admin\StudentManager::BUS_OPTIONS as $bus)
                                         <option value="{{ $bus }}">Bus {{ $bus }}</option>
                                     @endforeach
                                 </select>
-                            </template>
+                            @endif
                         </div>
                     </div>
 
@@ -378,6 +389,8 @@
                     </div>
                 </div>
             </div>
+            @endif
+        </div>
         </div>
 
         <div class="p-4 sm:p-6">

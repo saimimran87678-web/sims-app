@@ -316,4 +316,29 @@ class GraduatedAndAlumniStudentPortalTest extends TestCase
         $this->assertStringContainsString('Excel Test Student', $content);
         $this->assertStringContainsString('Class 10', $content);
     }
+
+    public function test_more_filters_button_toggles_state(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(StudentManager::class)
+            ->assertSet('showFilters', false)
+            ->call('toggleFilters')
+            ->assertSet('showFilters', true)
+            ->call('toggleFilters')
+            ->assertSet('showFilters', false);
+    }
+
+    public function test_session_selector_switches_session_and_resets_class(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(StudentManager::class)
+            ->set('selectedSessionId', $this->session2->id)
+            ->set('selectedClassId', (string) $this->class10->id)
+            ->assertSet('selectedClassId', (string) $this->class10->id)
+            ->set('selectedSessionId', $this->session1->id)
+            ->assertSet('selectedSessionId', $this->session1->id)
+            ->assertSet('selectedClassId', '');
+    }
 }
