@@ -184,6 +184,9 @@
                         {{ $filterStatus === 'alumni' ? 'bg-purple-600 text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200/60' }}"
                 >
                     <span>🏛️ Alumni Directory</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterStatus === 'alumni' ? 'bg-purple-700 text-white' : 'bg-gray-200 text-gray-700 font-semibold' }}">
+                        {{ $this->studentMetrics['alumni'] }}
+                    </span>
                 </button>
 
                 {{-- SLC Issued --}}

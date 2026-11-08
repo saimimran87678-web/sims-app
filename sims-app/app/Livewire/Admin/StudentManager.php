@@ -1866,21 +1866,46 @@ class StudentManager extends Component
         $sessionId = (int) ($this->selectedSessionId ?: \App\Models\AcademicSession::getActiveSessionId());
 
         $sessionActiveCount = DB::table('enrollments')
-            ->where('academic_session_id', $sessionId)
-            ->where('status', 'active')
+            ->join('students', 'enrollments.student_id', '=', 'students.id')
+            ->where('enrollments.academic_session_id', $sessionId)
+            ->where('enrollments.status', 'active')
+            ->whereNull('students.deleted_at')
             ->count();
 
         $sessionTotalCount = DB::table('enrollments')
-            ->where('academic_session_id', $sessionId)
+            ->join('students', 'enrollments.student_id', '=', 'students.id')
+            ->where('enrollments.academic_session_id', $sessionId)
+            ->whereNull('students.deleted_at')
             ->count();
 
-        $graduatedCount = DB::table('students')
-            ->where('status', 'graduated')
-            ->whereNull('deleted_at')
+        $sessionGraduatedCount = DB::table('enrollments')
+            ->join('students', 'enrollments.student_id', '=', 'students.id')
+            ->where('enrollments.academic_session_id', $sessionId)
+            ->where(function ($q) {
+                $q->whereIn('enrollments.status', ['graduated', 'passed_out'])
+                  ->orWhere(function($sub) {
+                      $sub->where('students.status', 'graduated')
+                          ->whereRaw("enrollments.id = (SELECT MAX(e_max.id) FROM enrollments e_max WHERE e_max.student_id = students.id)");
+                  });
+            })
+            ->whereNull('students.deleted_at')
             ->count();
 
-        $slcCount = DB::table('students')
-            ->whereIn('status', ['withdrawn', 'slc_issued'])
+        $sessionSlcCount = DB::table('enrollments')
+            ->join('students', 'enrollments.student_id', '=', 'students.id')
+            ->where('enrollments.academic_session_id', $sessionId)
+            ->where(function ($q) {
+                $q->whereIn('enrollments.status', ['slc_issued', 'withdrawn'])
+                  ->orWhere(function($sub) {
+                      $sub->whereIn('students.status', ['slc_issued', 'withdrawn'])
+                          ->whereRaw("enrollments.id = (SELECT MAX(e_max.id) FROM enrollments e_max WHERE e_max.student_id = students.id)");
+                  });
+            })
+            ->whereNull('students.deleted_at')
+            ->count();
+
+        $alumniTotalCount = DB::table('students')
+            ->whereIn('status', ['graduated', 'passed_out', 'withdrawn', 'slc_issued', 'struck_off', 'inactive'])
             ->whereNull('deleted_at')
             ->count();
 
@@ -1891,8 +1916,9 @@ class StudentManager extends Component
         return [
             'active' => $sessionActiveCount,
             'total_session' => $sessionTotalCount,
-            'graduated' => $graduatedCount,
-            'slc' => $slcCount,
+            'graduated' => $sessionGraduatedCount,
+            'alumni' => $alumniTotalCount,
+            'slc' => $sessionSlcCount,
             'archived' => $archivedCount,
         ];
     }
@@ -2265,10 +2291,8 @@ class StudentManager extends Component
             return $studentsQuery;
         }
 
-        if ($this->filterStatus === 'graduated' || $this->filterStatus === 'alumni') {
-            $targetStatuses = ($this->filterStatus === 'graduated')
-                ? ['graduated', 'passed_out']
-                : ['graduated', 'passed_out', 'withdrawn', 'slc_issued', 'struck_off', 'inactive'];
+        if ($this->filterStatus === 'alumni') {
+            $targetStatuses = ['graduated', 'passed_out', 'withdrawn', 'slc_issued', 'struck_off', 'inactive'];
 
             $currentSessionId = (int) $this->selectedSessionId;
 
@@ -2351,7 +2375,7 @@ class StudentManager extends Component
                 'programs.code as program_code'
             )
             ->where('enrollments.academic_session_id', $this->selectedSessionId)
-            ->when($shiftType !== 'both', function($q) use ($shiftType) {
+            ->when($shiftType !== 'both' && !in_array($this->filterStatus, ['graduated', 'withdrawn']), function($q) use ($shiftType) {
                 $q->where('enrollments.shift_type', $shiftType);
             })
             ->when($this->selectedClassId, function($q) {
@@ -2385,7 +2409,21 @@ class StudentManager extends Component
             })
             ->when($this->filterStatus, function($q) {
                 if ($this->filterStatus === 'withdrawn') {
-                    $q->whereIn('enrollments.status', ['withdrawn', 'slc_issued']);
+                    $q->where(function($sub) {
+                        $sub->whereIn('enrollments.status', ['withdrawn', 'slc_issued'])
+                            ->orWhere(function($latestSub) {
+                                $latestSub->whereIn('students.status', ['withdrawn', 'slc_issued'])
+                                    ->whereRaw("enrollments.id = (SELECT MAX(e_max.id) FROM enrollments e_max WHERE e_max.student_id = students.id)");
+                            });
+                    });
+                } elseif ($this->filterStatus === 'graduated') {
+                    $q->where(function($sub) {
+                        $sub->whereIn('enrollments.status', ['graduated', 'passed_out'])
+                            ->orWhere(function($latestSub) {
+                                $latestSub->where('students.status', 'graduated')
+                                    ->whereRaw("enrollments.id = (SELECT MAX(e_max.id) FROM enrollments e_max WHERE e_max.student_id = students.id)");
+                            });
+                    });
                 } else {
                     $q->where('enrollments.status', $this->filterStatus);
                 }

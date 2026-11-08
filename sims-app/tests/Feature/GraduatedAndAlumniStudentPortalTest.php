@@ -136,29 +136,35 @@ class GraduatedAndAlumniStudentPortalTest extends TestCase
 
         $this->actingAs($this->admin);
 
-        // Admin views new active session (session 2)
-        // 1. Filter: graduated -> Saim MUST be present
+        // 1. In Session 1 (where he graduated): Saim MUST be present in 'graduated' filter
         Livewire::test(StudentManager::class)
-            ->set('selectedSessionId', $this->session2->id)
+            ->set('selectedSessionId', $this->session1->id)
             ->set('filterStatus', 'graduated')
             ->assertViewHas('students', function ($students) use ($student) {
                 return $students->contains('id', $student->id);
             });
 
-        // 2. Filter: alumni -> Saim MUST be present
+        // 2. In Session 2 (new active session): Saim MUST NOT be present in 'graduated' or 'active' (Option B)
         Livewire::test(StudentManager::class)
             ->set('selectedSessionId', $this->session2->id)
-            ->set('filterStatus', 'alumni')
+            ->set('filterStatus', 'graduated')
             ->assertViewHas('students', function ($students) use ($student) {
-                return $students->contains('id', $student->id);
+                return !$students->contains('id', $student->id);
             });
 
-        // 3. Filter: active -> Saim MUST NOT be present in active roster
         Livewire::test(StudentManager::class)
             ->set('selectedSessionId', $this->session2->id)
             ->set('filterStatus', 'active')
             ->assertViewHas('students', function ($students) use ($student) {
                 return !$students->contains('id', $student->id);
+            });
+
+        // 3. In Global Alumni Directory: Saim MUST be present regardless of selected session
+        Livewire::test(StudentManager::class)
+            ->set('selectedSessionId', $this->session2->id)
+            ->set('filterStatus', 'alumni')
+            ->assertViewHas('students', function ($students) use ($student) {
+                return $students->contains('id', $student->id);
             });
     }
 
