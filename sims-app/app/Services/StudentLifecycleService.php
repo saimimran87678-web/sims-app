@@ -377,8 +377,9 @@ class StudentLifecycleService
         $activeSessionId = AcademicSession::getActiveSessionId();
 
         $enrollments = Enrollment::where('student_id', $student->id)
-            ->with(['academicSession', 'currentClass', 'schoolLeavingCertificate'])
+            ->with(['academicSession', 'currentClass', 'schoolLeavingCertificate', 'section'])
             ->orderBy('academic_session_id', 'desc')
+            ->orderBy('id', 'desc')
             ->get();
 
         $sessions = [];
@@ -409,20 +410,118 @@ class StudentLifecycleService
             $totalDaysAll += $attTotal;
             $presentDaysAll += $attPresent;
 
-            // Exam summary
+            // Exam summary with distinct exam grouping and paper-level audit
             $examMarks = DB::table('exam_marks')
                 ->join('exams', 'exam_marks.exam_id', '=', 'exams.id')
+                ->join('subjects', 'exam_marks.subject_id', '=', 'subjects.id')
                 ->where('exam_marks.student_id', $student->id)
                 ->where('exams.academic_session_id', $sessionId)
-                ->select('exam_marks.marks_obtained', 'exam_marks.max_marks')
+                ->select(
+                    'exams.id as exam_id',
+                    'exams.name as exam_name',
+                    'exams.start_date as exam_date',
+                    'subjects.name as subject_name',
+                    'exam_marks.marks_obtained',
+                    'exam_marks.max_marks',
+                    'exam_marks.is_absent'
+                )
+                ->orderBy('exams.start_date', 'asc')
+                ->orderBy('exams.id', 'asc')
+                ->orderBy('subjects.name', 'asc')
                 ->get();
 
-            $examsCount = $examMarks->count();
-            $examsPassed = $examMarks->filter(fn($m) => (float)$m->marks_obtained >= ((float)($m->max_marks ?? 100) * 0.33))->count();
-            $avgMarks = $examsCount > 0 ? round($examMarks->avg('marks_obtained'), 1) : 0;
+            $examsList = [];
+            $sessionExamsTotal = 0;
+            $sessionExamsPassed = 0;
+            $sessionTotalMarksObtained = 0;
+            $sessionTotalMaxMarks = 0;
+            $totalPapersCount = $examMarks->count();
+            $passedPapersCount = 0;
 
-            $totalExamsAll += $examsCount;
-            $passedExamsAll += $examsPassed;
+            $groupedByExam = $examMarks->groupBy('exam_id');
+            foreach ($groupedByExam as $examId => $marksCollection) {
+                $examName = $marksCollection->first()->exam_name;
+                $examDate = $marksCollection->first()->exam_date;
+                $subjectCount = $marksCollection->count();
+
+                $examMarksObtained = 0;
+                $examMaxMarks = 0;
+                $passedSubjects = 0;
+                $failedSubjects = 0;
+                $absentSubjects = 0;
+                $subjectsList = [];
+
+                foreach ($marksCollection as $mark) {
+                    $isAbsent = (bool) ($mark->is_absent ?? false);
+                    $max = (float) ($mark->max_marks ?? 100);
+                    $obtained = $isAbsent ? 0 : (float) ($mark->marks_obtained ?? 0);
+                    $passingThreshold = $max * 0.33; // 33% standard pass threshold
+
+                    $isPass = !$isAbsent && ($obtained >= $passingThreshold);
+                    if ($isAbsent) {
+                        $absentSubjects++;
+                        $subjectStatus = 'absent';
+                    } elseif ($isPass) {
+                        $passedSubjects++;
+                        $passedPapersCount++;
+                        $subjectStatus = 'passed';
+                    } else {
+                        $failedSubjects++;
+                        $subjectStatus = 'failed';
+                    }
+
+                    $examMarksObtained += $obtained;
+                    $examMaxMarks += $max;
+
+                    $subjectsList[] = [
+                        'subject_name' => $mark->subject_name,
+                        'marks_obtained' => $isAbsent ? 0 : $mark->marks_obtained,
+                        'max_marks' => $max,
+                        'percentage' => $max > 0 ? round(($obtained / $max) * 100, 1) : 0,
+                        'is_absent' => $isAbsent,
+                        'status' => $subjectStatus,
+                    ];
+                }
+
+                $examPercentage = $examMaxMarks > 0 ? round(($examMarksObtained / $examMaxMarks) * 100, 1) : 0;
+                $examPassed = ($passedSubjects > 0 && $examPercentage >= 33.0);
+                
+                $examStatus = 'passed';
+                if ($absentSubjects === $subjectCount) {
+                    $examStatus = 'absent';
+                } elseif (!$examPassed) {
+                    $examStatus = 'failed';
+                }
+
+                $sessionExamsTotal++;
+                if ($examPassed) {
+                    $sessionExamsPassed++;
+                }
+
+                $sessionTotalMarksObtained += $examMarksObtained;
+                $sessionTotalMaxMarks += $examMaxMarks;
+
+                $examsList[] = [
+                    'exam_id' => $examId,
+                    'exam_name' => $examName,
+                    'exam_date' => $examDate ? Carbon::parse($examDate)->format('d M, Y') : null,
+                    'total_subjects' => $subjectCount,
+                    'passed_subjects' => $passedSubjects,
+                    'failed_subjects' => $failedSubjects,
+                    'absent_subjects' => $absentSubjects,
+                    'total_obtained' => $examMarksObtained,
+                    'total_max' => $examMaxMarks,
+                    'percentage' => $examPercentage,
+                    'is_passed' => $examPassed,
+                    'status' => $examStatus,
+                    'subjects' => $subjectsList,
+                ];
+            }
+
+            $avgMarks = $sessionTotalMaxMarks > 0 ? round(($sessionTotalMarksObtained / $sessionTotalMaxMarks) * 100, 1) : 0;
+
+            $totalExamsAll += $sessionExamsTotal;
+            $passedExamsAll += $sessionExamsPassed;
 
             // Financial summary
             $feeSummary = [
@@ -473,9 +572,12 @@ class StudentLifecycleService
                     'total' => $attTotal,
                 ],
                 'exams' => [
-                    'total' => $examsCount,
-                    'passed' => $examsPassed,
+                    'total' => $sessionExamsTotal,
+                    'passed' => $sessionExamsPassed,
+                    'total_papers' => $totalPapersCount,
+                    'passed_papers' => $passedPapersCount,
                     'avg_marks' => $avgMarks,
+                    'list' => $examsList,
                 ],
                 'fees' => $feeSummary,
                 'slc' => $enrollment->schoolLeavingCertificate ? [
@@ -491,24 +593,84 @@ class StudentLifecycleService
 
         $overallAttRate = ($totalDaysAll > 0) ? round(($presentDaysAll / $totalDaysAll) * 100) : 100;
 
+        // DOB & Age
+        $dobFormatted = $student->dob ? Carbon::parse($student->dob)->format('d M, Y') : null;
+        $age = $student->dob ? Carbon::parse($student->dob)->age : null;
+
+        // Resolve terminal/graduated class & section if student is not actively enrolled in the active session
+        $latestEnrollment = $enrollments->first();
+        $resolvedClass = $student->class 
+            ?? $latestEnrollment?->currentClass 
+            ?? $student->terminal_class;
+
+        $resolvedSection = $student->section 
+            ?? $latestEnrollment?->section 
+            ?? $student->terminal_section;
+
+        $className = $resolvedClass?->name ?? 'N/A';
+        $sectionName = $resolvedSection?->name ?? '';
+
         $formattedStudent = [
             'id' => $student->id,
             'name' => $student->name,
             'admission_no' => $student->admission_no,
-            'roll_no' => $student->roll_no,
+            'roll_no' => $student->roll_no ?? $latestEnrollment?->roll_number ?? '-',
             'status' => $student->status,
+            'class_name' => $className,
+            'section_name' => $sectionName,
+            'gender' => ucfirst($student->gender ?? 'unspecified'),
+            'dob' => $dobFormatted,
+            'age' => $age,
+            'phone' => $student->phone,
+            'email' => $student->email,
+            'address' => $student->address,
             'father_name' => $student->father_name,
             'father_cnic' => $student->father_cnic,
+            'guardian_cnic' => $student->guardian_cnic,
+            'guardian_relation' => $student->guardian_relation,
             'b_form_number' => $student->b_form_number,
             'profile_photo_path' => $student->profile_photo_path,
+            'transport_mode' => $student->transport_mode ?? 'none',
+            'vehicle_number' => $student->vehicle_number,
+            'sports' => $student->sports,
+            'extra_curriculars' => $student->extra_curriculars,
+            'sibling_concession_status' => $student->sibling_concession_status ?? 'none',
+            'custom_concession_amount' => $student->custom_concession_amount,
+            'sibling_rank' => $student->sibling_rank + 1, // 1st child, 2nd child...
             'admission_date' => $student->admission_date ? Carbon::parse($student->admission_date)->format('d M, Y') : '-',
             'original_admission_date' => $student->original_admission_date 
                 ? Carbon::parse($student->original_admission_date)->format('d M, Y') 
                 : ($student->admission_date ? Carbon::parse($student->admission_date)->format('d M, Y') : '-'),
         ];
 
+        // Sibling & Family Unit (Ordered Chronologically by Date of Birth)
+        $familyMembers = $student->family_unit->map(function ($sib) use ($student) {
+            $isSelf = ($sib->id === $student->id);
+            $dobFormatted = $sib->dob ? Carbon::parse($sib->dob)->format('d M, Y') : 'N/A';
+            $age = $sib->dob ? Carbon::parse($sib->dob)->age : null;
+            $sibClass = $sib->class?->name ?? $sib->terminal_class?->name ?? 'Class';
+            $sibSection = $sib->section?->name ?? $sib->terminal_section?->name ?? '';
+            return [
+                'id' => $sib->id,
+                'name' => $sib->name,
+                'roll_no' => $sib->roll_no ?? '-',
+                'admission_no' => $sib->admission_no,
+                'class_name' => $sibClass,
+                'section_name' => $sibSection,
+                'status' => $sib->status,
+                'is_self' => $isSelf,
+                'sibling_rank' => $sib->sibling_rank + 1,
+                'dob' => $dobFormatted,
+                'age' => $age,
+                'concession_status' => $sib->sibling_concession_status ?? 'none',
+                'custom_concession_amount' => $sib->custom_concession_amount,
+                'profile_photo_path' => $sib->profile_photo_path,
+            ];
+        })->values()->all();
+
         return [
             'student' => $formattedStudent,
+            'family' => $familyMembers,
             'fees_enabled' => $feesEnabled,
             'attendance_rate' => $overallAttRate,
             'exams_summary' => [

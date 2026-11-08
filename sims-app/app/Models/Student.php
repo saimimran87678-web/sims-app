@@ -302,6 +302,37 @@ class Student extends Model
         )->where('enrollments.academic_session_id', \App\Models\AcademicSession::getActiveSessionId());
     }
 
+    public function getTerminalSectionAttribute(): ?Section
+    {
+        if ($this->relationLoaded('section') && $this->section) {
+            return $this->section;
+        }
+
+        if ($this->relationLoaded('enrollments')) {
+            $latest = $this->enrollments
+                ->filter(fn($e) => !empty($e->section_id))
+                ->sortByDesc('academic_session_id')
+                ->first();
+            if ($latest && $latest->relationLoaded('section') && $latest->section) {
+                return $latest->section;
+            }
+        }
+
+        $latestEnrollment = $this->enrollments()
+            ->whereNotNull('section_id')
+            ->orderByDesc('academic_session_id')
+            ->orderByDesc('id')
+            ->with('section')
+            ->first();
+
+        return $latestEnrollment?->section;
+    }
+
+    public function getTerminalSectionNameAttribute(): ?string
+    {
+        return $this->terminal_section?->name;
+    }
+
     public function getSectionIdAttribute()
     {
         if (array_key_exists('section_id', $this->attributes) && $this->attributes['section_id']) {
@@ -494,7 +525,7 @@ class Student extends Model
     }
 
     /**
-     * Returns complete family unit including self, ordered chronologically by admission.
+     * Returns complete family unit including self, ordered chronologically by Date of Birth (eldest first).
      */
     public function getFamilyUnitAttribute()
     {
@@ -507,6 +538,8 @@ class Student extends Model
                     $q->whereIn('guardians.id', $guardianIds);
                 })
                 ->where('students.status', 'active')
+                ->orderByRaw('CASE WHEN dob IS NOT NULL THEN 0 ELSE 1 END')
+                ->orderBy('dob', 'asc')
                 ->orderBy('admission_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
@@ -526,6 +559,8 @@ class Student extends Model
                       ->orWhere('guardian_cnic_hash', $hash);
             })
             ->where('status', 'active')
+            ->orderByRaw('CASE WHEN dob IS NOT NULL THEN 0 ELSE 1 END')
+            ->orderBy('dob', 'asc')
             ->orderBy('admission_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
@@ -534,7 +569,8 @@ class Student extends Model
     }
 
     /**
-     * Returns all children belonging to this family unit across all statuses (active, graduated, slc_issued).
+     * Returns all children belonging to this family unit across all statuses (active, graduated, slc_issued),
+     * ordered chronologically by Date of Birth (eldest first).
      * Used for the family portal sibling switcher and family history.
      */
     public function getAllFamilyMembersAttribute()
@@ -547,6 +583,8 @@ class Student extends Model
             $members = Student::whereHas('guardians', function ($q) use ($guardianIds) {
                     $q->whereIn('guardians.id', $guardianIds);
                 })
+                ->orderByRaw('CASE WHEN dob IS NOT NULL THEN 0 ELSE 1 END')
+                ->orderBy('dob', 'asc')
                 ->orderBy('admission_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
@@ -565,6 +603,8 @@ class Student extends Model
                 $query->where('father_cnic_hash', $hash)
                       ->orWhere('guardian_cnic_hash', $hash);
             })
+            ->orderByRaw('CASE WHEN dob IS NOT NULL THEN 0 ELSE 1 END')
+            ->orderBy('dob', 'asc')
             ->orderBy('admission_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();

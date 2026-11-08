@@ -21,12 +21,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register VerifyLicense globally for all web traffic
         $middleware->appendToGroup('web', \App\Http\Middleware\VerifyLicense::class);
 
+        // Register EnsureSessionNotLocked globally for all web traffic
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureSessionNotLocked::class);
+
         // Exempt license and session unlock endpoints from CSRF
         $middleware->validateCsrfTokens(except: [
             'license/sync',
             'license-blocked/activate',
             'session/unlock',
             'session/unlock/*',
+            'session/lock',
             'refresh-csrf',
         ]);
         

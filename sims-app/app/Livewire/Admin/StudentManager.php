@@ -217,6 +217,7 @@ class StudentManager extends Component
     public $showHistoryModal = false;
     public $historyStudentId = null;
     public $historyPortfolio = null;
+    public $profileTab = 'timeline'; // 'timeline', 'biodata', 'siblings', 'fees', 'print_sheet'
 
     public function updatedBFormNumber($value)
     {
@@ -867,8 +868,7 @@ class StudentManager extends Component
 
     public function view($id)
     {
-        $this->viewingStudent = Student::with(['class', 'siblings'])->findOrFail($id);
-        $this->showViewModal = true;
+        $this->openLifetimeHistory($id, 'biodata');
     }
 
     public function save()
@@ -1641,20 +1641,29 @@ class StudentManager extends Component
     // STUDENT LIFECYCLE: 360° LIFETIME TIMELINE
     // ==========================================
 
-    public function openLifetimeHistory($studentId)
+    public function setProfileTab($tab)
+    {
+        $this->profileTab = in_array($tab, ['timeline', 'biodata', 'siblings', 'fees', 'print_sheet']) ? $tab : 'timeline';
+    }
+
+    public function openLifetimeHistory($studentId, $tab = 'timeline')
     {
         $this->historyStudentId = $studentId;
-        $student = Student::with(['class'])->findOrFail($studentId);
+        $student = Student::with(['class', 'siblings', 'guardians'])->findOrFail($studentId);
+        $this->viewingStudent = $student;
         $service = app(\App\Services\StudentLifecycleService::class);
         $this->historyPortfolio = $service->getLifetimePortfolio($student);
+        $this->profileTab = in_array($tab, ['timeline', 'biodata', 'siblings', 'fees', 'print_sheet']) ? $tab : 'timeline';
         $this->showHistoryModal = true;
     }
 
     public function closeHistoryModal()
     {
         $this->showHistoryModal = false;
+        $this->showViewModal = false;
         $this->historyStudentId = null;
         $this->historyPortfolio = null;
+        $this->viewingStudent = null;
     }
 
     public function resolveProgramForClass($classId)

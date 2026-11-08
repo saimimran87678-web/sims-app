@@ -586,14 +586,14 @@
                             @endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                                 <div class="flex gap-1.5 justify-end items-center">
-                                    {{-- 360 Lifetime Portfolio / Audit --}}
+                                    {{-- Unified Student 360° Profile --}}
                                     <button
                                         wire:click="openLifetimeHistory({{ $student->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-all transform hover:scale-105"
-                                        title="360° Lifetime History & Audit"
+                                        title="Student Profile (360°)"
                                     >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                     </button>
 
                                     {{-- Institutional Departure / Issue SLC --}}
@@ -625,13 +625,6 @@
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                                     </a>
                                     @endif
-                                    <button
-                                        wire:click="view({{ $student->id }})"
-                                        class="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                                        title="View Profile"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                                    </button>
                                     @can('student.edit')
                                     <button
                                         wire:click="edit({{ $student->id }})"
@@ -783,9 +776,9 @@
                              {{ $student->trashed() ? 'Archived Profile' : ($student->status === 'withdrawn' || $student->status === 'slc_issued' ? 'SLC Issued' : ucfirst($student->status)) }}
                           </div>
                          <div class="flex gap-1.5 items-center">
-                             {{-- 360 Lifetime Portfolio / Audit --}}
-                             <button wire:click="openLifetimeHistory({{ $student->id }})" wire:loading.attr="disabled" class="text-gray-400 hover:text-indigo-600 p-1 rounded-lg transition-all hover:scale-110" title="360° Lifetime History & Audit">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                             {{-- Unified Student Profile (360°) --}}
+                             <button wire:click="openLifetimeHistory({{ $student->id }})" wire:loading.attr="disabled" class="text-gray-400 hover:text-indigo-600 p-1 rounded-lg transition-all hover:scale-110" title="Student Profile (360°)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                              </button>
 
                              {{-- Institutional Departure / Issue SLC --}}
@@ -804,9 +797,6 @@
                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                              </a>
                              @endif
-                             <button wire:click="view({{ $student->id }})" class="text-gray-400 hover:text-blue-600 p-1 rounded-lg transition-colors" title="View Bio-Data">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
-                             </button>
                              @can('student.edit')
                              <button wire:click="edit({{ $student->id }})" class="text-gray-400 hover:text-blue-600 p-1 rounded-lg transition-colors" title="Edit Student">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
@@ -1843,290 +1833,6 @@
         </div>
     @endif
 
-    {{-- View Profile Modal --}}
-    @if(!$onlyModal && $showViewModal && $viewingStudent)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto" x-transition>
-            <div class="bg-gray-100 rounded-2xl w-full max-w-5xl shadow-2xl relative flex flex-col h-[90vh]" @click.away="$set('showViewModal', false)">
-                
-                {{-- Modal Header --}}
-                <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-white rounded-t-2xl z-10 sticky top-0 shadow-sm">
-                    <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                        Student Bio-Data
-                    </h3>
-                    <div class="flex items-center gap-3">
-                         <button onclick="printDiv('print-area')" class="text-gray-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-                            Print
-                        </button>
-                        <button type="button" wire:click="$set('showViewModal', false)" class="text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-2 rounded-full transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                        </button>
-                    </div>
-                </div>
-
-                {{-- Modal Body (A4 Style Viewer) --}}
-                <div class="flex-1 overflow-y-auto custom-scrollbar bg-gray-100 p-8 flex justify-center">
-                    
-                    {{-- 'Paper' Container - Resume Style --}}
-                    <div id="print-area" class="bg-white w-[210mm] min-h-[297mm] shadow-2xl mx-auto text-gray-800 relative" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;" x-data="{ showPhotoModal: false }">
-                        
-                        {{-- Print Styles --}}
-                        <style>
-                            @media print {
-                                body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                                #print-area { box-shadow: none; margin: 0; width: 100%; }
-                                .no-print { display: none !important; }
-                            }
-                            .profile-section-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #111; }
-                            .profile-row { display: flex; margin-bottom: 8px; font-size: 13px; }
-                            .profile-label { width: 120px; color: #666; font-weight: 500; }
-                            .profile-value { flex: 1; color: #111; font-weight: 400; }
-                        </style>
-
-                        {{-- School Header --}}
-                        <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); color: #fff; padding: 20px 30px; text-align: center;">
-                            <h1 style="font-size: 22px; font-weight: 700; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 3px;">{{ \App\Models\Setting::getFormalInstituteName() }}</h1>
-                            <p style="font-size: 12px; margin: 0; opacity: 0.9;">{{ \App\Models\Setting::getGlobal('institute_address', 'G-6/2, Islamabad') }}</p>
-                        </div>
-
-                        {{-- Photo Lightbox Modal --}}
-                        <div x-show="showPhotoModal" x-cloak @click="showPhotoModal = false" 
-                             style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: zoom-out;"
-                             x-transition:enter="transition ease-out duration-200"
-                             x-transition:enter-start="opacity-0"
-                             x-transition:enter-end="opacity-100">
-                            @if($viewingStudent->profile_photo_path)
-                                <img src="{{ asset('storage/' . $viewingStudent->profile_photo_path) }}" 
-                                     style="max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-                            @endif
-                            <button @click="showPhotoModal = false" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px;">✕</button>
-                        </div>
-
-                        {{-- Two Column Layout --}}
-                        <div style="display: flex;">
-                            
-                            {{-- LEFT SIDEBAR --}}
-                            <div style="width: 35%; background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%); padding: 30px 20px; border-right: 1px solid #dee2e6;">
-                                
-                                {{-- Profile Photo - Clickable --}}
-                                <div style="text-align: center; margin-bottom: 25px;">
-                                    @if($viewingStudent->profile_photo_path)
-                                        <div @click="showPhotoModal = true" style="cursor: zoom-in; position: relative; display: inline-block;">
-                                            <img src="{{ asset('storage/' . $viewingStudent->profile_photo_path) }}" 
-                                                 style="width: 140px; height: 170px; object-fit: cover; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 8px;">
-                                            <div style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.6); color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 9px;">
-                                                🔍 Click to enlarge
-                                            </div>
-                                        </div>
-                                    @else
-                                        <div style="width: 140px; height: 170px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 56px; font-weight: 700; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border-radius: 8px;">
-                                            {{ strtoupper(substr($viewingStudent->name, 0, 1)) }}
-                                        </div>
-                                    @endif
-                                </div>
-
-                                {{-- Contact Section --}}
-                                <div style="margin-bottom: 25px;">
-                                    <div class="profile-section-title">
-                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328zM1.884.511a1.745 1.745 0 0 1 2.612.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"/></svg>
-                                        Contact
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Phone</span>
-                                        <span class="profile-value">{{ $viewingStudent->phone ?? '-' }}</span>
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Email</span>
-                                        <span class="profile-value">{{ $viewingStudent->email ?? '-' }}</span>
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Address</span>
-                                        <span class="profile-value" style="line-height: 1.4;">{{ $viewingStudent->address ?? '-' }}</span>
-                                    </div>
-                                </div>
-
-                                {{-- Personal Info Section --}}
-                                <div style="margin-bottom: 25px;">
-                                    <div class="profile-section-title">
-                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>
-                                        Personal Info
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Father's Name</span>
-                                        <span class="profile-value" style="font-weight: 600;">{{ $viewingStudent->father_name ?? '-' }}</span>
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Date of Birth</span>
-                                        <span class="profile-value">{{ $viewingStudent->dob ? \Carbon\Carbon::parse($viewingStudent->dob)->format('d-m-Y') : '-' }}</span>
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Gender</span>
-                                        <span class="profile-value" style="text-transform: capitalize;">{{ $viewingStudent->gender ?? '-' }}</span>
-                                    </div>
-                                </div>
-
-                                {{-- Family & Sibling Unit Section --}}
-                                <div style="margin-bottom: 25px;">
-                                    <div class="profile-section-title">
-                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM5.5 12.5c0-.6.4-1 1-1H7v-1h-.5c-.8 0-1.5-.7-1.5-1.5V8c0-.6-.4-1-1-1H3c-.6 0-1 .4-1 1v1c0 .8-.7 1.5-1.5 1.5H0v1h.5c.6 0 1 .4 1 1v1c0 .6.4 1 1 1h1c.6 0 1-.4 1-1v-1h.5c.8 0 1.5-.7 1.5-1.5v-1c0-.6.4-1 1-1h.5v-1h-.5c-.8 0-1.5-.7-1.5-1.5V5z"/></svg>
-                                        Family Unit & Sibling Profile
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Father CNIC</span>
-                                        <span class="profile-value" style="font-family: monospace; font-weight: 700; color: #6b21a8;">{{ $viewingStudent->father_cnic ?? 'Not Registered' }}</span>
-                                    </div>
-                                    @if($viewingStudent->guardian_cnic)
-                                        <div class="profile-row">
-                                            <span class="profile-label">Guardian ({{ $viewingStudent->guardian_relation }})</span>
-                                            <span class="profile-value" style="font-family: monospace;">{{ $viewingStudent->guardian_cnic }}</span>
-                                        </div>
-                                    @endif
-                                    <div class="profile-row">
-                                        <span class="profile-label">Sibling Order</span>
-                                        <span class="profile-value">
-                                            <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background-color: #f3e8ff; color: #7e22ce;">
-                                                Child #{{ $viewingStudent->sibling_rank + 1 }}
-                                            </span>
-                                        </span>
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Active Siblings</span>
-                                        <span class="profile-value">
-                                            @if($viewingStudent->siblings->count() > 0)
-                                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                                    @foreach($viewingStudent->siblings as $sib)
-                                                        <div style="font-size: 12px; font-weight: 500; color: #374151;">
-                                                            • {{ $sib->name }} (Roll #{{ $sib->roll_no }}, {{ $sib->class->name ?? 'Class' }})
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            @else
-                                                <span style="color: #9ca3af;">No other enrolled siblings</span>
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Concession Status</span>
-                                        <span class="profile-value" style="text-transform: capitalize; font-size: 12px;">
-                                            {{ str_replace('_', ' ', $viewingStudent->sibling_concession_status ?? 'none') }}
-                                            @if($viewingStudent->sibling_concession_status === 'custom_waiver' && $viewingStudent->custom_concession_amount)
-                                                (Rs. {{ number_format($viewingStudent->custom_concession_amount, 2) }})
-                                            @endif
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {{-- Transport Section --}}
-                                <div style="margin-bottom: 25px;">
-                                    <div class="profile-section-title">
-                                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
-                                        Transport
-                                    </div>
-                                    <div class="profile-row">
-                                        <span class="profile-label">Mode</span>
-                                        <span class="profile-value" style="text-transform: capitalize;">{{ str_replace('_', ' ', $viewingStudent->transport_mode ?? 'None') }}</span>
-                                    </div>
-                                    @if($viewingStudent->vehicle_number)
-                                    <div class="profile-row">
-                                        <span class="profile-label">Vehicle No</span>
-                                        <span class="profile-value" style="font-family: monospace; font-weight: 600;">{{ $viewingStudent->vehicle_number }}</span>
-                                    </div>
-                                    @endif
-                                </div>
-
-                                {{-- Activities Section --}}
-                                <div>
-                                    <div class="profile-section-title">
-                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm.5-5v1h1a.5.5 0 0 1 0 1h-1v1a.5.5 0 0 1-1 0v-1h-1a.5.5 0 0 1 0-1h1v-1a.5.5 0 0 1 1 0zM2 1a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6.5a.5.5 0 0 1-1 0V1H3v14h3.5a.5.5 0 0 1 0 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/><path d="M4.5 3a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5z"/></svg>
-                                        Activities
-                                    </div>
-                                    @php
-                                        $activities = array_filter(array_merge(
-                                            explode(',', $viewingStudent->sports ?? ''),
-                                            explode(',', $viewingStudent->extra_curriculars ?? '')
-                                        ));
-                                    @endphp
-                                    @if(count($activities) > 0)
-                                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                                            @foreach($activities as $activity)
-                                                <span style="background: #fff; border: 1px solid #dee2e6; padding: 3px 10px; border-radius: 15px; font-size: 11px;">{{ trim($activity) }}</span>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        <span style="color: #999; font-size: 12px;">None specified</span>
-                                    @endif
-                                </div>
-                            </div>
-
-                            {{-- RIGHT MAIN CONTENT --}}
-                            <div style="width: 65%; padding: 30px; background: #fff;">
-                                
-                                {{-- Name Header --}}
-                                <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 3px solid #111;">
-                                    <h1 style="font-size: 32px; font-weight: 700; color: #111; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 2px;">{{ $viewingStudent->name }}</h1>
-                                    <p style="font-size: 14px; color: #666; margin: 0;">Student Profile</p>
-                                </div>
-
-                                {{-- Academic Details Section --}}
-                                <div style="margin-bottom: 30px;">
-                                    <div class="profile-section-title">
-                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8.211 2.047a.5.5 0 0 0-.422 0l-7.5 3.5a.5.5 0 0 0 .025.917l7.5 3a.5.5 0 0 0 .372 0L14 7.14V13a1 1 0 0 0-1 1v2h3v-2a1 1 0 0 0-1-1V6.739l.686-.275a.5.5 0 0 0 .025-.917l-7.5-3.5Z"/><path d="M4.176 9.032a.5.5 0 0 0-.656.327l-.5 1.7a.5.5 0 0 0 .294.605l4.5 1.8a.5.5 0 0 0 .372 0l4.5-1.8a.5.5 0 0 0 .294-.605l-.5-1.7a.5.5 0 0 0-.656-.327L8 10.466 4.176 9.032Z"/></svg>
-                                        Academic Details
-                                    </div>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                        @php
-                                            // Parse class name like "Class 10B" to extract number and section
-                                            $className = $viewingStudent->class->name ?? '';
-                                            preg_match('/(\d+)([A-Za-z])?/', $className, $matches);
-                                            $classNumber = isset($matches[1]) ? $matches[1] : $className;
-                                            $sectionLetter = isset($matches[2]) ? strtoupper($matches[2]) : ($viewingStudent->section->name ?? '-');
-                                        @endphp
-                                        <div class="profile-row">
-                                            <span class="profile-label">Class</span>
-                                            <span class="profile-value" style="font-weight: 600;">{{ $classNumber ? $classNumber . 'th' : 'N/A' }}</span>
-                                        </div>
-                                        <div class="profile-row">
-                                            <span class="profile-label">Section</span>
-                                            <span class="profile-value">{{ $sectionLetter }}</span>
-                                        </div>
-                                        <div class="profile-row">
-                                            <span class="profile-label">Admission No</span>
-                                            <span class="profile-value" style="font-family: monospace; font-weight: 700; color: #2563eb;">{{ $viewingStudent->admission_no }}</span>
-                                        </div>
-                                        <div class="profile-row">
-                                            <span class="profile-label">Roll No</span>
-                                            <span class="profile-value" style="font-family: monospace; font-weight: 700;">{{ $viewingStudent->roll_no }}</span>
-                                        </div>
-                                        <div class="profile-row">
-                                            <span class="profile-label">Admission Date</span>
-                                            <span class="profile-value">{{ $viewingStudent->admission_date ? \Carbon\Carbon::parse($viewingStudent->admission_date)->format('d M Y') : '-' }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Print Helper --}}
-                <script>
-                    function printDiv(divId) {
-                        var printContents = document.getElementById(divId).innerHTML;
-                        var originalContents = document.body.innerHTML;
-                        document.body.innerHTML = printContents;
-                        window.print();
-                        document.body.innerHTML = originalContents;
-                        location.reload(); 
-                    }
-                </script>
-
-            </div>
-        </div>
-    @endif
-
     {{-- 3-STEP INSTITUTIONAL DEPARTURE / SLC WIZARD MODAL --}}
     @if($showSlcModal && $slcStudent)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden" aria-labelledby="slc-modal-title" role="dialog" aria-modal="true">
@@ -2576,16 +2282,16 @@
         </div>
     @endif
 
-    {{-- 360° LIFETIME PORTFOLIO & AUDIT TIMELINE MODAL --}}
+{{-- UNIFIED STUDENT 360° PROFILE & LIFETIME AUDIT MODAL --}}
     @if($showHistoryModal && $historyPortfolio)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden" aria-labelledby="history-modal-title" role="dialog" aria-modal="true">
             {{-- Backdrop --}}
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity no-print" wire:click="closeHistoryModal"></div>
 
             {{-- Dialog Shell --}}
-            <div id="printable-portfolio" class="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col z-10 overflow-hidden transform transition-all">
+            <div id="printable-portfolio" class="relative w-full max-w-5xl max-h-[92vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col z-10 overflow-hidden transform transition-all">
                 {{-- Header (pinned top, shrink-0) --}}
-                <div class="bg-gradient-to-r from-slate-50 via-indigo-50/50 to-slate-50 px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-200/90 shrink-0 relative overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-50 via-indigo-50/50 to-slate-50 px-6 sm:px-8 py-5 border-b border-slate-200/90 shrink-0 relative overflow-hidden">
                     <div class="absolute -right-12 -top-12 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
                     <div class="flex items-center justify-between relative z-10 gap-4">
@@ -2606,225 +2312,672 @@
                                     </span>
                                     <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200">
                                         <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                                        360° Lifetime Portfolio
+                                        Student Profile (360°)
                                     </span>
                                 </div>
                                 <div class="text-xs text-slate-600 mt-1.5 flex items-center gap-2 flex-wrap font-medium">
                                     <span class="font-mono bg-white px-2 py-0.5 rounded text-[11px] font-bold text-indigo-700 border border-indigo-200 shadow-xs">Adm #{{ $historyPortfolio['student']['admission_no'] }}</span>
                                     <span>•</span>
-                                    <span>Enrolled: <strong class="text-slate-800 font-bold">{{ $historyPortfolio['student']['original_admission_date'] ?? ($historyPortfolio['student']['admission_date'] ?? '-') }}</strong></span>
+                                    <span>{{ ($historyPortfolio['student']['status'] ?? '') === 'graduated' ? 'Graduated Class' : (($historyPortfolio['student']['status'] ?? '') === 'withdrawn' ? 'Last Class' : 'Class') }}: <strong class="text-slate-800 font-bold">{{ $historyPortfolio['student']['class_name'] }}{{ !empty($historyPortfolio['student']['section_name']) ? ' (' . $historyPortfolio['student']['section_name'] . ')' : '' }}</strong></span>
+                                    <span>•</span>
+                                    <span>Roll #<strong class="font-mono text-slate-800 font-bold">{{ $historyPortfolio['student']['roll_no'] }}</strong></span>
                                     @if(!empty($historyPortfolio['student']['father_name']))
                                         <span>•</span>
                                         <span class="truncate">S/D of <strong class="text-slate-800 font-bold">{{ $historyPortfolio['student']['father_name'] }}</strong></span>
                                     @endif
-                                    @if(!empty($historyPortfolio['student']['b_form_number']))
-                                        <span>•</span>
-                                        <span class="font-mono text-[11px] text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">B-Form: {{ $historyPortfolio['student']['b_form_number'] }}</span>
-                                    @endif
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1.5 shrink-0 no-print">
-                            <button type="button" onclick="window.print()" class="text-slate-500 hover:text-indigo-600 p-2 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 transition-colors" title="Print Student 360 Portfolio">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        <div class="flex items-center gap-2 shrink-0 no-print">
+                            <button type="button" onclick="window.print()" class="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-indigo-600 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 transition-colors shadow-2xs flex items-center gap-1.5" title="Print Current View">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                <span>Print</span>
                             </button>
-                            <button type="button" wire:click="closeHistoryModal" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-200/60 transition-colors" title="Close Portfolio">
+                            <button type="button" wire:click="closeHistoryModal" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-200/60 transition-colors" title="Close Profile">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </button>
                         </div>
                     </div>
-
-                    {{-- Quick Stats KPI Cards --}}
-                    <div class="grid grid-cols-2 {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'md:grid-cols-4' : 'md:grid-cols-3' }} gap-3 sm:gap-3.5 mt-5 text-xs relative z-10">
-                        <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
-                            <div class="flex items-center justify-between text-slate-500">
-                                <span class="block text-[10px] uppercase font-bold tracking-wider">Sessions Enrolled</span>
-                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            </div>
-                            <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ count($historyPortfolio['sessions']) }}</span>
-                            <span class="text-[11px] text-slate-500 block mt-0.5">Cross-Session History</span>
-                        </div>
-
-                        <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
-                            <div class="flex items-center justify-between text-slate-500">
-                                <span class="block text-[10px] uppercase font-bold tracking-wider">Lifetime Attendance</span>
-                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            </div>
-                            <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ $historyPortfolio['attendance_rate'] }}%</span>
-                            <div class="w-full bg-slate-100 h-2 rounded-full mt-2 overflow-hidden border border-slate-200/50">
-                                <div class="h-full rounded-full transition-all duration-500 {{ $historyPortfolio['attendance_rate'] >= 85 ? 'bg-emerald-500' : ($historyPortfolio['attendance_rate'] >= 75 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $historyPortfolio['attendance_rate'] }}%"></div>
-                            </div>
-                        </div>
-
-                        <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
-                            <div class="flex items-center justify-between text-slate-500">
-                                <span class="block text-[10px] uppercase font-bold tracking-wider">Academic Exams</span>
-                                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path></svg>
-                            </div>
-                            <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ $historyPortfolio['exams_summary']['total_exams'] }} Exams</span>
-                            <span class="text-[11px] text-emerald-600 font-bold block mt-0.5">{{ $historyPortfolio['exams_summary']['passed_exams'] ?? 0 }} Passed Overall</span>
-                        </div>
-
-                        @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
-                        <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
-                            <div class="flex items-center justify-between text-slate-500">
-                                <span class="block text-[10px] uppercase font-bold tracking-wider">Financial Ledger</span>
-                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                            </div>
-                            <span class="text-xl sm:text-2xl font-black font-mono mt-1 block {{ ($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
-                                @if(($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0) > 0)
-                                    Rs. {{ number_format($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0, 0) }}
-                                @else
-                                    Cleared
-                                @endif
-                            </span>
-                            <span class="text-[11px] text-slate-500 block mt-0.5">Total Invoiced: Rs. {{ number_format($historyPortfolio['financial_summary']['total_billed'] ?? 0, 0) }}</span>
-                        </div>
-                        @endif
-                    </div>
                 </div>
 
-                {{-- Scrollable Timeline Body (flex-1 overflow-y-auto) --}}
-                <div class="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6 bg-slate-50/70">
-                    <div class="flex items-center justify-between pb-2 border-b border-slate-200/80">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Institutional Session Audit Trail</h4>
-                        </div>
-                        <span class="text-xs font-medium text-slate-500">Total Recorded Sessions: <strong class="text-slate-800">{{ count($historyPortfolio['sessions']) }}</strong></span>
-                    </div>
+                {{-- Interactive Navigation Tabs Ribbon --}}
+                <div class="flex items-center gap-1 sm:gap-2 px-6 sm:px-8 bg-white border-b border-slate-200 shrink-0 no-print overflow-x-auto custom-scrollbar">
+                    <button 
+                        type="button" 
+                        wire:click="setProfileTab('timeline')"
+                        class="py-3 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer {{ $profileTab === 'timeline' ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>360° Academic Journey</span>
+                    </button>
+                    <button 
+                        type="button" 
+                        wire:click="setProfileTab('biodata')"
+                        class="py-3 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer {{ $profileTab === 'biodata' ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        <span>Bio-Data & Guardians</span>
+                    </button>
+                    <button 
+                        type="button" 
+                        wire:click="setProfileTab('siblings')"
+                        class="py-3 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer {{ $profileTab === 'siblings' ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        <span>Family & Siblings ({{ count($historyPortfolio['family'] ?? []) }})</span>
+                    </button>
+                    @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
+                    <button 
+                        type="button" 
+                        wire:click="setProfileTab('fees')"
+                        class="py-3 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer {{ $profileTab === 'fees' ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        <span>Financial Ledger</span>
+                    </button>
+                    @endif
+                    <button 
+                        type="button" 
+                        wire:click="setProfileTab('print_sheet')"
+                        class="py-3 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer {{ $profileTab === 'print_sheet' ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>Official A4 Print Sheet</span>
+                    </button>
+                </div>
 
-                    <div class="relative pl-6 sm:pl-8 space-y-6 sm:space-y-8">
-                        {{-- Timeline Continuous Line --}}
-                        <div class="absolute left-2.5 sm:left-3.5 top-3 bottom-3 w-0.5 bg-indigo-200 pointer-events-none"></div>
+                {{-- Modal Body Container --}}
+                <div class="p-6 sm:p-8 overflow-y-auto flex-1 bg-slate-50/70 custom-scrollbar">
 
-                        @forelse($historyPortfolio['sessions'] as $session)
-                            <div class="relative group">
-                                {{-- Centered Timeline Node Bullet --}}
-                                @if($session['is_active_session'])
-                                    <div class="absolute -left-6 sm:-left-8 top-5 w-5 h-5 rounded-full bg-indigo-600 border-2 border-white ring-4 ring-indigo-100 shadow-sm flex items-center justify-center z-10 -translate-x-[2px]">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                                    </div>
-                                @else
-                                    <div class="absolute -left-6 sm:-left-8 top-5.5 w-4 h-4 rounded-full bg-slate-400 border-2 border-white ring-2 ring-slate-200 shadow-xs z-10"></div>
-                                @endif
+                    {{-- TAB 1: 360° ACADEMIC JOURNEY --}}
+                    @if($profileTab === 'timeline')
+                        {{-- Quick Stats KPI Cards --}}
+                        <div class="grid grid-cols-2 {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'md:grid-cols-4' : 'md:grid-cols-3' }} gap-3 sm:gap-3.5 mb-6 text-xs">
+                            <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
+                                <div class="flex items-center justify-between text-slate-500">
+                                    <span class="block text-[10px] uppercase font-bold tracking-wider">Sessions Enrolled</span>
+                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ count($historyPortfolio['sessions']) }}</span>
+                                <span class="text-[11px] text-slate-500 block mt-0.5">Cross-Session History</span>
+                            </div>
 
-                                <div class="bg-white rounded-2xl p-5 sm:p-6 border {{ $session['is_active_session'] ? 'border-indigo-300 shadow-sm ring-1 ring-indigo-50' : 'border-slate-200' }} hover:border-indigo-300 hover:shadow-md transition-all">
-                                    {{-- Session Header --}}
-                                    <div class="flex items-center justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-slate-100">
-                                        <div>
-                                            <div class="flex items-center gap-2.5 flex-wrap">
-                                                <h5 class="font-black text-slate-900 text-base sm:text-lg">{{ $session['session_name'] }}</h5>
-                                                @if($session['is_active_session'])
-                                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
-                                                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                                                        Active Session
-                                                    </span>
-                                                @endif
-                                            </div>
-                                            <div class="flex items-center gap-2 mt-1.5 text-xs text-slate-500 flex-wrap">
-                                                <span>Class: <strong class="text-slate-800 font-semibold">{{ $session['class_name'] }} ({{ $session['section_name'] }})</strong></span>
-                                                <span>•</span>
-                                                <span>Roll #<strong class="font-mono text-slate-800 font-bold">{{ $session['roll_no'] }}</strong></span>
-                                                <span>•</span>
-                                                <span>Shift: <strong class="capitalize text-slate-800 font-semibold">{{ $session['shift_type'] }}</strong></span>
-                                            </div>
-                                        </div>
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider {{ $session['enrollment_status'] === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : ($session['enrollment_status'] === 'slc_issued' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200') }}">
-                                            {{ $session['enrollment_status'] === 'slc_issued' ? 'SLC Issued' : ucfirst($session['enrollment_status']) }}
-                                        </span>
-                                    </div>
-
-                                    {{-- Stats in this Session --}}
-                                    <div class="grid grid-cols-1 {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }} gap-3 text-xs mb-3">
-                                        <div class="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/70">
-                                            <div class="flex items-center justify-between text-slate-500">
-                                                <span class="block text-[10px] uppercase font-bold tracking-wider">Attendance</span>
-                                                <span class="text-[10px] font-semibold text-slate-400">({{ $session['attendance']['present'] }}/{{ $session['attendance']['total'] }} days)</span>
-                                            </div>
-                                            <span class="font-black text-slate-900 text-lg mt-0.5 block">{{ $session['attendance']['percentage'] }}%</span>
-                                            <div class="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
-                                                <div class="h-full rounded-full transition-all duration-500 {{ $session['attendance']['percentage'] >= 85 ? 'bg-emerald-500' : ($session['attendance']['percentage'] >= 75 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $session['attendance']['percentage'] }}%"></div>
-                                            </div>
-                                        </div>
-
-                                        <div class="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/70">
-                                            <div class="flex items-center justify-between text-slate-500">
-                                                <span class="block text-[10px] uppercase font-bold tracking-wider">Exams Performance</span>
-                                                <span class="text-[10px] font-semibold text-slate-400">{{ $session['exams']['total'] }} Total</span>
-                                            </div>
-                                            <span class="font-black text-slate-900 text-lg mt-0.5 block">{{ $session['exams']['passed'] }} / {{ $session['exams']['total'] }} Passed</span>
-                                            <span class="text-[11px] text-slate-600 block mt-1 font-medium">Average Marks: <strong class="text-slate-900 font-bold">{{ $session['exams']['avg_marks'] }}%</strong></span>
-                                        </div>
-
-                                        @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
-                                        <div class="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/70">
-                                            <div class="flex items-center justify-between text-slate-500">
-                                                <span class="block text-[10px] uppercase font-bold tracking-wider">Financial Status</span>
-                                                <span class="text-[10px] font-semibold text-slate-400">Ledger</span>
-                                            </div>
-                                            <span class="font-black font-mono text-lg mt-0.5 block {{ ($session['fees']['balance'] ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
-                                                {{ ($session['fees']['balance'] ?? 0) > 0 ? 'Dues: Rs. ' . number_format($session['fees']['balance'], 0) : 'Fully Cleared' }}
-                                            </span>
-                                            <span class="text-[11px] text-slate-600 block mt-1 font-medium">Billed: Rs. {{ number_format($session['fees']['invoiced'] ?? 0, 0) }}</span>
-                                        </div>
-                                        @endif
-                                    </div>
-
-                                    {{-- School Leaving Certificate in this session if any --}}
-                                    @if(!empty($session['slc']))
-                                        <div class="p-4 bg-gradient-to-r from-amber-50 to-orange-50/80 rounded-xl border border-amber-200 text-xs shadow-xs mt-3.5">
-                                            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
-                                                <span class="font-bold text-amber-950 flex items-center gap-2 text-sm">
-                                                    <svg class="w-4 h-4 text-amber-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                                    Official Certificate: <span class="font-mono text-amber-900 font-black">{{ $session['slc']['certificate_number'] }}</span>
-                                                </span>
-                                                <a 
-                                                    href="{{ route('admin.students.slc.print', $session['slc']['id']) }}" 
-                                                    target="_blank"
-                                                    class="px-3.5 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-xs font-bold shadow-sm inline-flex items-center gap-1.5 transition-all transform hover:-translate-y-0.5 no-print"
-                                                >
-                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                    Print Official SLC
-                                                </a>
-                                            </div>
-                                            <p class="text-xs text-amber-900/90 leading-relaxed font-medium">
-                                                Leaving Date: <strong class="text-amber-950 font-bold">{{ $session['slc']['leaving_date'] }}</strong> • Reason: <strong class="text-amber-950 font-bold">{{ ucfirst(str_replace('_', ' ', $session['slc']['reason_for_leaving'])) }}</strong> • Conduct: <strong class="text-amber-950 font-bold">{{ $session['slc']['conduct'] }}</strong>
-                                                @if(!empty($session['slc']['remarks']))
-                                                    • Remarks: <em class="text-amber-800">"{{ $session['slc']['remarks'] }}"</em>
-                                                @endif
-                                            </p>
-                                        </div>
-                                    @endif
+                            <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
+                                <div class="flex items-center justify-between text-slate-500">
+                                    <span class="block text-[10px] uppercase font-bold tracking-wider">Lifetime Attendance</span>
+                                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ $historyPortfolio['attendance_rate'] }}%</span>
+                                <div class="w-full bg-slate-100 h-2 rounded-full mt-2 overflow-hidden border border-slate-200/50">
+                                    <div class="h-full rounded-full transition-all duration-500 {{ $historyPortfolio['attendance_rate'] >= 85 ? 'bg-emerald-500' : ($historyPortfolio['attendance_rate'] >= 75 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $historyPortfolio['attendance_rate'] }}%"></div>
                                 </div>
                             </div>
-                        @empty
-                            <div class="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
-                                <svg class="w-10 h-10 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                                <p class="text-sm font-semibold text-slate-600">No historical enrollment records found.</p>
-                                <p class="text-xs text-slate-400 mt-0.5">Historical records will populate as sessions advance.</p>
+
+                            <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
+                                <div class="flex items-center justify-between text-slate-500">
+                                    <span class="block text-[10px] uppercase font-bold tracking-wider">Exams Evaluated</span>
+                                    <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path></svg>
+                                </div>
+                                <span class="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{{ $historyPortfolio['exams_summary']['total_exams'] }} {{ $historyPortfolio['exams_summary']['total_exams'] === 1 ? 'Exam' : 'Exams' }}</span>
+                                <span class="text-[11px] text-emerald-600 font-bold block mt-0.5">{{ $historyPortfolio['exams_summary']['passed_exams'] ?? 0 }} Passed Overall</span>
                             </div>
-                        @endforelse
-                    </div>
+
+                            @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
+                            <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-300 transition-all">
+                                <div class="flex items-center justify-between text-slate-500">
+                                    <span class="block text-[10px] uppercase font-bold tracking-wider">Financial Ledger</span>
+                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                </div>
+                                <span class="text-xl sm:text-2xl font-black font-mono mt-1 block {{ ($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
+                                    @if(($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0) > 0)
+                                        Rs. {{ number_format($historyPortfolio['financial_summary']['outstanding_balance'] ?? 0, 0) }}
+                                    @else
+                                        Cleared
+                                    @endif
+                                </span>
+                                <span class="text-[11px] text-slate-500 block mt-0.5">Total Invoiced: Rs. {{ number_format($historyPortfolio['financial_summary']['total_billed'] ?? 0, 0) }}</span>
+                            </div>
+                            @endif
+                        </div>
+
+                        {{-- Timeline Header --}}
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-200/80 mb-6">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Institutional Session Audit Trail</h4>
+                            </div>
+                            <span class="text-xs font-medium text-slate-500">Recorded Sessions: <strong class="text-slate-800">{{ count($historyPortfolio['sessions']) }}</strong></span>
+                        </div>
+
+                        <div class="relative pl-6 sm:pl-8 space-y-6 sm:space-y-8">
+                            <div class="absolute left-2.5 sm:left-3.5 top-3 bottom-3 w-0.5 bg-indigo-200 pointer-events-none"></div>
+
+                            @forelse($historyPortfolio['sessions'] as $session)
+                                <div class="relative group">
+                                    @if($session['is_active_session'])
+                                        <div class="absolute -left-6 sm:-left-8 top-5 w-5 h-5 rounded-full bg-indigo-600 border-2 border-white ring-4 ring-indigo-100 shadow-sm flex items-center justify-center z-10 -translate-x-[2px]">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                                        </div>
+                                    @else
+                                        <div class="absolute -left-6 sm:-left-8 top-5.5 w-4 h-4 rounded-full bg-slate-400 border-2 border-white ring-2 ring-slate-200 shadow-xs z-10"></div>
+                                    @endif
+
+                                    <div class="bg-white rounded-2xl p-5 sm:p-6 border {{ $session['is_active_session'] ? 'border-indigo-300 shadow-sm ring-1 ring-indigo-50' : 'border-slate-200' }} hover:border-indigo-300 hover:shadow-md transition-all">
+                                        {{-- Session Card Header --}}
+                                        <div class="flex items-center justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-slate-100">
+                                            <div>
+                                                <div class="flex items-center gap-2.5 flex-wrap">
+                                                    <h5 class="font-black text-slate-900 text-base sm:text-lg">{{ $session['session_name'] }}</h5>
+                                                    @if($session['is_active_session'])
+                                                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                                            Active Session
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <div class="flex items-center gap-2 mt-1.5 text-xs text-slate-500 flex-wrap">
+                                                    <span>Class: <strong class="text-slate-800 font-semibold">{{ $session['class_name'] }} ({{ $session['section_name'] }})</strong></span>
+                                                    <span>•</span>
+                                                    <span>Roll #<strong class="font-mono text-slate-800 font-bold">{{ $session['roll_no'] }}</strong></span>
+                                                    <span>•</span>
+                                                    <span>Shift: <strong class="capitalize text-slate-800 font-semibold">{{ $session['shift_type'] }}</strong></span>
+                                                </div>
+                                            </div>
+                                            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider {{ $session['enrollment_status'] === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : ($session['enrollment_status'] === 'slc_issued' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200') }}">
+                                                {{ $session['enrollment_status'] === 'slc_issued' ? 'SLC Issued' : ucfirst($session['enrollment_status']) }}
+                                            </span>
+                                        </div>
+
+                                        {{-- Quick Metrics Row --}}
+                                        <div class="grid grid-cols-1 {{ \App\Services\LicenseStatus::isModuleEnabled('fees') ? 'sm:grid-cols-2' : 'sm:grid-cols-1' }} gap-3 text-xs mb-4">
+                                            <div class="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/70">
+                                                <div class="flex items-center justify-between text-slate-500">
+                                                    <span class="block text-[10px] uppercase font-bold tracking-wider">Attendance</span>
+                                                    <span class="text-[10px] font-semibold text-slate-400">({{ $session['attendance']['present'] }}/{{ $session['attendance']['total'] }} days)</span>
+                                                </div>
+                                                <span class="font-black text-slate-900 text-lg mt-0.5 block">{{ $session['attendance']['percentage'] }}%</span>
+                                                <div class="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
+                                                    <div class="h-full rounded-full transition-all duration-500 {{ $session['attendance']['percentage'] >= 85 ? 'bg-emerald-500' : ($session['attendance']['percentage'] >= 75 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $session['attendance']['percentage'] }}%"></div>
+                                                </div>
+                                            </div>
+
+                                            @if(\App\Services\LicenseStatus::isModuleEnabled('fees'))
+                                            <div class="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/70">
+                                                <div class="flex items-center justify-between text-slate-500">
+                                                    <span class="block text-[10px] uppercase font-bold tracking-wider">Financial Status</span>
+                                                    <span class="text-[10px] font-semibold text-slate-400">Ledger</span>
+                                                </div>
+                                                <span class="font-black font-mono text-lg mt-0.5 block {{ ($session['fees']['balance'] ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
+                                                    {{ ($session['fees']['balance'] ?? 0) > 0 ? 'Dues: Rs. ' . number_format($session['fees']['balance'], 0) : 'Fully Cleared' }}
+                                                </span>
+                                                <span class="text-[11px] text-slate-600 block mt-1 font-medium">Billed: Rs. {{ number_format($session['fees']['invoiced'] ?? 0, 0) }}</span>
+                                            </div>
+                                            @endif
+                                        </div>
+
+                                        {{-- Detailed Exam Breakdown Card --}}
+                                        <div class="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/80 mb-3.5">
+                                            <div class="flex items-center justify-between text-slate-700 mb-3 flex-wrap gap-2">
+                                                <div class="flex items-center gap-2">
+                                                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path></svg>
+                                                    <span class="text-xs font-bold uppercase tracking-wider">Exams & Papers Performance</span>
+                                                </div>
+                                                <span class="text-xs font-semibold text-slate-500">
+                                                    {{ $session['exams']['passed'] }} of {{ $session['exams']['total'] }} {{ $session['exams']['total'] === 1 ? 'Exam' : 'Exams' }} Passed • Average: <strong class="text-slate-900 font-bold">{{ $session['exams']['avg_marks'] }}%</strong>
+                                                </span>
+                                            </div>
+
+                                            @if(!empty($session['exams']['list']) && count($session['exams']['list']) > 0)
+                                                <div class="space-y-3">
+                                                    @foreach($session['exams']['list'] as $ex)
+                                                        <div class="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs hover:border-indigo-200 transition-colors">
+                                                            <div class="flex items-center justify-between flex-wrap gap-2 mb-2.5 pb-2 border-b border-slate-100">
+                                                                <div class="flex items-center gap-2">
+                                                                    <span class="font-black text-slate-900 text-xs sm:text-sm">{{ $ex['exam_name'] }}</span>
+                                                                    @if(!empty($ex['exam_date']))
+                                                                        <span class="text-[10px] text-slate-400 font-medium">({{ $ex['exam_date'] }})</span>
+                                                                    @endif
+                                                                </div>
+                                                                <div class="flex items-center gap-2">
+                                                                    <span class="text-xs font-bold text-slate-700">Overall: {{ $ex['percentage'] }}%</span>
+                                                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+                                                                        {{ $ex['status'] === 'passed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : ($ex['status'] === 'absent' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-rose-100 text-rose-800 border border-rose-200') }}">
+                                                                        {{ $ex['status'] === 'passed' ? '✓ Passed' : ($ex['status'] === 'absent' ? '⚠️ Absent' : '✕ Failed') }}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {{-- Subject Papers Grid --}}
+                                                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                                                                @foreach($ex['subjects'] as $sub)
+                                                                    <div class="px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200/80 text-xs flex items-center justify-between gap-1">
+                                                                        <span class="font-medium text-slate-700 truncate text-[11px]">{{ $sub['subject_name'] }}</span>
+                                                                        @if($sub['is_absent'])
+                                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 uppercase">Absent</span>
+                                                                        @else
+                                                                            <span class="font-mono font-bold text-[11px] {{ $sub['status'] === 'passed' ? 'text-emerald-700' : 'text-rose-600' }}">
+                                                                                {{ $sub['marks_obtained'] }}/{{ $sub['max_marks'] }}
+                                                                            </span>
+                                                                        @endif
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <p class="text-xs text-slate-400 italic py-1">No exam marks recorded for this academic session.</p>
+                                            @endif
+                                        </div>
+
+                                        {{-- School Leaving Certificate in this session if any --}}
+                                        @if(!empty($session['slc']))
+                                            <div class="p-4 bg-gradient-to-r from-amber-50 to-orange-50/80 rounded-xl border border-amber-200 text-xs shadow-xs mt-3.5">
+                                                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                                    <span class="font-bold text-amber-950 flex items-center gap-2 text-sm">
+                                                        <svg class="w-4 h-4 text-amber-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                        Official Certificate: <span class="font-mono text-amber-900 font-black">{{ $session['slc']['certificate_number'] }}</span>
+                                                    </span>
+                                                    <a 
+                                                        href="{{ route('admin.students.slc.print', $session['slc']['id']) }}" 
+                                                        target="_blank"
+                                                        class="px-3.5 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-xs font-bold shadow-sm inline-flex items-center gap-1.5 transition-all transform hover:-translate-y-0.5 no-print"
+                                                    >
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                                        Print Official SLC
+                                                    </a>
+                                                </div>
+                                                <p class="text-xs text-amber-900/90 leading-relaxed font-medium">
+                                                    Leaving Date: <strong class="text-amber-950 font-bold">{{ $session['slc']['leaving_date'] }}</strong> • Reason: <strong class="text-amber-950 font-bold">{{ ucfirst(str_replace('_', ' ', $session['slc']['reason_for_leaving'])) }}</strong> • Conduct: <strong class="text-amber-950 font-bold">{{ $session['slc']['conduct'] }}</strong>
+                                                    @if(!empty($session['slc']['remarks']))
+                                                        • Remarks: <em class="text-amber-800">"{{ $session['slc']['remarks'] }}"</em>
+                                                    @endif
+                                                </p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                                    <svg class="w-10 h-10 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                                    <p class="text-sm font-semibold text-slate-600">No historical enrollment records found.</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">Historical records will populate as sessions advance.</p>
+                                </div>
+                            @endforelse
+                        </div>
+                    @endif
+
+                    {{-- TAB 2: BIO-DATA & GUARDIANS --}}
+                    @if($profileTab === 'biodata')
+                        <div class="space-y-6">
+                            {{-- Personal & Academic Info Grid --}}
+                            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+                                <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                    <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Student Biographical Record</h4>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Full Legal Name</span>
+                                        <span class="font-black text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['name'] }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Date of Birth & Age</span>
+                                        <span class="font-bold text-slate-900 text-sm mt-0.5 block">
+                                            {{ $historyPortfolio['student']['dob'] ?? '-' }} 
+                                            @if($historyPortfolio['student']['age'] !== null)
+                                                <span class="text-xs text-indigo-600 font-semibold">({{ $historyPortfolio['student']['age'] }} years)</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Gender</span>
+                                        <span class="font-bold text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['gender'] }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">B-Form / CNIC Number</span>
+                                        <span class="font-mono font-bold text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['b_form_number'] ?? 'Not Registered' }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Admission Number</span>
+                                        <span class="font-mono font-black text-indigo-600 text-sm mt-0.5 block">{{ $historyPortfolio['student']['admission_no'] }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Roll Number</span>
+                                        <span class="font-mono font-bold text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['roll_no'] }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">
+                                            {{ ($historyPortfolio['student']['status'] ?? '') === 'graduated' ? 'Graduated Class & Section' : (($historyPortfolio['student']['status'] ?? '') === 'withdrawn' ? 'Last Class & Section' : 'Class & Section') }}
+                                        </span>
+                                        <span class="font-bold text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['class_name'] }}{{ !empty($historyPortfolio['student']['section_name']) ? ' (' . $historyPortfolio['student']['section_name'] . ')' : '' }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Original Admission Date</span>
+                                        <span class="font-bold text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['original_admission_date'] ?? '-' }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Enrollment Status</span>
+                                        <span class="font-bold text-sm mt-0.5 block {{ ($historyPortfolio['student']['status'] ?? '') === 'active' ? 'text-emerald-600' : 'text-amber-600' }}">
+                                            {{ ucfirst($historyPortfolio['student']['status'] ?? 'Unknown') }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Family & Guardian Details Grid --}}
+                            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+                                <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Guardian & Family Unit</h4>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Father's Full Name</span>
+                                        <span class="font-bold text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['father_name'] ?? '-' }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Father CNIC</span>
+                                        <span class="font-mono font-bold text-purple-700 text-sm mt-0.5 block">{{ $historyPortfolio['student']['father_cnic'] ?? 'Not Registered' }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Natural Sibling Order</span>
+                                        <span class="font-black text-purple-800 text-sm mt-0.5 block">Child #{{ $historyPortfolio['student']['sibling_rank'] }}</span>
+                                    </div>
+                                    @if(!empty($historyPortfolio['student']['guardian_cnic']))
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Guardian CNIC ({{ $historyPortfolio['student']['guardian_relation'] ?? 'Guardian' }})</span>
+                                        <span class="font-mono font-bold text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['guardian_cnic'] }}</span>
+                                    </div>
+                                    @endif
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Fee Concession Status</span>
+                                        <span class="font-bold text-slate-900 text-sm mt-0.5 block capitalize">
+                                            {{ str_replace('_', ' ', $historyPortfolio['student']['sibling_concession_status']) }}
+                                            @if($historyPortfolio['student']['sibling_concession_status'] === 'custom_waiver' && $historyPortfolio['student']['custom_concession_amount'])
+                                                (Rs. {{ number_format($historyPortfolio['student']['custom_concession_amount'], 2) }})
+                                            @endif
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Contact, Transport & Activities Grid --}}
+                            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+                                <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Contact, Transport & Activities</h4>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Emergency Phone</span>
+                                        <span class="font-mono font-bold text-slate-900 text-sm mt-0.5 block">{{ $historyPortfolio['student']['phone'] ?? '-' }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Email Address</span>
+                                        <span class="font-medium text-slate-900 text-sm mt-0.5 block truncate">{{ $historyPortfolio['student']['email'] ?? '-' }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Transport Mode & Vehicle</span>
+                                        <span class="font-bold text-slate-900 text-sm mt-0.5 block capitalize">
+                                            {{ str_replace('_', ' ', $historyPortfolio['student']['transport_mode']) }}
+                                            @if($historyPortfolio['student']['vehicle_number'])
+                                                ({{ $historyPortfolio['student']['vehicle_number'] }})
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60 sm:col-span-2">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Residential Address</span>
+                                        <span class="font-medium text-slate-800 text-xs mt-0.5 block leading-relaxed">{{ $historyPortfolio['student']['address'] ?? '-' }}</span>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Sports & Extracurriculars</span>
+                                        <span class="font-medium text-slate-800 text-xs mt-0.5 block">
+                                            {{ implode(', ', array_filter([$historyPortfolio['student']['sports'], $historyPortfolio['student']['extra_curriculars']])) ?: 'None Specified' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- TAB 3: FAMILY & SIBLINGS (DOB-ORDERED) --}}
+                    @if($profileTab === 'siblings')
+                        <div class="space-y-6">
+                            <div class="bg-indigo-50/70 rounded-2xl p-5 border border-indigo-200/80 flex items-center justify-between flex-wrap gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-indigo-950">Verified Institutional Family Unit</h4>
+                                        <p class="text-xs text-indigo-700">Ordered chronologically by <strong>Date of Birth (DOB)</strong> to reflect natural biological sibling rank and concession policy.</p>
+                                    </div>
+                                </div>
+                                <span class="px-3 py-1 rounded-full text-xs font-bold bg-white text-indigo-700 border border-indigo-200 shadow-2xs">
+                                    Total Siblings: {{ count($historyPortfolio['family'] ?? []) }}
+                                </span>
+                            </div>
+
+                            @if(!empty($historyPortfolio['family']) && count($historyPortfolio['family']) > 0)
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    @foreach($historyPortfolio['family'] as $sib)
+                                        <div class="bg-white rounded-2xl p-5 border {{ $sib['is_self'] ? 'border-indigo-400 ring-2 ring-indigo-100 shadow-md' : 'border-slate-200 shadow-xs' }} flex flex-col justify-between hover:border-indigo-300 transition-all">
+                                            <div>
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <span class="px-2.5 py-1 rounded-lg text-xs font-black {{ $sib['sibling_rank'] === 1 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-purple-100 text-purple-900 border border-purple-200' }}">
+                                                        Child #{{ $sib['sibling_rank'] }} {{ $sib['sibling_rank'] === 1 ? '(Eldest)' : '' }}
+                                                    </span>
+                                                    @if($sib['is_self'])
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-600 text-white shadow-2xs">Current Profile</span>
+                                                    @else
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $sib['status'] === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700' }}">
+                                                            {{ ucfirst($sib['status']) }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+
+                                                <div class="flex items-center gap-3.5 mb-3">
+                                                    @if(!empty($sib['profile_photo_path']))
+                                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($sib['profile_photo_path']) }}" alt="{{ $sib['name'] }}" class="w-12 h-12 rounded-xl object-cover ring-1 ring-slate-200 shrink-0">
+                                                    @else
+                                                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-lg shadow-2xs shrink-0">
+                                                            {{ substr($sib['name'], 0, 1) }}
+                                                        </div>
+                                                    @endif
+                                                    <div>
+                                                        <h5 class="font-black text-slate-900 text-sm">{{ $sib['name'] }}</h5>
+                                                        <p class="text-xs text-slate-500 mt-0.5">Class: <strong class="text-slate-800 font-semibold">{{ $sib['class_name'] }}</strong> • Roll #<strong class="font-mono text-slate-800">{{ $sib['roll_no'] }}</strong></p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                                                    <div>
+                                                        <span class="text-[10px] text-slate-400 uppercase font-bold block">Date of Birth</span>
+                                                        <span class="font-bold text-slate-800 text-xs">{{ $sib['dob'] }} @if($sib['age'] !== null) ({{ $sib['age'] }}y) @endif</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-[10px] text-slate-400 uppercase font-bold block">Admission No</span>
+                                                        <span class="font-mono font-bold text-indigo-700 text-xs">{{ $sib['admission_no'] }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            @if(!$sib['is_self'])
+                                                <button 
+                                                    type="button"
+                                                    wire:click="openLifetimeHistory({{ $sib['id'] }})" 
+                                                    class="mt-4 w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                                >
+                                                    <span>View {{ $sib['name'] }}'s 360° Profile</span>
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                                    <p class="text-sm font-semibold text-slate-600">No enrolled siblings found for this student.</p>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- TAB 4: FINANCIAL LEDGER --}}
+                    @if($profileTab === 'fees' && \App\Services\LicenseStatus::isModuleEnabled('fees'))
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block">Total Invoiced</span>
+                                    <span class="text-2xl font-black font-mono text-slate-900 mt-1 block">Rs. {{ number_format($historyPortfolio['financial_summary']['total_billed'], 0) }}</span>
+                                </div>
+                                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block">Total Paid</span>
+                                    <span class="text-2xl font-black font-mono text-emerald-600 mt-1 block">Rs. {{ number_format($historyPortfolio['financial_summary']['total_paid'], 0) }}</span>
+                                </div>
+                                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block">Outstanding Balance</span>
+                                    <span class="text-2xl font-black font-mono mt-1 block {{ $historyPortfolio['financial_summary']['outstanding_balance'] > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
+                                        Rs. {{ number_format($historyPortfolio['financial_summary']['outstanding_balance'], 0) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+                                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                                    <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Session-by-Session Fee Records</h4>
+                                    <a href="{{ route('admin.fee.ledger', $historyPortfolio['student']['id']) }}" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                        <span>Open Full Interactive Ledger</span>
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    </a>
+                                </div>
+                                <div class="space-y-3">
+                                    @foreach($historyPortfolio['sessions'] as $ses)
+                                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/70 flex items-center justify-between flex-wrap gap-3 text-xs">
+                                            <div>
+                                                <h5 class="font-black text-slate-900 text-sm">{{ $ses['session_name'] }}</h5>
+                                                <span class="text-slate-500">Class: {{ $ses['class_name'] }} ({{ $ses['section_name'] }})</span>
+                                            </div>
+                                            <div class="flex items-center gap-6 font-mono">
+                                                <div>
+                                                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Billed</span>
+                                                    <span class="font-bold text-slate-800">Rs. {{ number_format($ses['fees']['invoiced'] ?? 0, 0) }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Paid</span>
+                                                    <span class="font-bold text-emerald-600">Rs. {{ number_format($ses['fees']['paid'] ?? 0, 0) }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Balance</span>
+                                                    <span class="font-bold {{ ($ses['fees']['balance'] ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
+                                                        Rs. {{ number_format($ses['fees']['balance'] ?? 0, 0) }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- TAB 5: OFFICIAL A4 PRINT SHEET --}}
+                    @if($profileTab === 'print_sheet')
+                        <div class="flex justify-center">
+                            <div id="a4-print-sheet" class="bg-white w-[210mm] min-h-[297mm] shadow-xl p-8 text-gray-800 text-xs relative">
+                                {{-- Print Header --}}
+                                <div class="text-center pb-4 mb-6 border-b-2 border-slate-800">
+                                    <h1 class="text-xl font-black uppercase tracking-wider text-slate-900">{{ \App\Models\Setting::getFormalInstituteName() }}</h1>
+                                    <p class="text-xs text-slate-600">{{ \App\Models\Setting::getGlobal('institute_address', 'Islamabad, Pakistan') }}</p>
+                                    <h2 class="text-sm font-bold uppercase tracking-widest text-indigo-700 mt-2">Official Student Bio-Data & Portfolio Record</h2>
+                                </div>
+
+                                {{-- Student Details Header --}}
+                                <div class="flex gap-6 pb-6 mb-6 border-b border-slate-200">
+                                    @if(!empty($historyPortfolio['student']['profile_photo_path']))
+                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($historyPortfolio['student']['profile_photo_path']) }}" alt="{{ $historyPortfolio['student']['name'] }}" class="w-28 h-36 object-cover border-2 border-slate-800 rounded-lg shadow-sm shrink-0">
+                                    @else
+                                        <div class="w-28 h-36 bg-slate-100 border-2 border-slate-400 rounded-lg flex items-center justify-center text-slate-400 font-bold text-2xl shrink-0">
+                                            Photo
+                                        </div>
+                                    @endif
+                                    <div class="flex-1 grid grid-cols-2 gap-3 text-xs">
+                                        <div><strong>Student Name:</strong> {{ $historyPortfolio['student']['name'] }}</div>
+                                        <div><strong>Admission No:</strong> <span class="font-mono">{{ $historyPortfolio['student']['admission_no'] }}</span></div>
+                                        <div><strong>Father's Name:</strong> {{ $historyPortfolio['student']['father_name'] }}</div>
+                                        <div><strong>Roll No:</strong> <span class="font-mono">{{ $historyPortfolio['student']['roll_no'] }}</span></div>
+                                        <div><strong>Date of Birth:</strong> {{ $historyPortfolio['student']['dob'] ?? '-' }}</div>
+                                        <div><strong>{{ ($historyPortfolio['student']['status'] ?? '') === 'graduated' ? 'Graduated Class' : (($historyPortfolio['student']['status'] ?? '') === 'withdrawn' ? 'Last Class' : 'Class / Section') }}:</strong> {{ $historyPortfolio['student']['class_name'] }}{{ !empty($historyPortfolio['student']['section_name']) ? ' (' . $historyPortfolio['student']['section_name'] . ')' : '' }}</div>
+                                        <div><strong>B-Form / CNIC:</strong> <span class="font-mono">{{ $historyPortfolio['student']['b_form_number'] ?? '-' }}</span></div>
+                                        <div><strong>Admission Date:</strong> {{ $historyPortfolio['student']['admission_date'] }}</div>
+                                        <div><strong>Father CNIC:</strong> <span class="font-mono">{{ $historyPortfolio['student']['father_cnic'] ?? '-' }}</span></div>
+                                        <div><strong>Contact Phone:</strong> <span class="font-mono">{{ $historyPortfolio['student']['phone'] ?? '-' }}</span></div>
+                                    </div>
+                                </div>
+
+                                {{-- Academic & Attendance Record --}}
+                                <div class="mb-6">
+                                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 pb-1 border-b border-slate-400">Institutional Academic & Attendance Summary</h3>
+                                    <table class="w-full text-xs text-left border-collapse border border-slate-300">
+                                        <thead class="bg-slate-100">
+                                            <tr>
+                                                <th class="border border-slate-300 p-2">Academic Session</th>
+                                                <th class="border border-slate-300 p-2">Class & Section</th>
+                                                <th class="border border-slate-300 p-2">Attendance Rate</th>
+                                                <th class="border border-slate-300 p-2">Exams Performance</th>
+                                                <th class="border border-slate-300 p-2">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($historyPortfolio['sessions'] as $s)
+                                                <tr>
+                                                    <td class="border border-slate-300 p-2 font-bold">{{ $s['session_name'] }}</td>
+                                                    <td class="border border-slate-300 p-2">{{ $s['class_name'] }} ({{ $s['section_name'] }})</td>
+                                                    <td class="border border-slate-300 p-2">{{ $s['attendance']['percentage'] }}% ({{ $s['attendance']['present'] }}/{{ $s['attendance']['total'] }} days)</td>
+                                                    <td class="border border-slate-300 p-2">{{ $s['exams']['passed'] }}/{{ $s['exams']['total'] }} Passed (Avg: {{ $s['exams']['avg_marks'] }}%)</td>
+                                                    <td class="border border-slate-300 p-2 uppercase font-bold text-[10px]">{{ $s['enrollment_status'] }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {{-- Signature Footer --}}
+                                <div class="pt-12 mt-12 border-t border-slate-300 grid grid-cols-3 text-center text-xs">
+                                    <div>
+                                        <div class="border-t border-slate-800 w-32 mx-auto pt-1 font-bold">Class Incharge</div>
+                                    </div>
+                                    <div>
+                                        <div class="border-t border-slate-800 w-32 mx-auto pt-1 font-bold">Exam Controller</div>
+                                    </div>
+                                    <div>
+                                        <div class="border-t border-slate-800 w-32 mx-auto pt-1 font-bold">Principal / Head</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Footer (fixed bottom, shrink-0) --}}
                 <div class="p-4 sm:p-5 bg-white border-t border-slate-200 flex items-center justify-between shrink-0 no-print">
                     <div class="flex items-center gap-2 text-xs text-slate-500 font-medium">
                         <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span>Institutional Audit Trail & Historical Protection Active</span>
+                        <span>Unified Student 360° Profile & Audit Protection Active</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="window.print()" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-xs flex items-center gap-1.5">
                             <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                            Print Portfolio
+                            Print Profile
                         </button>
                         <button type="button" wire:click="closeHistoryModal" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-sm hover:shadow active:scale-95">
-                            Close Portfolio
+                            Close Profile
                         </button>
                     </div>
                 </div>
             </div>
         </div>
     @endif
+
 </div>

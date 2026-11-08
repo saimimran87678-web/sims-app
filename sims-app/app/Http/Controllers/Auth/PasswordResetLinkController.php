@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,22 @@ class PasswordResetLinkController extends Controller
      */
     public function create(): View
     {
-        return view('auth.forgot-password');
+        $email = session('reset_email', old('email'));
+        $secondsRemaining = 0;
+        if ($email) {
+            $record = DB::table('password_reset_tokens')->where('email', $email)->first();
+            if ($record && $record->created_at) {
+                $createdAt = Carbon::parse($record->created_at);
+                $elapsed = $createdAt->diffInSeconds(now());
+                if (!$createdAt->isFuture() && $elapsed < 60) {
+                    $secondsRemaining = 60 - $elapsed;
+                }
+            }
+        }
+
+        return view('auth.forgot-password', [
+            'secondsRemaining' => (int) $secondsRemaining,
+        ]);
     }
 
     /**
@@ -27,7 +43,7 @@ class PasswordResetLinkController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $request->validate([
             'email' => ['required', 'email', 'exists:users,email'],
@@ -47,6 +63,12 @@ class PasswordResetLinkController extends Controller
                 ->exists();
 
             if (!$hasActiveSession) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'message' => __('Your account has been disabled in all active shifts.'),
+                        'errors' => ['email' => [__('Your account has been disabled in all active shifts.')]],
+                    ], 422);
+                }
                 throw ValidationException::withMessages([
                     'email' => __('Your account has been disabled in all active shifts.'),
                 ]);
@@ -58,11 +80,43 @@ class PasswordResetLinkController extends Controller
             $createdAt = Carbon::parse($existing->created_at);
             $elapsedSeconds = $createdAt->diffInSeconds(now());
             if ($createdAt->isFuture() || $elapsedSeconds < 60) {
-                $secondsLeft = $createdAt->isFuture() ? 60 : (60 - $elapsedSeconds);
+                // If submitted within 5 seconds of token generation (accidental double-click while page was loading),
+                // smoothly send the user to the OTP verification screen where their code was dispatched!
+                if (!$createdAt->isFuture() && $elapsedSeconds <= 5) {
+                    session([
+                        'reset_email' => $email,
+                        'otp_sent_at' => $createdAt->timestamp,
+                    ]);
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json([
+                            'success' => true,
+                            'redirect' => route('password.otp.verify'),
+                            'message' => 'OTP code has been sent to your email address.',
+                        ]);
+                    }
+                    return redirect()->route('password.otp.verify')
+                        ->with('status', 'OTP code has been sent to your email address.');
+                }
+
+                $secondsLeft = (int) ($createdAt->isFuture() ? 60 : ceil(60 - $elapsedSeconds));
                 if ($secondsLeft > 0) {
-                    session(['reset_email' => $email]);
+                    session([
+                        'reset_email' => $email,
+                        'secondsRemaining' => $secondsLeft,
+                    ]);
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json([
+                            'message' => "Please wait {$secondsLeft} second(s) before requesting a new OTP.",
+                            'secondsRemaining' => $secondsLeft,
+                            'errors' => [
+                                'email' => ["Please wait {$secondsLeft} second(s) before requesting a new OTP."],
+                                'otp' => ["Please wait {$secondsLeft} second(s) before requesting a new OTP."],
+                            ],
+                        ], 429);
+                    }
                     return back()->withInput($request->only('email'))
                         ->with('error', "Please wait {$secondsLeft} second(s) before requesting a new OTP.")
+                        ->with('secondsRemaining', $secondsLeft)
                         ->withErrors([
                             'email' => "Please wait {$secondsLeft} second(s) before requesting a new OTP.",
                             'otp' => "Please wait {$secondsLeft} second(s) before requesting a new OTP.",
@@ -82,55 +136,77 @@ class PasswordResetLinkController extends Controller
             ]
         );
 
-        // Send OTP via Email
-        try {
-            $instituteFormalName = trim((string) \App\Models\Setting::getGlobal('institute_formal_name', ''));
-            if (empty($instituteFormalName)) {
-                $instituteFormalName = trim((string) \App\Models\Setting::getGlobal('institute_name', config('app.name', 'IMCB G-6/2, ISLAMABAD')));
-            }
-            $instituteShortName = trim((string) \App\Models\Setting::getGlobal('institute_short_name', ''));
-            $userName = $user ? $user->name : null;
-
-            $logoPath = \App\Models\Setting::getGlobal('institute_logo');
-            $logoUrl = null;
-            if (!empty($logoPath)) {
-                $logoUrl = filter_var($logoPath, FILTER_VALIDATE_URL) ? $logoPath : url($logoPath);
-            }
-
-            // Ensure dynamic SMTP credentials and sender name are set
-            $mailUser = \App\Models\Setting::getGlobal('mail_username');
-            $mailPass = \App\Models\Setting::getGlobal('mail_password');
-            if (!empty($mailUser) && !empty($mailPass)) {
-                config([
-                    'mail.default' => 'smtp',
-                    'mail.mailers.smtp.host' => 'smtp.gmail.com',
-                    'mail.mailers.smtp.port' => 465,
-                    'mail.mailers.smtp.encryption' => 'ssl',
-                    'mail.mailers.smtp.username' => $mailUser,
-                    'mail.mailers.smtp.password' => $mailPass,
-                    'mail.from.address' => $mailUser,
-                    'mail.from.name' => $instituteFormalName,
-                ]);
-            }
-
-            Mail::to($email)->send(new \App\Mail\PasswordResetOtpMail(
-                otp: $otp,
-                instituteName: $instituteFormalName,
-                userName: $userName,
-                logoUrl: $logoUrl,
-                validMinutes: 15,
-                instituteShortName: $instituteShortName
-            ));
-        } catch (\Exception $e) {
-            return back()->withInput($request->only('email'))
-                ->withErrors(['email' => 'Failed to send OTP email: ' . $e->getMessage()]);
+        // Asynchronously dispatch email after HTTP response is flushed to client for sub-second, industry-standard speed
+        $instituteFormalName = trim((string) \App\Models\Setting::getGlobal('institute_formal_name', ''));
+        if (empty($instituteFormalName)) {
+            $instituteFormalName = trim((string) \App\Models\Setting::getGlobal('institute_name', config('app.name', 'IMCB G-6/2, ISLAMABAD')));
         }
+        $instituteShortName = trim((string) \App\Models\Setting::getGlobal('institute_short_name', ''));
+        $userName = $user ? $user->name : null;
+
+        $logoPath = \App\Models\Setting::getGlobal('institute_logo');
+        $logoUrl = null;
+        if (!empty($logoPath)) {
+            $logoUrl = filter_var($logoPath, FILTER_VALIDATE_URL) ? $logoPath : url($logoPath);
+        }
+
+        $mailUser = \App\Models\Setting::getGlobal('mail_username');
+        $mailPass = \App\Models\Setting::getGlobal('mail_password');
+
+        if (!empty($mailUser) && !empty($mailPass)) {
+            config([
+                'mail.default' => 'smtp',
+                'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                'mail.mailers.smtp.port' => 465,
+                'mail.mailers.smtp.encryption' => 'ssl',
+                'mail.mailers.smtp.username' => $mailUser,
+                'mail.mailers.smtp.password' => $mailPass,
+                'mail.from.address' => $mailUser,
+                'mail.from.name' => $instituteFormalName,
+            ]);
+        }
+
+        defer(function () use ($email, $otp, $instituteFormalName, $userName, $logoUrl, $instituteShortName, $mailUser, $mailPass) {
+            try {
+                if (!empty($mailUser) && !empty($mailPass)) {
+                    config([
+                        'mail.default' => 'smtp',
+                        'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                        'mail.mailers.smtp.port' => 465,
+                        'mail.mailers.smtp.encryption' => 'ssl',
+                        'mail.mailers.smtp.username' => $mailUser,
+                        'mail.mailers.smtp.password' => $mailPass,
+                        'mail.from.address' => $mailUser,
+                        'mail.from.name' => $instituteFormalName,
+                    ]);
+                }
+
+                Mail::to($email)->send(new \App\Mail\PasswordResetOtpMail(
+                    otp: $otp,
+                    instituteName: $instituteFormalName,
+                    userName: $userName,
+                    logoUrl: $logoUrl,
+                    validMinutes: 15,
+                    instituteShortName: $instituteShortName
+                ));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to send OTP email to {$email}: " . $e->getMessage());
+            }
+        });
 
         // Store email in session to allow OTP verification
         session([
             'reset_email' => $email,
             'otp_sent_at' => now()->timestamp,
         ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'redirect' => route('password.otp.verify'),
+                'message' => 'OTP code has been sent to your email address.',
+            ]);
+        }
 
         return redirect()->route('password.otp.verify')->with('status', 'OTP code has been sent to your email address.');
     }

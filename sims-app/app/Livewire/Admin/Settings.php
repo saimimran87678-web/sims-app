@@ -23,6 +23,7 @@ class Settings extends Component
     public $schedule_type_policy = 'configurable';
     public $admin_action_pin_enabled = false;
     public $admin_action_pin = '';
+    public $session_idle_timeout = 15;
     public $successMessage = '';
     public $activeTab = 'general';
 
@@ -71,6 +72,7 @@ class Settings extends Component
             'schedule_type' => 'required|in:day_wise,single_schedule',
             'admin_action_pin_enabled' => 'boolean',
             'admin_action_pin' => $this->admin_action_pin_enabled ? 'required|string|min:4|max:6' : 'nullable|string',
+            'session_idle_timeout' => 'required|integer|min:0|max:1440',
         ];
     }
 
@@ -91,6 +93,7 @@ class Settings extends Component
 
         $this->admin_action_pin_enabled = (bool) Setting::get('admin_action_pin_enabled', false);
         $this->admin_action_pin = Setting::get('admin_action_pin', '');
+        $this->session_idle_timeout = Setting::getSessionIdleTimeout();
 
         // Initialize Version & Integrity status
         $cfgVer = config('app.version', '2.5.2');
@@ -327,6 +330,7 @@ class Settings extends Component
 
         Setting::set('admin_action_pin_enabled', $this->admin_action_pin_enabled);
         Setting::set('admin_action_pin', $this->admin_action_pin_enabled ? $this->admin_action_pin : '');
+        Setting::setGlobal('session_idle_timeout', (int) $this->session_idle_timeout);
 
         // Handle Email & SMTP updates if currently replacing
         if ($this->is_replacing_smtp) {

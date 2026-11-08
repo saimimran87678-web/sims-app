@@ -614,8 +614,14 @@ Route::get('/refresh-csrf', function () {
     return response()->json(['token' => csrf_token()]);
 })->name('csrf.refresh');
 
+Route::get('/lock-screen', [\App\Http\Controllers\Auth\SessionLockScreenController::class, 'show'])
+    ->name('session.lock_screen');
+
+Route::match(['get', 'post'], '/session/lock', [\App\Http\Controllers\Auth\SessionLockScreenController::class, 'lock'])
+    ->name('session.lock');
+
 Route::post('/session/unlock', [\App\Http\Controllers\Auth\SessionUnlockController::class, 'unlock'])
-    ->middleware('throttle:5,1')
+    ->middleware('throttle:10,1')
     ->name('session.unlock');
 
 require __DIR__.'/auth.php';

@@ -136,5 +136,19 @@ class Setting extends Model
         }
         return $default;
     }
+
+    /**
+     * Get the session idle timeout in minutes.
+     * Prioritizes operational database setting, falling back to config/env.
+     */
+    public static function getSessionIdleTimeout(): int
+    {
+        $default = (int) config('session.idle_timeout', 15);
+        $val = self::getGlobal('session_idle_timeout');
+        if ($val === null || $val === '') {
+            return $default;
+        }
+        return (int) $val;
+    }
 }
 

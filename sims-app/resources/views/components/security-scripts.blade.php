@@ -14,19 +14,26 @@
         sessionStorage.setItem('sims_tab_auth', 'active');
     }
 
-    // --- Professional Inactivity Timeout (15 minutes) ---
+    // --- Professional Inactivity Timeout (Synchronized with Server-Side Policy) ---
     document.addEventListener('DOMContentLoaded', function() {
-            let timeoutTime = 15 * 60 * 1000; // 15 minutes
+            @php
+                $idleTimeoutMinutes = \App\Models\Setting::getSessionIdleTimeout();
+                $isServerLocked = (bool) session('session_locked', false);
+            @endphp
+            let idleTimeoutMinutes = {{ $idleTimeoutMinutes }};
+            let timeoutTime = idleTimeoutMinutes > 0 ? (idleTimeoutMinutes * 60 * 1000) : 0;
             let warningThreshold = 60 * 1000; // 60 seconds warning
             let lastActivityTime = Date.now();
             let isModalOpen = false;
             let isExpired = false;
+            let isServerLocked = @json($isServerLocked);
             let checkInterval;
             let pingDebounce = false;
             let lastLoginTime = 0; // Prevents duplicate popups right after a successful login
 
             let currentUserEmail = '{{ auth()->user()->email }}';
             let loginUrl = '{{ route('login') }}';
+            let lockUrl = '{{ route('session.lock') }}';
             let unlockUrl = '{{ route('session.unlock') }}';
             let refreshCsrfUrl = '{{ route('csrf.refresh') }}';
             let logoutUrl = '{{ route('logout.get') }}';
@@ -155,9 +162,18 @@
 
             function triggerExpiration() {
                 isExpired = true;
-                clearInterval(checkInterval);
+                if (checkInterval) clearInterval(checkInterval);
                 hideWarningModal();
                 showExpiredModal();
+
+                // Synchronize lock state with server so refresh cannot bypass
+                try {
+                    if (navigator.sendBeacon) {
+                        navigator.sendBeacon(lockUrl);
+                    } else {
+                        fetch(lockUrl, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    }
+                } catch (e) {}
             }
 
             function showExpiredModal(errorMessage = '') {
@@ -349,6 +365,7 @@
             }
 
             function startChecker() {
+                if (timeoutTime <= 0) return; // Inactivity lock disabled by policy
                 if (checkInterval) clearInterval(checkInterval);
                 checkInterval = setInterval(function() {
                     let idleTime = Date.now() - lastActivityTime;
@@ -364,8 +381,12 @@
                 }, 1000);
             }
 
-            // Start checker initially
-            startChecker();
+            // If the server flagged session as locked, trigger immediately on load
+            if (isServerLocked) {
+                triggerExpiration();
+            } else {
+                startChecker();
+            }
             
             // --- 3. Livewire Error Interceptor ---
             document.addEventListener('livewire:init', function() {
@@ -374,8 +395,8 @@
                         // Suppress Livewire's default dark failure modal across all requests
                         preventDefault();
 
-                        if (status === 419) {
-                            // Ignore 419 errors if we successfully logged in less than 5 seconds ago.
+                        if (status === 419 || status === 423) {
+                            // Ignore 419/423 errors if we successfully logged in less than 5 seconds ago.
                             // (Prevents duplicate popups from lagging background requests that failed while the modal was open)
                             if (Date.now() - lastLoginTime > 5000) {
                                 triggerExpiration();

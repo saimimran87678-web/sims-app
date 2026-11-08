@@ -39,6 +39,46 @@ class PasswordResetTest extends TestCase
         ]);
     }
 
+    public function test_double_submission_within_grace_period_smoothly_redirects_to_otp_verify(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Super Admin']);
+        $user->assignRole('Super Admin');
+
+        // First click
+        $first = $this->post('/forgot-password', ['email' => $user->email]);
+        $first->assertRedirect(route('password.otp.verify'));
+
+        // Rapid double click (1 second later during loading)
+        $second = $this->post('/forgot-password', ['email' => $user->email]);
+        $second->assertRedirect(route('password.otp.verify'));
+        $second->assertSessionHas('status', 'OTP code has been sent to your email address.');
+    }
+
+    public function test_cooldown_throttles_deliberate_re_request_with_remaining_seconds(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Super Admin']);
+        $user->assignRole('Super Admin');
+
+        // Create token sent 20 seconds ago
+        DB::table('password_reset_tokens')->insert([
+            'email' => $user->email,
+            'token' => '999888',
+            'created_at' => now()->subSeconds(20),
+        ]);
+
+        $response = $this->post('/forgot-password', ['email' => $user->email]);
+        $response->assertSessionHasErrors('email');
+        $this->assertStringContainsString('Please wait', session('error'));
+        $this->assertGreaterThanOrEqual(38, session('secondsRemaining'));
+        $this->assertLessThanOrEqual(40, session('secondsRemaining'));
+    }
+
     public function test_verify_otp_screen_can_be_rendered(): void
     {
         $user = User::factory()->create();

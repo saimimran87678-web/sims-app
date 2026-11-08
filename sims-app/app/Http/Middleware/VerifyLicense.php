@@ -26,6 +26,8 @@ class VerifyLicense
         '_debugbar',
         'up', // Laravel health check
         'session/unlock',
+        'session/lock',
+        'lock-screen',
         'refresh-csrf',
     ];
 

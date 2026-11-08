@@ -461,6 +461,43 @@
                         </div>
                     @endif
                 </div>
+
+                {{-- Session Inactivity Auto-Lock --}}
+                <div class="mt-4 p-5 bg-gray-50 border border-gray-200 rounded-2xl">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                                <p class="text-sm font-semibold text-gray-800">Session Inactivity Lock Screen</p>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700">Security</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Automatically locks user sessions on the server after inactivity. When locked, users must verify their password to resume work, preventing unauthorized access on unattended screens.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Idle Timeout Duration</label>
+                        <div class="max-w-xs">
+                            <select
+                                wire:model.defer="session_idle_timeout"
+                                class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-600 transition-colors bg-white text-gray-800 text-sm font-medium"
+                            >
+                                <option value="5">5 Minutes (High Security)</option>
+                                <option value="15">15 Minutes (Recommended)</option>
+                                <option value="30">30 Minutes</option>
+                                <option value="60">60 Minutes (1 Hour)</option>
+                                <option value="0">Disabled (Do Not Auto-Lock)</option>
+                            </select>
+                        </div>
+                        @error('session_idle_timeout')
+                            <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
             </div>
 
             <div class="border-t border-gray-100"></div>
