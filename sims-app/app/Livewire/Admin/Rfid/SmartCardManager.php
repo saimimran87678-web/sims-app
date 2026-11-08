@@ -44,6 +44,9 @@ class SmartCardManager extends Component
     public function mount()
     {
         $this->authorize('students.manage');
+        if (!\App\Services\LicenseStatus::isModuleEnabled('rfid')) {
+            abort(403, 'The RFID & Smart Gate module is currently disabled by administrative license policy.');
+        }
         $this->selectedClassId = ''; // Default to All Classes so students appear immediately
         $this->checkReaderStatus();
     }

@@ -45,6 +45,7 @@ class SetupWizardTest extends TestCase
     public function test_setup_wizard_requires_valid_license_key(): void
     {
         \Illuminate\Support\Facades\DB::table('software_licenses')->truncate();
+        \App\Services\LicenseStatus::clearCache();
         config(['services.license.key' => '']);
 
         Livewire::test(SetupWizard::class)

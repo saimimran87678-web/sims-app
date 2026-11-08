@@ -18,6 +18,9 @@ class RfidGateMonitor extends Component
     public function mount()
     {
         $this->authorize('attendance.manage');
+        if (!\App\Services\LicenseStatus::isModuleEnabled('rfid')) {
+            abort(403, 'The RFID & Smart Gate module is currently disabled by administrative license policy.');
+        }
         $this->todayDate = Carbon::now()->format('Y-m-d');
     }
 

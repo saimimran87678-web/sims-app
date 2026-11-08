@@ -265,8 +265,8 @@ Route::middleware(['auth', 'isAdmin'])->prefix('admin')->name('admin.')->group(f
     // Global Management
     Route::get('/grades', \App\Livewire\Admin\GradeManager::class)->name('grades')->middleware('feature:gradebook');
     Route::get('/attendance', \App\Livewire\Admin\AttendanceManager::class)->name('attendance')->middleware('feature:attendance');
-    Route::get('/attendance/smart-cards', \App\Livewire\Admin\Rfid\SmartCardManager::class)->name('attendance.smart-cards')->middleware('feature:attendance');
-    Route::get('/attendance/gate-monitor', \App\Livewire\Admin\Rfid\RfidGateMonitor::class)->name('attendance.gate-monitor')->middleware('feature:attendance');
+    Route::get('/attendance/smart-cards', \App\Livewire\Admin\Rfid\SmartCardManager::class)->name('attendance.smart-cards')->middleware('feature:rfid');
+    Route::get('/attendance/gate-monitor', \App\Livewire\Admin\Rfid\RfidGateMonitor::class)->name('attendance.gate-monitor')->middleware('feature:rfid');
     
     // WhatsApp & Communication Hub (Remotely Gated)
     Route::middleware(['feature:whatsapp'])->group(function () {

@@ -8,6 +8,10 @@ abstract class TestCase extends BaseTestCase
 {
     public function createApplication()
     {
+        if (!getenv('OPENSSL_CONF') && file_exists('C:\\Program Files\\SIMS\\runtime\\php\\extras\\ssl\\openssl.cnf')) {
+            putenv('OPENSSL_CONF=C:\\Program Files\\SIMS\\runtime\\php\\extras\\ssl\\openssl.cnf');
+        }
+
         $app = require __DIR__.'/../bootstrap/app.php';
         $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 

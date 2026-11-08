@@ -93,10 +93,11 @@ class FirebaseAuth
                     'school_id' => $extractValue($fields['school_id'] ?? null),
                     'allowed_domain' => $extractValue($fields['allowed_domain'] ?? null),
                     'offline_grace' => isset($fields['offline_grace']) ? intval($extractValue($fields['offline_grace'])) : 7,
-                    'enabled_modules' => $extractArray($fields['enabled_modules'] ?? null) ?: ['fees', 'exams', 'attendance', 'whatsapp', 'reports'],
+                    'enabled_modules' => $extractArray($fields['enabled_modules'] ?? null) ?: ['students', 'gradebook', 'fees', 'exams', 'attendance', 'whatsapp', 'reports', 'rfid'],
                     'broadcast_announcement' => $extractValue($fields['broadcast_announcement'] ?? null),
                     'schedule_type_policy' => $extractValue($fields['schedule_type_policy'] ?? null) ?: 'configurable',
                     'config_version' => isset($fields['config_version']) ? intval($extractValue($fields['config_version'])) : 1,
+                    'modules_v3' => isset($fields['modules_v3']) ? (bool) $extractValue($fields['modules_v3']) : false,
                     'bound_machine_uuid' => $extractValue($fields['bound_machine_uuid'] ?? null) ?: $extractValue($fields['telemetry']['mapValue']['fields']['bound_machine_uuid'] ?? null),
                 ];
             }

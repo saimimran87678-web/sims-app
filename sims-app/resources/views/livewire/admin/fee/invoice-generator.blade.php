@@ -514,7 +514,7 @@
                                             </td>
                                             <td class="px-4 sm:px-6 py-3.5 sm:py-4 text-right font-medium">
                                                 <div class="flex justify-end items-center gap-2">
-                                                    <a href="{{ route('admin.fee.student-ledger', $receipt->student_id) }}" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 text-xs font-bold rounded-lg transition-colors" title="View in Universal Ledger">
+                                                    <a href="{{ route('admin.fee.ledger', $receipt->student_id) }}" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 text-xs font-bold rounded-lg transition-colors" title="View in Universal Ledger">
                                                         Ledger
                                                     </a>
                                                     <a href="{{ route('admin.fee.receipt.download', $receipt->id) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/45 dark:text-blue-400 text-xs font-bold rounded-lg transition-colors">

@@ -60,7 +60,7 @@ class LicenseStatus
     /**
      * Check if a specific feature module is enabled via remote licensing policy.
      *
-     * @param string $module Module name (e.g. 'students', 'gradebook', 'fees', 'exams', 'attendance', 'whatsapp', 'reports')
+     * @param string $module Module name (e.g. 'students', 'gradebook', 'fees', 'exams', 'attendance', 'whatsapp', 'reports', 'rfid')
      * @return bool
      */
     public static function isModuleEnabled(string $module): bool
@@ -92,6 +92,13 @@ class LicenseStatus
                 if (!$hasAnyNewMod) {
                     return self::$cachedModules[$modLower] = true;
                 }
+            }
+
+            // Backward compatibility for RFID before it was separated into its own toggle:
+            // If license has not been saved under modules_v3 yet, and rfid is not explicitly in enabled_modules,
+            // it inherits the status of attendance so existing installations don't break.
+            if ($modLower === 'rfid' && empty($record->modules_v3) && !in_array('rfid', $modulesLower)) {
+                return self::$cachedModules['rfid'] = in_array('attendance', $modulesLower);
             }
 
             return self::$cachedModules[$modLower] = in_array($modLower, $modulesLower);

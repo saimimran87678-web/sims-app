@@ -51,11 +51,16 @@ class LicenseSystemTest extends TestCase
         string  $statusStr,
         string  $allowedDomains = ''
     ): array {
-        $keys = openssl_pkey_new([
+        $sslConfig = [
             'private_key_bits' => 2048,
             'private_key_type' => OPENSSL_KEYTYPE_RSA,
-        ]);
-        openssl_pkey_export($keys, $privateKey);
+        ];
+        if (file_exists('C:/Program Files/SIMS/runtime/php/extras/ssl/openssl.cnf')) {
+            $sslConfig['config'] = 'C:/Program Files/SIMS/runtime/php/extras/ssl/openssl.cnf';
+        }
+
+        $keys = openssl_pkey_new($sslConfig);
+        openssl_pkey_export($keys, $privateKey, null, $sslConfig);
         $details   = openssl_pkey_get_details($keys);
         $publicKey = $details['key'];
 

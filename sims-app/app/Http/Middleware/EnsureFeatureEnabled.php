@@ -23,8 +23,9 @@ class EnsureFeatureEnabled
             if ($module === 'fees') $formattedName = 'Fee Management';
             if ($module === 'students') $formattedName = 'Student Management';
             if ($module === 'gradebook') $formattedName = 'Gradebook';
+            if ($module === 'rfid') $formattedName = 'RFID & Smart Gate';
 
-            if ($request->expectsJson() || $request->isXmlHttpRequest()) {
+            if ($request->expectsJson() || $request->isXmlHttpRequest() || $request->is('api/*')) {
                 return response()->json([
                     'success' => false,
                     'message' => "The {$formattedName} module is currently disabled by administrative license policy.",

@@ -50,6 +50,7 @@ return new class extends Migration
         DB::table('subjects')->whereNotIn('id', $canonicalIds)->delete();
 
         // 3. Make class_id nullable on subjects and add category & is_active
+        Schema::dropIfExists('subjects_canonical');
         Schema::create('subjects_canonical', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
@@ -97,7 +98,7 @@ return new class extends Migration
         ];
 
         foreach ($canonicalCatalogue as $sub) {
-            if (!DB::table('subjects_canonical')->where('name', $sub['name'])->exists()) {
+            if (!DB::table('subjects_canonical')->where('name', $sub['name'])->exists() && !DB::table('subjects_canonical')->where('code', $sub['code'])->exists()) {
                 DB::table('subjects_canonical')->insert([
                     'name' => $sub['name'],
                     'code' => $sub['code'],

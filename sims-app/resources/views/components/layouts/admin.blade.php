@@ -181,7 +181,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
                     <span class="font-medium">Attendance</span>
                 </x-nav-link>
+                @endcan
+                @endif
 
+                <!-- RFID Smart Cards & Gate Monitor (Remotely Gated) -->
+                @if(\App\Services\LicenseStatus::isModuleEnabled('rfid'))
+                @can('students.manage')
                 <x-nav-link :href="route('admin.attendance.smart-cards')" :active="request()->routeIs('admin.attendance.smart-cards')" color="indigo">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/><circle cx="7" cy="15" r="1"/></svg>
                     <span class="font-medium">Smart Cards (RFID)</span>

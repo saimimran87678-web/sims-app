@@ -4,6 +4,7 @@
             <h1 class="text-2xl font-bold text-gray-800">Attendance Manager</h1>
             <p class="text-gray-500">Mark daily attendance for any class</p>
         </div>
+        @if(\App\Services\LicenseStatus::isModuleEnabled('rfid'))
         <div class="flex items-center gap-2">
             <a href="{{ route('admin.attendance.smart-cards') }}" class="px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/><circle cx="7" cy="15" r="1"/></svg>
@@ -14,6 +15,7 @@
                 <span>Live Gate Monitor</span>
             </a>
         </div>
+        @endif
     </div>
 
     {{-- Controls --}}
@@ -280,7 +282,7 @@
                                         @if($attendance_status === 'submitted')
                                             @if($status === 'P')
                                                 <span class="px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-lg">Present</span>
-                                                @if(isset($rfidBadges[$student->id]))
+                                                @if(\App\Services\LicenseStatus::isModuleEnabled('rfid') && isset($rfidBadges[$student->id]))
                                                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 bg-indigo-100 rounded-md ml-1" title="Verified via Gate RFID Reader">
                                                         <span>RFID: {{ $rfidBadges[$student->id] }}</span>
                                                     </span>

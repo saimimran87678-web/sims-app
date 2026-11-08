@@ -569,9 +569,9 @@ class FeatureSharingTest extends TestCase
             ->where('academic_session_id', $this->session->id)
             ->exists());
 
-        // Verify that they cannot access protected features (their permissions are empty)
+        // Verify that they cannot access protected access-control features
         $this->actingAs($secondUser);
-        $this->assertFalse($secondUser->can('students.manage'));
+        $this->assertFalse($secondUser->can('access-control.manage'));
     }
 
     // -------------------------------------------------------------------------
