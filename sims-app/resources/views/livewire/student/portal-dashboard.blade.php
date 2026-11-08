@@ -136,7 +136,7 @@
                 @endif
                 <div class="flex justify-between items-center py-1 border-b border-gray-100">
                     <span class="text-gray-400 font-semibold uppercase">Class at {{ $isGraduated ? 'Graduation' : 'Departure' }}</span>
-                    <span class="font-bold text-indigo-600">{{ $student->class->name ?? 'Class' }}</span>
+                    <span class="font-bold text-indigo-600">{{ $student->terminal_class?->name ?? $student->class?->name ?? 'Unassigned' }}</span>
                 </div>
                 <div class="flex justify-between items-center py-1">
                     <span class="text-gray-400 font-semibold uppercase">Status</span>
@@ -200,7 +200,7 @@
                 @endif
             </div>
             <p class="text-gray-500 text-xs sm:text-sm mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <span>Class: <strong class="text-indigo-600 font-semibold">{{ $student->class->name ?? 'Not Assigned' }}</strong></span>
+                <span>Class: <strong class="text-indigo-600 font-semibold">{{ $student->terminal_class?->name ?? $student->class?->name ?? 'Not Assigned' }}</strong></span>
                 <span>•</span>
                 <span>Roll #: <strong class="text-gray-800 font-mono">{{ $student->roll_no ?? 'N/A' }}</strong></span>
                 <span>•</span>

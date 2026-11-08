@@ -35,146 +35,352 @@
         </div>
     @endif
 
-    <div class="glass-card p-6 rounded-2xl">
-        {{-- Advanced Filter Section --}}
-        <div x-data="{ showFilters: false }" class="mb-6">
-            <button @click="showFilters = !showFilters" class="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                <span x-text="showFilters ? 'Hide Filters' : 'Show Advanced Filters'"></span>
-            </button>
-
-            <div x-show="showFilters" x-collapse class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-9 gap-4 mt-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Session</label>
-                    <select wire:model.live="selectedSessionId" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        @foreach($academicSessions as $session)
-                            <option value="{{ $session->id }}">{{ $session->name }} @if($session->is_active) (Current) @endif</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Class</label>
-                    <select wire:model.live="selectedClassId" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        @can('students.view-all-classes') <option value="">All Classes</option> @endcan
-                        @foreach($classes as $cls) <option value="{{ $cls->id }}">{{ $cls->name }}@if($cls->shift_type && $cls->shift_type !== 'regular') ({{ ucfirst($cls->shift_type) }})@endif</option> @endforeach
-                    </select>
-                </div>
-                <div class="md:col-span-2 lg:col-span-2">
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Details</label>
-                    <div class="flex gap-2">
-                         <select wire:model.live="filterSport" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Sport</option>@foreach($sportsOptions as $s)<option value="{{$s->name}}">{{$s->name}}</option>@endforeach</select>
-                         <select wire:model.live="filterActivity" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm outline-none"><option value="">Activity</option>@foreach($activityOptions as $a)<option value="{{$a->name}}">{{$a->name}}</option>@endforeach</select>
+    {{-- Main Responsive & Adaptive Container Card --}}
+    <div class="glass-card rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden" x-data="{ showFilters: false }">
+        
+        {{-- Header & Primary Actions Toolbar --}}
+        <div class="p-4 sm:p-5 border-b border-gray-100 bg-white/80 backdrop-blur-md">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {{-- Title & Active Session Badge --}}
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-lg sm:text-xl font-black text-gray-900 tracking-tight">Student Directory</h2>
+                            @if($this->isHistoricalSession)
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                    🔒 Sealed Archive
+                                </span>
+                            @else
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Active Session
+                                </span>
+                            @endif
+                        </div>
+                        <p class="text-xs text-gray-500 font-medium">Manage student enrollments, profiles, and institutional records.</p>
                     </div>
                 </div>
-                <div class="md:col-span-2 lg:col-span-2">
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Transport</label>
-                    <div class="flex gap-2">
-                        <select wire:model.live="filterTransport" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="">Any Transport</option>
-                            @foreach(App\Livewire\Admin\StudentManager::TRANSPORT_OPTIONS as $k => $l) <option value="{{ $k }}">{{ $l }}</option> @endforeach
-                        </select>
-                        <template x-if="$wire.filterTransport === 'school_bus'">
-                            <select wire:model.live="filterBus" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none animate-fade-in">
-                                <option value="">Any Bus</option>
-                                @foreach(App\Livewire\Admin\StudentManager::BUS_OPTIONS as $bus) <option value="{{ $bus }}">Bus {{ $bus }}</option> @endforeach
-                            </select>
-                        </template>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Sort By</label>
-                    <select wire:model.live="sortBy" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="roll_no">Roll Number</option>
-                        <option value="name">Name</option>
-                        <option value="admission_no">Admission No</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Sort Order</label>
-                    <select wire:model.live="sortDir" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
-                    <select wire:model.live="filterStatus" class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="">All Statuses (Current Session)</option>
-                        <option value="active">Active Only</option>
-                        <option value="graduated">Graduated</option>
-                        <option value="alumni">Alumni Directory (All Departed & Graduated)</option>
-                        <option value="withdrawn">Withdrawn / SLC Issued</option>
-                        <option value="struck_off">Struck Off</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="archived">Archived / Deleted (Recycle Bin)</option>
-                    </select>
-                </div>
-            </div>
-        </div>
 
-        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <h3 class="text-lg font-bold text-gray-800">Student Directory</h3>
-            <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
-                <div class="relative w-full md:w-64">
-                    <input wire:model.live.debounce.500ms="search" type="text" placeholder="Search by name, roll, adm..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <svg class="h-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
-                </div>
-                {{-- View Toggle --}}
-                <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-                    <button 
-                        wire:click="$set('viewMode', 'grid')" 
-                        class="p-1.5 rounded-md transition-all {{ $viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600' }}"
-                        title="Grid View"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-                    </button>
-                    <button 
-                        wire:click="$set('viewMode', 'list')" 
-                        class="p-1.5 rounded-md transition-all {{ $viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600' }}"
-                        title="List View"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-                    </button>
-                </div>
-
-                <div class="flex items-center gap-2">
+                {{-- Action Buttons Cluster --}}
+                <div class="flex items-center gap-2 flex-wrap self-end md:self-center">
+                    {{-- Export Excel Button (Branded Emerald with Spreadsheet Icon) --}}
                     <button
-                        wire:click="exportCsv"
-                        class="px-3.5 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-xl transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap active:scale-95 duration-150 shadow-sm"
-                        title="Export Student Directory to CSV"
+                        type="button"
+                        wire:click="exportExcel"
+                        class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl transition-all text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm shadow-emerald-600/25 border border-emerald-500 active:scale-95 duration-150 cursor-pointer"
+                        title="Export Student Directory to Microsoft Excel (.xls)"
                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                        Export CSV
+                        <svg class="w-4 h-4 text-emerald-100 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM13 3.5L18.5 9H13V3.5zM7 11.5h10v2H7v-2zm0 3.5h10v2H7v-2zm0 3.5h7v2H7v-2z"/>
+                        </svg>
+                        <span>Export Excel</span>
+                    </button>
+
+                    {{-- Export CSV Pill --}}
+                    <button
+                        type="button"
+                        wire:click="exportCsv"
+                        class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-xl transition-all text-xs font-bold flex items-center gap-1 border border-slate-300 shadow-2xs active:scale-95 duration-150 cursor-pointer"
+                        title="Export Raw Data to CSV (.csv)"
+                    >
+                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>CSV</span>
                     </button>
 
                     @can('student.create')
                     @if(!$this->isHistoricalSession)
-                    <a
-                        href="{{ request()->is('teacher/*') ? route('teacher.shared.students.import') : route('admin.students.import') }}"
-                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap active:scale-95 duration-150 shadow-sm"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                        Import Students
-                    </a>
-                    <button
-                        wire:click="openModal"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                        Add Student
-                    </button>
-                    @else
-                    <span class="px-3.5 py-2 bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center gap-1.5 border border-amber-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        Admissions Closed (Historical Archive)
-                    </span>
+                        <a
+                            href="{{ request()->is('teacher/*') ? route('teacher.shared.students.import') : route('admin.students.import') }}"
+                            class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl transition-all text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm shadow-indigo-600/25 border border-indigo-500 active:scale-95 duration-150 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4 text-indigo-100 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            <span>Import</span>
+                        </a>
+                        <button
+                            type="button"
+                            wire:click="openModal"
+                            class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl transition-all text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm shadow-blue-600/25 border border-blue-500 active:scale-95 duration-150 cursor-pointer"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                            <span>Add Student</span>
+                        </button>
                     @endif
                     @endcan
+
+                    {{-- View Mode Toggle --}}
+                    <div class="flex bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-2xs">
+                        <button 
+                            type="button"
+                            wire:click="$set('viewMode', 'grid')" 
+                            class="p-1.5 rounded-lg transition-all {{ $viewMode === 'grid' ? 'bg-white shadow-xs text-blue-600 font-bold' : 'text-gray-400 hover:text-gray-700' }}"
+                            title="Grid View"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                        </button>
+                        <button 
+                            type="button"
+                            wire:click="$set('viewMode', 'list')" 
+                            class="p-1.5 rounded-lg transition-all {{ $viewMode === 'list' ? 'bg-white shadow-xs text-blue-600 font-bold' : 'text-gray-400 hover:text-gray-700' }}"
+                            title="List View"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Segmented Status & KPI Navigation Ribbon (Unified & Responsive) --}}
+            <div class="flex items-center gap-1.5 mt-4 pt-3 border-t border-gray-100 overflow-x-auto no-scrollbar pb-1">
+                {{-- Active --}}
+                <button 
+                    type="button"
+                    wire:click="setQuickStatus('active')"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer
+                        {{ $filterStatus === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200/60' }}"
+                >
+                    <span class="w-1.5 h-1.5 rounded-full {{ $filterStatus === 'active' ? 'bg-white' : 'bg-emerald-500 animate-pulse' }}"></span>
+                    <span>Active</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterStatus === 'active' ? 'bg-emerald-700 text-white' : 'bg-gray-200 text-gray-700 font-semibold' }}">
+                        {{ $this->studentMetrics['active'] }}
+                    </span>
+                </button>
+
+                {{-- All in Session --}}
+                <button 
+                    type="button"
+                    wire:click="setQuickStatus('')"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer
+                        {{ $filterStatus === '' ? 'bg-blue-600 text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200/60' }}"
+                >
+                    <span>All in Session</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterStatus === '' ? 'bg-blue-700 text-white' : 'bg-gray-200 text-gray-700 font-semibold' }}">
+                        {{ $this->studentMetrics['total_session'] }}
+                    </span>
+                </button>
+
+                {{-- Graduated --}}
+                <button 
+                    type="button"
+                    wire:click="setQuickStatus('graduated')"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer
+                        {{ $filterStatus === 'graduated' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200/60' }}"
+                >
+                    <span>🎓 Graduated</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterStatus === 'graduated' ? 'bg-indigo-700 text-white' : 'bg-gray-200 text-gray-700 font-semibold' }}">
+                        {{ $this->studentMetrics['graduated'] }}
+                    </span>
+                </button>
+
+                {{-- Alumni Directory --}}
+                <button 
+                    type="button"
+                    wire:click="setQuickStatus('alumni')"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer
+                        {{ $filterStatus === 'alumni' ? 'bg-purple-600 text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200/60' }}"
+                >
+                    <span>🏛️ Alumni Directory</span>
+                </button>
+
+                {{-- SLC Issued --}}
+                <button 
+                    type="button"
+                    wire:click="setQuickStatus('withdrawn')"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer
+                        {{ $filterStatus === 'withdrawn' ? 'bg-amber-600 text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200/60' }}"
+                >
+                    <span>📄 SLC Issued</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterStatus === 'withdrawn' ? 'bg-amber-700 text-white' : 'bg-gray-200 text-gray-700 font-semibold' }}">
+                        {{ $this->studentMetrics['slc'] }}
+                    </span>
+                </button>
+
+                {{-- Struck Off --}}
+                <button 
+                    type="button"
+                    wire:click="setQuickStatus('struck_off')"
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer
+                        {{ $filterStatus === 'struck_off' ? 'bg-rose-600 text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200/60' }}"
+                >
+                    Struck Off
+                </button>
+
+                {{-- Archived / Recycle Bin --}}
+                <button 
+                    type="button"
+                    wire:click="setQuickStatus('archived')"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer
+                        {{ $filterStatus === 'archived' ? 'bg-rose-700 text-white shadow-xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200/60' }}"
+                >
+                    <span>🗑️ Recycle Bin</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterStatus === 'archived' ? 'bg-rose-800 text-white' : 'bg-gray-200 text-gray-700 font-semibold' }}">
+                        {{ $this->studentMetrics['archived'] }}
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        {{-- Filter & Search Command Ribbon --}}
+        <div class="p-4 sm:p-5 bg-gray-50/60 border-b border-gray-100">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                {{-- Search & Direct Selectors Group --}}
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+                    {{-- Search Input --}}
+                    <div class="relative flex-1 min-w-[200px] max-w-md">
+                        <input 
+                            wire:model.live.debounce.400ms="search" 
+                            type="text" 
+                            placeholder="Search by name, roll no, admission no, CNIC..." 
+                            class="w-full pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-2xs transition-all" 
+                        />
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                            <svg class="h-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        @if($search)
+                        <button 
+                            type="button"
+                            wire:click="$set('search', '')" 
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                            title="Clear search"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                        @endif
+                    </div>
+
+                    {{-- Session Selector Dropdown --}}
+                    <div class="w-full sm:w-44 shrink-0">
+                        <select 
+                            wire:model.live="selectedSessionId" 
+                            class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none shadow-2xs transition-all cursor-pointer"
+                        >
+                            @foreach($academicSessions as $session)
+                                <option value="{{ $session->id }}">
+                                    {{ $session->name }} @if($session->is_active) (Current) @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Class Selector Dropdown --}}
+                    <div class="w-full sm:w-40 shrink-0">
+                        <select 
+                            wire:model.live="selectedClassId" 
+                            class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none shadow-2xs transition-all cursor-pointer"
+                        >
+                            @can('students.view-all-classes') 
+                                <option value="">All Classes</option> 
+                            @endcan
+                            @foreach($classes as $cls) 
+                                <option value="{{ $cls->id }}">
+                                    {{ $cls->name }}@if($cls->shift_type && $cls->shift_type !== 'regular') ({{ ucfirst($cls->shift_type) }})@endif
+                                </option> 
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Filter Drawer Toggle & Reset Button --}}
+                <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <button 
+                        type="button"
+                        @click="showFilters = !showFilters" 
+                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer
+                            {{ $this->activeFiltersCount > 0 ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-2xs' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50' }}"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        <span>More Filters</span>
+                        @if($this->activeFiltersCount > 0)
+                            <span class="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
+                                {{ $this->activeFiltersCount }}
+                            </span>
+                        @endif
+                    </button>
+
+                    @if($search || $selectedClassId || $this->activeFiltersCount > 0 || $filterStatus !== 'active')
+                    <button 
+                        type="button"
+                        wire:click="resetFilters" 
+                        class="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Reset all filters and search"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Reset</span>
+                    </button>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Collapsible Secondary Filter Card --}}
+            <div x-show="showFilters" x-collapse class="mt-4 pt-4 border-t border-gray-200/60">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-gray-200/70 shadow-2xs">
+                    {{-- 1. Sports Filter --}}
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Sports Activity</label>
+                        <select wire:model.live="filterSport" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">Any Sport</option>
+                            @foreach($sportsOptions as $s)
+                                <option value="{{ $s->name }}">{{ $s->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- 2. Extra Curricular --}}
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Extra-Curricular</label>
+                        <select wire:model.live="filterActivity" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">Any Activity</option>
+                            @foreach($activityOptions as $a)
+                                <option value="{{ $a->name }}">{{ $a->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- 3. Transport & Bus --}}
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Transport Mode</label>
+                        <div class="flex gap-2">
+                            <select wire:model.live="filterTransport" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">Any Transport</option>
+                                @foreach(App\Livewire\Admin\StudentManager::TRANSPORT_OPTIONS as $k => $l)
+                                    <option value="{{ $k }}">{{ $l }}</option>
+                                @endforeach
+                            </select>
+                            <template x-if="$wire.filterTransport === 'school_bus'">
+                                <select wire:model.live="filterBus" class="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none animate-fade-in">
+                                    <option value="">Bus No</option>
+                                    @foreach(App\Livewire\Admin\StudentManager::BUS_OPTIONS as $bus)
+                                        <option value="{{ $bus }}">Bus {{ $bus }}</option>
+                                    @endforeach
+                                </select>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- 4. Sorting --}}
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Sort Records</label>
+                        <div class="flex gap-2">
+                            <select wire:model.live="sortBy" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="roll_no">Roll Number</option>
+                                <option value="name">Student Name</option>
+                                <option value="admission_no">Admission No</option>
+                            </select>
+                            <select wire:model.live="sortDir" class="w-24 px-2 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none shrink-0">
+                                <option value="asc">Asc</option>
+                                <option value="desc">Desc</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <div class="p-4 sm:p-6">
 
         {{-- Bulk Actions Bar --}}
         @if(count($selectedStudentIds) > 0)
@@ -465,54 +671,69 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colSpan="7" class="p-8 text-center text-gray-500">No students found.</td></tr>
+                        <tr>
+                            <td colspan="10" class="py-12 px-4 text-center">
+                                <div class="w-12 h-12 mx-auto mb-2.5 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                </div>
+                                <h4 class="text-sm font-bold text-gray-800">No students found</h4>
+                                <p class="text-xs text-gray-500 mt-0.5">No student records match your current filter or session selection.</p>
+                                @if($search || $selectedClassId || $this->activeFiltersCount > 0 || $filterStatus !== 'active')
+                                    <button type="button" wire:click="resetFilters" class="mt-2.5 inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer">
+                                        Reset Filters & Search
+                                    </button>
+                                @endif
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         @else
-        {{-- Grid View --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {{-- Grid View (Adaptive 1 / 2 / 3 / 4 Columns) --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
             @forelse($students as $student)
-                <div class="bg-white rounded-2xl p-6 shadow-sm border {{ in_array($student->id, $selectedStudentIds) ? 'border-blue-400 ring-2 ring-blue-500/20' : 'border-gray-100' }} hover:shadow-md transition-all relative overflow-hidden group">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex gap-3 items-center">
-                            @if($selectedClassId)
-                            {{-- Checkbox --}}
-                            <input type="checkbox" wire:model="selectedStudentIds" value="{{ $student->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer w-4 h-4 shadow-sm shrink-0" />
-                            @endif
-                            
-                            {{-- Avatar --}}
-                            <div class="shrink-0">
-                                @if($student->profile_photo_path)
-                                    <img src="{{ asset('storage/' . $student->profile_photo_path) }}" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm">
-                                @else
-                                    <div class="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl font-bold border-2 border-white shadow-sm">
-                                        {{ substr($student->name, 0, 1) }}
+                <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-2xs border {{ in_array($student->id, $selectedStudentIds) ? 'border-blue-400 ring-2 ring-blue-500/20' : 'border-gray-200/80 hover:border-blue-200 hover:shadow-xs' }} transition-all relative overflow-hidden group flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex gap-2.5 items-center">
+                                @if($selectedClassId)
+                                {{-- Checkbox --}}
+                                <input type="checkbox" wire:model="selectedStudentIds" value="{{ $student->id }}" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer w-4 h-4 shadow-sm shrink-0" />
+                                @endif
+                                
+                                {{-- Avatar --}}
+                                <div class="shrink-0">
+                                    @if($student->profile_photo_path)
+                                        <img src="{{ asset('storage/' . $student->profile_photo_path) }}" class="w-12 h-12 rounded-full object-cover border-2 border-white shadow-xs">
+                                    @else
+                                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center text-blue-700 text-base font-bold border border-blue-200/60 shadow-2xs">
+                                            {{ substr($student->name, 0, 1) }}
+                                        </div>
+                                    @endif
+                                </div>
+                                
+                                {{-- Name & Details --}}
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-bold text-gray-900 text-sm line-clamp-1 truncate" title="{{ $student->name }}">{{ $student->name }}</h3>
+                                    <div class="flex items-center gap-1 mt-0.5">
+                                        <span class="text-[11px] text-gray-500 font-medium font-mono">Roll: {{ $student->roll_no }}</span>
+                                        <span class="text-gray-300">•</span>
+                                        <span class="text-[11px] text-gray-500 font-mono">Adm: {{ $student->admission_no }}</span>
                                     </div>
-                                @endif
-                            </div>
-                            
-                            {{-- Name & Details --}}
-                            <div>
-                                <h3 class="font-bold text-gray-900 line-clamp-1">{{ $student->name }}</h3>
-                                <p class="text-xs text-gray-500 font-medium mb-1">Roll No: {{ $student->roll_no }}</p>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-600 border border-blue-100">
-                                    {{ $student->class_name }}
-                                </span>
-                                @if(!empty($student->program_code))
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-indigo-50 text-indigo-700 border border-indigo-100" title="{{ $student->program_name }}">
-                                    {{ $student->program_code }}
-                                </span>
-                                @endif
+                                    <div class="flex items-center gap-1 mt-1 flex-wrap">
+                                        <span class="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-100">
+                                            {{ $student->class_name }}
+                                        </span>
+                                        @if(!empty($student->program_code))
+                                        <span class="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wide bg-indigo-50 text-indigo-700 border border-indigo-100" title="{{ $student->program_name }}">
+                                            {{ $student->program_code }}
+                                        </span>
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
                         </div>
-
-                        {{-- Details Badges --}}
-                         <div class="flex flex-wrap gap-2 mb-2">
-                             <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-md border border-gray-200">Adm: {{ $student->admission_no }}</span>
-                         </div>
-                    </div>
 
                     {{-- Info Grid --}}
                     <div class="space-y-2 mb-4">
@@ -604,14 +825,24 @@
                     </div>
                 </div>
             @empty
-                <div class="col-span-full p-8 text-center text-gray-500 bg-white rounded-xl border border-gray-100">
-                    No students found using these filters.
+                <div class="col-span-full py-12 px-4 text-center bg-white rounded-2xl border border-gray-100">
+                    <div class="w-12 h-12 mx-auto mb-2.5 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    </div>
+                    <h4 class="text-sm font-bold text-gray-800">No students found</h4>
+                    <p class="text-xs text-gray-500 mt-0.5">No student records match your current filter or session selection.</p>
+                    @if($search || $selectedClassId || $this->activeFiltersCount > 0 || $filterStatus !== 'active')
+                        <button type="button" wire:click="resetFilters" class="mt-2.5 inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer">
+                            Reset Filters & Search
+                        </button>
+                    @endif
                 </div>
             @endforelse
         </div>
         @endif
         <div class="mt-4">
             {{ $students->links() }}
+        </div>
         </div>
     </div>
     @endif

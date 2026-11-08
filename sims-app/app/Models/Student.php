@@ -259,6 +259,37 @@ class Student extends Model
         )->where('enrollments.academic_session_id', \App\Models\AcademicSession::getActiveSessionId());
     }
 
+    public function getTerminalClassAttribute(): ?Classes
+    {
+        if ($this->relationLoaded('class') && $this->class) {
+            return $this->class;
+        }
+
+        if ($this->relationLoaded('enrollments')) {
+            $latest = $this->enrollments
+                ->filter(fn($e) => !empty($e->class_id))
+                ->sortByDesc('academic_session_id')
+                ->first();
+            if ($latest && $latest->relationLoaded('class') && $latest->class) {
+                return $latest->class;
+            }
+        }
+
+        $latestEnrollment = $this->enrollments()
+            ->whereNotNull('class_id')
+            ->orderByDesc('academic_session_id')
+            ->orderByDesc('id')
+            ->with('class')
+            ->first();
+
+        return $latestEnrollment?->class;
+    }
+
+    public function getTerminalClassNameAttribute(): string
+    {
+        return $this->terminal_class?->name ?? 'Unassigned';
+    }
+
     public function section()
     {
         return $this->hasOneThrough(
@@ -273,7 +304,7 @@ class Student extends Model
 
     public function getSectionIdAttribute()
     {
-        if (array_key_exists('section_id', $this->attributes)) {
+        if (array_key_exists('section_id', $this->attributes) && $this->attributes['section_id']) {
             return $this->attributes['section_id'];
         }
 
@@ -283,15 +314,25 @@ class Student extends Model
         $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
         $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
 
-        return $this->enrollments()
+        $sectionId = $this->enrollments()
             ->where('academic_session_id', $cachedSessionId)
             ->where('shift_type', $cachedShiftType)
+            ->value('section_id');
+
+        if ($sectionId) {
+            return $sectionId;
+        }
+
+        return $this->enrollments()
+            ->whereNotNull('section_id')
+            ->orderByDesc('academic_session_id')
+            ->orderByDesc('id')
             ->value('section_id');
     }
 
     public function getRollNoAttribute()
     {
-        if (array_key_exists('roll_no', $this->attributes)) {
+        if (array_key_exists('roll_no', $this->attributes) && $this->attributes['roll_no']) {
             return $this->attributes['roll_no'];
         }
 
@@ -301,15 +342,25 @@ class Student extends Model
         $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
         $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
 
-        return $this->enrollments()
+        $rollNo = $this->enrollments()
             ->where('academic_session_id', $cachedSessionId)
             ->where('shift_type', $cachedShiftType)
+            ->value('roll_number');
+
+        if ($rollNo) {
+            return $rollNo;
+        }
+
+        return $this->enrollments()
+            ->whereNotNull('roll_number')
+            ->orderByDesc('academic_session_id')
+            ->orderByDesc('id')
             ->value('roll_number');
     }
 
     public function getClassIdAttribute()
     {
-        if (array_key_exists('class_id', $this->attributes)) {
+        if (array_key_exists('class_id', $this->attributes) && $this->attributes['class_id']) {
             return $this->attributes['class_id'];
         }
 
@@ -319,9 +370,19 @@ class Student extends Model
         $shift = $isRegular ? 'regular' : session('selected_shift_type', 'morning');
         $cachedShiftType = ($shift === 'both') ? 'morning' : $shift;
 
-        return $this->enrollments()
+        $classId = $this->enrollments()
             ->where('academic_session_id', $cachedSessionId)
             ->where('shift_type', $cachedShiftType)
+            ->value('class_id');
+
+        if ($classId) {
+            return $classId;
+        }
+
+        return $this->enrollments()
+            ->whereNotNull('class_id')
+            ->orderByDesc('academic_session_id')
+            ->orderByDesc('id')
             ->value('class_id');
     }
 

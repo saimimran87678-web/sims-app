@@ -1852,6 +1852,75 @@ class StudentManager extends Component
         return \App\Models\AcademicSession::isSessionLocked($this->selectedSessionId);
     }
 
+    public function getStudentMetricsProperty(): array
+    {
+        $sessionId = (int) ($this->selectedSessionId ?: \App\Models\AcademicSession::getActiveSessionId());
+
+        $sessionActiveCount = DB::table('enrollments')
+            ->where('academic_session_id', $sessionId)
+            ->where('status', 'active')
+            ->count();
+
+        $sessionTotalCount = DB::table('enrollments')
+            ->where('academic_session_id', $sessionId)
+            ->count();
+
+        $graduatedCount = DB::table('students')
+            ->where('status', 'graduated')
+            ->whereNull('deleted_at')
+            ->count();
+
+        $slcCount = DB::table('students')
+            ->whereIn('status', ['withdrawn', 'slc_issued'])
+            ->whereNull('deleted_at')
+            ->count();
+
+        $archivedCount = DB::table('students')
+            ->whereNotNull('deleted_at')
+            ->count();
+
+        return [
+            'active' => $sessionActiveCount,
+            'total_session' => $sessionTotalCount,
+            'graduated' => $graduatedCount,
+            'slc' => $slcCount,
+            'archived' => $archivedCount,
+        ];
+    }
+
+    public function resetFilters()
+    {
+        $this->search = '';
+        $this->selectedClassId = '';
+        $this->filterSport = '';
+        $this->filterActivity = '';
+        $this->filterTransport = '';
+        $this->filterBus = '';
+        $this->filterStatus = 'active';
+        $this->sortBy = 'roll_no';
+        $this->sortDir = 'asc';
+        $this->resetPage();
+        $this->selectedStudentIds = [];
+    }
+
+    public function setQuickStatus($status)
+    {
+        $this->filterStatus = $status;
+        $this->resetPage();
+        $this->selectedStudentIds = [];
+    }
+
+    public function getActiveFiltersCountProperty(): int
+    {
+        $count = 0;
+        if (!empty($this->filterSport)) $count++;
+        if (!empty($this->filterActivity)) $count++;
+        if (!empty($this->filterTransport)) $count++;
+        if (!empty($this->filterBus)) $count++;
+        if ($this->sortBy !== 'roll_no' || $this->sortDir !== 'asc') $count++;
+        return $count;
+    }
+
     public function getMorningClassesProperty()
     {
         return Classes::forSession($this->selectedSessionId, 'morning')
@@ -2149,8 +2218,8 @@ class StudentManager extends Component
                 ->leftJoin('classes', 'enrollments.class_id', '=', 'classes.id')
                 ->select(
                     'students.*',
-                    DB::raw('COALESCE(classes.name, (SELECT c.name FROM fee_records fr JOIN classes c ON fr.class_id = c.id WHERE fr.student_id = students.id ORDER BY fr.id DESC LIMIT 1), "Archived Profile") as class_name'),
-                    DB::raw('COALESCE(enrollments.roll_number, "—") as roll_no'),
+                    DB::raw('COALESCE(classes.name, (SELECT c.name FROM enrollments e_sub JOIN classes c ON e_sub.class_id = c.id WHERE e_sub.student_id = students.id ORDER BY e_sub.academic_session_id DESC, e_sub.id DESC LIMIT 1), (SELECT c.name FROM fee_records fr JOIN classes c ON fr.class_id = c.id WHERE fr.student_id = students.id ORDER BY fr.id DESC LIMIT 1), "Archived Profile") as class_name'),
+                    DB::raw('COALESCE(enrollments.roll_number, (SELECT e_sub.roll_number FROM enrollments e_sub WHERE e_sub.student_id = students.id ORDER BY e_sub.academic_session_id DESC, e_sub.id DESC LIMIT 1), "—") as roll_no'),
                     DB::raw('COALESCE(enrollments.shift_type, "morning") as shift_type')
                 )
                 ->when($this->search, function ($q) {
@@ -2215,8 +2284,8 @@ class StudentManager extends Component
                 ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id')
                 ->select(
                     'students.*',
-                    DB::raw('COALESCE(classes.name, (SELECT c.name FROM fee_records fr JOIN classes c ON fr.class_id = c.id WHERE fr.student_id = students.id ORDER BY fr.id DESC LIMIT 1), "Graduated Profile") as class_name'),
-                    DB::raw('COALESCE(enrollments.roll_number, "—") as roll_no'),
+                    DB::raw('COALESCE(classes.name, (SELECT c.name FROM enrollments e_sub JOIN classes c ON e_sub.class_id = c.id WHERE e_sub.student_id = students.id ORDER BY e_sub.academic_session_id DESC, e_sub.id DESC LIMIT 1), (SELECT c.name FROM fee_records fr JOIN classes c ON fr.class_id = c.id WHERE fr.student_id = students.id ORDER BY fr.id DESC LIMIT 1), "Graduated Profile") as class_name'),
+                    DB::raw('COALESCE(enrollments.roll_number, (SELECT e_sub.roll_number FROM enrollments e_sub WHERE e_sub.student_id = students.id ORDER BY e_sub.academic_session_id DESC, e_sub.id DESC LIMIT 1), "—") as roll_no'),
                     DB::raw('COALESCE(enrollments.shift_type, "morning") as shift_type'),
                     'enrollments.program_id',
                     'programs.name as program_name',
@@ -2335,6 +2404,111 @@ class StudentManager extends Component
         }
 
         return $studentsQuery;
+    }
+
+    public function exportExcel()
+    {
+        $sessionObj = \App\Models\AcademicSession::find($this->selectedSessionId);
+        $sessionName = $sessionObj ? str_replace([' ', '/', '\\'], '_', $sessionObj->name) : 'session';
+        $filename = 'students_export_' . $sessionName . '_' . now()->format('Y-m-d_His') . '.xls';
+
+        $isTeacher = auth()->check() && auth()->user()->hasRole('Teacher');
+        $allowedClassIds = [];
+        if ($isTeacher) {
+            $allowedClassIds = DB::table('user_class_access')
+                ->where('user_id', auth()->id())
+                ->pluck('class_id')
+                ->toArray();
+        }
+
+        $students = $this->buildStudentsQuery($allowedClassIds, $isTeacher)->get();
+        $instituteName = \App\Models\Setting::getFormalInstituteName();
+        $selectedClass = $this->selectedClassId ? Classes::find($this->selectedClassId)?->name : 'All Classes';
+        $scopeLabel = $this->filterStatus ? ucfirst(str_replace('_', ' ', $this->filterStatus)) : 'All Statuses';
+
+        return response()->streamDownload(function () use ($students, $instituteName, $sessionObj, $selectedClass, $scopeLabel) {
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+            echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Student Directory</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+            echo '<style>';
+            echo 'table { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 10pt; width: 100%; }';
+            echo 'th { background-color: #047857; color: #ffffff; font-weight: bold; border: 1px solid #065f46; padding: 8px 10px; text-align: left; font-size: 10pt; }';
+            echo 'td { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: middle; }';
+            echo '.center { text-align: center; }';
+            echo '.num { mso-number-format:"\@"; text-align: center; }';
+            echo '.title { font-size: 16pt; font-weight: bold; color: #047857; padding-bottom: 4px; }';
+            echo '.sub-title { font-size: 11pt; color: #1e293b; font-weight: bold; padding-bottom: 4px; }';
+            echo '.meta-bar { background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; font-size: 9.5pt; font-weight: bold; padding: 6px 10px; }';
+            echo '.footer-row { background-color: #f1f5f9; font-weight: bold; }';
+            echo '.badge-active { color: #065f46; font-weight: bold; }';
+            echo '.badge-grad { color: #4338ca; font-weight: bold; }';
+            echo '.badge-slc { color: #b45309; font-weight: bold; }';
+            echo '</style>';
+            echo '</head><body>';
+
+            echo '<table>';
+            // Proper Institutional Headings
+            echo '<tr><td colspan="15" class="title">' . htmlspecialchars(strtoupper($instituteName)) . '</td></tr>';
+            echo '<tr><td colspan="15" class="sub-title">OFFICIAL STUDENT DIRECTORY & ROSTER REPORT</td></tr>';
+            echo '<tr><td colspan="15" class="meta-bar">Academic Session: ' . htmlspecialchars($sessionObj?->name ?? 'N/A') . ' &nbsp;|&nbsp; Class: ' . htmlspecialchars($selectedClass) . ' &nbsp;|&nbsp; Filter/Scope: ' . htmlspecialchars($scopeLabel) . ' &nbsp;|&nbsp; Total Students: ' . count($students) . ' &nbsp;|&nbsp; Generated On: ' . date('d-M-Y h:i A') . '</td></tr>';
+            echo '<tr><td colspan="15" style="border: none; height: 10px;"></td></tr>';
+
+            // Table Headers
+            echo '<thead><tr>';
+            echo '<th class="center" style="width: 50px;">S.No</th>';
+            echo '<th style="width: 110px;">Admission No</th>';
+            echo '<th class="center" style="width: 80px;">Roll No</th>';
+            echo '<th style="width: 180px;">Student Name</th>';
+            echo '<th style="width: 180px;">Father\'s Name</th>';
+            echo '<th style="width: 120px;">Class</th>';
+            echo '<th style="width: 90px;">Shift</th>';
+            echo '<th style="width: 100px;">Status</th>';
+            echo '<th style="width: 80px;">Gender</th>';
+            echo '<th style="width: 140px;">B-Form / CRC</th>';
+            echo '<th style="width: 140px;">Father CNIC</th>';
+            echo '<th style="width: 120px;">Phone</th>';
+            echo '<th style="width: 100px;">Date of Birth</th>';
+            echo '<th style="width: 110px;">Admission Date</th>';
+            echo '<th style="width: 220px;">Address</th>';
+            echo '</tr></thead>';
+
+            // Table Body
+            echo '<tbody>';
+            $index = 1;
+            foreach ($students as $student) {
+                $statusStr = ucfirst(str_replace('_', ' ', $student->status ?? 'active'));
+                $statusClass = $student->status === 'graduated' ? 'badge-grad' : ($student->status === 'withdrawn' || $student->status === 'slc_issued' ? 'badge-slc' : ($student->status === 'active' ? 'badge-active' : ''));
+
+                echo '<tr>';
+                echo '<td class="center">' . $index++ . '</td>';
+                echo '<td class="num"><b>' . htmlspecialchars($student->admission_no) . '</b></td>';
+                echo '<td class="center"><b>' . htmlspecialchars($student->roll_no ?? '—') . '</b></td>';
+                echo '<td><b>' . htmlspecialchars($student->name) . '</b></td>';
+                echo '<td>' . htmlspecialchars($student->father_name ?? '—') . '</td>';
+                echo '<td>' . htmlspecialchars($student->class_name ?? '—') . '</td>';
+                echo '<td>' . htmlspecialchars(ucfirst($student->shift_type ?? 'regular')) . '</td>';
+                echo '<td class="' . $statusClass . '">' . htmlspecialchars($statusStr) . '</td>';
+                echo '<td>' . htmlspecialchars(ucfirst($student->gender ?? '—')) . '</td>';
+                echo '<td class="num">' . htmlspecialchars($student->b_form_number ?? '—') . '</td>';
+                echo '<td class="num">' . htmlspecialchars($student->father_cnic ?? '—') . '</td>';
+                echo '<td class="num">' . htmlspecialchars($student->phone ?? '—') . '</td>';
+                echo '<td class="center">' . htmlspecialchars($student->dob ?? '—') . '</td>';
+                echo '<td class="center">' . htmlspecialchars($student->admission_date ?? '—') . '</td>';
+                echo '<td>' . htmlspecialchars($student->address ?? '—') . '</td>';
+                echo '</tr>';
+            }
+
+            // Summary Footer
+            echo '<tr class="footer-row">';
+            echo '<td colspan="3" class="center"><b>TOTAL ROSTER</b></td>';
+            echo '<td colspan="12"><b>' . count($students) . ' Students Listed</b></td>';
+            echo '</tr>';
+
+            echo '</tbody>';
+            echo '</table></body></html>';
+        }, $filename, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
     }
 
     public function exportCsv()

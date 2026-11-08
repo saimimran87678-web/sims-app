@@ -171,6 +171,15 @@ class GraduatedAndAlumniStudentPortalTest extends TestCase
             'status' => 'graduated',
         ]);
 
+        Enrollment::create([
+            'student_id' => $student->id,
+            'class_id' => $this->class10->id,
+            'academic_session_id' => $this->session1->id,
+            'shift_type' => 'regular',
+            'roll_number' => '99',
+            'status' => 'graduated',
+        ]);
+
         session([
             'student_portal_id' => $student->id,
             'student_portal_cnic' => $student->father_cnic,
@@ -183,6 +192,7 @@ class GraduatedAndAlumniStudentPortalTest extends TestCase
             ->assertViewHas('isSlc', false)
             ->assertSee('Graduated Alumni')
             ->assertSee('Congratulations')
+            ->assertSee('Class 10')
             ->assertDontSee('Weekly Timetable')
             ->assertDontSee('Today\'s Classes');
     }
@@ -260,5 +270,50 @@ class GraduatedAndAlumniStudentPortalTest extends TestCase
             ->assertViewHas('isGraduated', false)
             ->assertSet('studentId', $youngerSibling->id)
             ->assertSee('Bilal');
+    }
+
+    public function test_student_manager_export_excel_with_proper_heading(): void
+    {
+        $this->actingAs($this->admin);
+
+        $student = Student::create([
+            'name' => 'Excel Test Student',
+            'admission_no' => 'ADM-7777',
+            'father_name' => 'Excel Father',
+            'status' => 'active',
+        ]);
+
+        Enrollment::create([
+            'student_id' => $student->id,
+            'class_id' => $this->class10->id,
+            'academic_session_id' => $this->session2->id,
+            'shift_type' => 'regular',
+            'roll_number' => '77',
+            'status' => 'active',
+        ]);
+
+        $component = Livewire::test(StudentManager::class)
+            ->set('selectedSessionId', $this->session2->id)
+            ->call('exportExcel');
+
+        $instance = $component->instance();
+        $instance->selectedSessionId = $this->session2->id;
+        $response = $instance->exportExcel();
+
+        $this->assertInstanceOf(\Symfony\Component\HttpFoundation\StreamedResponse::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('application/vnd.ms-excel', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('students_export_2026-2027', $response->headers->get('Content-Disposition'));
+
+        // Capture buffer output to verify proper institutional headings
+        ob_start();
+        $response->sendContent();
+        $content = ob_get_clean();
+
+        $this->assertStringContainsString('OFFICIAL STUDENT DIRECTORY & ROSTER REPORT', $content);
+        $this->assertStringContainsString('Academic Session: 2026-2027', $content);
+        $this->assertStringContainsString('ADM-7777', $content);
+        $this->assertStringContainsString('Excel Test Student', $content);
+        $this->assertStringContainsString('Class 10', $content);
     }
 }

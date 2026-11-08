@@ -119,7 +119,7 @@ class PortalDashboard extends Component
 
     public function render()
     {
-        $student = Student::with(['class', 'subjects'])->find($this->studentId);
+        $student = Student::with(['class', 'subjects', 'enrollments.class'])->find($this->studentId);
 
         if (! $student) {
             session()->forget(['student_portal_id', 'student_portal_cnic', 'student_portal_name']);
