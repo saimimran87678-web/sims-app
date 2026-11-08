@@ -329,7 +329,7 @@
                     <div class="flex gap-2">
                         <select wire:model="massStatus" class="w-full text-xs rounded-lg border border-gray-200 py-2 px-3 focus:ring-1 focus:ring-blue-500 outline-none bg-white">
                             <option value="promote">Promote</option>
-                            <option value="passed_out">Passed Out / Graduate</option>
+                            <option value="graduated">Graduated / Completed</option>
                             <option value="repeater">Repeater (Same Class)</option>
                             <option value="left_school">Left School / Transferred</option>
                         </select>
@@ -383,7 +383,7 @@
                             <td class="px-4 py-3">
                                 <select wire:model.live="promotionPreview.{{ $index }}.status" class="text-xs rounded-lg border-gray-200 py-1 px-2 focus:ring-1 focus:ring-blue-500 outline-none">
                                     <option value="promote">Promote</option>
-                                    <option value="passed_out">Passed Out / Graduate</option>
+                                    <option value="graduated">Graduated / Completed</option>
                                     <option value="repeater">Repeater (Same Class)</option>
                                     <option value="left_school">Left School / Transferred</option>
                                 </select>

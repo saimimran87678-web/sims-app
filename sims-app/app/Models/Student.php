@@ -473,6 +473,45 @@ class Student extends Model
     }
 
     /**
+     * Returns all children belonging to this family unit across all statuses (active, graduated, slc_issued).
+     * Used for the family portal sibling switcher and family history.
+     */
+    public function getAllFamilyMembersAttribute()
+    {
+        $guardianIds = \Illuminate\Support\Facades\DB::table('student_guardian')
+            ->where('student_id', $this->id)
+            ->pluck('guardian_id');
+
+        if ($guardianIds->isNotEmpty()) {
+            $members = Student::whereHas('guardians', function ($q) use ($guardianIds) {
+                    $q->whereIn('guardians.id', $guardianIds);
+                })
+                ->orderBy('admission_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            if ($members->isNotEmpty()) {
+                return $members;
+            }
+        }
+
+        $hash = $this->primary_family_cnic_hash;
+        if (empty($hash)) {
+            return collect([$this]);
+        }
+
+        $results = Student::where(function ($query) use ($hash) {
+                $query->where('father_cnic_hash', $hash)
+                      ->orWhere('guardian_cnic_hash', $hash);
+            })
+            ->orderBy('admission_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return $results->isNotEmpty() ? $results : collect([$this]);
+    }
+
+    /**
      * Determines sibling rank for concession calculation (0 = 1st child, 1 = 2nd child, etc.)
      */
     public function getSiblingRankAttribute(): int

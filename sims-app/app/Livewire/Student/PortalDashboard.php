@@ -89,8 +89,8 @@ class PortalDashboard extends Component
         }
 
         // Verify child is authorized under the same family CNIC
-        $familyUnit = $currentStudent->family_unit;
-        $targetChild = $familyUnit->firstWhere('id', (int) $childId);
+        $familyMembers = $currentStudent->all_family_members;
+        $targetChild = $familyMembers->firstWhere('id', (int) $childId);
 
         if ($targetChild) {
             $this->studentId = $targetChild->id;
@@ -126,9 +126,50 @@ class PortalDashboard extends Component
             return redirect()->route('student.login');
         }
 
-        $familySiblings = $student->family_unit;
+        $familySiblings = $student->all_family_members;
         $activeSessionId = AcademicSession::getActiveSessionId();
         $classId = $student->class_id;
+
+        $rawStatus = strtolower($student->status ?? 'active');
+        $isGraduated = in_array($rawStatus, ['graduated', 'passed_out']);
+        $isSlc = in_array($rawStatus, ['withdrawn', 'slc_issued']);
+        $isDeparted = $isGraduated || $isSlc || in_array($rawStatus, ['struck_off', 'inactive']);
+
+        $hasActiveSiblings = $familySiblings->contains(fn($s) => $s->id !== $student->id && strtolower($s->status) === 'active');
+        $activeSibling = $familySiblings->first(fn($s) => $s->id !== $student->id && strtolower($s->status) === 'active');
+
+        // If student is departed (Graduated, SLC Issued, Withdrawn), lock and withhold live dashboard data
+        if ($isDeparted) {
+            return view('livewire.student.portal-dashboard', [
+                'student' => $student,
+                'familySiblings' => $familySiblings,
+                'isDeparted' => true,
+                'isGraduated' => $isGraduated,
+                'isSlc' => $isSlc,
+                'hasActiveSiblings' => $hasActiveSiblings,
+                'activeSibling' => $activeSibling,
+                'todayAttendance' => null,
+                'attendanceRate' => 0,
+                'monthlyAttendances' => collect(),
+                'totalDays' => 0,
+                'presentDays' => 0,
+                'lateDays' => 0,
+                'absentDays' => 0,
+                'leaveDays' => 0,
+                'weeklyTimetable' => collect(),
+                'todayClasses' => collect(),
+                'feeRecords' => collect(),
+                'pendingFee' => 0,
+                'latestInvoice' => null,
+                'examMarks' => collect(),
+                'datesheets' => collect(),
+                'activeTab' => $this->activeTab,
+                'selectedDay' => $this->selectedDay,
+                'classTeacherName' => null,
+                'schoolDays' => $this->getSchoolDays(),
+                'isUniversalSchedule' => false,
+            ])->layout('layouts.student-portal', ['title' => "Student Portal — {$student->name}"]);
+        }
 
         // Class Teacher Lookup
         $classTeacher = null;
@@ -411,6 +452,11 @@ class PortalDashboard extends Component
         return view('livewire.student.portal-dashboard', [
             'student' => $student,
             'familySiblings' => $familySiblings,
+            'isDeparted' => false,
+            'isGraduated' => false,
+            'isSlc' => false,
+            'hasActiveSiblings' => $hasActiveSiblings,
+            'activeSibling' => $activeSibling,
             'todayAttendance' => $todayAttendance,
             'attendanceRate' => $attendanceRate,
             'monthlyAttendances' => $monthlyAttendances,

@@ -2185,6 +2185,78 @@ class StudentManager extends Component
             return $studentsQuery;
         }
 
+        if ($this->filterStatus === 'graduated' || $this->filterStatus === 'alumni') {
+            $targetStatuses = ($this->filterStatus === 'graduated')
+                ? ['graduated', 'passed_out']
+                : ['graduated', 'passed_out', 'withdrawn', 'slc_issued', 'struck_off', 'inactive'];
+
+            $currentSessionId = (int) $this->selectedSessionId;
+
+            $studentsQuery = Student::query()
+                ->where(function ($sq) use ($targetStatuses) {
+                    $sq->whereIn('students.status', $targetStatuses)
+                      ->orWhereExists(function ($ex) use ($targetStatuses) {
+                          $ex->select(DB::raw(1))
+                              ->from('enrollments')
+                              ->whereColumn('enrollments.student_id', 'students.id')
+                              ->whereIn('enrollments.status', $targetStatuses);
+                      });
+                })
+                ->leftJoin('enrollments', function($join) use ($currentSessionId) {
+                    $join->on('students.id', '=', 'enrollments.student_id')
+                         ->whereRaw("enrollments.id = (
+                             SELECT e_sub.id FROM enrollments e_sub 
+                             WHERE e_sub.student_id = students.id 
+                             ORDER BY (CASE WHEN e_sub.academic_session_id = {$currentSessionId} THEN 1 ELSE 0 END) DESC, e_sub.id DESC 
+                             LIMIT 1
+                         )");
+                })
+                ->leftJoin('classes', 'enrollments.class_id', '=', 'classes.id')
+                ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id')
+                ->select(
+                    'students.*',
+                    DB::raw('COALESCE(classes.name, (SELECT c.name FROM fee_records fr JOIN classes c ON fr.class_id = c.id WHERE fr.student_id = students.id ORDER BY fr.id DESC LIMIT 1), "Graduated Profile") as class_name'),
+                    DB::raw('COALESCE(enrollments.roll_number, "—") as roll_no'),
+                    DB::raw('COALESCE(enrollments.shift_type, "morning") as shift_type'),
+                    'enrollments.program_id',
+                    'programs.name as program_name',
+                    'programs.code as program_code'
+                )
+                ->when($this->search, function ($q) {
+                    $searchHash = \App\Models\Student::hashBlindIndex($this->search);
+                    $q->where(function ($subQuery) use ($searchHash) {
+                        $subQuery->where('students.name', 'like', '%' . $this->search . '%')
+                          ->orWhere('enrollments.roll_number', 'like', '%' . $this->search . '%')
+                          ->orWhere('students.admission_no', 'like', '%' . $this->search . '%');
+                        if ($searchHash) {
+                            $subQuery->orWhere('students.father_cnic_hash', $searchHash)
+                              ->orWhere('students.guardian_cnic_hash', $searchHash)
+                              ->orWhere('students.b_form_hash', $searchHash)
+                              ->orWhere('students.phone_hash', $searchHash);
+                        }
+                    });
+                })
+                ->when($this->selectedClassId, function($q) {
+                    $q->where('enrollments.class_id', $this->selectedClassId);
+                });
+
+            if ($isTeacher) {
+                $studentsQuery->whereIn('enrollments.class_id', $allowedClassIds);
+            }
+
+            if ($this->sortBy === 'roll_no') {
+                $studentsQuery->orderByRaw('CAST(enrollments.roll_number AS INTEGER) ' . ($this->sortDir === 'desc' ? 'DESC' : 'ASC'));
+            } elseif ($this->sortBy === 'name') {
+                $studentsQuery->orderBy('students.name', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            } elseif ($this->sortBy === 'admission_no') {
+                $studentsQuery->orderBy('students.admission_no', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            } else {
+                $studentsQuery->orderBy('students.id', $this->sortDir === 'desc' ? 'desc' : 'asc');
+            }
+
+            return $studentsQuery;
+        }
+
         $studentsQuery = Student::query()
             ->join('enrollments', 'students.id', '=', 'enrollments.student_id')
             ->join('classes', 'enrollments.class_id', '=', 'classes.id')

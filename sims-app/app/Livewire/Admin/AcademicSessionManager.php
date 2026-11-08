@@ -306,7 +306,7 @@ class AcademicSessionManager extends Component
             if ($e->next_class_id) {
                 $defaultTargetClassId = $this->resolveTargetClassId($e->class_id, 'promote', $targetShift);
             } else {
-                $status = 'passed_out';
+                $status = 'graduated';
             }
 
             $hasPassedAll = true;
@@ -400,12 +400,12 @@ class AcademicSessionManager extends Component
                 // Determine old enrollment status based on action selected
                 $oldStatus = 'promoted';
                 $globalStatus = 'active';
-                if ($item['status'] === 'passed_out') {
-                    $oldStatus = 'passed_out';
-                    $globalStatus = 'inactive';
-                } elseif ($item['status'] === 'left_school') {
-                    $oldStatus = 'transferred';
-                    $globalStatus = 'inactive';
+                if ($item['status'] === 'passed_out' || $item['status'] === 'graduated') {
+                    $oldStatus = 'graduated';
+                    $globalStatus = 'graduated';
+                } elseif ($item['status'] === 'left_school' || $item['status'] === 'slc_issued' || $item['status'] === 'withdrawn') {
+                    $oldStatus = 'slc_issued';
+                    $globalStatus = 'withdrawn';
                 } elseif ($item['status'] === 'repeater') {
                     $oldStatus = 'held_back';
                 }

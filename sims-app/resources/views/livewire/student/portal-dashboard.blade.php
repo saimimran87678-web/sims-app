@@ -18,20 +18,169 @@
                 {{-- Sibling Selector Pills --}}
                 <div class="flex flex-wrap items-center gap-2">
                     @foreach($familySiblings as $sibling)
+                        @php
+                            $sibStatus = strtolower($sibling->status ?? 'active');
+                            $isSibGrad = in_array($sibStatus, ['graduated', 'passed_out']);
+                            $isSibSlc = in_array($sibStatus, ['withdrawn', 'slc_issued']);
+                            $isSibActive = ($sibStatus === 'active');
+                        @endphp
                         <button 
                             wire:click="switchChild({{ $sibling->id }})"
                             type="button"
                             class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer {{ $student->id === $sibling->id ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 ring-2 ring-indigo-300 font-bold' : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 shadow-2xs' }}"
                         >
-                            <span class="w-2 h-2 rounded-full {{ $student->id === $sibling->id ? 'bg-white' : 'bg-emerald-500' }}"></span>
+                            <span class="w-2 h-2 rounded-full 
+                                @if($student->id === $sibling->id) bg-white 
+                                @elseif($isSibActive) bg-emerald-500 
+                                @elseif($isSibGrad) bg-purple-500 
+                                @elseif($isSibSlc) bg-amber-500 
+                                @else bg-gray-400 @endif">
+                            </span>
                             <span class="truncate max-w-[120px] sm:max-w-none">{{ $sibling->name }}</span>
-                            <span class="text-[10px] {{ $student->id === $sibling->id ? 'text-indigo-200' : 'text-gray-400' }}">({{ $sibling->class->name ?? 'Class' }})</span>
+                            @if($isSibGrad)
+                                <span class="text-[10px] px-1.5 py-0.2 rounded font-bold {{ $student->id === $sibling->id ? 'bg-indigo-500 text-white' : 'bg-purple-100 text-purple-700' }}">
+                                    Graduated
+                                </span>
+                            @elseif($isSibSlc)
+                                <span class="text-[10px] px-1.5 py-0.2 rounded font-bold {{ $student->id === $sibling->id ? 'bg-indigo-500 text-white' : 'bg-amber-100 text-amber-800' }}">
+                                    SLC Issued
+                                </span>
+                            @elseif(!$isSibActive)
+                                <span class="text-[10px] px-1.5 py-0.2 rounded font-bold {{ $student->id === $sibling->id ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600' }}">
+                                    {{ ucfirst($sibling->status) }}
+                                </span>
+                            @else
+                                <span class="text-[10px] {{ $student->id === $sibling->id ? 'text-indigo-200' : 'text-gray-400' }}">({{ $sibling->class->name ?? 'Class' }})</span>
+                            @endif
                         </button>
                     @endforeach
                 </div>
             </div>
         </div>
     @endif
+
+    @if($isDeparted)
+        {{-- DEPARTED / ALUMNI NOTICE SCREEN (ACTIVE DATA WITHHELD) --}}
+        <div class="glass-card p-6 sm:p-8 rounded-3xl border shadow-sm text-center max-w-3xl mx-auto my-6 
+            {{ $isGraduated ? 'bg-gradient-to-b from-indigo-50/70 via-white to-purple-50/40 border-indigo-200' : ($isSlc ? 'bg-gradient-to-b from-amber-50/70 via-white to-orange-50/40 border-amber-200' : 'bg-gradient-to-b from-rose-50/70 via-white to-gray-50/40 border-rose-200') }}">
+            
+            {{-- Icon Badge --}}
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl mx-auto flex items-center justify-center shadow-lg mb-5 
+                {{ $isGraduated ? 'bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-indigo-500/25' : ($isSlc ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/25' : 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-rose-500/25') }}">
+                @if($isGraduated)
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 sm:w-10 sm:h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+                    </svg>
+                @elseif($isSlc)
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 sm:w-10 sm:h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                @else
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 sm:w-10 sm:h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                @endif
+            </div>
+
+            {{-- Title & Status Pill --}}
+            <div class="mb-3">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider 
+                    {{ $isGraduated ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' : ($isSlc ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-rose-100 text-rose-800 border border-rose-300') }}">
+                    @if($isGraduated)
+                        🎓 Graduated Alumni
+                    @elseif($isSlc)
+                        📄 School Leaving Certificate (SLC) Issued
+                    @else
+                        ⚠️ {{ ucfirst($student->status) }} Profile
+                    @endif
+                </span>
+                <h2 class="text-xl sm:text-2xl font-black text-gray-900 mt-2">
+                    @if($isGraduated)
+                        Congratulations, {{ $student->name }}!
+                    @else
+                        Student Profile Inactive
+                    @endif
+                </h2>
+            </div>
+
+            {{-- Explanatory Notice --}}
+            <p class="text-sm text-gray-600 max-w-xl mx-auto leading-relaxed mb-6">
+                @if($isGraduated)
+                    You have successfully <strong>Graduated</strong> from this institution. As a graduated student, live student panel access (daily attendance, current class schedules, upcoming exam datesheets, and active fee generation) is no longer available. Your permanent graduation record and historical transcripts remain safely preserved in the school archive.
+                @elseif($isSlc)
+                    A <strong>School Leaving Certificate (SLC)</strong> has been formally issued for this student record. As you are no longer actively enrolled in this institution, access to active student panel operations is restricted.
+                @else
+                    This student record is currently marked as <strong>{{ ucfirst($student->status) }}</strong>. Active student panel access is restricted. Please contact the institution's administration office for assistance.
+                @endif
+            </p>
+
+            {{-- Institutional Profile Summary Box --}}
+            <div class="bg-white/80 rounded-2xl p-4 sm:p-5 border border-gray-200 text-left max-w-md mx-auto shadow-2xs space-y-2.5 text-xs">
+                <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                    <span class="text-gray-400 font-semibold uppercase">Student Name</span>
+                    <span class="font-bold text-gray-800">{{ $student->name }}</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                    <span class="text-gray-400 font-semibold uppercase">Admission No</span>
+                    <span class="font-mono font-bold text-gray-800">{{ $student->admission_no }}</span>
+                </div>
+                @if($student->father_name)
+                <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                    <span class="text-gray-400 font-semibold uppercase">Father's Name</span>
+                    <span class="font-medium text-gray-700">{{ $student->father_name }}</span>
+                </div>
+                @endif
+                <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                    <span class="text-gray-400 font-semibold uppercase">Class at {{ $isGraduated ? 'Graduation' : 'Departure' }}</span>
+                    <span class="font-bold text-indigo-600">{{ $student->class->name ?? 'Class' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-1">
+                    <span class="text-gray-400 font-semibold uppercase">Status</span>
+                    <span class="font-bold {{ $isGraduated ? 'text-indigo-700' : 'text-amber-700' }}">{{ $isGraduated ? 'Graduated' : ($isSlc ? 'SLC Issued' : ucfirst($student->status)) }}</span>
+                </div>
+            </div>
+
+            {{-- Sibling Switch Callout --}}
+            @if($hasActiveSiblings && $activeSibling)
+                <div class="mt-6 p-4 rounded-2xl bg-indigo-50/90 border border-indigo-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-indigo-900">Active Enrolled Sibling Available</h4>
+                            <p class="text-[11px] text-indigo-700 mt-0.5"><strong>{{ $activeSibling->name }}</strong> is actively enrolled in <strong>{{ $activeSibling->class->name ?? 'Class' }}</strong>.</p>
+                        </div>
+                    </div>
+                    <button 
+                        type="button" 
+                        wire:click="switchChild({{ $activeSibling->id }})"
+                        class="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-indigo-600/30 whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                        <span>Switch to {{ explode(' ', $activeSibling->name)[0] }}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
+                </div>
+            @endif
+
+            {{-- Logout Button --}}
+            <div class="mt-6 flex justify-center">
+                <form method="POST" action="{{ route('student.logout') }}">
+                    @csrf
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 transition-colors flex items-center gap-1.5 cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        <span>Sign Out of Portal</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    @else
 
     {{-- 2. STUDENT HERO WELCOME & SUMMARY BAR --}}
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
@@ -811,5 +960,6 @@
                 </div>
             @endif
         </div>
+    @endif
     @endif
 </div>
